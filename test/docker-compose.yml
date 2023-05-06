@@ -1,0 +1,41 @@
+version: '3.1'
+
+services:
+  vpnserver:
+    container_name: vpnserver
+    privileged: true
+    command: ["./app.run -local 192.168.0.101/24 -remote 10.5.0.102"]
+    build:
+      context: ../caerulean/whirlpool
+      dockerfile: Dockerfile
+    networks:
+      internal:
+        ipv4_address: 10.5.0.101
+      external:
+        ipv4_address: 10.72.0.101
+
+  vpnclient:
+    container_name: vpnclient
+    privileged: true
+    command: ["(./app.run -local 192.168.0.102/24 -remote 10.5.0.101 &) && sleep 3 && ip route replace default via 192.168.0.101 dev tun0 && ping -c 1 8.8.8.8"]
+    build:
+      context: ../caerulean/whirlpool
+      dockerfile: Dockerfile
+    networks:
+      internal:
+        ipv4_address: 10.5.0.102
+    depends_on:
+      - vpnserver
+
+networks:
+  internal:
+    ipam:
+     config:
+       - subnet: 10.5.0.0/24
+         gateway: 10.5.0.1
+  external:
+    driver: host
+    ipam:
+     config:
+       - subnet: 10.72.0.0/24
+         gateway: 10.72.0.1
