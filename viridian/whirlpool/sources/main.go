@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"os/exec"
 
 	"github.com/songgao/water"
 	"golang.org/x/net/ipv4"
@@ -21,39 +20,6 @@ var (
 	remoteIP = flag.String("remote", "", "Remote server (external) IP like 8.8.8.8")
 	port     = flag.Int("port", 1723, "UDP port for communication")
 )
-
-func runCommand(command string, args ...string) {
-	cmd := exec.Command(command, args...)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Printf("Command %s output: %s\n", command, output)
-		log.Fatal("Running command error:", err)
-	}
-}
-
-func AllocateInterface(name string, mtu string, interface_ip string) {
-	runCommand("ip", "link", "set", "dev", name, "mtu", mtu)
-	runCommand("ip", "addr", "add", interface_ip, "dev", name)
-	runCommand("ip", "link", "set", "dev", name, "up")
-	log.Println("Interface allocated:", name)
-}
-
-func ConfigureForwarding() {
-	// Accept packets to port 1723, pass to VPN decoder
-	runCommand("iptables", "-A", "INPUT", "-p", "udp", "-d", "11.0.0.11", "--dport", "1723", "-i", "eth0", "-j", "ACCEPT")
-	// Else drop all input packets
-	runCommand("iptables", "-P", "INPUT", "DROP")
-	// Enable forwarding from tun0 to eth0 (forward)
-	runCommand("iptables", "-A", "FORWARD", "-i", "tun0", "-o", "eth0", "-j", "ACCEPT")
-	// Enable forwarding from eth0 to tun0 (backward)
-	runCommand("iptables", "-A", "FORWARD", "-i", "eth0", "-o", "tun0", "-j", "ACCEPT")
-	// Drop all other forwarding packets (e.g. from eth0 to eth0)
-	runCommand("iptables", "-P", "FORWARD", "DROP")
-	// Enable masquerade on all non-claimed output and input from and to eth0
-	runCommand("iptables", "-t", "nat", "-A", "POSTROUTING", "-o", "eth0", "-j", "MASQUERADE")
-	// Log setup finished
-	log.Println("Forwarding configured:", "tun0 -> eth0")
-}
 
 func forwardFromUDPToTunnel(output *net.UDPConn, input *water.Interface) {
 	buf := make([]byte, BUFFERSIZE)
@@ -120,7 +86,5 @@ func main() {
 	defer connection.Close()
 	go forwardFromUDPToTunnel(connection, iface)
 
-	go forwardFromTunnelToUDP(iface, connection, remoteAddr)
-
-	select {}
+	forwardFromTunnelToUDP(iface, connection, remoteAddr)
 }

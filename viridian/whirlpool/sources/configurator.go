@@ -21,7 +21,6 @@ func AllocateInterface(name string, mtu string, interface_ip string) {
 	log.Println("Interface allocated:", name)
 }
 
-// todo: try replacing with `nftables`
 func ConfigureForwarding() {
 	runCommand("sysctl", "net.ipv4.conf.tun0.forwarding=1")
 	runCommand("iptables", "-A", "FORWARD", "-i", "tun0", "-o", "eth0", "-j", "ACCEPT")

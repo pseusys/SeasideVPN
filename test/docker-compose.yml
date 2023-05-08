@@ -4,38 +4,44 @@ services:
   vpnserver:
     container_name: vpnserver
     privileged: true
-    command: ["./app.run -local 192.168.0.101/24 -remote 10.5.0.102"]
+    command: ["(./app.run -local 192.168.0.101/24 -remote 11.0.0.10 &) && (tcpdump -n ip &) && ifconfig && sleep 1 && iptables -L -v -n && sleep infinity"]
     build:
       context: ../caerulean/whirlpool
       dockerfile: Dockerfile
     networks:
-      internal:
-        ipv4_address: 10.5.0.101
-      external:
-        ipv4_address: 10.72.0.101
+      onlynet:
+        ipv4_address: 11.0.0.11
 
   vpnclient:
     container_name: vpnclient
     privileged: true
-    command: ["(./app.run -local 192.168.0.102/24 -remote 10.5.0.101 &) && sleep 3 && ip route replace default via 192.168.0.101 dev tun0 && ping -c 1 8.8.8.8"]
+    command: ["(./app.run -local 192.168.0.102/24 -remote 11.0.0.11 &) && sleep 3 && ip route replace default via 192.168.0.101 dev tun0 && ping -c 1 8.8.8.8"]
     build:
-      context: ../caerulean/whirlpool
+      context: ../viridian/whirlpool
       dockerfile: Dockerfile
     networks:
-      internal:
-        ipv4_address: 10.5.0.102
+      onlynet:
+        ipv4_address: 11.0.0.10
+    depends_on:
+      - vpnserver
+
+  vpnintruder:
+    container_name: vpnintruder
+    privileged: true
+    command: ["sleep 3 && ip route replace default via 11.0.0.11 dev eth0 && ping -c 1 8.8.8.8"]
+    build:
+      context: ../viridian/whirlpool
+      dockerfile: Dockerfile
+    networks:
+      onlynet:
+        ipv4_address: 11.0.0.9
     depends_on:
       - vpnserver
 
 networks:
-  internal:
+  onlynet:
+    driver: bridge
     ipam:
      config:
-       - subnet: 10.5.0.0/24
-         gateway: 10.5.0.1
-  external:
-    driver: host
-    ipam:
-     config:
-       - subnet: 10.72.0.0/24
-         gateway: 10.72.0.1
+       - subnet: 11.0.0.0/24
+         gateway: 11.0.0.1
