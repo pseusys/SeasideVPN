@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"os/exec"
+	"strconv"
 
 	"github.com/songgao/water"
 	"golang.org/x/net/ipv4"
@@ -13,13 +14,13 @@ import (
 
 const (
 	BUFFERSIZE = 2000
-	MTU        = "1300"
+	MTU        = "1300" // TODO: revise!
+	TUNNEL_IP  = "192.168.0.87/24"
 )
 
 var (
-	localIP  = flag.String("local", "", "Local tun interface IP/MASK like 192.168.3.3/24")
-	remoteIP = flag.String("remote", "", "Remote server (external) IP like 8.8.8.8")
-	port     = flag.Int("port", 1723, "UDP port for communication")
+	ip   = flag.String("ip", "127.0.0.1", "External whirlpool IP")
+	port = flag.Int("port", 1723, "UDP port for communication")
 )
 
 func runCommand(command string, args ...string) {
@@ -38,29 +39,30 @@ func AllocateInterface(name string, mtu string, interface_ip string) {
 	log.Println("Interface allocated:", name)
 }
 
-func ConfigureForwarding() {
+func ConfigureForwarding(externalInterface string, tunnelInterface string) {
+	portStr := strconv.Itoa(*port)
 	// Accept packets to port 1723, pass to VPN decoder
-	runCommand("iptables", "-A", "INPUT", "-p", "udp", "-d", "11.0.0.11", "--dport", "1723", "-i", "eth0", "-j", "ACCEPT")
+	runCommand("iptables", "-A", "INPUT", "-p", "udp", "-d", *ip, "--dport", portStr, "-i", externalInterface, "-j", "ACCEPT")
 	// Else drop all input packets
 	runCommand("iptables", "-P", "INPUT", "DROP")
 	// Enable forwarding from tun0 to eth0 (forward)
-	runCommand("iptables", "-A", "FORWARD", "-i", "tun0", "-o", "eth0", "-j", "ACCEPT")
+	runCommand("iptables", "-A", "FORWARD", "-i", tunnelInterface, "-o", externalInterface, "-j", "ACCEPT")
 	// Enable forwarding from eth0 to tun0 (backward)
-	runCommand("iptables", "-A", "FORWARD", "-i", "eth0", "-o", "tun0", "-j", "ACCEPT")
+	runCommand("iptables", "-A", "FORWARD", "-i", externalInterface, "-o", tunnelInterface, "-j", "ACCEPT")
 	// Drop all other forwarding packets (e.g. from eth0 to eth0)
 	runCommand("iptables", "-P", "FORWARD", "DROP")
 	// Enable masquerade on all non-claimed output and input from and to eth0
-	runCommand("iptables", "-t", "nat", "-A", "POSTROUTING", "-o", "eth0", "-j", "MASQUERADE")
+	runCommand("iptables", "-t", "nat", "-A", "POSTROUTING", "-o", externalInterface, "-j", "MASQUERADE")
 	// Log setup finished
-	log.Println("Forwarding configured:", "tun0 -> eth0")
+	log.Println("Forwarding configured:", externalInterface, "<->", tunnelInterface)
 }
 
-func forwardFromUDPToTunnel(output *net.UDPConn, input *water.Interface) {
+func makePublic(output *net.UDPConn, input *water.Interface) {
 	buf := make([]byte, BUFFERSIZE)
 	for {
 		n, addr, err := output.ReadFromUDP(buf)
 		header, _ := ipv4.ParseHeader(buf[:n])
-		log.Printf("Received %d bytes from %v: %+v\n", n, addr, header)
+		log.Printf("Received %d bytes from viridian %v: %+v\n", n, addr, header)
 		if err != nil || n == 0 {
 			log.Println("Error: ", err)
 			continue
@@ -69,7 +71,7 @@ func forwardFromUDPToTunnel(output *net.UDPConn, input *water.Interface) {
 	}
 }
 
-func forwardFromTunnelToUDP(output *water.Interface, input *net.UDPConn, remote *net.UDPAddr) {
+func makePrivate(output *water.Interface, input *net.UDPConn, remote *net.UDPAddr) {
 	packet := make([]byte, BUFFERSIZE)
 	for {
 		plen, err := output.Read(packet)
@@ -77,50 +79,41 @@ func forwardFromTunnelToUDP(output *water.Interface, input *net.UDPConn, remote 
 			break
 		}
 		header, _ := ipv4.ParseHeader(packet[:plen])
-		log.Printf("Sending to remote: %+v (%+v)\n", header, err)
+		log.Printf("Sending to viridian: %+v (%+v)\n", header, err)
 		input.WriteToUDP(packet[:plen], remote)
 	}
 }
 
 func main() {
 	flag.Parse()
-	if "" == *localIP {
+	if "" == *ip {
 		flag.Usage()
-		log.Fatalln("\nLocal ip is not specified")
-	}
-	if "" == *remoteIP {
-		flag.Usage()
-		log.Fatalln("\nRemote server is not specified")
+		log.Fatalln("\nRemote server is not specified!")
 	}
 
-	iface, err := water.New(water.Config{DeviceType: water.TUN})
+	tunnel, err := water.New(water.Config{DeviceType: water.TUN})
 	if err != nil {
 		log.Fatalln("Unable to allocate TUN interface:", err)
 	}
 
-	iname := iface.Name()
-	AllocateInterface(iname, MTU, *localIP)
-	ConfigureForwarding()
+	iname := tunnel.Name()
+	AllocateInterface(iname, MTU, TUNNEL_IP)
+	ConfigureForwarding("eth0", iname) // TODO: find the default interface name
 
-	remoteAddr, err := net.ResolveUDPAddr("udp4", fmt.Sprintf("%s:%v", *remoteIP, *port))
+	gateway, err := net.ResolveUDPAddr("udp4", fmt.Sprintf("%s:%v", *ip, *port))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	s, err := net.ResolveUDPAddr("udp4", fmt.Sprintf(":%v", *port))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	connection, err := net.ListenUDP("udp4", s)
+	connection, err := net.ListenUDP("udp4", gateway)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	defer connection.Close()
-	go forwardFromUDPToTunnel(connection, iface)
+	go makePublic(connection, tunnel)
 
-	go forwardFromTunnelToUDP(iface, connection, remoteAddr)
+	go makePrivate(tunnel, connection, gateway)
 
 	select {}
 }
