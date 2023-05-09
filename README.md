@@ -71,7 +71,7 @@ sequenceDiagram
 
 ```bash
 iptables -F
-iptables -A INPUT -p udp -d 'SEASIDE_IP_ADDRESS' --dport 1723 -i eth0 -j ACCEPT
+iptables -A INPUT -p udp -d "192.168.0.87" --dport 1723 -i eth0 -j ACCEPT
 iptables -P INPUT DROP
 iptables -A FORWARD -i tun0 -o eth0 -j ACCEPT
 iptables -A FORWARD -i eth0 -o tun0 -j ACCEPT
@@ -79,3 +79,15 @@ iptables -P FORWARD DROP
 iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
 iptables -P OUTPUT ACCEPT
 ```
+
+where: `192.168.0.87` is caerulean external IP, `1723` is caerulean external port, `tun0` is tinnel interface name and `eth0` is network interface name.
+
+## Viridian
+
+Viridian is client side of SeaSide VPN, there are several client options:
+
+### Algae
+
+Small CLI-based client application, written in Python3.
+It can be run on linux (in for- and background), highly customizable.
+Created mainly for development and testing purposes.
