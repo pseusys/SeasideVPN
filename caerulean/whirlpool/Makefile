@@ -5,7 +5,7 @@ build: dependencies
 	go build -o build/main.run ./sources
 
 run: build
-	sudo build/main.run -local 127.0.0.3 -remote 127.0.0.5
+	sudo build/main.run -ip 127.0.0.1
 
 lint:
 	golint .

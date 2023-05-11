@@ -8,10 +8,6 @@ My first program in `Go`, written with assistance of multiple tutorials and Chat
 
 Run using following command:
 
-```bash
-docker-compose -f test/docker-compose.yml up --force-recreate --build
-```
-
 ## Caerulean
 
 Caerulean is server side of SeaSide VPN, it consists of several parts:
@@ -67,6 +63,12 @@ sequenceDiagram
     Input ->> Client: Encrypted & packed server response (UDP)
 ```
 
+Run whirlpool cleint:
+
+```bash
+make -C caerulean/whirlpool run
+```
+
 #### IPTables configuration
 
 ```bash
@@ -91,3 +93,15 @@ Viridian is client side of SeaSide VPN, there are several client options:
 Small CLI-based client application, written in Python3.
 It can be run on linux (in for- and background), highly customizable.
 Created mainly for development and testing purposes.
+
+Run algae cleint:
+
+```bash
+make -C viridian/algae run
+```
+
+## Test
+
+```bash
+docker-compose -f test/docker-compose.yml up --force-recreate --build
+```

@@ -1,4 +1,3 @@
-from logging import getLogger, DEBUG, StreamHandler
 from os import O_RDWR, getegid, geteuid, open, read, write
 from re import compile, search
 from struct import pack
@@ -6,11 +5,9 @@ from subprocess import check_call, check_output
 from fcntl import ioctl
 from ipaddress import IPv4Address
 from sys import stdout
-from typing import Optional
+from typing import Optional, Tuple
 
-logger = getLogger(__name__)
-logger.setLevel(DEBUG)
-logger.addHandler(StreamHandler())
+from outputs import logger
 
 _UNIX_TUNSETIFF = 0x400454ca
 _UNIX_TUNSETOWNER = 0x400454cc
@@ -23,10 +20,10 @@ _UNIX_IFF_NO_PI = 0x1000
 class Tunnel:
     _DEFAULT_ROUTE = compile(r"^default.*?((?:[0-9]{1,3}\.){3}[0-9]{1,3}) dev (\S+).*$")
 
-    def __init__(self, name: str = "tun0", address: Optional[IPv4Address] = None, mtu: int = 1300, buffer: int = 2000):
+    def __init__(self, name: str, address: IPv4Address, cidr: int, mtu: int, buffer: int):
         self._name = name
         self._buffer = buffer
-        self._address = IPv4Address("192.168.0.65") if address is None else address
+        self._address = address
 
         self._def_ip = ""
         self._def_intf = ""
@@ -44,7 +41,7 @@ class Tunnel:
 
         check_call(["ip", "link", "set", "dev", name, "mtu", str(mtu)])
         logger.info(f"Tunnel MTU set to '{mtu}'")
-        check_call(["ip", "addr", "add", str(address), "dev", name])
+        check_call(["ip", "addr", "add", f"{address}/{cidr}", "dev", name])
         logger.info(f"Tunnel IP address set to '{address}'")
 
     def __del__(self):
@@ -69,16 +66,18 @@ class Tunnel:
     def operational(self) -> bool:
         return self._operational
 
-    def _get_default_route(self) -> str:
+    def _get_default_route(self) -> Tuple[Optional[str], Optional[str]]:
         routes = [route.decode(stdout.encoding) for route in check_output(["ip", "route"]).splitlines()]
         for route in routes:
             match = search(self._DEFAULT_ROUTE, route)
             if bool(match):
                 return match.group(1), match.group(2)
+        return None, None
 
     def up(self):
         self._def_ip, self._def_intf = self._get_default_route()
-        logger.info(f"Default route saved (via {self._def_ip} dev {self._def_intf})")
+        if self._def_ip is not None and self._def_intf is not None:
+            logger.info(f"Default route saved (via {self._def_ip} dev {self._def_intf})")
         check_call(["ip", "link", "set", "dev", self._name, "up"])
         logger.info("Tunnel enabled")
         check_call(["ip", "route", "replace", "default", "via", str(self._address), "dev", self._name])
@@ -86,8 +85,9 @@ class Tunnel:
         self._operational = True
 
     def down(self):
-        check_call(["ip", "route", "replace", "default", "via", self._def_ip, "dev", self._def_intf])
-        logger.info(f"Default route restored (via {self._def_ip} dev {self._def_intf})")
+        if self._def_ip is not None and self._def_intf is not None:
+            check_call(["ip", "route", "replace", "default", "via", self._def_ip, "dev", self._def_intf])
+            logger.info(f"Default route restored (via {self._def_ip} dev {self._def_intf})")
         check_call(["ip", "link", "set", "dev", self._name, "down"])
         logger.info("Tunnel disabled")
         self._operational = False
