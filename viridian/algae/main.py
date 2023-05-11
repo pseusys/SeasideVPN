@@ -4,6 +4,7 @@ from ipaddress import IPv4Address
 
 from tunnel import Tunnel
 
+
 _DEFAULT_NAME = "seatun0"
 _DEFAULT_IP = "192.168.0.67"
 _DEFAULT_CIDR = 24

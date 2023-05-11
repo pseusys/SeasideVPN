@@ -39,6 +39,7 @@ func AllocateInterface(name string, mtu string, interface_ip string) {
 	log.Println("Interface allocated:", name)
 }
 
+// TODO: restore after execution?
 func ConfigureForwarding(externalInterface string, tunnelInterface string) {
 	portStr := strconv.Itoa(*port)
 	// Accept packets to port 1723, pass to VPN decoder
