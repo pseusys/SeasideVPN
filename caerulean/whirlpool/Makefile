@@ -4,8 +4,14 @@ dependencies:
 build: dependencies
 	go build -o build/main.run ./sources
 
-run: build
+save:
+	iptables-restore < /etc/sysconfig.txt
+
+run: build save
 	sudo build/main.run -ip 127.0.0.1
+
+restore:
+	iptables-save > /etc/sysconfig.txt
 
 lint:
 	golint .
