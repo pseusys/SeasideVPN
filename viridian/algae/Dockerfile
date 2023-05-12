@@ -1,0 +1,9 @@
+FROM python:3.11.3-alpine3.17
+
+ENV PYTHONUNBUFFERED 1
+ENV PYTHONDONTWRITEBYTECODE 1
+WORKDIR /seaside/algae
+
+COPY sources/* ./
+
+ENTRYPOINT ["/bin/sh", "-c"]
