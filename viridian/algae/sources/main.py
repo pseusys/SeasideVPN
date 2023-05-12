@@ -1,8 +1,11 @@
 from argparse import ArgumentParser
-from asyncio import Future, gather, run
 from ipaddress import IPv4Address
+from signal import SIGINT, SIGTERM, signal
+from sys import exit
+from threading import Thread
 
 from tunnel import Tunnel
+from outputs import logger
 
 
 _DEFAULT_NAME = "seatun0"
@@ -24,13 +27,26 @@ parser.add_argument("-p", "--caerulean-port", dest="c_port", default=_DEFAULT_CA
 args = vars(parser.parse_args())
 
 
-async def main() -> None:
-    interface = Tunnel(**args)
+def main():
+    logger.warning("Starting algae client...")
     interface.up()
-    await gather(interface.receiveFromCaerulean(), interface.sendToCaerulean())
-    await Future()
-    # interface.down()
+    try:
+        Thread(target=interface.receiveFromCaerulean, daemon=True).start()
+        Thread(target=interface.sendToCaerulean, daemon=True).start()
+        while True:
+            pass
+    except SystemExit:
+        interface.delete()
+
+
+def finish(_, __):
+    logger.warning("Gracefully stopping algae client...")
+    interface.down()
+    exit(0)
 
 
 if __name__ == "__main__":
-    run(main())
+    interface = Tunnel(**args)
+    signal(SIGINT, finish)
+    signal(SIGTERM, finish)
+    main()
