@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"net"
 	"os/exec"
 	"strconv"
 )
@@ -15,17 +17,22 @@ func runCommand(command string, args ...string) {
 	}
 }
 
-func AllocateInterface(name string, mtu string, interface_ip string) {
-	runCommand("ip", "link", "set", "dev", name, "mtu", mtu)
-	runCommand("ip", "addr", "add", interface_ip, "dev", name)
+func AllocateInterface(name string, tun_ip *net.IP, tun_net *net.IPNet) {
+	cidr, _ := tun_net.Mask.Size()
+	runCommand("ip", "link", "set", "dev", name, "mtu", MTU)
+	runCommand("ip", "addr", "add", fmt.Sprintf("%s/%d", tun_ip.String(), cidr), "dev", name)
 	runCommand("ip", "link", "set", "dev", name, "up")
 	log.Println("Interface allocated:", name)
 }
 
-func ConfigureForwarding(externalInterface string, tunnelInterface string) {
+func ConfigureForwarding(externalInterface string, tunnelInterface string, tun_ip *net.IP) {
 	portStr := strconv.Itoa(*port)
+	markStr := strconv.Itoa(MARK)
+
+	// Flush iptables rules
 	runCommand("iptables", "-F")
 	runCommand("iptables", "-t", "nat", "-F")
+	runCommand("iptables", "-t", "mangle", "-F")
 	// Accept packets to port 1723, pass to VPN decoder
 	runCommand("iptables", "-A", "INPUT", "-p", "udp", "-m", "state", "--state", "NEW", "-d", *ip, "--dport", portStr, "-i", externalInterface, "-j", "ACCEPT")
 	// Else drop all input packets
@@ -38,6 +45,13 @@ func ConfigureForwarding(externalInterface string, tunnelInterface string) {
 	runCommand("iptables", "-P", "FORWARD", "DROP")
 	// Enable masquerade on all non-claimed output and input from and to eth0
 	runCommand("iptables", "-t", "nat", "-A", "POSTROUTING", "-o", externalInterface, "-j", "MASQUERADE")
+
+	runCommand("iptables", "-t", "mangle", "-A", "PREROUTING", "-m", "state", "--state", "ESTABLISHED,RELATED", "-i", externalInterface, "-j", "MARK", "--set-mark", markStr)
+	runCommand("ip", "route", "flush", "table", markStr)
+	runCommand("ip", "route", "add", "table", markStr, "default", "via", tun_ip.String(), "dev", tunnelInterface)
+	runCommand("ip", "rule", "add", "fwmark", markStr, "table", markStr)
+	runCommand("ip", "route", "flush", "cache")
+
 	// Log setup finished
 	log.Println("Forwarding configured:", externalInterface, "<->", tunnelInterface)
 }

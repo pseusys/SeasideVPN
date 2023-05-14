@@ -1,8 +1,9 @@
 FROM golang:1.19-alpine3.17
 
+# TODO: remove tcpdump
 RUN apk add --no-cache iptables tcpdump
 
-WORKDIR /go/whirlpool
+WORKDIR /seaside/whirlpool
 COPY sources ./
 COPY go.* ./
 
