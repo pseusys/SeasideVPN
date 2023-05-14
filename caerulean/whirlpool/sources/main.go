@@ -6,8 +6,8 @@ import (
 	"log"
 	"net"
 
-	"github.com/mdlayher/packet"
 	"github.com/songgao/water"
+	"golang.org/x/net/ipv4"
 )
 
 const (
@@ -15,7 +15,7 @@ const (
 	MTU        = "1300" // TODO: revise!
 	TUNNEL_IP  = "192.168.0.87/24"
 	PORT       = 1723
-	IFACE      = "eth0"
+	IFACE      = "eth0" // TODO: find the default interface name
 	CIDR       = 24
 )
 
@@ -25,40 +25,37 @@ var (
 	cidr = flag.Int("cidr", CIDR, "External network CIDR")
 )
 
-func transferPackets(output *packet.Conn, input *water.Interface) {
+func makePublic(output *net.UDPConn, input *water.Interface) {
 	buf := make([]byte, BUFFERSIZE)
-	out_iface, out_network, err := net.ParseCIDR(fmt.Sprintf("%s/%d", *ip, *cidr))
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	for {
-		n, _, err := output.ReadFrom(buf)
-		if err != nil {
-			log.Println(err)
+		n, addr, err := output.ReadFromUDP(buf)
+		header, _ := ipv4.ParseHeader(buf[:n])
+		log.Printf("Received %d bytes from viridian %v: %+v\n", n, addr, header)
+		if err != nil || n == 0 {
+			log.Println("Error: ", err)
 			continue
 		}
+		input.Write(buf[:n])
+	}
+}
 
-		fromViridian, header, err := CheckFromViridian(buf, n, out_iface)
+func makePrivate(output *water.Interface, input *net.UDPConn, remote *net.UDPAddr) {
+	packet := make([]byte, BUFFERSIZE)
+	for {
+		plen, err := output.Read(packet)
 		if err != nil {
-			log.Println(err)
-			continue
+			break
 		}
-
-		if fromViridian {
-			log.Printf("Received from viridian %d bytes: %+v\n", n, header)
-			input.Write(buf[UDP_HEADER_LEN:n])
-		} else if !IsSpecialNetworkAddress(header.Src, *out_network) {
-			log.Printf("Sending to viridian %d bytes: %+v\n", n, header)
-			input.Write(buf[:n])
-		}
+		header, _ := ipv4.ParseHeader(packet[:plen])
+		log.Printf("Sending to viridian: %+v (%+v)\n", header, err)
+		input.WriteToUDP(packet[:plen], remote)
 	}
 }
 
 func main() {
 	flag.Parse()
 	if "" == *ip {
-		flag.Usage() // TODO: make more beautiful
+		flag.Usage()
 		log.Fatalln("\nRemote server is not specified!")
 	}
 
@@ -67,19 +64,24 @@ func main() {
 		log.Fatalln("Unable to allocate TUN interface:", err)
 	}
 
-	iface, err := net.InterfaceByName(IFACE)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	conn, err := packet.Listen(iface, packet.Datagram, ETHERTYPE, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	iname := tunnel.Name()
 	AllocateInterface(iname, MTU, TUNNEL_IP)
 	ConfigureForwarding(IFACE, iname)
 
-	transferPackets(conn, tunnel)
+	gateway, err := net.ResolveUDPAddr("udp4", fmt.Sprintf("%s:%v", *ip, *port))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	connection, err := net.ListenUDP("udp4", gateway)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer connection.Close()
+	go makePublic(connection, tunnel)
+
+	go makePrivate(tunnel, connection, gateway)
+
+	select {}
 }

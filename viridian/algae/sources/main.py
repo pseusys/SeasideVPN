@@ -32,6 +32,7 @@ def main():
     interface.up()
     rec_proc, snd_proc = None, None
     try:
+        interface.openSocket()
         rec_proc = Process(target=interface.receiveFromCaerulean, daemon=True)
         snd_proc = Process(target=interface.sendToCaerulean, daemon=True)
         rec_proc.start()

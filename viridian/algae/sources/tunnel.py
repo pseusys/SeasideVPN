@@ -31,7 +31,7 @@ class Tunnel:
         self._caerulean_port = c_port
 
         self._def_route, self._def_intf = "", ""
-        self._def_ip = IPv4Network("127.0.0.1")
+        self._def_ip = "127.0.0.1"
         self._operational = False
 
         self._descriptor = open("/dev/net/tun", O_RDWR)
@@ -88,17 +88,18 @@ class Tunnel:
         logger.info(f"Tunnel {BAD}disabled{BLANC}")
         self._operational = False
 
+    def openSocket(self):
+        self._caerulean_gate = socket(AF_INET, SOCK_DGRAM)
+        self._caerulean_gate.bind((self._def_ip, self._caerulean_port))
+
     def sendToCaerulean(self):
-        caerulean_gate = socket(AF_INET, SOCK_DGRAM)
         while self._operational:
             packet = read(self._descriptor, self._buffer)
             logger.debug(f"Sending {len(packet)} bytes to caerulean {self._caerulean_addr}:{self._caerulean_port}")
-            caerulean_gate.sendto(packet, (self._caerulean_addr, self._caerulean_port))
+            self._caerulean_gate.sendto(packet, (self._caerulean_addr, self._caerulean_port))
 
     def receiveFromCaerulean(self):
-        caerulean_gate = socket(AF_INET, SOCK_DGRAM)
-        caerulean_gate.bind((str(self._def_ip), self._caerulean_port))
         while self._operational:
-            packet = caerulean_gate.recv(self._buffer)
+            packet = self._caerulean_gate.recv(self._buffer)
             logger.debug(f"Receiving {len(packet)} bytes from caerulean {self._caerulean_addr}:{self._caerulean_port}")
             write(self._descriptor, packet)
