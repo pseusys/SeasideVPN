@@ -1,11 +1,6 @@
-build-whirlpool:
-	make -C caerulean/whirlpool build
+test-caerulean-whirlpool:
+	docker-compose -f test/docker-compose.yml up --force-recreate --build --abort-on-container-exit
+.PHONY: test-caerulean-whirlpool
 
-run-whirlpool:
-	make -C caerulean/whirlpool run
-
-clean-whirlpool:
-	make -C caerulean/whirlpool clean
-
-lint-whirlpool:
-	make -C caerulean/whirlpool lint
+test-all: test-caerulean-whirlpool
+.PHONY: test-all

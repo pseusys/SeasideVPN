@@ -5,17 +5,17 @@
 
 # Python:
 
-# Python cache
+## Python cache
 __pycache__
 
-# GO:
+# Golang:
 
-# Binaries for programs and plugins
+## Binaries for programs and plugins
 *.exe
 *.run
 
-# Go workspace file
+## Go workspace file
 go.work
 
-# Go versions freeze file
+## Go versions freeze file
 go.sum

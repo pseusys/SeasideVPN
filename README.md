@@ -6,12 +6,6 @@ A simple PPTP UDP VPN
 
 My first program in `Go`, written with assistance of multiple tutorials and ChatGPT.
 
-Run using following command:
-
-```bash
-...
-```
-
 ## Conventions
 
 Each program here has a special numeric identifier, that is the ASCII code of the first letter of its' name (capitalized).
@@ -39,6 +33,18 @@ Whirlpool accepts client packages at UDP port 1723, no more than 32000 bytes in 
 TODO: encryption negotiation is yet to be implemented!
 
 > WARNING! Any UDP packets arriving to port 1723 will be treated as user packets, i.e. user should never send packets to port 1723 of any server via Seaside VPN!
+
+Run whirlpool server:
+
+```bash
+make -C caerulean/whirlpool run
+```
+
+Test whirlpool server (with algae client):
+
+```bash
+make test-caerulean-whirlpool
+```
 
 #### Time diagram
 
@@ -77,12 +83,6 @@ sequenceDiagram
     Input ->> Client: Encrypted & packed server response (UDP)
 ```
 
-Run whirlpool cleint:
-
-```bash
-make -C caerulean/whirlpool run
-```
-
 ## Viridian
 
 Viridian is client side of SeaSide VPN, there are several client options:
@@ -102,10 +102,5 @@ make -C viridian/algae run
 ## Test
 
 ```bash
-docker-compose -f test/docker-compose.yml up --force-recreate --build
+make test-all
 ```
-
-## TODOs
-
-Algae: set tunnel IP to be the same as external
-Whirlpool: send packet back to recipient

@@ -4,6 +4,6 @@ ENV PYTHONUNBUFFERED 1
 ENV PYTHONDONTWRITEBYTECODE 1
 WORKDIR /seaside/algae
 
-COPY sources/* ./
+COPY sources/*.py ./
 
 ENTRYPOINT ["/bin/sh", "-c"]
