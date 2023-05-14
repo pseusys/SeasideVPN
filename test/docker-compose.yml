@@ -4,7 +4,7 @@ services:
   vpnserver:
     container_name: vpnserver
     privileged: true
-    command: ["(./whirlpool.run -ip 11.0.0.11 &) && (tcpdump -n ip &) && ifconfig && sleep 1 && iptables -L -v -n && sleep infinity"]
+    command: ["(./whirlpool.run -ip 11.0.0.11 &) && (tcpdump -n ip &) && ifconfig && sleep 10 && iptables -L -v -n && sleep infinity"]
     build:
       context: ../caerulean/whirlpool
       dockerfile: Dockerfile
@@ -15,7 +15,7 @@ services:
   vpnclient:
     container_name: vpnclient
     privileged: true
-    command: ["(python3 main.py -i 11.0.0.11 &) && (tcpdump -n ip &) && sleep 3 && ping -c 1 8.8.8.8"]
+    command: ["(python3 main.py -i 11.0.0.11 &) && sleep 3 && ping -c 1 8.8.8.8"]
     build:
       context: ../viridian/algae
       dockerfile: Dockerfile

@@ -5,13 +5,13 @@ build: dependencies
 	go build -o build/main.run ./sources
 
 save:
-	iptables-restore < /etc/sysconfig.txt
+	iptables-save > ~/sysconfig.txt
 
 run: build save
 	sudo build/main.run -ip 127.0.0.1
 
 restore:
-	iptables-save > /etc/sysconfig.txt
+	iptables-restore < ~/sysconfig.txt
 
 lint:
 	golint .

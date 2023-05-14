@@ -8,6 +8,20 @@ My first program in `Go`, written with assistance of multiple tutorials and Chat
 
 Run using following command:
 
+```bash
+...
+```
+
+## Conventions
+
+Each program here has a special numeric identifier, that is the ASCII code of the first letter of its' name (capitalized).
+So far the numeric identification table looks like this:
+
+| Program Name | Numeric Identifier |
+| --- | --- |
+| Caerulean Whirlpool | 87 |
+| Viridian Algae | 65 |
+
 ## Caerulean
 
 Caerulean is server side of SeaSide VPN, it consists of several parts:
@@ -69,21 +83,6 @@ Run whirlpool cleint:
 make -C caerulean/whirlpool run
 ```
 
-#### IPTables configuration
-
-```bash
-iptables -F
-iptables -A INPUT -p udp -d "192.168.0.87" --dport 1723 -i eth0 -j ACCEPT
-iptables -P INPUT DROP
-iptables -A FORWARD -i tun0 -o eth0 -j ACCEPT
-iptables -A FORWARD -i eth0 -o tun0 -j ACCEPT
-iptables -P FORWARD DROP
-iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-iptables -P OUTPUT ACCEPT
-```
-
-where: `192.168.0.87` is caerulean external IP, `1723` is caerulean external port, `tun0` is tinnel interface name and `eth0` is network interface name.
-
 ## Viridian
 
 Viridian is client side of SeaSide VPN, there are several client options:
@@ -105,3 +104,8 @@ make -C viridian/algae run
 ```bash
 docker-compose -f test/docker-compose.yml up --force-recreate --build
 ```
+
+## TODOs
+
+Algae: set tunnel IP to be the same as external
+Whirlpool: send packet back to recipient
