@@ -17,10 +17,14 @@ func makePublic(output *net.UDPConn, input *water.Interface) {
 	buf := make([]byte, BUFFERSIZE)
 	for {
 		n, addr, err := output.ReadFromUDP(buf)
-		header, _ := ipv4.ParseHeader(buf[:n])
+		if err != nil || n == 0 {
+			log.Println("Reading UDP error: ", err)
+			continue
+		}
+		header, err := ipv4.ParseHeader(buf[:n])
 		log.Printf("Received %d bytes from viridian %v: %+v\n", n, addr, header)
 		if err != nil || n == 0 {
-			log.Println("Error: ", err)
+			log.Println("Parsing header error: ", err)
 			continue
 		}
 		input.Write(buf[:n])
