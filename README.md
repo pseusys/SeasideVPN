@@ -15,6 +15,7 @@ So far the numeric identification table looks like this:
 | --- | --- |
 | Caerulean Whirlpool | 87 |
 | Viridian Algae | 65 |
+| Seaside VPN | 83 |
 
 ## Caerulean
 
