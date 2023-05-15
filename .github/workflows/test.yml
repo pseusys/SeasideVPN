@@ -1,0 +1,16 @@
+name: TEST
+
+on:
+  push:
+
+jobs:
+  caerulean-whirlpool:
+    name: Test Caerulean Whirlpool Server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v3
+
+      - name: Test Caerulean Whirlpool 🧪
+        run: make test-caerulean-whirlpool
