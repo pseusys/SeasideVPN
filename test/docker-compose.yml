@@ -2,46 +2,31 @@ version: '3.1'
 
 services:
   vpnserver:
-    container_name: vpnserver
     privileged: true
-    command: ["(./whirlpool.run -ip 11.0.0.11 &) && (tcpdump -n ip &) && ifconfig && sleep 10 && iptables -L -v -n && sleep infinity"]
+    command: ["(./whirlpool.run -ip 83.0.0.87 &) && tcpdump -n ip"]
     build:
       context: ../caerulean/whirlpool
       dockerfile: Dockerfile
     networks:
-      onlynet:
-        ipv4_address: 11.0.0.11
+      default:
+        ipv4_address: 83.0.0.87
 
   vpnclient:
-    container_name: vpnclient
     privileged: true
-    command: ["(python3 main.py -i 11.0.0.11 &) && sleep 3 && ping -c 1 8.8.8.8"]
+    command: ["(python3 main.py -i 83.0.0.87 &) && (tcpdump -n ip &) && sleep 3 && ping -c 3 -v -s 56 8.8.8.8 && ping -c 3 -v -s 2048 8.8.8.8"]
     build:
       context: ../viridian/algae
       dockerfile: Dockerfile
     networks:
-      onlynet:
-        ipv4_address: 11.0.0.10
-    depends_on:
-      - vpnserver
-
-  vpnintruder:
-    container_name: vpnintruder
-    privileged: true
-    command: ["sleep 3 && ip route replace default via 11.0.0.11 dev eth0 && ping -c 1 8.8.8.8"]
-    build:
-      context: ../viridian/algae
-      dockerfile: Dockerfile
-    networks:
-      onlynet:
-        ipv4_address: 11.0.0.9
+      default:
+        ipv4_address: 83.0.0.65
     depends_on:
       - vpnserver
 
 networks:
-  onlynet:
+  default:
     driver: bridge
     ipam:
      config:
-       - subnet: 11.0.0.0/24
-         gateway: 11.0.0.1
+       - subnet: 83.0.0.0/24
+         gateway: 83.0.0.1
