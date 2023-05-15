@@ -3,7 +3,7 @@ version: '3.1'
 services:
   vpnserver:
     privileged: true
-    command: ["(./whirlpool.run -ip 83.0.0.87 &) && tcpdump -n ip"]
+    command: ["(./whirlpool.run -i 83.0.0.87 &) && tcpdump -n ip"]
     build:
       context: ../caerulean/whirlpool
       dockerfile: Dockerfile
@@ -13,7 +13,7 @@ services:
 
   vpnclient:
     privileged: true
-    command: ["(python3 main.py -i 83.0.0.87 &) && (tcpdump -n ip &) && sleep 3 && ping -c 3 -W 10 -s 56 8.8.8.8 && ping -c 3 -W 10 -s 2048 8.8.8.8"]
+    command: ["(python3 main.py -i 83.0.0.87 &) && (tcpdump -n ip &) && sleep 3 && ping -c 16 -s 64 8.8.8.8"]
     build:
       context: ../viridian/algae
       dockerfile: Dockerfile

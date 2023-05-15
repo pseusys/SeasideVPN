@@ -35,16 +35,38 @@ TODO: encryption negotiation is yet to be implemented!
 
 > WARNING! Any UDP packets arriving to port 1723 will be treated as user packets, i.e. user should never send packets to port 1723 of any server via Seaside VPN!
 
+Test whirlpool server (with algae client):
+
+```bash
+make test-caerulean-whirlpool
+```
+
+#### Run whirlpool server
+
+> Required packages: `iptables`, `ip`
+
 Run whirlpool server:
 
 ```bash
 make -C caerulean/whirlpool run
 ```
 
-Test whirlpool server (with algae client):
+Lint and format golang files:
 
 ```bash
-make test-caerulean-whirlpool
+make -C caerulean/whirlpool lint
+```
+
+Restore `iptables` configuration after run:
+
+```bash
+make -C caerulean/whirlpool clean
+```
+
+Clean build artifacts:
+
+```bash
+make -C caerulean/whirlpool clean
 ```
 
 #### Time diagram
@@ -94,10 +116,20 @@ Small CLI-based client application, written in Python3.
 It can be run on linux (in for- and background), highly customizable.
 Created mainly for development and testing purposes.
 
-Run algae cleint:
+#### Run algae client
+
+> Required packages: `ip`
+
+Run algae client:
 
 ```bash
 make -C viridian/algae run
+```
+
+Clean build artifacts:
+
+```bash
+make -C viridian/algae clean
 ```
 
 ## Test
@@ -105,3 +137,7 @@ make -C viridian/algae run
 ```bash
 make test-all
 ```
+
+## TODOs
+
+1. Add run options to all run configurations, Makefiles
