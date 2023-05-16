@@ -1,4 +1,4 @@
-EXECUTABLE_NAME = executable
+EXECUTABLE_NAME = algae.run
 
 PATH := venv/bin:$(PATH)
 

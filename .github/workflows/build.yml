@@ -10,11 +10,7 @@ concurrency:
 jobs:
   viridian-algae:
     name: Build Viridian Algae Client Executable
-    strategy:
-        fail-fast: false
-        matrix:
-          os: [macOS-latest, windows-latest, ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout 🛎️
@@ -30,17 +26,15 @@ jobs:
         env:
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
         run: |
-          BRANCH_NAME=${{ env.BRANCH_NAME }}
+          BRANCH_NAME="${{ env.BRANCH_NAME }}"
           BRANCH_NAME=${BRANCH_NAME////-}
           BRANCH_NAME=${BRANCH_NAME/_/-}
-          OS_NAME=${{ matrix.os }}
-          OS_NAME=${OS_NAME%%-*}
-          echo ID=${BRANCH_NAME}-${OS_NAME} >> $GITHUB_ENV
+          echo ID=${BRANCH_NAME} >> $GITHUB_ENV
 
       - name: Build Algae Executable 🏗️
         env:
           EXEC_NAME: ${{ format('algae-executable-{0}', steps.id-creator.outputs.ID) }}
-        run: make -C viridian/algae build EXECUTABLE_NAME=${{ env.EXEC_NAME }}
+        run: make -C viridian/algae build EXECUTABLE_NAME=${{ env.EXEC_NAME }}.run
 
       - name: Save Artifact 🏺
         uses: actions/upload-artifact@v3
