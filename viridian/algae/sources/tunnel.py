@@ -24,11 +24,12 @@ class Tunnel:
     _DEFAULT_IP = compile(r"(?<=inet )(.*)(?=\/)")
     _DEFAULT_NETMASK = compile(r"(?<=netmask )(.*)(?=\/)")
 
-    def __init__(self, name: str, mtu: int, buffer: int, c_addr: IPv4Address, c_port: int):
+    def __init__(self, name: str, mtu: int, buff: int, addr: IPv4Address, in_port: int, out_port: int):
         self._name = name
-        self._buffer = buffer
-        self._caerulean_addr = str(c_addr)
-        self._caerulean_port = c_port
+        self._buffer = buff
+        self._address = str(addr)
+        self._input_port = in_port
+        self._output_port = out_port
 
         self._def_route, self._def_intf = "", ""
         self._def_ip = "127.0.0.1"
@@ -37,7 +38,7 @@ class Tunnel:
         self._descriptor = open("/dev/net/tun", O_RDWR)
         tunnel_desc = pack("16sH", name.encode("ascii"), _UNIX_IFF_TUN | _UNIX_IFF_NO_PI)
         ioctl(self._descriptor, _UNIX_TUNSETIFF, tunnel_desc)
-        logger.info(f"Tunnel {INFO}{self._name}{BLANC} created (buffer: {INFO}{buffer}{BLANC})")
+        logger.info(f"Tunnel {INFO}{self._name}{BLANC} created (buffer: {INFO}{buff}{BLANC})")
 
         owner, group = geteuid(), getegid()
         ioctl(self._descriptor, _UNIX_TUNSETOWNER, owner)
@@ -88,18 +89,18 @@ class Tunnel:
         logger.info(f"Tunnel {BAD}disabled{BLANC}")
         self._operational = False
 
-    def openSocket(self):
-        self._caerulean_gate = socket(AF_INET, SOCK_DGRAM)
-        self._caerulean_gate.bind((self._def_ip, self._caerulean_port))
-
     def sendToCaerulean(self):
+        self._caerulean_gate = socket(AF_INET, SOCK_DGRAM)
+        self._caerulean_gate.bind((self._def_ip, self._output_port))
         while self._operational:
             packet = read(self._descriptor, self._buffer)
-            logger.debug(f"Sending {len(packet)} bytes to caerulean {self._caerulean_addr}:{self._caerulean_port}")
-            self._caerulean_gate.sendto(packet, (self._caerulean_addr, self._caerulean_port))
+            logger.debug(f"Sending {len(packet)} bytes to caerulean {self._address}:{self._output_port}")
+            self._caerulean_gate.sendto(packet, (self._address, self._output_port))
 
     def receiveFromCaerulean(self):
+        self._caerulean_gate = socket(AF_INET, SOCK_DGRAM)
+        self._caerulean_gate.bind((self._def_ip, self._input_port))
         while self._operational:
             packet = self._caerulean_gate.recv(self._buffer)
-            logger.debug(f"Receiving {len(packet)} bytes from caerulean {self._caerulean_addr}:{self._caerulean_port}")
+            logger.debug(f"Receiving {len(packet)} bytes from caerulean {self._address}:{self._input_port}")
             write(self._descriptor, packet)

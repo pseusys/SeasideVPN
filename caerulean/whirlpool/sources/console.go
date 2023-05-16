@@ -36,7 +36,7 @@ func AllocateInterface(name string, tun_ip *net.IP, tun_net *net.IPNet) {
 }
 
 func ConfigureForwarding(externalInterface string, tunnelInterface string, tun_ip *net.IP) {
-	portStr := strconv.Itoa(*port)
+	portStr := strconv.Itoa(*input)
 	markStr := strconv.Itoa(MARK)
 
 	// Flush iptables rules
