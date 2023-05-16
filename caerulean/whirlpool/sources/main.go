@@ -9,8 +9,9 @@ import (
 )
 
 const (
+	ADDRESS      = "127.0.0.1"
 	TUNNEL_IP    = "192.168.0.87/24"
-	IFACE        = "eth0" // TODO: find the default interface name
+	IFACE        = "eth0" // TODO: find the default interface name (ip addr show)
 	UDP          = "udp4"
 	INPUT_PORT   = 1723
 	OUTPUT_PORT  = 1724
@@ -18,7 +19,7 @@ const (
 )
 
 var (
-	ip      = flag.String("a", "127.0.0.1", "External whirlpool IP")
+	ip      = flag.String("a", ADDRESS, "External whirlpool IP")
 	input   = flag.Int("i", INPUT_PORT, "UDP port for receiving UDP packets")
 	output  = flag.Int("o", OUTPUT_PORT, "UDP port for sending UDP packets")
 	control = flag.Int("c", CONTROL_PORT, "UDP port for communication with Surface")

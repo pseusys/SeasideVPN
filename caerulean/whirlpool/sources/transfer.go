@@ -75,7 +75,7 @@ func SendPacketsToViridian(tunnel *water.Interface) {
 			continue
 		}
 
-		gateway, err := net.ResolveUDPAddr(UDP, fmt.Sprintf("%s:%v", header.Dst.String(), OUTPUT_PORT))
+		gateway, err := net.ResolveUDPAddr(UDP, fmt.Sprintf("%s:%v", header.Dst.String(), *output))
 		if err != nil {
 			log.Fatal(err)
 		}
