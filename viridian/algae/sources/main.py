@@ -12,8 +12,8 @@ _DEFAULT_NAME = "seatun"
 _DEFAULT_MTU = 1300
 _DEFAULT_BUFFER = 2000
 _DEFAULT_ADDRESS = "127.0.0.1"
-_DEFAULT_INPUT_PORT = 1723
-_DEFAULT_OUTPUT_PORT = 1724
+_DEFAULT_INPUT_PORT = 1724
+_DEFAULT_OUTPUT_PORT = 1723
 
 parser = ArgumentParser()
 parser.add_argument("-t", "--tunnel", dest="name", default=_DEFAULT_NAME, help=f"Tunnel interface name (default: {_DEFAULT_NAME})")
