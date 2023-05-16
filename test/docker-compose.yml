@@ -6,21 +6,23 @@ services:
     build:
       context: ../caerulean/whirlpool
       dockerfile: Dockerfile
+    environment:
+      ADDRESS: 10.0.0.87
     networks:
       default:
-        ipv4_address: 83.0.0.87
+        ipv4_address: 10.0.0.87
 
   vpnclient:
     privileged: true
-    environment:
-      ADDRESS: 83.0.0.87
-      COMMAND: sleep 3 && ping -c 16 -s 64 8.8.8.8
     build:
       context: ../viridian/algae
       dockerfile: Dockerfile
+    environment:
+      ADDRESS: 10.0.0.87
+      COMMAND: sleep 3 && ping -c 16 -s 64 8.8.8.8
     networks:
       default:
-        ipv4_address: 83.0.0.65
+        ipv4_address: 10.0.0.65
     depends_on:
       - vpnserver
 
@@ -29,5 +31,5 @@ networks:
     driver: bridge
     ipam:
      config:
-       - subnet: 83.0.0.0/24
-         gateway: 83.0.0.1
+       - subnet: 10.0.0.0/24
+         gateway: 10.0.0.1
