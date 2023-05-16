@@ -17,11 +17,9 @@ jobs:
         include:
           - name: Caerulean Whirlpool
             context: caerulean/whirlpool
-            target: 0
             image: ghcr.io/${{ github.repository }}/caerulean-whirlpool
           - name: Viridian Algae
             context: viridian/algae
-            target: runner
             image: ghcr.io/${{ github.repository }}/viridian-algae
     permissions:
       contents: read
@@ -55,7 +53,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: ${{ matrix.context }}
-          target: ${{ matrix.target }}
+          target: default
           push: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/releases') }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
