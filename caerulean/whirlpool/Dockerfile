@@ -1,13 +1,20 @@
-FROM golang:1.19-alpine3.17
+FROM golang:1.19-alpine3.17 as builder
+
+WORKDIR /seaside/algae
+
+COPY go.* ./
+RUN go get -d -v ./...
+
+COPY sources ./
+RUN go build -o whirlpool.run
+
+
+FROM alpine:3.17 as default
 
 RUN apk add --no-cache iptables
 
-WORKDIR /seaside/whirlpool
-COPY sources ./
-COPY go.* ./
-
-RUN go get -d -v ./...
-RUN go build -o whirlpool.run
+WORKDIR /seaside/algae
+COPY --from=builder /seaside/algae/whirlpool.run ./
 
 ENV ADDRESS 127.0.0.1
 ENV IN_PORT 1723

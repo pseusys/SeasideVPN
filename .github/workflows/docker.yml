@@ -9,16 +9,18 @@ concurrency:
 
 jobs:
   build-all:
-    name: Build All Docker Containers
+    name: Build ${{ matrix.name }} Image
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
-          - context: caerulean/whirlpool
+          - name: Caerulean Whirlpool
+            context: caerulean/whirlpool
             target: 0
             image: ghcr.io/${{ github.repository }}/caerulean-whirlpool
-          - context: viridian/algae
+          - name: Viridian Algae
+            context: viridian/algae
             target: runner
             image: ghcr.io/${{ github.repository }}/viridian-algae
     permissions:
