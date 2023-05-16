@@ -1,6 +1,6 @@
 # SeasideVPN
 
-A simple PPTP UDP VPN
+A simple PPTP UDP VPN system
 
 > Inspired by [this](https://github.com/habibiefaried/vpn-protocol-udp-pptp) project and tutorial.
 
@@ -8,8 +8,20 @@ My first program in `Go`, written with assistance of multiple tutorials and Chat
 
 ## Conventions
 
-Each program here has a special numeric identifier, that is the ASCII code of the first letter of its' name (capitalized).
-So far the numeric identification table looks like this:
+The number of important parameters define the VPN system.
+They define IP addresses, port numbers, names, etc.  
+The parameters can be found in the table below:
+
+| Parameter Name | Parameter Value |
+| --- | --- |
+| Caerulean incoming UDP port | 1723 |
+| Caerulean outcoming UDP port | 1724 |
+| Caerulean tunnel network | 192.168.0.87/24 |
+| Tunnel MTU | 1300 |
+| Transmission packet buffer | 2000 |
+
+Each program here has a special numeric identifier, that is the ASCII code of the first letter of its' name (capitalized).  
+The numeric identification table can be found below:
 
 | Program Name | Numeric Identifier |
 | --- | --- |
@@ -17,7 +29,12 @@ So far the numeric identification table looks like this:
 | Viridian Algae | 65 |
 | Seaside VPN | 83 |
 
-## Caerulean
+There are some important notes and conditions that must be fulfilled in order for system to work as expected:
+
+- Viridian packet must have client external IP as source IP and 1723 port as source port.
+- ...
+
+## Caerulean (server)
 
 Caerulean is server side of SeaSide VPN, it consists of several parts:
 
@@ -27,11 +44,13 @@ TODO!
 
 ### Whirlpool
 
-Whirlpool program is written in Go language.
+Whirlpool program is written in Go language.  
 It manages encrypting, decrypting, assembling and transferring requests and responses.
 
-Whirlpool accepts client packages at UDP port 1723, no more than 32000 bytes in size, encrypted.
+Whirlpool accepts client packages at UDP port 1723, no more than 2000 bytes in size, encrypted.  
 TODO: encryption negotiation is yet to be implemented!
+
+Whirlpool sends messages to UDP port 1724, in packets of size 2000, encrypted.
 
 > WARNING! Any UDP packets arriving to port 1723 will be treated as user packets, i.e. user should never send packets to port 1723 of any server via Seaside VPN!
 
@@ -60,7 +79,7 @@ make -C caerulean/whirlpool lint
 Restore `iptables` configuration after run:
 
 ```bash
-make -C caerulean/whirlpool clean
+make -C caerulean/whirlpool restore
 ```
 
 Clean build artifacts:
@@ -106,30 +125,24 @@ sequenceDiagram
     Input ->> Client: Encrypted & packed server response (UDP)
 ```
 
-## Viridian
+## Viridian (client)
 
-Viridian is client side of SeaSide VPN, there are several client options:
+Viridian is client side of Seaside VPN, there are several client options:
 
 ### Algae
 
 Small CLI-based client application, written in Python3.
-It can be run on linux (in for- and background), highly customizable.
+It can be run on linux (in for- and background), it's highly customizable.
 Created mainly for development and testing purposes.
 
 #### Run algae client
 
 > Required packages: `ip`
 
-Run algae client:
+Run algae client (superuser permissions required):
 
 ```bash
-make -C viridian/algae run
-```
-
-Clean build artifacts:
-
-```bash
-make -C viridian/algae clean
+python3 -B viridian/algae/sources/main.py
 ```
 
 ## Test
@@ -140,4 +153,10 @@ make test-all
 
 ## TODOs
 
-1. Add run options to all run configurations, Makefiles
+1. Setup two different IO ports for server and client - fix all builds and README.
+2. Add run options to all run configurations, Makefiles.
+3. Add server support for packets longer than buffer.
+4. Add test configs for different protocols and packet sizes.
+5. Add encryption and decryption algorithms, (invisible) handshakes or third port communication.
+6. Fix TODOs in code.
+7. Add CONTRIBUTING with rules, e.g. branch names with '-'.

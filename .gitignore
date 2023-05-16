@@ -1,21 +1,3 @@
 # Configs:
-
 .idea
 .vscode
-
-# Python:
-
-## Python cache
-__pycache__
-
-# Golang:
-
-## Binaries for programs and plugins
-*.exe
-*.run
-
-## Go workspace file
-go.work
-
-## Go versions freeze file
-go.sum

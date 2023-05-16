@@ -1,0 +1,50 @@
+name: BUILD
+
+on:
+  push:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  viridian-algae:
+    name: Build Viridian Algae Client Executable
+    strategy:
+        fail-fast: false
+        matrix:
+          os: [macOS-latest, windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v3
+
+      - name: Setup Python 3.10 🐍
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.10
+
+      - name: Create Executable ID 📛
+        id: id-creator
+        env:
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+        run: |
+          BRANCH_NAME=${{ env.BRANCH_NAME }}
+          BRANCH_NAME=${BRANCH_NAME////-}
+          BRANCH_NAME=${BRANCH_NAME/_/-}
+          OS_NAME=${{ matrix.os }}
+          OS_NAME=${OS_NAME%%-*}
+          echo ID=${BRANCH_NAME}-${OS_NAME} >> $GITHUB_ENV
+
+      - name: Build Algae Executable 🏗️
+        env:
+          EXEC_NAME: ${{ format('algae-executable-{0}', steps.id-creator.outputs.ID) }}
+        run: make -C viridian/algae build EXECUTABLE_NAME=${{ env.EXEC_NAME }}
+
+      - name: Save Artifact 🏺
+        uses: actions/upload-artifact@v3
+        with:
+          name: algae-executable
+          path: dist/
+          retention-days: 3
