@@ -17,4 +17,6 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Test Caerulean Whirlpool 🧪
-        run: make test-caerulean-whirlpool
+        run: |
+          ping -c 16 -s 64 8.8.8.8
+          make test-caerulean-whirlpool
