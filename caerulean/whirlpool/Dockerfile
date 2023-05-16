@@ -9,7 +9,7 @@ COPY go.* ./
 RUN go get -d -v ./...
 RUN go build -o whirlpool.run
 
-ENV ADDRESS 83.0.0.87
+ENV ADDRESS 127.0.0.1
 ENV IN_PORT 1723
 ENV OUT_PORT 1724
 ENV CTRL_PORT 1725
