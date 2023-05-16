@@ -26,16 +26,6 @@ services:
     depends_on:
       - vpnserver
 
-  vpntester:
-    privileged: true
-    image: alpine:3.17
-    command: ping -c 16 -s 64 8.8.8.8
-    networks:
-      default:
-        ipv4_address: 10.0.0.5
-    depends_on:
-      - vpnserver
-
 networks:
   default:
     driver: bridge
