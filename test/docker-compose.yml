@@ -19,10 +19,7 @@ services:
       dockerfile: Dockerfile
     environment:
       ADDRESS: 10.0.0.87
-      COMMAND: |
-        sleep 3 && \
-        (test -n "$CI" || ping -c 8 -s 64 8.8.8.8) && \ 
-        (nc -v tcpbin.com 4242)
+      COMMAND: sleep 3 && (test -n "$CI" || ping -c 8 -s 64 8.8.8.8) && (nc -v tcpbin.com 4242)
     networks:
       default:
         ipv4_address: 10.0.0.65
