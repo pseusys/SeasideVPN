@@ -3,9 +3,11 @@ FROM golang:1.19-alpine3.17 as builder
 WORKDIR /seaside/algae
 
 COPY go.* ./
-RUN go get -d -v ./...
+RUN go get ./...
 
 COPY sources ./
+RUN go get main/m/v2
+
 RUN go build -o whirlpool.run
 
 
