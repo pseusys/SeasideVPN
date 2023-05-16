@@ -1,6 +1,6 @@
 FROM python:3.11-alpine3.17 as builder
 
-ARG WORKROOT /seaside/algae
+ARG WORKROOT=/seaside/algae
 RUN apk add --no-cache make binutils
 
 ENV PYTHONUNBUFFERED 1
@@ -16,7 +16,7 @@ RUN make build EXECUTABLE_NAME=$EXECUTABLE
 
 FROM alpine:3.17 as runner
 
-ARG WORKROOT /seaside/algae
+ARG WORKROOT=/seaside/algae
 WORKDIR $WORKROOT
 COPY --from=builder $WORKROOT/dist/* ./
 
