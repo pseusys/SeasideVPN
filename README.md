@@ -36,7 +36,7 @@ There are some important notes and conditions that must be fulfilled in order fo
 
 ## Caerulean (server)
 
-Caerulean is server side of SeaSide VPN, it consists of several parts:
+Caerulean is server side of Seaside VPN, it consists of several parts:
 
 ### Surface
 
@@ -142,7 +142,19 @@ Created mainly for development and testing purposes.
 Run algae client (superuser permissions required):
 
 ```bash
-python3 -B viridian/algae/sources/main.py
+make -C viridian/algae run
+```
+
+Build standalone executable (OS-specific):
+
+```bash
+make -C viridian/algae build
+```
+
+Clean build artifacts:
+
+```bash
+make -C viridian/algae clean
 ```
 
 ## Test
