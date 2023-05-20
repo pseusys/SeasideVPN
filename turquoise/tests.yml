@@ -27,7 +27,7 @@ services:
       COMMAND: |
         sleep 3 && \
         echo "Testing for PING porotocol" && \
-        (test -n "$$CI" || ping -c 8 -s 64 8.8.8.8) && \
+        (test -n "$CI" || ping -c 8 -s 64 8.8.8.8) && \
         echo "Testing with QOTD (UDP) protocol" && \
         echo ":)" | nc -u -w 3 djxmmx.net 17
     networks:
