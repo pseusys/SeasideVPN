@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	ADDRESS      = "127.0.0.1"
+	DEF_ADDRESS  = "none"
 	TUNNEL_IP    = "192.168.0.87/24"
 	UDP          = "udp4"
 	INPUT_PORT   = 1723
@@ -19,8 +19,8 @@ const (
 )
 
 var (
-	iIP     = flag.String("a", ADDRESS, "Internal whirlpool IP - towards viridian (required)")
-	eIP     = flag.String("e", ADDRESS, "External whirlpool IP - towards outside world (default: same as internal address)")
+	iIP     = flag.String("a", DEF_ADDRESS, "Internal whirlpool IP - towards viridian (required)")
+	eIP     = flag.String("e", DEF_ADDRESS, "External whirlpool IP - towards outside world (default: same as internal address)")
 	input   = flag.Int("i", INPUT_PORT, fmt.Sprintf("UDP port for receiving UDP packets (default: %d)", INPUT_PORT))
 	output  = flag.Int("o", OUTPUT_PORT, fmt.Sprintf("UDP port for sending UDP packets (default: %d)", OUTPUT_PORT))
 	control = flag.Int("c", CONTROL_PORT, fmt.Sprintf("UDP port for communication with Surface (default: %d)", CONTROL_PORT))
@@ -43,12 +43,12 @@ func main() {
 		return
 	}
 
-	if "" == *iIP {
+	if *iIP == DEF_ADDRESS {
 		logrus.Fatalln("Internal whirlpool IP (towards viridian) is not specified (but required)!")
 	}
 
-	if "" == *eIP {
-		eIP = iIP
+	if *eIP == DEF_ADDRESS {
+		*eIP = *iIP
 	}
 
 	// Create and get IP for tunnel interface
