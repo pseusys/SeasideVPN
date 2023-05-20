@@ -3,8 +3,6 @@ from os import environ
 from logging import StreamHandler, getLogger
 
 
-_LOG_LEVEL = "LOG_LEVEL"
-
 BLANC = "\u001b[0m"
 BAD = "\u001b[31m"
 GOOD = "\u001b[32m"
@@ -19,7 +17,7 @@ class LogLevel(IntEnum):
     ERROR = 40
 
 
-_level = environ.get(_LOG_LEVEL, "DEBUG")
+_level = environ.get("LOG_LEVEL", "DEBUG")
 
 logger = getLogger(__name__)
 logger.setLevel(LogLevel[_level])
