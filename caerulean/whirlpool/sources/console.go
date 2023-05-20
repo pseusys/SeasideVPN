@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"os/exec"
 	"strconv"
+
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -13,13 +14,14 @@ const (
 	MARK = 87
 )
 
-func runCommand(command string, args ...string) {
+func runCommand(command string, args ...string) string {
 	cmd := exec.Command(command, args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Printf("Command %s output: %s\n", command, output)
-		log.Fatal("Running command error:", err)
+		logrus.Errorf("Command %s output: %s", command, output)
+		logrus.Fatalln("Running command error:", err)
 	}
+	return string(output)
 }
 
 func AllocateInterface(name string, tun_ip *net.IP, tun_net *net.IPNet) {
@@ -32,10 +34,10 @@ func AllocateInterface(name string, tun_ip *net.IP, tun_net *net.IPNet) {
 	// Enable tunnel interfaces
 	runCommand("ip", "link", "set", "dev", name, "up")
 
-	log.Println("Interface allocated:", name)
+	logrus.Infof("Interface %s allocated (MTU: %s, buffer: %d)", name, MTU, BUFFERSIZE)
 }
 
-func ConfigureForwarding(externalInterface string, tunnelInterface string, tun_ip *net.IP) {
+func ConfigureForwarding(externalInterface string, internalInterface string, tunnelInterface string, tun_ip *net.IP) {
 	portStr := strconv.Itoa(*input)
 	markStr := strconv.Itoa(MARK)
 
@@ -44,7 +46,7 @@ func ConfigureForwarding(externalInterface string, tunnelInterface string, tun_i
 	runCommand("iptables", "-t", "nat", "-F")
 	runCommand("iptables", "-t", "mangle", "-F")
 	// Accept packets to port 1723, pass to VPN decoder
-	runCommand("iptables", "-A", "INPUT", "-p", "udp", "-m", "state", "--state", "NEW", "-d", *ip, "--dport", portStr, "-i", externalInterface, "-j", "ACCEPT")
+	runCommand("iptables", "-A", "INPUT", "-p", "udp", "-m", "state", "--state", "NEW", "-d", *ip, "--dport", portStr, "-i", internalInterface, "-j", "ACCEPT")
 	// Else drop all input packets
 	runCommand("iptables", "-P", "INPUT", "DROP")
 	// Enable forwarding from tun0 to eth0 (forward)
@@ -67,5 +69,5 @@ func ConfigureForwarding(externalInterface string, tunnelInterface string, tun_i
 	// Flushing routing cache
 	runCommand("ip", "route", "flush", "cache")
 
-	log.Println("Forwarding configured:", externalInterface, "<->", tunnelInterface)
+	logrus.Infoln("Forwarding configured:", internalInterface, "<->", tunnelInterface, "<->", externalInterface)
 }

@@ -18,6 +18,8 @@ RUN apk add --no-cache iptables
 WORKDIR /seaside/algae
 COPY --from=builder /seaside/algae/whirlpool.run ./
 
+ENV LOG_LEVEL WARNING
+
 ENV ADDRESS 127.0.0.1
 ENV IN_PORT 1723
 ENV OUT_PORT 1724
