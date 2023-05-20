@@ -6,5 +6,5 @@ test-caerulean-whirlpool:
 	docker network prune -f
 .PHONY: test-caerulean-whirlpool
 
-test-all: test-caerulean-whirlpool
-.PHONY: test-all
+test: test-caerulean-whirlpool
+.PHONY: test

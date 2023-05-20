@@ -163,15 +163,11 @@ make -C viridian/algae clean
 ## Turquoise (test)
 
 ```bash
-make test-all
+make test
 ```
 
 ## TODOs
 
-1. Setup two different IO ports for server and client - fix all builds and README.
-2. Add run options to all run configurations, Makefiles.
-3. Add server support for packets longer than buffer.
-4. Add test configs for different protocols and packet sizes.
-5. Add encryption and decryption algorithms, (invisible) handshakes or third port communication.
-6. Fix TODOs in code.
-7. Add CONTRIBUTING with rules, e.g. branch names with '-'.
+1. Add run options to all run configurations, Makefiles, split READMEs.
+2. Add encryption and decryption algorithms, (invisible) handshakes or third port communication.
+3. Add CONTRIBUTING with rules, e.g. branch names with '-'.
