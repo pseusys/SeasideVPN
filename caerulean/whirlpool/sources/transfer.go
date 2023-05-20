@@ -53,7 +53,7 @@ func ReceivePacketsFromViridian(tunnel *water.Interface) {
 
 		// Read the rest of the packet if it exceeds BUFFERSIZE
 		// Can only happen if MTU is greater than BUFFERSIZE
-		if r == BUFFERSIZE {
+		if r == BUFFERSIZE && header.TotalLen > BUFFERSIZE {
 			packetLen := header.TotalLen
 			bufExt := make([]byte, packetLen)
 			copy(bufExt, buf)

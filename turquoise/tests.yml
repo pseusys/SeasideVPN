@@ -13,8 +13,6 @@ services:
     networks:
       default:
         ipv4_address: 10.0.0.87
-      devault:
-        ipv4_address: 11.0.0.87
 
   vpnclient:
     privileged: true
@@ -43,9 +41,3 @@ networks:
      config:
        - subnet: 10.0.0.0/24
          gateway: 10.0.0.1
-  devault:
-    driver: bridge
-    ipam:
-     config:
-       - subnet: 11.0.0.0/24
-         gateway: 11.0.0.1
