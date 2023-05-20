@@ -29,7 +29,8 @@ The numeric identification table can be found below:
 | Viridian Algae | 65 |
 | Seaside VPN | 83 |
 
-Every application supports at least 4 logging levels: `DEBUG`, `INFO`, `WARNING` and `ERROR` (and some of them even more!)
+Every application supports at least 4 logging levels: `DEBUG`, `INFO`, `WARNING` and `ERROR` (and some of them even more!).
+They should be specified with environmental variable `LOG_LEVEL`.
 
 There are some important notes and conditions that must be fulfilled in order for system to work as expected:
 

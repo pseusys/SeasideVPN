@@ -30,7 +30,7 @@ func openConnection(address string) *net.UDPConn {
 func ReceivePacketsFromViridian(tunnel *water.Interface) {
 	buf := make([]byte, BUFFERSIZE)
 
-	connection := openConnection(fmt.Sprintf("%s:%d", *ip, *input))
+	connection := openConnection(fmt.Sprintf("%s:%d", *iIP, *input))
 	defer connection.Close()
 
 	for {
@@ -65,7 +65,7 @@ func ReceivePacketsFromViridian(tunnel *water.Interface) {
 func SendPacketsToViridian(tunnel *water.Interface) {
 	packet := make([]byte, BUFFERSIZE)
 
-	connection := openConnection(fmt.Sprintf("%s:%d", *ip, *output))
+	connection := openConnection(fmt.Sprintf("%s:%d", *iIP, *output))
 	defer connection.Close()
 
 	for {

@@ -1,18 +1,24 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"os/exec"
+	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 )
 
 const (
-	MTU  = "1300" // TODO: revise!
-	MARK = 87
+	MTU           = "1300"
+	MARK          = 87
+	ADDR_INTF_STR = `(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?:\/\d\d) dev (?P<iface>[a-zA-Z0-9_]+).*src (?P<addr>(?:[0-9]{1,3}\.){3}[0-9]{1,3}) .*`
 )
+
+var ADDR_INTF_REGEXP = regexp.MustCompile(ADDR_INTF_STR)
 
 func runCommand(command string, args ...string) string {
 	cmd := exec.Command(command, args...)
@@ -46,7 +52,7 @@ func ConfigureForwarding(externalInterface string, internalInterface string, tun
 	runCommand("iptables", "-t", "nat", "-F")
 	runCommand("iptables", "-t", "mangle", "-F")
 	// Accept packets to port 1723, pass to VPN decoder
-	runCommand("iptables", "-A", "INPUT", "-p", "udp", "-m", "state", "--state", "NEW", "-d", *ip, "--dport", portStr, "-i", internalInterface, "-j", "ACCEPT")
+	runCommand("iptables", "-A", "INPUT", "-p", "udp", "-m", "state", "--state", "NEW", "-d", *iIP, "--dport", portStr, "-i", internalInterface, "-j", "ACCEPT")
 	// Else drop all input packets
 	runCommand("iptables", "-P", "INPUT", "DROP")
 	// Enable forwarding from tun0 to eth0 (forward)
@@ -70,4 +76,15 @@ func ConfigureForwarding(externalInterface string, internalInterface string, tun
 	runCommand("ip", "route", "flush", "cache")
 
 	logrus.Infoln("Forwarding configured:", internalInterface, "<->", tunnelInterface, "<->", externalInterface)
+}
+
+func FindAddress(address string) (string, error) {
+	interfaces := strings.Split(runCommand("ip", "route"), "\n")
+	for _, line := range interfaces {
+		result := ADDR_INTF_REGEXP.FindStringSubmatch(line)
+		if result != nil && len(result) == 3 {
+			return result[2], nil
+		}
+	}
+	return "", errors.New("no valid interfaces found!")
 }
