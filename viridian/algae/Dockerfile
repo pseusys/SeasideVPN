@@ -18,6 +18,7 @@ WORKDIR /seaside/algae
 COPY --from=builder /seaside/algae/dist/algae.run ./
 
 ENV COMMAND true
+ENV LOG_LEVEL DEBUG
 
 ENV TUNNEL seatun
 ENV CONN_MTU 1300

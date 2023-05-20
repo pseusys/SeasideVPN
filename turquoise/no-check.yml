@@ -1,0 +1,47 @@
+version: '3.1'
+
+services:
+  vpnserver:
+    privileged: true
+    image: ghcr.io/pseusys/seasidevpn/caerulean-whirlpool
+    build:
+      context: ../caerulean/whirlpool
+      dockerfile: Dockerfile
+    environment:
+      ADDRESS: 10.0.0.87
+      LOG_LEVEL: ERROR
+    networks:
+      default:
+        ipv4_address: 10.0.0.87
+
+  vpnclient:
+    privileged: true
+    image: ghcr.io/pseusys/seasidevpn/viridian-algae
+    build:
+      context: ../viridian/algae
+      dockerfile: Dockerfile
+    environment:
+      ADDRESS: 10.0.0.87
+      LOG_LEVEL: ERROR
+      COMMAND: |
+        sleep 3 && \
+        echo "Testing for TCP packets size: 128" && \
+        SENT=$(tr -dc A-Za-z0-9 < /dev/urandom | head -c 128) && \
+        TCP=$(echo "$$SENT" | nc -v tcpbin.com 4242 | tail -c 129) && \
+        (if [ "$$SENT" = "$$TCP" ]; then echo "TCP packets match!"; else echo "TCP packets differ!" && exit 1; fi) && \
+        echo "Testing with FTP (TCP) protocol" && \
+        wget -O seaside.jpg "https://unsplash.com/photos/w7shif_h8hU/download?ixid=M3wxMjA3fDB8MXxhbGx8fHx8fHx8fHwxNjg0NTM0NzM3fA&force=true&w=1920" && \
+        stat seaside.jpg
+    networks:
+      default:
+        ipv4_address: 10.0.0.65
+    depends_on:
+      - vpnserver
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+     config:
+       - subnet: 10.0.0.0/24
+         gateway: 10.0.0.1

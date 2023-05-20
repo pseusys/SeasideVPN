@@ -29,6 +29,8 @@ The numeric identification table can be found below:
 | Viridian Algae | 65 |
 | Seaside VPN | 83 |
 
+Every application supports at least 4 logging levels: `DEBUG`, `INFO`, `WARNING` and `ERROR` (and some of them even more!)
+
 There are some important notes and conditions that must be fulfilled in order for system to work as expected:
 
 - Viridian packet must have client external IP as source IP and 1723 port as source port.
@@ -157,7 +159,7 @@ Clean build artifacts:
 make -C viridian/algae clean
 ```
 
-## Test
+## Turquoise (test)
 
 ```bash
 make test-all
