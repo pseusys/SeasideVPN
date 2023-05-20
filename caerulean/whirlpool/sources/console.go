@@ -83,7 +83,7 @@ func FindAddress(address string) (string, error) {
 	for _, line := range interfaces {
 		result := ADDR_INTF_REGEXP.FindStringSubmatch(line)
 		if result != nil && len(result) == 3 {
-			return result[2], nil
+			return result[1], nil
 		}
 	}
 	return "", errors.New("no valid interfaces found!")

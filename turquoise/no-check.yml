@@ -9,7 +9,7 @@ services:
       dockerfile: Dockerfile
     environment:
       ADDRESS: 10.0.0.87
-      LOG_LEVEL: ERROR
+      LOG_LEVEL: DEBUG
     networks:
       default:
         ipv4_address: 10.0.0.87
@@ -22,12 +22,12 @@ services:
       dockerfile: Dockerfile
     environment:
       ADDRESS: 10.0.0.87
-      LOG_LEVEL: ERROR
+      LOG_LEVEL: DEBUG
       COMMAND: |
         sleep 3 && \
         echo "Testing for TCP packets size: 128" && \
-        SENT=$$(tr -dc A-Za-z0-9 < /dev/urandom | head -c 128) && \
-        TCP=$$(echo "$$SENT" | nc -v tcpbin.com 4242 | tail -c 129) && \
+        SENT=$(tr -dc A-Za-z0-9 < /dev/urandom | head -c 128) && \
+        TCP=$(echo "$$SENT" | nc -v tcpbin.com 4242 | tail -c 129) && \
         (if [ "$$SENT" = "$$TCP" ]; then echo "TCP packets match!"; else echo "TCP packets differ!" && exit 1; fi) && \
         echo "Testing with FTP (TCP) protocol" && \
         wget -O seaside.jpg "https://unsplash.com/photos/w7shif_h8hU/download?ixid=M3wxMjA3fDB8MXxhbGx8fHx8fHx8fHwxNjg0NTM0NzM3fA&force=true&w=1920" && \
