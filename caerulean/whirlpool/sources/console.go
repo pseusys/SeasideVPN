@@ -40,7 +40,7 @@ func AllocateInterface(name string, tun_ip *net.IP, tun_net *net.IPNet) {
 	// Enable tunnel interfaces
 	runCommand("ip", "link", "set", "dev", name, "up")
 
-	logrus.Infof("Interface %s allocated (MTU: %s, buffer: %d)", name, MTU, BUFFERSIZE)
+	logrus.Infof("Interface %s allocated (MTU: %s, buffer: %d)", name, MTU, IOBUFFERSIZE)
 }
 
 func ConfigureForwarding(externalInterface string, internalInterface string, tunnelInterface string, tun_ip *net.IP) {

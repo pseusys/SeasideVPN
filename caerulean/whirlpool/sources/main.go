@@ -13,6 +13,7 @@ const (
 	DEF_ADDRESS  = "none"
 	TUNNEL_IP    = "192.168.0.87/24"
 	UDP          = "udp4"
+	TCP          = "tcp4"
 	INPUT_PORT   = 1723
 	OUTPUT_PORT  = 1724
 	CONTROL_PORT = 1725
@@ -23,7 +24,7 @@ var (
 	eIP     = flag.String("e", DEF_ADDRESS, "External whirlpool IP - towards outside world (default: same as internal address)")
 	input   = flag.Int("i", INPUT_PORT, fmt.Sprintf("UDP port for receiving UDP packets (default: %d)", INPUT_PORT))
 	output  = flag.Int("o", OUTPUT_PORT, fmt.Sprintf("UDP port for sending UDP packets (default: %d)", OUTPUT_PORT))
-	control = flag.Int("c", CONTROL_PORT, fmt.Sprintf("UDP port for communication with Surface (default: %d)", CONTROL_PORT))
+	control = flag.Int("c", CONTROL_PORT, fmt.Sprintf("TCP port for communication with viridian (default: %d)", CONTROL_PORT))
 	help    = flag.Bool("h", false, "Print this message again and exit")
 )
 
@@ -79,6 +80,7 @@ func main() {
 	ConfigureForwarding(internalInterface, externalInterface, iname, &tunnel_address)
 
 	// Start goroutines for packet forwarding
+	go ListenControlPort(*iIP, *control)
 	go ReceivePacketsFromViridian(tunnel)
 	go SendPacketsToViridian(tunnel)
 	select {}
