@@ -24,12 +24,13 @@ class Tunnel:
     _DEFAULT_IP = compile(r"(?<=inet )(.*)(?=\/)")
     _DEFAULT_NETMASK = compile(r"(?<=netmask )(.*)(?=\/)")
 
-    def __init__(self, name: str, mtu: int, buff: int, addr: IPv4Address, in_port: int, out_port: int):
+    def __init__(self, name: str, mtu: int, buff: int, addr: IPv4Address, in_port: int, out_port: int, ctrl_port: int):
         self._name = name
         self._buffer = buff
         self._address = str(addr)
         self._input_port = in_port
         self._output_port = out_port
+        self._control_port = ctrl_port
 
         self._def_route, self._def_intf = "", ""
         self._def_ip = "127.0.0.1"
