@@ -17,7 +17,7 @@ The parameters can be found in the table below:
 | Caerulean incoming UDP port | 1723 |
 | Caerulean outcoming UDP port | 1724 |
 | Caerulean tunnel network | 192.168.0.87/24 |
-| Tunnel MTU | 1300 |
+| Tunnel MTU | 1500 |
 | Transmission packet buffer | 2000 |
 
 Each program here has a special numeric identifier, that is the ASCII code of the first letter of its' name (capitalized).  
@@ -171,3 +171,4 @@ make test
 1. Add run options to all run configurations, Makefiles, split READMEs.
 2. Add encryption and decryption algorithms, (invisible) handshakes or third port communication.
 3. Add CONTRIBUTING with rules, e.g. branch names with '-'.
+4. Do not build an executable for algae docker image.
