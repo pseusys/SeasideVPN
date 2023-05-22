@@ -4,18 +4,22 @@ import (
 	"crypto/cipher"
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/sirupsen/logrus"
 )
 
-const (
-	CTRLBUFFERSIZE = 5000
-)
+const CTRLBUFFERSIZE = 5000
 
-// TODO: setup key deletion timer
+type Viridian struct {
+	aead   cipher.AEAD
+	expire *time.Timer
+}
+
 var (
-	VIRIDIANS       map[string]cipher.AEAD
+	VIRIDIANS       map[string]Viridian
 	CTRL_CONNECTION *net.UDPConn
+	USER_TTL        = time.Minute * time.Duration(*user_ttl)
 )
 
 func ListenControlPort(ip string, port int) {
@@ -45,9 +49,9 @@ func ListenControlPort(ip string, port int) {
 		logrus.Infoln("Received control message from user:", address)
 
 		data := buffer[r:]
-		aead, exists := VIRIDIANS[address]
+		viridian, exists := VIRIDIANS[address]
 		if exists {
-			data, err = DecryptSymmetrical(aead, buffer[r:])
+			data, err = DecryptSymmetrical(viridian.aead, buffer[r:])
 			if err != nil {
 				logrus.Warnln("Couldn't decrypt message from user", address)
 				SendProtocolToUser(ERROR, addr)
@@ -91,7 +95,9 @@ func prepareEncryptedSymmetricalKeyForUser(buffer []byte, address string) ([]byt
 		logrus.Warnln("Couldn't create an encryption algorithm for user", address)
 		return nil, err
 	}
-	VIRIDIANS[address] = aead
+
+	deletion_timer := time.AfterFunc(USER_TTL, func() { delete(VIRIDIANS, address) })
+	VIRIDIANS[address] = Viridian{aead, deletion_timer}
 
 	public, err := ParsePublicKey(buffer)
 	if err != nil {
