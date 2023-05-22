@@ -1,0 +1,42 @@
+version: '3.1'
+
+services:
+  vpnserver:
+    privileged: true
+    image: ghcr.io/pseusys/seasidevpn/caerulean-whirlpool
+    build:
+      context: ../caerulean/whirlpool
+      dockerfile: Dockerfile
+    environment:
+      ADDRESS: 10.0.0.87
+      LOG_LEVEL: DEBUG
+    networks:
+      default:
+        ipv4_address: 10.0.0.87
+
+  vpnclient:
+    privileged: true
+    build:
+      context: ../viridian/algae
+      dockerfile: Dockerfile
+    environment:
+      ADDRESS: 10.0.0.87
+      LOG_LEVEL: DEBUG
+      # TODO: test somehow!
+      COMMAND: |
+        sleep 3 && \
+        echo "Testing with QOTD (UDP) protocol" && \
+        echo "1234567890" | nc -u -w 3 vpnserver $$CTRL_PORT
+    networks:
+      default:
+        ipv4_address: 10.0.0.65
+    depends_on:
+      - vpnserver
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+     config:
+       - subnet: 10.0.0.0/24
+         gateway: 10.0.0.1

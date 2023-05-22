@@ -1,6 +1,6 @@
 # SeasideVPN
 
-A simple PPTP UDP VPN system
+A simple PPTP UDP Proxy and VPN system
 
 > Inspired by [this](https://github.com/habibiefaried/vpn-protocol-udp-pptp) project and tutorial.
 

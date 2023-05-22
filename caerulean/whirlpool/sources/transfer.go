@@ -3,13 +3,24 @@ package main
 import (
 	"fmt"
 	"net"
+	"strconv"
 
 	"github.com/sirupsen/logrus"
 	"github.com/songgao/water"
 	"golang.org/x/net/ipv4"
 )
 
-const IOBUFFERSIZE = 2000
+const BUFFER_OVERHEAD = 500
+
+var IOBUFFERSIZE int
+
+func init() {
+	buff, err := strconv.Atoi(MTU)
+	if err != nil {
+		logrus.Fatalln("Couldn't parse MTU:", MTU)
+	}
+	IOBUFFERSIZE = buff + BUFFER_OVERHEAD
+}
 
 func openConnection(address string) *net.UDPConn {
 	// Resolve UDP address to send to
@@ -28,7 +39,7 @@ func openConnection(address string) *net.UDPConn {
 }
 
 func ReceivePacketsFromViridian(tunnel *water.Interface) {
-	buf := make([]byte, IOBUFFERSIZE)
+	buffer := make([]byte, IOBUFFERSIZE)
 
 	// Open viridian incoming UDP connection
 	connection := openConnection(fmt.Sprintf("%s:%d", *iIP, *input))
@@ -36,16 +47,16 @@ func ReceivePacketsFromViridian(tunnel *water.Interface) {
 
 	for {
 		// Read BUFFERSIZE of data
-		r, addr, err := connection.ReadFromUDP(buf)
+		r, addr, err := connection.ReadFromUDP(buffer)
 		if err != nil || r == 0 {
 			logrus.Errorf("Reading from viridian error (%d bytes read): %v", r, err)
 			continue
 		}
 
-		address := addr.String()
-		packet, err := decryptPacket(buf[:r], address)
+		packet, err := decryptPacket(buffer[:r], addr)
 		if err != nil {
 			logrus.Errorln("Decrypting packet error:", err)
+			SendProtocolToUser(NO_PASS, addr)
 			continue
 		}
 
@@ -54,16 +65,6 @@ func ReceivePacketsFromViridian(tunnel *water.Interface) {
 		if err != nil {
 			logrus.Errorln("Parsing header error:", err)
 			continue
-		}
-
-		// Read the rest of the packet if it exceeds BUFFERSIZE
-		// Can only happen if MTU is greater than BUFFERSIZE
-		if r == IOBUFFERSIZE && header.TotalLen > IOBUFFERSIZE {
-			r, packet, err = extendPacket(packet, header, connection, address)
-			if err != nil {
-				logrus.Errorf("Reading extra length from viridian error (%d bytes read): %v", r, err)
-				continue
-			}
 		}
 
 		logrus.Infof("Received %d bytes from viridian %v (src: %v, dst: %v)", r, addr, header.Src, header.Dst)
@@ -77,25 +78,8 @@ func ReceivePacketsFromViridian(tunnel *water.Interface) {
 	}
 }
 
-func extendPacket(packet []byte, header *ipv4.Header, connection *net.UDPConn, address string) (int, []byte, error) {
-	packetLen := header.TotalLen - IOBUFFERSIZE
-	extension := make([]byte, packetLen)
-
-	r, _, err := connection.ReadFromUDP(extension)
-	if err != nil || r != packetLen {
-		return -1, nil, err
-	}
-
-	extension, err = decryptPacket(extension[:r], address)
-	if err != nil {
-		return -1, nil, err
-	}
-
-	return r + IOBUFFERSIZE, append(packet, extension...), nil
-}
-
-func decryptPacket(packet []byte, address string) ([]byte, error) {
-	aead, exists := VIRIDIANS[address]
+func decryptPacket(packet []byte, address *net.UDPAddr) ([]byte, error) {
+	aead, exists := VIRIDIANS[address.String()]
 	if !exists {
 		return packet, nil
 	}
@@ -109,7 +93,7 @@ func decryptPacket(packet []byte, address string) ([]byte, error) {
 }
 
 func SendPacketsToViridian(tunnel *water.Interface) {
-	buf := make([]byte, IOBUFFERSIZE)
+	buffer := make([]byte, IOBUFFERSIZE)
 
 	// Open viridian outcoming UDP connection
 	connection := openConnection(fmt.Sprintf("%s:%d", *iIP, *output))
@@ -117,14 +101,14 @@ func SendPacketsToViridian(tunnel *water.Interface) {
 
 	for {
 		// Read BUFFERSIZE of data from tunnel
-		r, err := tunnel.Read(buf)
+		r, err := tunnel.Read(buffer)
 		if err != nil || r == 0 {
 			logrus.Errorf("Reading from tunnel error (%d bytes read): %v", r, err)
 			continue
 		}
 
 		// Parse IP header
-		header, _ := ipv4.ParseHeader(buf[:r])
+		header, _ := ipv4.ParseHeader(buffer[:r])
 		if err != nil {
 			logrus.Errorln("Parsing header error:", err)
 			continue
@@ -137,9 +121,10 @@ func SendPacketsToViridian(tunnel *water.Interface) {
 			continue
 		}
 
-		packet, err := decryptPacket(buf[:r], gateway.String())
+		packet, err := decryptPacket(buffer[:r], gateway)
 		if err != nil {
 			logrus.Errorln("Encrypting packet error:", err)
+			SendProtocolToUser(NO_PASS, gateway)
 			continue
 		}
 
