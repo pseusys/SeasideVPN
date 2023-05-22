@@ -79,12 +79,14 @@ func ReceivePacketsFromViridian(tunnel *water.Interface) {
 }
 
 func decryptPacket(packet []byte, address *net.UDPAddr) ([]byte, error) {
-	aead, exists := VIRIDIANS[address.String()]
+	viridian, exists := VIRIDIANS[address.String()]
 	if !exists {
 		return packet, nil
 	}
 
-	decrypted, err := DecryptSymmetrical(aead, packet)
+	viridian.expire.Reset(USER_TTL)
+
+	decrypted, err := DecryptSymmetrical(viridian.aead, packet)
 	if err != nil {
 		return nil, err
 	}
@@ -140,12 +142,12 @@ func SendPacketsToViridian(tunnel *water.Interface) {
 }
 
 func encryptPacket(packet []byte, address string) ([]byte, error) {
-	aead, exists := VIRIDIANS[address]
+	viridian, exists := VIRIDIANS[address]
 	if !exists {
 		return packet, nil
 	}
 
-	encrypted, err := EncryptSymmetrical(aead, packet)
+	encrypted, err := EncryptSymmetrical(viridian.aead, packet)
 	if err != nil {
 		return nil, err
 	}

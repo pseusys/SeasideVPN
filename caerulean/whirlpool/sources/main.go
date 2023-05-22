@@ -19,12 +19,13 @@ const (
 )
 
 var (
-	iIP     = flag.String("a", DEF_ADDRESS, "Internal whirlpool IP - towards viridian (required)")
-	eIP     = flag.String("e", DEF_ADDRESS, "External whirlpool IP - towards outside world (default: same as internal address)")
-	input   = flag.Int("i", INPUT_PORT, fmt.Sprintf("UDP port for receiving UDP packets (default: %d)", INPUT_PORT))
-	output  = flag.Int("o", OUTPUT_PORT, fmt.Sprintf("UDP port for sending UDP packets (default: %d)", OUTPUT_PORT))
-	control = flag.Int("c", CONTROL_PORT, fmt.Sprintf("TCP port for communication with viridian (default: %d)", CONTROL_PORT))
-	help    = flag.Bool("h", false, "Print this message again and exit")
+	iIP      = flag.String("a", DEF_ADDRESS, "Internal whirlpool IP - towards viridian (required)")
+	eIP      = flag.String("e", DEF_ADDRESS, "External whirlpool IP - towards outside world (default: same as internal address)")
+	input    = flag.Int("i", INPUT_PORT, fmt.Sprintf("UDP port for receiving UDP packets (default: %d)", INPUT_PORT))
+	output   = flag.Int("o", OUTPUT_PORT, fmt.Sprintf("UDP port for sending UDP packets (default: %d)", OUTPUT_PORT))
+	control  = flag.Int("c", CONTROL_PORT, fmt.Sprintf("TCP port for communication with viridian (default: %d)", CONTROL_PORT))
+	user_ttl = flag.Int("t", 60*5, "Time system keeps user password for without interaction, in minutes (default: 5 hours)")
+	help     = flag.Bool("h", false, "Print this message again and exit")
 )
 
 func init() {
