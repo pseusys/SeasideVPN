@@ -37,6 +37,37 @@ There are some important notes and conditions that must be fulfilled in order fo
 - Viridian packet must have client external IP as source IP and 1723 port as source port.
 - ...
 
+## Control Protocol
+
+Some important outlines:
+
+1. One host can not send two messages one after the other: oce it sent a message, it waits for an answer.
+2. Communication is done via UDP on a separate port.
+
+```mermaid
+sequenceDiagram
+    actor Viridian
+    participant Caerulean
+
+    Note right of Viridian: Connection request
+    Viridian ->> Caerulean: Public key, base64
+    
+    Note left of Caerulean: Generate symmetric key
+    Caerulean ->> Viridian: Symmetric key, encrypted with public key
+
+    Note right of Viridian: Some packets, transmitted via VPN
+    Viridian ->> Caerulean: Requests, encrypted with symmetric key
+
+    Note left of Caerulean: Some packets, transmitted via VPN
+    Caerulean ->> Viridian: Responses, encrypted with symmetric key
+
+    Note right of Viridian: Disconnection request
+    Viridian ->> Caerulean: Packet, encrypted with symmetric key
+
+    Note left of Caerulean: Delete symmetric key
+    Caerulean ->> Viridian: Acknowledgement, encrypted with public key
+```
+
 ## Caerulean (server)
 
 Caerulean is server side of Seaside VPN, it consists of several parts:
@@ -169,6 +200,7 @@ make test
 ## TODOs
 
 1. Add run options to all run configurations, Makefiles, split READMEs.
-2. Add encryption and decryption algorithms, (invisible) handshakes or third port communication.
-3. Add CONTRIBUTING with rules, e.g. branch names with '-'.
-4. Do not build an executable for algae docker image.
+2. Add CONTRIBUTING with rules, e.g. branch names with '-'.
+3. Re-write tests
+4. Compile Go with optimizations
+5. Single port for IO?

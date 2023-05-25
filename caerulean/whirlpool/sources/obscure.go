@@ -16,16 +16,20 @@ const (
 	PUBLIC  Protocol = iota // Public RSA key is attached, not a real protocol (as can't be encrypted) - means no protocol
 )
 
+func convertToProtocol(proto byte) Protocol {
+	if proto >= byte(UNDEF) && proto <= byte(PUBLIC) {
+		return Protocol(proto)
+	} else {
+		return UNDEF
+	}
+}
+
 const (
 	MAX_MESSAGE = CTRLBUFFERSIZE
 	HEADER      = 5
 )
 
-func ResolveMessage(proto bool, data []byte) (Protocol, []byte, error) {
-	if !proto {
-		return PUBLIC, data, nil
-	}
-
+func ResolveMessage(data []byte) (Protocol, []byte, error) {
 	shortLength := uint16(len(data))
 
 	start := binary.BigEndian.Uint16(data[1:3])
@@ -34,11 +38,11 @@ func ResolveMessage(proto bool, data []byte) (Protocol, []byte, error) {
 	}
 
 	finish := binary.BigEndian.Uint16(data[3:5])
-	if finish > shortLength {
+	if finish > shortLength || start > finish {
 		return UNDEF, nil, errors.New("wrong message formatting: finish")
 	}
 
-	protocol := Protocol(data[0])
+	protocol := convertToProtocol(data[0])
 	if start == 0 && finish == 0 {
 		return protocol, nil, nil
 	} else {
@@ -55,7 +59,7 @@ func EncodeMessage(proto Protocol, data []byte) ([]byte, error) {
 
 	header := []byte{byte(proto), 0, 0, 0, 0}
 	if length != 0 {
-		start := (rand.Int() % allowed) + HEADER
+		start := (rand.Int() % (allowed - length)) + HEADER
 		binary.BigEndian.PutUint16(header[1:], uint16(start))
 
 		finish := start + length
@@ -67,7 +71,7 @@ func EncodeMessage(proto Protocol, data []byte) ([]byte, error) {
 			return nil, errors.New("error while generating random string")
 		}
 
-		leftover := rand.Int() % (MAX_MESSAGE - HEADER - length)
+		leftover := rand.Int() % (allowed - length)
 		postfix := make([]byte, leftover)
 		_, err = rand.Read(prefix)
 		if err != nil {

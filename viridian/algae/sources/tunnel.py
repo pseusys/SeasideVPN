@@ -9,6 +9,7 @@ from sys import stdout
 from typing import Tuple
 
 from outputs import logger, BLANC, GOOD, BAD, WARN, INFO
+from crypto import _MESSAGE_MAX_LEN, Protocol, decrypt_rsa, decrypt_symmetric, encrypt_symmetric, get_public_key, initialize_symmetric, encode_message, decode_message
 
 
 _UNIX_TUNSETIFF = 0x400454ca
@@ -24,8 +25,9 @@ class Tunnel:
     _DEFAULT_IP = compile(r"(?<=inet )(.*)(?=\/)")
     _DEFAULT_NETMASK = compile(r"(?<=netmask )(.*)(?=\/)")
 
-    def __init__(self, name: str, mtu: int, buff: int, addr: IPv4Address, in_port: int, out_port: int, ctrl_port: int):
+    def __init__(self, name: str, encode: bool, mtu: int, buff: int, addr: IPv4Address, in_port: int, out_port: int, ctrl_port: int):
         self._name = name
+        self._encode = encode
         self._buffer = buff
         self._address = str(addr)
         self._input_port = in_port
@@ -48,6 +50,10 @@ class Tunnel:
 
         check_call(["ip", "link", "set", "dev", name, "mtu", str(mtu)])
         logger.info(f"Tunnel MTU set to {INFO}{mtu}{BLANC}")
+
+    @property
+    def operational(self) -> bool:
+        return self._operational
 
     def delete(self):
         if self._operational:
@@ -81,7 +87,7 @@ class Tunnel:
         logger.info(f"Tunnel {GOOD}enabled{BLANC}")
         check_call(["ip", "route", "replace", "default", "via", self._def_ip, "dev", self._name])
         logger.info(f"Tunnel set as default route (via {WARN}{self._def_ip}{BLANC} dev {WARN}{self._name}{BLANC})")
-        self._operational = True
+        self._operational = not self._encode
 
     def down(self):
         check_call(["ip", "route", "replace", "default", "via", self._def_route, "dev", self._def_intf])
@@ -90,12 +96,33 @@ class Tunnel:
         logger.info(f"Tunnel {BAD}disabled{BLANC}")
         self._operational = False
 
+    def initializeControl(self):
+        if not self._encode:
+            return
+
+        public_key = encode_message(Protocol.PUBLIC, get_public_key())
+        self._caerulean_gate = socket(AF_INET, SOCK_DGRAM)
+        self._caerulean_gate.bind((self._def_ip, self._control_port))
+
+        # TODO: check multiple calls to control port + answers
+        self._caerulean_gate.sendto(public_key, (self._address, self._control_port))
+        logger.debug(f"Sending control to caerulean {self._address}:{self._control_port}")
+        packet = self._caerulean_gate.recv(_MESSAGE_MAX_LEN)
+
+        protocol, key = decode_message(packet)
+        if protocol == Protocol.SUCCESS and key is not None:
+            initialize_symmetric(decrypt_rsa(key))
+            self._operational = True
+        else:
+            raise RuntimeError(f"Couldn't exchange keys with caerulean (protocol: {protocol})!")
+
     def sendToCaerulean(self):
         self._caerulean_gate = socket(AF_INET, SOCK_DGRAM)
         self._caerulean_gate.bind((self._def_ip, self._output_port))
         while self._operational:
             packet = read(self._descriptor, self._buffer)
             logger.debug(f"Sending {len(packet)} bytes to caerulean {self._address}:{self._output_port}")
+            packet = packet if not self._encode else encrypt_symmetric(packet)
             self._caerulean_gate.sendto(packet, (self._address, self._output_port))
 
     def receiveFromCaerulean(self):
@@ -104,4 +131,5 @@ class Tunnel:
         while self._operational:
             packet = self._caerulean_gate.recv(self._buffer)
             logger.debug(f"Receiving {len(packet)} bytes from caerulean {self._address}:{self._input_port}")
+            packet = packet if not self._encode else decrypt_symmetric(packet)
             write(self._descriptor, packet)

@@ -17,7 +17,7 @@ type Viridian struct {
 }
 
 var (
-	VIRIDIANS       map[string]Viridian
+	VIRIDIANS       = make(map[string]Viridian) // TODO: accept MAX_USERS argument
 	CTRL_CONNECTION *net.UDPConn
 	USER_TTL        = time.Minute * time.Duration(*user_ttl)
 )
@@ -30,25 +30,25 @@ func ListenControlPort(ip string, port int) {
 		logrus.Fatalf("Couldn't resolve address (%s): %v", network, err)
 	}
 
-	CTRL_CONNECTION, err := net.ListenUDP(UDP, gateway)
+	connection, err := net.ListenUDP(UDP, gateway)
 	if err != nil {
 		logrus.Fatalf("Couldn't resolve connection (%s): %v", gateway.String(), err)
 	}
 
-	defer CTRL_CONNECTION.Close()
+	defer connection.Close()
 	buffer := make([]byte, CTRLBUFFERSIZE)
 
 	for {
-		r, addr, err := CTRL_CONNECTION.ReadFromUDP(buffer)
+		r, addr, err := connection.ReadFromUDP(buffer)
 		if err != nil || r == 0 {
 			logrus.Errorf("Reading control error (%d bytes read): %v", r, err)
 			return
 		}
 
-		address := addr.String()
+		address := addr.IP.String()
 		logrus.Infoln("Received control message from user:", address)
 
-		data := buffer[r:]
+		data := buffer[:r]
 		viridian, exists := VIRIDIANS[address]
 		if exists {
 			data, err = DecryptSymmetrical(viridian.aead, buffer[r:])
@@ -59,7 +59,7 @@ func ListenControlPort(ip string, port int) {
 			}
 		}
 
-		proto, data, err := ResolveMessage(exists, data)
+		proto, data, err := ResolveMessage(data)
 		if err != nil {
 			logrus.Warnln("Couldn't parse message from user", address)
 			SendProtocolToUser(ERROR, addr)
@@ -74,13 +74,14 @@ func ListenControlPort(ip string, port int) {
 				logrus.Warnf("Couldn't decrypt message from user %s: %v", address, err)
 				message, _ = EncodeMessage(ERROR, nil)
 			}
+			message, _ = EncodeMessage(SUCCESS, message)
 		case NO_PASS:
 			delete(VIRIDIANS, address)
 			message, _ = EncodeMessage(SUCCESS, nil)
 		}
 
 		logrus.Infoln("Sending result to user", address)
-		CTRL_CONNECTION.WriteToUDP(message, addr)
+		connection.WriteToUDP(message, addr)
 	}
 }
 

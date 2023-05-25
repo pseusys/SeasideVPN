@@ -5,13 +5,14 @@ PATH := venv/bin:$(PATH)
 venv:
 	python3 -m venv venv
 	pip install --upgrade pip
-	pip install pyinstaller
+	pip install -r requirements.txt
+	pip install pyinstaller~=5.11
 
 build: venv
 	pyinstaller -F -c -y -n $(EXECUTABLE_NAME) sources/main.py
 .PHONY: build
 
-run:
+run: venv
 	python3 sources/main.py
 .PHONY: run
 

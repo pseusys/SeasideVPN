@@ -72,14 +72,14 @@ func ReceivePacketsFromViridian(tunnel *water.Interface) {
 		// Write packet to tunnel
 		s, err := tunnel.Write(packet)
 		if err != nil || s == 0 {
-			logrus.Errorln("Writing to tunnel error (%d bytes written): %v", s, err)
+			logrus.Errorf("Writing to tunnel error (%d bytes written): %v", s, err)
 			continue
 		}
 	}
 }
 
 func decryptPacket(packet []byte, address *net.UDPAddr) ([]byte, error) {
-	viridian, exists := VIRIDIANS[address.String()]
+	viridian, exists := VIRIDIANS[address.IP.String()]
 	if !exists {
 		return packet, nil
 	}
@@ -123,7 +123,7 @@ func SendPacketsToViridian(tunnel *water.Interface) {
 			continue
 		}
 
-		packet, err := decryptPacket(buffer[:r], gateway)
+		packet, err := encryptPacket(buffer[:r], gateway)
 		if err != nil {
 			logrus.Errorln("Encrypting packet error:", err)
 			SendProtocolToUser(NO_PASS, gateway)
@@ -135,22 +135,22 @@ func SendPacketsToViridian(tunnel *water.Interface) {
 		// Send packet to viridian
 		s, err := connection.WriteToUDP(packet, gateway)
 		if err != nil || s == 0 {
-			logrus.Errorln("Writing to viridian error (%d bytes written): %v", s, err)
+			logrus.Errorf("Writing to viridian error (%d bytes written): %v", s, err)
 			continue
 		}
 	}
 }
 
-func encryptPacket(packet []byte, address string) ([]byte, error) {
-	viridian, exists := VIRIDIANS[address]
+func encryptPacket(packet []byte, address *net.UDPAddr) ([]byte, error) {
+	viridian, exists := VIRIDIANS[address.IP.String()]
 	if !exists {
 		return packet, nil
 	}
 
-	encrypted, err := EncryptSymmetrical(viridian.aead, packet)
+	decrypted, err := EncryptSymmetrical(viridian.aead, packet)
 	if err != nil {
 		return nil, err
 	}
 
-	return encrypted, nil
+	return decrypted, nil
 }

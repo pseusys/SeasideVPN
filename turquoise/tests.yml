@@ -22,6 +22,7 @@ services:
     environment:
       ADDRESS: 10.0.0.87
       LOG_LEVEL: DEBUG
+      VPN: True
       COMMAND: |
         sleep 3 && \
         echo "Testing for PING porotocol (if not in CI env only)" && \
