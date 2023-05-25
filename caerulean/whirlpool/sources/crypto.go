@@ -6,7 +6,6 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
-	"encoding/pem"
 	"errors"
 	"io"
 
@@ -23,12 +22,7 @@ func EncryptRSA(plain []byte, key *rsa.PublicKey) ([]byte, error) {
 }
 
 func ParsePublicKey(raw []byte) (*rsa.PublicKey, error) {
-	block, _ := pem.Decode(raw)
-	if block == nil {
-		return nil, errors.New("failed to parse PEM public key data")
-	}
-
-	key, err := x509.ParsePKIXPublicKey(block.Bytes)
+	key, err := x509.ParsePKIXPublicKey(raw)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +41,7 @@ func GenerateSymmetricalAlgorithm() (cipher.AEAD, []byte, error) {
 		return nil, nil, err
 	}
 
-	aead, err := chacha20poly1305.NewX(key)
+	aead, err := chacha20poly1305.New(key) // TODO: switch to XChaCha!!
 	if err != nil {
 		return nil, nil, err
 	}

@@ -28,3 +28,5 @@ ENV CTRL_PORT 1725
 
 EXPOSE $IN_PORT
 ENTRYPOINT ./whirlpool.run -a $ADDRESS -e $EXTERNAL -i $IN_PORT -o $OUT_PORT -c $CTRL_PORT
+
+# TODO: open for PINGs and control ports, test: tcpdump -n -i eth0 ip

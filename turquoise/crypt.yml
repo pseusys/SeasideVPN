@@ -26,7 +26,7 @@ services:
       COMMAND: |
         sleep 3 && \
         echo "Testing with QOTD (UDP) protocol" && \
-        echo "1234567890" | nc -u -w 3 vpnserver $$CTRL_PORT
+        echo ":)" | nc -u -w 3 djxmmx.net 17
     networks:
       default:
         ipv4_address: 10.0.0.65

@@ -45,6 +45,7 @@ func AllocateInterface(name string, tun_ip *net.IP, tun_net *net.IPNet) {
 
 func ConfigureForwarding(externalInterface string, internalInterface string, tunnelInterface string, tun_ip *net.IP) {
 	portStr := strconv.Itoa(*input)
+	ctrlStr := strconv.Itoa(*control)
 	markStr := strconv.Itoa(MARK)
 
 	// Flush iptables rules
@@ -53,6 +54,8 @@ func ConfigureForwarding(externalInterface string, internalInterface string, tun
 	runCommand("iptables", "-t", "mangle", "-F")
 	// Accept packets to port 1723, pass to VPN decoder
 	runCommand("iptables", "-A", "INPUT", "-p", "udp", "-m", "state", "--state", "NEW", "-d", *iIP, "--dport", portStr, "-i", internalInterface, "-j", "ACCEPT")
+	runCommand("iptables", "-A", "INPUT", "-p", "udp", "-m", "state", "--state", "NEW", "-d", *iIP, "--dport", ctrlStr, "-i", internalInterface, "-j", "ACCEPT")
+	runCommand("iptables", "-A", "INPUT", "-p", "icmp", "-m", "state", "--state", "NEW", "-d", *iIP, "-i", internalInterface, "-j", "ACCEPT")
 	// Else drop all input packets
 	runCommand("iptables", "-P", "INPUT", "DROP")
 	// Enable forwarding from tun0 to eth0 (forward)
