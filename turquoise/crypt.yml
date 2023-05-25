@@ -22,7 +22,6 @@ services:
     environment:
       ADDRESS: 10.0.0.87
       LOG_LEVEL: DEBUG
-      # TODO: test somehow!
       COMMAND: |
         sleep 3 && \
         echo "Testing with QOTD (UDP) protocol" && \

@@ -23,7 +23,7 @@ services:
     environment:
       ADDRESS: 10.0.0.87
       LOG_LEVEL: ERROR
-      VPN: True
+      VPN: False
       COMMAND: |
         sleep 3 && \
         echo "Testing for TCP packets size: 128" && \
