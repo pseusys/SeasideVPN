@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -79,20 +80,23 @@ func ReceivePacketsFromViridian(tunnel *water.Interface) {
 	}
 }
 
-func decryptPacket(packet []byte, address *net.UDPAddr) ([]byte, error) {
+func decryptPacket(ciphertext []byte, address *net.UDPAddr) ([]byte, error) {
 	viridian, exists := VIRIDIANS[address.IP.String()]
 	if !exists {
-		return packet, nil
+		return nil, errors.New("user not registered")
+	}
+	if viridian.aead == nil {
+		return ciphertext, nil
 	}
 
 	viridian.expire.Reset(USER_LIFETIME)
 
-	decrypted, err := DecryptSymmetrical(viridian.aead, packet)
+	plaintext, err := DecryptSymmetrical(viridian.aead, ciphertext)
 	if err != nil {
 		return nil, err
 	}
 
-	return decrypted, nil
+	return plaintext, nil
 }
 
 func SendPacketsToViridian(tunnel *water.Interface) {
@@ -143,16 +147,19 @@ func SendPacketsToViridian(tunnel *water.Interface) {
 	}
 }
 
-func encryptPacket(packet []byte, address *net.UDPAddr) ([]byte, error) {
+func encryptPacket(plaintext []byte, address *net.UDPAddr) ([]byte, error) {
 	viridian, exists := VIRIDIANS[address.IP.String()]
 	if !exists {
-		return packet, nil
+		return nil, errors.New("user not registered")
+	}
+	if viridian.aead == nil {
+		return plaintext, nil
 	}
 
-	decrypted, err := EncryptSymmetrical(viridian.aead, packet)
+	ciphertext, err := EncryptSymmetrical(viridian.aead, plaintext)
 	if err != nil {
 		return nil, err
 	}
 
-	return decrypted, nil
+	return ciphertext, nil
 }

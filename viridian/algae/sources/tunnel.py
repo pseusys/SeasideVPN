@@ -87,7 +87,6 @@ class Tunnel:
         logger.info(f"Tunnel {GOOD}enabled{BLANC}")
         check_call(["ip", "route", "replace", "default", "via", self._def_ip, "dev", self._name])
         logger.info(f"Tunnel set as default route (via {WARN}{self._def_ip}{BLANC} dev {WARN}{self._name}{BLANC})")
-        self._operational = not self._encode
 
     def down(self):
         check_call(["ip", "route", "replace", "default", "via", self._def_route, "dev", self._def_intf])
@@ -97,14 +96,18 @@ class Tunnel:
         self._operational = False
 
     def initialize_control(self):
-        if not self._encode:
-            return
-
-        public_key = encode_message(Status.PUBLIC, get_public_key())
         self._caerulean_gate = socket(AF_INET, SOCK_DGRAM)
         self._caerulean_gate.bind((self._def_ip, self._control_port))
 
+        if not self._encode:
+            request = encode_message(Status.SUCCESS, bytes())
+            self._caerulean_gate.sendto(request, (self._address, self._control_port))
+            self._operational = True
+            return
+
+        public_key = encode_message(Status.PUBLIC, get_public_key())
         # TODO: check multiple calls to control port + answers
+        # TODO: add other protocol parts implementation (i.e. key resending, etc.)
         self._caerulean_gate.sendto(public_key, (self._address, self._control_port))
         logger.debug(f"Sending control to caerulean {self._address}:{self._control_port}")
         packet = self._caerulean_gate.recv(_MESSAGE_MAX_LEN)

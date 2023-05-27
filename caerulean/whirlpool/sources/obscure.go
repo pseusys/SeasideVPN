@@ -81,6 +81,12 @@ func EncodeMessage(status Status, data []byte) ([]byte, error) {
 
 		return concatMultipleSlices(header, prefix, data, postfix), nil
 	} else {
-		return header, nil
+		tail := rand.Int() % allowed
+		filling := make([]byte, tail)
+		_, err := rand.Read(filling)
+		if err != nil {
+			return nil, errors.New("error while generating random string")
+		}
+		return concatMultipleSlices(header, filling), nil
 	}
 }

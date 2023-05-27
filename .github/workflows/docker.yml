@@ -18,9 +18,6 @@ jobs:
           - name: Caerulean Whirlpool
             context: caerulean/whirlpool
             image: ghcr.io/${{ github.repository }}/caerulean-whirlpool
-          - name: Viridian Algae
-            context: viridian/algae
-            image: ghcr.io/${{ github.repository }}/viridian-algae
     permissions:
       contents: read
       packages: write
