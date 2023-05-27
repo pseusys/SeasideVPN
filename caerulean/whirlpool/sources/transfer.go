@@ -46,17 +46,18 @@ func ReceivePacketsFromViridian(tunnel *water.Interface) {
 	defer connection.Close()
 
 	for {
-		// Read BUFFERSIZE of data
+		// Read IOBUFFERSIZE of data
 		r, addr, err := connection.ReadFromUDP(buffer)
 		if err != nil || r == 0 {
 			logrus.Errorf("Reading from viridian error (%d bytes read): %v", r, err)
 			continue
 		}
 
+		// Decrypt packet (if user is connected in VPN mode)
 		packet, err := decryptPacket(buffer[:r], addr)
 		if err != nil {
 			logrus.Errorln("Decrypting packet error:", err)
-			SendProtocolToUser(NO_PASS, addr)
+			SendStatusToUser(NO_PASS, addr, connection)
 			continue
 		}
 
@@ -84,7 +85,7 @@ func decryptPacket(packet []byte, address *net.UDPAddr) ([]byte, error) {
 		return packet, nil
 	}
 
-	viridian.expire.Reset(USER_TTL)
+	viridian.expire.Reset(USER_LIFETIME)
 
 	decrypted, err := DecryptSymmetrical(viridian.aead, packet)
 	if err != nil {
@@ -102,7 +103,7 @@ func SendPacketsToViridian(tunnel *water.Interface) {
 	defer connection.Close()
 
 	for {
-		// Read BUFFERSIZE of data from tunnel
+		// Read IOBUFFERSIZE of data from tunnel
 		r, err := tunnel.Read(buffer)
 		if err != nil || r == 0 {
 			logrus.Errorf("Reading from tunnel error (%d bytes read): %v", r, err)
@@ -123,10 +124,11 @@ func SendPacketsToViridian(tunnel *water.Interface) {
 			continue
 		}
 
+		// Encrypt packet (if user is connected in VPN mode)
 		packet, err := encryptPacket(buffer[:r], gateway)
 		if err != nil {
 			logrus.Errorln("Encrypting packet error:", err)
-			SendProtocolToUser(NO_PASS, gateway)
+			SendStatusToUser(NO_PASS, gateway, connection)
 			continue
 		}
 

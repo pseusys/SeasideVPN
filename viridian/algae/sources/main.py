@@ -44,11 +44,11 @@ def main():
     interface.up()
     rec_proc, snd_proc = None, None
     try:
-        interface.initializeControl()
+        interface.initialize_control()
         while not interface.operational:
             pass  # TODO: change for timeout!
-        rec_proc = Process(target=interface.receiveFromCaerulean, daemon=True)
-        snd_proc = Process(target=interface.sendToCaerulean, daemon=True)
+        rec_proc = Process(target=interface.receive_from_caerulean, daemon=True)
+        snd_proc = Process(target=interface.send_to_caerulean, daemon=True)
         rec_proc.start()
         snd_proc.start()
         while True:

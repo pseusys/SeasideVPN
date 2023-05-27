@@ -20,30 +20,30 @@ const (
 
 var ADDR_INTF_REGEXP = regexp.MustCompile(ADDR_INTF_STR)
 
-func runCommand(command string, args ...string) string {
-	cmd := exec.Command(command, args...)
-	output, err := cmd.CombinedOutput()
+func runCommand(cmd string, args ...string) string {
+	command := exec.Command(cmd, args...)
+	output, err := command.CombinedOutput()
 	if err != nil {
-		logrus.Errorf("Command %s output: %s", command, output)
+		logrus.Errorf("Command %s output: %s", cmd, output)
 		logrus.Fatalln("Running command error:", err)
 	}
 	return string(output)
 }
 
-func AllocateInterface(name string, tun_ip *net.IP, tun_net *net.IPNet) {
-	cidr, _ := tun_net.Mask.Size()
+func AllocateInterface(name string, tunnelIP *net.IP, tunnelNetwork *net.IPNet) {
+	cidr, _ := tunnelNetwork.Mask.Size()
 
 	// Setup tunnel interface MTU
 	runCommand("ip", "link", "set", "dev", name, "mtu", MTU)
 	// Setup IP address for tunnel interface
-	runCommand("ip", "addr", "add", fmt.Sprintf("%s/%d", tun_ip.String(), cidr), "dev", name)
+	runCommand("ip", "addr", "add", fmt.Sprintf("%s/%d", tunnelIP.String(), cidr), "dev", name)
 	// Enable tunnel interfaces
 	runCommand("ip", "link", "set", "dev", name, "up")
 
 	logrus.Infof("Interface %s allocated (MTU: %s, buffer: %d)", name, MTU, IOBUFFERSIZE)
 }
 
-func ConfigureForwarding(externalInterface string, internalInterface string, tunnelInterface string, tun_ip *net.IP) {
+func ConfigureForwarding(externalInterface string, internalInterface string, tunnelInterface string, tunnelIP *net.IP) {
 	portStr := strconv.Itoa(*input)
 	ctrlStr := strconv.Itoa(*control)
 	markStr := strconv.Itoa(MARK)
@@ -72,7 +72,7 @@ func ConfigureForwarding(externalInterface string, internalInterface string, tun
 	// Clear routing table number 87
 	runCommand("ip", "route", "flush", "table", markStr)
 	// Seting default route for table 87 through tunnel interface IP
-	runCommand("ip", "route", "add", "table", markStr, "default", "via", tun_ip.String(), "dev", tunnelInterface)
+	runCommand("ip", "route", "add", "table", markStr, "default", "via", tunnelIP.String(), "dev", tunnelInterface)
 	// Forwarding packets marked with 87 with table number 87
 	runCommand("ip", "rule", "add", "fwmark", markStr, "table", markStr)
 	// Flushing routing cache

@@ -25,7 +25,8 @@ services:
       COMMAND: |
         sleep 3 && \
         echo "Testing with QOTD (UDP) protocol" && \
-        echo ":)" | nc -u -w 3 djxmmx.net 17
+        echo ":)" | nc -u -w 3 djxmmx.net 17 && \
+        sleep 5
     networks:
       default:
         ipv4_address: 10.0.0.65

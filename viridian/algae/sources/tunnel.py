@@ -9,7 +9,7 @@ from sys import stdout
 from typing import Tuple
 
 from outputs import logger, BLANC, GOOD, BAD, WARN, INFO
-from crypto import _MESSAGE_MAX_LEN, Protocol, decrypt_rsa, decrypt_symmetric, encrypt_symmetric, get_public_key, initialize_symmetric, encode_message, decode_message
+from crypto import _MESSAGE_MAX_LEN, Status, decrypt_rsa, decrypt_symmetric, encrypt_symmetric, get_public_key, initialize_symmetric, encode_message, decode_message
 
 
 _UNIX_TUNSETIFF = 0x400454ca
@@ -96,11 +96,11 @@ class Tunnel:
         logger.info(f"Tunnel {BAD}disabled{BLANC}")
         self._operational = False
 
-    def initializeControl(self):
+    def initialize_control(self):
         if not self._encode:
             return
 
-        public_key = encode_message(Protocol.PUBLIC, get_public_key())
+        public_key = encode_message(Status.PUBLIC, get_public_key())
         self._caerulean_gate = socket(AF_INET, SOCK_DGRAM)
         self._caerulean_gate.bind((self._def_ip, self._control_port))
 
@@ -109,14 +109,14 @@ class Tunnel:
         logger.debug(f"Sending control to caerulean {self._address}:{self._control_port}")
         packet = self._caerulean_gate.recv(_MESSAGE_MAX_LEN)
 
-        protocol, key = decode_message(packet)
-        if protocol == Protocol.SUCCESS and key is not None:
+        status, key = decode_message(packet)
+        if status == Status.SUCCESS and key is not None:
             initialize_symmetric(decrypt_rsa(key))
             self._operational = True
         else:
-            raise RuntimeError(f"Couldn't exchange keys with caerulean (protocol: {protocol})!")
+            raise RuntimeError(f"Couldn't exchange keys with caerulean (status: {status})!")
 
-    def sendToCaerulean(self):
+    def send_to_caerulean(self):
         self._caerulean_gate = socket(AF_INET, SOCK_DGRAM)
         self._caerulean_gate.bind((self._def_ip, self._output_port))
         while self._operational:
@@ -125,7 +125,7 @@ class Tunnel:
             packet = packet if not self._encode else encrypt_symmetric(packet)
             self._caerulean_gate.sendto(packet, (self._address, self._output_port))
 
-    def receiveFromCaerulean(self):
+    def receive_from_caerulean(self):
         self._caerulean_gate = socket(AF_INET, SOCK_DGRAM)
         self._caerulean_gate.bind((self._def_ip, self._input_port))
         while self._operational:

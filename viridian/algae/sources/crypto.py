@@ -20,12 +20,13 @@ _MESSAGE_HEADER_LEN = 5
 _MESSAGE_MAX_LEN = 5000
 
 
-class Protocol(IntEnum):
+class Status(IntEnum):
     UNDEF = 0
     SUCCESS = 1
     ERROR = 2
-    NO_PASS = 3
-    PUBLIC = 4
+    OVERLOAD = 3
+    NO_PASS = 4
+    PUBLIC = 5
 
     @classmethod
     def _missing_(cls, _):
@@ -64,26 +65,26 @@ def decrypt_symmetric(data: bytes) -> bytes:
     return cipher.decrypt_and_verify(encryption, tag)
 
 
-def encode_message(proto: Protocol, data: bytes) -> bytes:
+def encode_message(status: Status, data: bytes) -> bytes:
     allowed = _MESSAGE_MAX_LEN - _MESSAGE_HEADER_LEN
     length = len(data)
     if length > allowed:
         raise RuntimeError(f"Length of data ({length}) is greater than max message length ({allowed})!")
 
-    proto_val = proto.value.to_bytes(1, "big")
+    status_val = status.value.to_bytes(1, "big")
     if length != 0:
         start = randint(0, allowed - length) + _MESSAGE_HEADER_LEN
         finish = start + length
         prefix = get_random_bytes(start - _MESSAGE_HEADER_LEN)
         postfix = get_random_bytes(randint(0, _MESSAGE_MAX_LEN - finish))
-        return proto_val + start.to_bytes(2, "big") + finish.to_bytes(2, "big") + prefix + data + postfix
+        return status_val + start.to_bytes(2, "big") + finish.to_bytes(2, "big") + prefix + data + postfix
     else:
-        return proto_val + b"0000"
+        return status_val + b"0000"
 
 
-def decode_message(data: bytes) -> Tuple[Protocol, Optional[bytes]]:
+def decode_message(data: bytes) -> Tuple[Status, Optional[bytes]]:
     length = len(data)
-    proto = Protocol.from_bytes(data[0:1], "big")
+    status = Status.from_bytes(data[0:1], "big")
 
     start = int.from_bytes(data[1:3], "big")
     if start > length:
@@ -94,6 +95,6 @@ def decode_message(data: bytes) -> Tuple[Protocol, Optional[bytes]]:
         raise RuntimeError(f"Wrong message formatting: finish ({finish}) is greater than start ({start}) or length ({length})!")
 
     if start == 0 and finish == 0:
-        return proto, None
+        return status, None
     else:
-        return proto, data[start:finish]
+        return status, data[start:finish]

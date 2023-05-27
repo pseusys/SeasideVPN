@@ -17,12 +17,21 @@ type Viridian struct {
 }
 
 var (
-	VIRIDIANS       = make(map[string]Viridian) // TODO: accept MAX_USERS argument
-	CTRL_CONNECTION *net.UDPConn
-	USER_TTL        = time.Minute * time.Duration(*user_ttl)
+	VIRIDIANS     = make(map[string]Viridian, *max_users)
+	USER_LIFETIME = time.Minute * time.Duration(*user_ttl)
 )
 
+func deleteViridian(userID string, timeout bool) {
+	delete(VIRIDIANS, userID)
+	if timeout {
+		logrus.Infof("User %s deleted by inactivity timeout (%d minutes)", userID, *user_ttl)
+	} else {
+		logrus.Infof("User %s deleted successfully", userID)
+	}
+}
+
 func ListenControlPort(ip string, port int) {
+	// Open viridian control UDP connection
 	network := fmt.Sprintf("%s:%d", ip, port)
 
 	gateway, err := net.ResolveUDPAddr(UDP, network)
@@ -39,79 +48,92 @@ func ListenControlPort(ip string, port int) {
 	buffer := make([]byte, CTRLBUFFERSIZE)
 
 	for {
-		r, addr, err := connection.ReadFromUDP(buffer)
-		if err != nil || r == 0 {
-			logrus.Errorf("Reading control error (%d bytes read): %v", r, err)
+		// Read CTRLBUFFERSIZE of data from tunnel
+		read, address, err := connection.ReadFromUDP(buffer)
+		if err != nil || read == 0 {
+			logrus.Errorf("Reading control error (%d bytes read): %v", read, err)
 			return
 		}
 
-		address := addr.IP.String()
-		logrus.Infoln("Received control message from user:", address)
+		userID := address.IP.String()
+		logrus.Infoln("Received control message from user:", userID)
 
-		data := buffer[:r]
-		viridian, exists := VIRIDIANS[address]
+		// Decrypt message if a key exists for the specified userss
+		received := buffer[:read]
+		viridian, exists := VIRIDIANS[userID]
 		if exists {
-			data, err = DecryptSymmetrical(viridian.aead, buffer[r:])
+			received, err = DecryptSymmetrical(viridian.aead, received)
 			if err != nil {
-				logrus.Warnln("Couldn't decrypt message from user", address)
-				SendProtocolToUser(ERROR, addr)
+				logrus.Warnln("Couldn't decrypt message from user", userID)
+				SendStatusToUser(ERROR, address, connection)
 				return
 			}
 		}
 
-		proto, data, err := ResolveMessage(data)
+		// Resolve received message
+		status, data, err := ResolveMessage(received)
 		if err != nil {
-			logrus.Warnln("Couldn't parse message from user", address)
-			SendProtocolToUser(ERROR, addr)
+			logrus.Warnln("Couldn't parse message from user", userID)
+			SendStatusToUser(ERROR, address, connection)
 			return
 		}
 
+		// Prepare answer
 		var message, _ = EncodeMessage(UNDEF, nil)
-		switch proto {
+		switch status {
 		case PUBLIC:
-			message, err = prepareEncryptedSymmetricalKeyForUser(data, address)
-			if err != nil {
-				logrus.Warnf("Couldn't decrypt message from user %s: %v", address, err)
-				message, _ = EncodeMessage(ERROR, nil)
+			if len(VIRIDIANS) >= *max_users {
+				message, _ = EncodeMessage(OVERLOAD, nil)
+			} else {
+				message, err = prepareEncryptedSymmetricalKeyForUser(data, userID)
+				if err != nil {
+					logrus.Warnf("Couldn't decrypt message from user %s: %v", userID, err)
+					message, _ = EncodeMessage(ERROR, nil)
+				}
+				message, _ = EncodeMessage(SUCCESS, message)
 			}
-			message, _ = EncodeMessage(SUCCESS, message)
 		case NO_PASS:
-			delete(VIRIDIANS, address)
+			deleteViridian(userID, false)
 			message, _ = EncodeMessage(SUCCESS, nil)
 		}
 
-		logrus.Infoln("Sending result to user", address)
-		connection.WriteToUDP(message, addr)
+		// Send answer back to user
+		logrus.Infoln("Sending result to user", userID)
+		connection.WriteToUDP(message, address)
 	}
 }
 
-func SendProtocolToUser(proto Protocol, address *net.UDPAddr) {
-	message, _ := EncodeMessage(proto, nil)
-	CTRL_CONNECTION.WriteToUDP(message, address)
+func SendStatusToUser(status Status, address *net.UDPAddr, connection *net.UDPConn) {
+	message, _ := EncodeMessage(status, nil)
+	connection.WriteToUDP(message, address)
 }
 
-func prepareEncryptedSymmetricalKeyForUser(buffer []byte, address string) ([]byte, error) {
+func prepareEncryptedSymmetricalKeyForUser(buffer []byte, userID string) ([]byte, error) {
+	// Generate XChaCha-Poly1305 key
 	aead, key, err := GenerateSymmetricalAlgorithm()
 	if err != nil {
-		logrus.Warnln("Couldn't create an encryption algorithm for user", address)
+		logrus.Warnln("Couldn't create an encryption algorithm for user", userID)
 		return nil, err
 	}
 
-	deletion_timer := time.AfterFunc(USER_TTL, func() { delete(VIRIDIANS, address) })
-	VIRIDIANS[address] = Viridian{aead, deletion_timer}
+	// Setup inactivity deletion timer for user
+	deletionTimer := time.AfterFunc(USER_LIFETIME, func() { deleteViridian(userID, true) })
+	VIRIDIANS[userID] = Viridian{aead, deletionTimer}
 
+	// Parse user public RSA key
 	public, err := ParsePublicKey(buffer)
 	if err != nil {
-		logrus.Warnln("Couldn't resolve public key of user", address)
+		logrus.Warnln("Couldn't resolve public key of user", userID)
 		return nil, err
 	}
 
+	// Encrypt user XChaCha-Poly1305 key with public RSA key
 	data, err := EncryptRSA(key, public)
 	if err != nil {
-		logrus.Warnln("Couldn't encrypt symmetrical key for user", address)
+		logrus.Warnln("Couldn't encrypt symmetrical key for user", userID)
 		return nil, err
 	}
 
-	logrus.Infoln("Symmetrical key prepared for user", address)
+	logrus.Infoln("Symmetrical key prepared for user", userID)
 	return data, nil
 }
