@@ -1,1 +1,1 @@
-cryptography~=40.0
+pycryptodome~=3.18.0
