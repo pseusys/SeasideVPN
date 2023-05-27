@@ -7,27 +7,26 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"errors"
-	"io"
 
 	"golang.org/x/crypto/chacha20poly1305"
 )
 
-func EncryptRSA(plain []byte, key *rsa.PublicKey) ([]byte, error) {
-	encrypted, err := rsa.EncryptOAEP(sha256.New(), rand.Reader, key, plain, nil)
+func EncryptRSA(plaintext []byte, key *rsa.PublicKey) ([]byte, error) {
+	ciphertext, err := rsa.EncryptOAEP(sha256.New(), rand.Reader, key, plaintext, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	return encrypted, nil
+	return ciphertext, nil
 }
 
-func ParsePublicKey(raw []byte) (*rsa.PublicKey, error) {
-	key, err := x509.ParsePKIXPublicKey(raw)
+func ParsePublicKey(rawKey []byte) (*rsa.PublicKey, error) {
+	decodedKey, err := x509.ParsePKIXPublicKey(rawKey)
 	if err != nil {
 		return nil, err
 	}
 
-	rsaPublicKey, ok := key.(*rsa.PublicKey)
+	rsaPublicKey, ok := decodedKey.(*rsa.PublicKey)
 	if !ok {
 		return nil, errors.New("unexpected type of public key")
 	}
@@ -37,7 +36,7 @@ func ParsePublicKey(raw []byte) (*rsa.PublicKey, error) {
 
 func GenerateSymmetricalAlgorithm() (cipher.AEAD, []byte, error) {
 	key := make([]byte, chacha20poly1305.KeySize)
-	if _, err := io.ReadFull(rand.Reader, key); err != nil {
+	if _, err := rand.Read(key); err != nil {
 		return nil, nil, err
 	}
 
@@ -49,22 +48,22 @@ func GenerateSymmetricalAlgorithm() (cipher.AEAD, []byte, error) {
 	return aead, key, nil
 }
 
-func EncryptSymmetrical(aead cipher.AEAD, data []byte) ([]byte, error) {
-	nonce := make([]byte, aead.NonceSize(), aead.NonceSize()+len(data)+aead.Overhead())
+func EncryptSymmetrical(aead cipher.AEAD, plaintext []byte) ([]byte, error) {
+	nonce := make([]byte, aead.NonceSize(), aead.NonceSize()+len(plaintext)+aead.Overhead())
 	if _, err := rand.Read(nonce); err != nil {
 		return nil, err
 	}
 
-	return aead.Seal(nonce, nonce, data, nil), nil
+	return aead.Seal(nonce, nonce, plaintext, nil), nil
 }
 
-func DecryptSymmetrical(aead cipher.AEAD, data []byte) ([]byte, error) {
-	if len(data) < aead.NonceSize() {
+func DecryptSymmetrical(aead cipher.AEAD, payload []byte) ([]byte, error) {
+	if len(payload) < aead.NonceSize() {
 		return nil, errors.New("ciphertext too short")
 	}
 
-	nonce, encrypted := data[:aead.NonceSize()], data[aead.NonceSize():]
-	result, err := aead.Open(nil, nonce, encrypted, nil)
+	nonce, ciphertext := payload[:aead.NonceSize()], payload[aead.NonceSize():]
+	result, err := aead.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
 		return nil, err
 	}

@@ -203,4 +203,4 @@ make test
 2. Add CONTRIBUTING with rules, e.g. branch names with '-'.
 3. Re-write tests
 4. Compile Go with optimizations
-5. Single port for IO?
+5. Handle re- and average connections (control part)
