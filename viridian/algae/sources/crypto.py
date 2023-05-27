@@ -1,25 +1,20 @@
 from enum import IntEnum
-from os import urandom
-from random import randbytes, randint
 from typing import Optional, Tuple
 
-from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
-from cryptography.hazmat.primitives.hashes import SHA256
-from cryptography.hazmat.primitives.asymmetric.rsa import generate_private_key
-from cryptography.hazmat.primitives.asymmetric.padding import OAEP, MGF1
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305
+from Crypto.PublicKey import RSA
+from Crypto.Hash import SHA256
+from Crypto.Cipher import PKCS1_OAEP, ChaCha20_Poly1305
+from Crypto.Random import get_random_bytes
+from Crypto.Random.random import randint
 
 
-_PRIVATE_KEY_SIZE = 2048
-_PRIVATE_KEY_EXPONENT = 65537
-_NONCE_LENGTH = 12 # TODO: switch to XChaCha!!
+_RSA_KEY_SIZE = 2048
+_RSA_KEY_EXPONENT = 65537
+_CHACHA_NONCE_LENGTH = 24
+_CHACHA_TAG_LENGTH = 16
 
-_RSA_OAEP_PADDING = OAEP(MGF1(algorithm=SHA256()), SHA256(), None)
-_RSA_PRIVATE_KEY = generate_private_key(_PRIVATE_KEY_EXPONENT, _PRIVATE_KEY_SIZE, default_backend())
-_RSA_PUBLIC_KEY = _RSA_PRIVATE_KEY.public_key().public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)
-
-_SYMMETRIC_KEY: Optional[ChaCha20Poly1305] = None
+_RSA_KEY = RSA.generate(_RSA_KEY_SIZE, get_random_bytes, _RSA_KEY_EXPONENT)
+_CHACHA_KEY: Optional[bytes] = None
 
 _MESSAGE_HEADER_LEN = 5
 _MESSAGE_MAX_LEN = 5000
@@ -38,31 +33,35 @@ class Protocol(IntEnum):
 
 
 def decrypt_rsa(data: bytes) -> bytes:
-    return _RSA_PRIVATE_KEY.decrypt(data, _RSA_OAEP_PADDING)
+    cipher = PKCS1_OAEP.new(_RSA_KEY, SHA256)
+    return cipher.decrypt(data)
 
 
 def get_public_key() -> bytes:
-    return _RSA_PUBLIC_KEY
+    return _RSA_KEY.public_key().export_key("DER")
 
 
 def initialize_symmetric(key: bytes):
-    global _SYMMETRIC_KEY
-    _SYMMETRIC_KEY = ChaCha20Poly1305(key)
+    global _CHACHA_KEY
+    _CHACHA_KEY = key
 
 
 def encrypt_symmetric(data: bytes) -> bytes:
-    if _SYMMETRIC_KEY is None:
+    if _CHACHA_KEY is None:
         raise RuntimeError("Symmetric algorithm is not initialized with key!")
-    nonce = urandom(_NONCE_LENGTH)
-    encryption = _SYMMETRIC_KEY.encrypt(nonce, data, None)
-    return nonce + encryption
+    nonce = get_random_bytes(_CHACHA_NONCE_LENGTH)
+    cipher = ChaCha20_Poly1305.new(key=_CHACHA_KEY, nonce=nonce)
+    encryption, tag = cipher.encrypt_and_digest(data)
+    return nonce + encryption + tag
 
 
 def decrypt_symmetric(data: bytes) -> bytes:
-    if _SYMMETRIC_KEY is None:
+    if _CHACHA_KEY is None:
         raise RuntimeError("Symmetric algorithm is not initialized with key!")
-    nonce, encryption = data[:_NONCE_LENGTH], data[_NONCE_LENGTH:]
-    return _SYMMETRIC_KEY.decrypt(nonce, encryption, None)
+    nonce, ciphertext = data[:_CHACHA_NONCE_LENGTH], data[_CHACHA_NONCE_LENGTH:]
+    cipher = ChaCha20_Poly1305.new(key=_CHACHA_KEY, nonce=nonce)
+    encryption, tag = ciphertext[:-_CHACHA_TAG_LENGTH], ciphertext[-_CHACHA_TAG_LENGTH:]
+    return cipher.decrypt_and_verify(encryption, tag)
 
 
 def encode_message(proto: Protocol, data: bytes) -> bytes:
@@ -75,8 +74,8 @@ def encode_message(proto: Protocol, data: bytes) -> bytes:
     if length != 0:
         start = randint(0, allowed - length) + _MESSAGE_HEADER_LEN
         finish = start + length
-        prefix = randbytes(start - _MESSAGE_HEADER_LEN)
-        postfix = randbytes(randint(0, _MESSAGE_MAX_LEN - finish))
+        prefix = get_random_bytes(start - _MESSAGE_HEADER_LEN)
+        postfix = get_random_bytes(randint(0, _MESSAGE_MAX_LEN - finish))
         return proto_val + start.to_bytes(2, "big") + finish.to_bytes(2, "big") + prefix + data + postfix
     else:
         return proto_val + b"0000"

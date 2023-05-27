@@ -41,7 +41,7 @@ func GenerateSymmetricalAlgorithm() (cipher.AEAD, []byte, error) {
 		return nil, nil, err
 	}
 
-	aead, err := chacha20poly1305.New(key) // TODO: switch to XChaCha!!
+	aead, err := chacha20poly1305.NewX(key)
 	if err != nil {
 		return nil, nil, err
 	}
