@@ -79,7 +79,8 @@ def encode_message(status: Status, data: bytes) -> bytes:
         postfix = get_random_bytes(randint(0, _MESSAGE_MAX_LEN - finish))
         return status_val + start.to_bytes(2, "big") + finish.to_bytes(2, "big") + prefix + data + postfix
     else:
-        return status_val + b"0000"
+        filling = get_random_bytes(randint(0, allowed))
+        return status_val + bytearray(4) + filling
 
 
 def decode_message(data: bytes) -> Tuple[Status, Optional[bytes]]:

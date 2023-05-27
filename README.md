@@ -199,8 +199,10 @@ make test
 
 ## TODOs
 
-1. Add run options to all run configurations, Makefiles, split READMEs.
-2. Add CONTRIBUTING with rules, e.g. branch names with '-'.
+1. Add run options to all run configurations, Makefiles, split READMEs
+2. Add CONTRIBUTING with rules, e.g. branch names with '-'
 3. Re-write tests
 4. Compile Go with optimizations
 5. Handle re- and average connections (control part)
+6. Goroutines for server functions
+7. Investigate if server can listen and send control simultaneously, add other port if not
