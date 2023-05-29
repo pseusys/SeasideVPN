@@ -1,12 +1,12 @@
 from argparse import ArgumentParser, ArgumentTypeError
 from ipaddress import IPv4Address
+from multiprocessing import Process, current_process
 from signal import SIGINT, SIGTERM, signal
 from sys import exit
-from multiprocessing import Process, current_process
 
-from tunnel import Tunnel
+from colorama import init
 from outputs import logger
-
+from tunnel import Tunnel
 
 _DEFAULT_NAME = "seatun"
 _DEFAULT_VPN = True
@@ -19,12 +19,12 @@ _DEFAULT_CONTROL_PORT = 1725
 
 
 def boolean(value: str) -> bool:
-  if value.lower() in ("yes", "true", "1"):
-      return True
-  elif value.lower() in ("no", "false", "0"):
-      return False
-  else:
-      raise ArgumentTypeError(f"Unknown boolean value: {value}")
+    if value.lower() in ("yes", "true", "1"):
+        return True
+    elif value.lower() in ("no", "false", "0"):
+        return False
+    else:
+        raise ArgumentTypeError(f"Unknown boolean value: {value}")
 
 
 parser = ArgumentParser()
@@ -58,7 +58,7 @@ def main():
             rec_proc.terminate()
         if snd_proc is not None:
             snd_proc.terminate()
-        interface.delete()
+        interface.down()
 
 
 def finish(_, __):
@@ -69,6 +69,7 @@ def finish(_, __):
 
 
 if __name__ == "__main__":
+    init()
     interface = Tunnel(**args)
     signal(SIGTERM, finish)
     signal(SIGINT, finish)

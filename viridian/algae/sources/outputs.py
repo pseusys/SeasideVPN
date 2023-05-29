@@ -1,13 +1,6 @@
 from enum import IntEnum
-from os import environ
 from logging import StreamHandler, getLogger
-
-
-BLANC = "\u001b[0m"
-BAD = "\u001b[31m"
-GOOD = "\u001b[32m"
-WARN = "\u001b[33m"
-INFO = "\u001b[34m"
+from os import environ
 
 
 class LogLevel(IntEnum):
