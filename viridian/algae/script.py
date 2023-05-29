@@ -7,13 +7,15 @@ from black import Mode, Report, WriteBack, reformat_one
 from flake8.api.legacy import get_style_guide
 from isort import check_file, file
 from PyInstaller.__main__ import run
+from pytest import main
 
+_ALGAE_ROOT = Path(__file__).parent
 _EXECUTABLE_NAME = "algae.run"
 _MAX_LINE_LEN = 180
 
 
 def _get_paths() -> List[Path]:
-    return [path for path in Path(".").glob("**/*.py")]
+    return [path for path in _ALGAE_ROOT.glob("**/*.py")]
 
 
 def lint() -> int:
@@ -41,7 +43,8 @@ def format(modify: bool = True) -> int:
 
 
 def test():
-    pass
+    test_dir = _ALGAE_ROOT / Path("test/")
+    return main(["-s", str(test_dir.resolve())])
 
 
 def build():
