@@ -1,3 +1,6 @@
 # Configs:
 .idea
 .vscode
+
+# Lock file:
+poetry.lock

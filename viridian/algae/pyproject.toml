@@ -1,0 +1,55 @@
+[tool.poetry]
+name = "SeasideVPN"
+version = "0.0.1"
+description = "A simple PPTP UDP Proxy and VPN system"
+license = "MIT"
+authors = [
+    "Alexander Sergeev <alexander.sergeev@onmail.com>",
+]
+
+readme = "README.md"
+repository = "https://github.com/pseusys/SeasideVPN"
+keywords = ["open-source", "proxy", "udp", "distributed", "vpn", "client-server", "pptp", "p2p-network"]
+
+packages = [
+    { include = "sources" },
+    { include = "script.py" },
+]
+
+
+
+[tool.poetry.dependencies]
+python = ">=3.7,<3.12"
+colorama = "^0.4.6"
+pycryptodome = "^3.18.0"
+flake8 = { version = "^3.9.2", optional = true }
+black = { version = "^20.8b1", optional = true }
+isort = { version = "^5.11.0", optional = true }
+pytest = { version = "^7.3.1", optional = true }
+pyinstaller = { version = "^5.11.0", optional = true }
+pytest-asyncio = { version = "^0.14.0", optional = true }
+
+[tool.poetry.extras]
+build = ["pyinstaller"]
+test = ["pytest", "pytest-asyncio"]
+devel = ["flake8", "black", "isort"]
+
+
+
+[tool.poetry.scripts]
+lint = { callable = "script:lint", extras = ["devel"] }
+format = { callable = "script:format", extras = ["devel"] }
+test = { callable = "script:test", extras = ["test"] }
+build = { callable = "script:build", extras = ["build"] }
+clean = { callable = "script:clean" }
+
+
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+
+
+[tool.isort]
+profile = "black"

@@ -206,3 +206,4 @@ make test
 5. Handle re- and average connections (control part)
 6. Goroutines for server functions
 7. Investigate if server can listen and send control simultaneously, add other port if not
+8. Use [pytun](https://pypi.org/project/python-pytun/) library maybe?
