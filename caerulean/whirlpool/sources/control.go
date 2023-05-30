@@ -58,20 +58,8 @@ func ListenControlPort(ip string, port int) {
 		userID := address.IP.String()
 		logrus.Infoln("Received control message from user:", userID)
 
-		// Decrypt message if a key exists for the specified userss
-		received := buffer[:read]
-		viridian, exists := VIRIDIANS[userID]
-		if exists {
-			received, err = DecryptSymmetrical(viridian.aead, received)
-			if err != nil {
-				logrus.Warnln("Couldn't decrypt message from user", userID)
-				SendStatusToUser(ERROR, address, connection)
-				return
-			}
-		}
-
 		// Resolve received message
-		status, data, err := ResolveMessage(received)
+		status, data, err := ResolveMessage(buffer[:read])
 		if err != nil {
 			logrus.Warnln("Couldn't parse message from user", userID)
 			SendStatusToUser(ERROR, address, connection)
@@ -112,6 +100,10 @@ func ListenControlPort(ip string, port int) {
 			logrus.Infoln("Deleting user", userID)
 			deleteViridian(userID, false)
 			message, _ = EncodeMessage(SUCCESS, nil)
+		// Default action - send user undefined status
+		default:
+			logrus.Infof("Unexpected status %v received from user %s", status, userID)
+			message, _ = EncodeMessage(UNDEF, nil)
 		}
 
 		// Send answer back to user
