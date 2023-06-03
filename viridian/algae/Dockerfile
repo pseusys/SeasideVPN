@@ -11,8 +11,6 @@ RUN pip install --no-cache-dir poetry
 COPY sources/*.py ./sources/
 COPY test/*.py ./test/
 COPY script.py pyproject.toml README.md ./
-# TODO: revise inits!
-RUN touch __init__.py
 
 RUN poetry install --all-extras
 

@@ -1,14 +1,15 @@
 from argparse import ArgumentParser, ArgumentTypeError
 from ipaddress import IPv4Address
-from multiprocessing import Process, current_process, set_start_method
+from multiprocessing import Process, current_process
 from signal import SIGINT, SIGTERM, signal
 from sys import argv, exit
 from typing import Any, Dict, Sequence
 
 from colorama import just_fix_windows_console
+
+from .control import break_control, initialize_control, perform_control
 from .outputs import logger
 from .tunnel import Tunnel
-from .control import initialize_control, perform_control, break_control
 
 _DEFAULT_NAME = "seatun"
 _DEFAULT_VPN = True
@@ -72,6 +73,7 @@ def main(args: Sequence[str] = argv[1:]):
 
 
 def finish(_, __):
+    global interface, arguments
     if current_process().name == "MainProcess":
         logger.warning("Terminating whirlpool connection...")
         break_control(**arguments)
