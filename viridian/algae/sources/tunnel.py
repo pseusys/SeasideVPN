@@ -1,17 +1,14 @@
 from fcntl import ioctl
 from ipaddress import IPv4Address
 from os import O_RDWR, getegid, geteuid, open, read, write
-from re import compile, search
-from socket import AF_INET, SOCK_DGRAM, SOCK_STREAM, SHUT_WR, socket
+from socket import AF_INET, SOCK_DGRAM, socket
 from struct import pack
-from subprocess import check_call, check_output
-from sys import stdout
 from typing import Tuple
 
 from pyroute2 import IPRoute
 from colorama import Fore
 
-from .crypto import _MESSAGE_MAX_LEN, Status, decode_message, decrypt_rsa, decrypt_symmetric, encode_message, encrypt_symmetric, get_public_key, initialize_symmetric
+from .crypto import decrypt_symmetric, encrypt_symmetric
 from .outputs import logger
 
 _UNIX_TUNSETIFF = 0x400454CA
@@ -21,54 +18,58 @@ _UNIX_TUNSETGROUP = 0x400454CE
 _UNIX_IFF_TUN = 0x0001
 _UNIX_IFF_NO_PI = 0x1000
 
+_UNIX_TUN_DEVICE = "/dev/net/tun"
+_UNIX_IFNAMSIZ = 16
+
+
+def _create_tunnel(name: str) -> int:
+    if len(name) > _UNIX_IFNAMSIZ:
+            raise ValueError(f"Tunnel interface name ({name}) is too long!")
+    descriptor = open(_UNIX_TUN_DEVICE, O_RDWR)
+    tunnel_desc = pack("16sH", name.encode("ascii"), _UNIX_IFF_TUN | _UNIX_IFF_NO_PI)
+    ioctl(descriptor, _UNIX_TUNSETIFF, tunnel_desc)
+    ioctl(descriptor, _UNIX_TUNSETOWNER, geteuid())
+    ioctl(descriptor, _UNIX_TUNSETGROUP, getegid())
+    return descriptor
+
 
 class Tunnel:
-    _DEFAULT_ROUTE = compile(r"^default.*?((?:[0-9]{1,3}\.){3}[0-9]{1,3}) dev (\S+).*$")
-    _DEFAULT_IP = compile(r"(?<=inet )(.*)(?=\/)")
-    _DEFAULT_NETMASK = compile(r"(?<=netmask )(.*)(?=\/)")
-
-    def __init__(self, name: str, encode: bool, mtu: int, buff: int, addr: IPv4Address, sea_port: int, ctrl_port: int):
+    def __init__(self, name: str, encode: bool, mtu: int, buff: int, addr: IPv4Address, sea_port: int, **_):
+        self._mtu = mtu
         self._name = name
         self._encode = encode
         self._buffer = buff
         self._address = str(addr)
         self._sea_port = sea_port
-        self._control_port = ctrl_port
 
         self._def_route, self._def_intf = "", ""
         self._def_ip = "127.0.0.1"
         self._operational = False
 
-        self._descriptor = open("/dev/net/tun", O_RDWR)
-        tunnel_desc = pack("16sH", name.encode("ascii"), _UNIX_IFF_TUN | _UNIX_IFF_NO_PI)
-        ioctl(self._descriptor, _UNIX_TUNSETIFF, tunnel_desc)
+        self._descriptor = _create_tunnel(name)
         logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} created (buffer: {Fore.BLUE}{buff}{Fore.RESET})")
-
-        owner, group = geteuid(), getegid()
-        ioctl(self._descriptor, _UNIX_TUNSETOWNER, owner)
-        ioctl(self._descriptor, _UNIX_TUNSETGROUP, group)
-        logger.info(f"Tunnel owner set to {Fore.BLUE}{owner}{Fore.RESET}, group to {Fore.BLUE}{group}{Fore.RESET}")
-
-        check_call(["ip", "link", "set", "dev", name, "mtu", str(mtu)])
-        logger.info(f"Tunnel MTU set to {Fore.BLUE}{mtu}{Fore.RESET}")
 
     @property
     def operational(self) -> bool:
         return self._operational
+    
+    @property
+    def default_ip(self) -> str:
+        return self._def_ip
 
     def delete(self):
         if self._operational:
             self.down()
-        check_call(["ip", "link", "delete", self._name])
-        logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} deleted")
+        with IPRoute() as ip:
+            tunnel_dev = ip.link_lookup(ifname=self._name)[0]
+            ip.link("del", index=tunnel_dev)
+            logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} deleted")
 
     def _get_default_route(self) -> Tuple[str, str]:
-        routes = [route.decode(stdout.encoding) for route in check_output(["ip", "route"]).splitlines()]
-        for route in routes:
-            match = search(self._DEFAULT_ROUTE, route)
-            if bool(match):
-                return match.group(1), match.group(2)
-        return "127.0.0.1", "eth0"
+        with IPRoute() as ip:
+            default_dev_attrs = dict(ip.get_default_routes()[0]["attrs"])
+            default_iface_attrs = dict(ip.get_addr(index=default_dev_attrs["RTA_OIF"])[0]["attrs"])
+            return default_dev_attrs["RTA_GATEWAY"], default_iface_attrs["IFA_LABEL"]
 
     def _get_default_network(self) -> Tuple[int, str]:
         with IPRoute() as ip:
@@ -78,75 +79,48 @@ class Tunnel:
 
     def up(self):
         self._def_route, self._def_intf = self._get_default_route()
-        def_network, self._def_ip = self._get_default_network()
-        check_call(["ip", "addr", "replace", f"{self._def_ip}/{def_network}", "dev", self._name])
-        logger.info(f"Tunnel IP address set to {Fore.BLUE}{self._def_ip}{Fore.RESET}")
+        def_cidr, self._def_ip = self._get_default_network()
         logger.info(f"Default route saved (via {Fore.YELLOW}{self._def_route}{Fore.RESET} dev {Fore.YELLOW}{self._def_intf}{Fore.RESET})")
-        check_call(["ip", "link", "set", "dev", self._name, "up"])
-        logger.info(f"Tunnel {Fore.GREEN}enabled{Fore.RESET}")
-        check_call(["ip", "route", "replace", "default", "via", self._def_ip, "dev", self._name])
-        logger.info(f"Tunnel set as default route (via {Fore.YELLOW}{self._def_ip}{Fore.RESET} dev {Fore.YELLOW}{self._name}{Fore.RESET})")
+
+        with IPRoute() as ip:
+            tunnel_dev = ip.link_lookup(ifname=self._name)[0]
+            ip.link("set", index=tunnel_dev, mtu=self._mtu)
+            logger.info(f"Tunnel MTU set to {Fore.BLUE}{self._mtu}{Fore.RESET}")
+            ip.addr("add", index=tunnel_dev, address=self._def_ip, mask=def_cidr)
+            logger.info(f"Tunnel IP address set to {Fore.BLUE}{self._def_ip}{Fore.RESET}")
+            ip.link("set", index=tunnel_dev, state="up")
+            logger.info(f"Tunnel {Fore.GREEN}enabled{Fore.RESET}")
+            ip.route("replace", dst="default", gateway=self._def_ip, oif=tunnel_dev)
+            logger.info(f"Tunnel set as default route (via {Fore.YELLOW}{self._def_ip}{Fore.RESET} dev {Fore.YELLOW}{self._name}{Fore.RESET})")
+        self._operational = True
 
     def down(self):
-        check_call(["ip", "route", "replace", "default", "via", self._def_route, "dev", self._def_intf])
-        logger.info(f"Default route restored (via {Fore.YELLOW}{self._def_route}{Fore.RESET} dev {Fore.YELLOW}{self._def_intf}{Fore.RESET})")
-        check_call(["ip", "link", "set", "dev", self._name, "down"])
-        logger.info(f"Tunnel {Fore.GREEN}disabled{Fore.RESET}")
+        with IPRoute() as ip:
+            tunnel_dev = ip.link_lookup(ifname=self._name)[0]
+            default_dev = ip.link_lookup(ifname=self._def_intf)[0]
+            ip.route("replace", dst="default", gateway=self._def_route, oif=default_dev)
+            logger.info(f"Default route restored (via {Fore.YELLOW}{self._def_route}{Fore.RESET} dev {Fore.YELLOW}{self._def_intf}{Fore.RESET})")
+            ip.link("set", index=tunnel_dev, state="down")
+            logger.info(f"Tunnel {Fore.GREEN}disabled{Fore.RESET}")
         self._operational = False
 
-    def initialize_control(self):
-        caerulean_address = (self._address, self._control_port)
-        caerulean_gate = socket(AF_INET, SOCK_STREAM)
-        caerulean_gate.connect(caerulean_address)
-        logger.debug(f"Sending control to caerulean {self._address}:{self._control_port}")
-
-        if not self._encode:
-            request = encode_message(Status.SUCCESS, bytes())
-            caerulean_gate.sendall(request)
-            caerulean_gate.shutdown(SHUT_WR)
-
-            packet = caerulean_gate.recv(_MESSAGE_MAX_LEN)
-            status, _ = decode_message(packet)
-
-            if status == Status.SUCCESS:
-                logger.info(f"Connected to caerulean {self._address}:{self._control_port} as Proxy successfully!")
-                self._operational = True
-            else:
-                logger.info(f"Error connecting to caerulean (status: {status})!")
-
-        else:
-            public_key = encode_message(Status.PUBLIC, get_public_key())
-            # TODO: check multiple calls to control port + answers
-            # TODO: add other protocol parts implementation (i.e. key resending, etc.)
-            caerulean_gate.sendall(public_key)
-            caerulean_gate.shutdown(SHUT_WR)
-
-            packet = caerulean_gate.recv(_MESSAGE_MAX_LEN)
-            status, key = decode_message(packet)
-
-            if status == Status.SUCCESS and key is not None:
-                initialize_symmetric(decrypt_rsa(key))
-                logger.info(f"Connected to caerulean {self._address}:{self._control_port} as VPN successfully!")
-                self._operational = True
-            else:
-                raise RuntimeError(f"Couldn't exchange keys with caerulean (status: {status})!")
-
-        caerulean_gate.close()
-
     def send_to_caerulean(self):
-        caerulean_gate = socket(AF_INET, SOCK_DGRAM)
-        caerulean_gate.bind((self._def_ip, 0))
-        while self._operational:
-            packet = read(self._descriptor, self._buffer)
-            logger.debug(f"Sending {len(packet)} bytes to caerulean {self._address}:{self._sea_port}")
-            packet = packet if not self._encode else encrypt_symmetric(packet)
-            caerulean_gate.sendto(packet, (self._address, self._sea_port))
+        try:
+            with socket(AF_INET, SOCK_DGRAM) as gate:
+                gate.bind((self._def_ip, 0))
+                while self._operational:
+                    packet = read(self._descriptor, self._buffer)
+                    logger.debug(f"Sending {len(packet)} bytes to caerulean {self._address}:{self._sea_port}")
+                    packet = packet if not self._encode else encrypt_symmetric(packet)
+                    gate.sendto(packet, (self._address, self._sea_port))
+        except OSError:
+            pass  # Required as sometimes `self._descriptor` is getting destroyed so fast it breaks os.read
 
     def receive_from_caerulean(self):
-        caerulean_gate = socket(AF_INET, SOCK_DGRAM)
-        caerulean_gate.bind((self._def_ip, self._sea_port))
-        while self._operational:
-            packet = caerulean_gate.recv(self._buffer)
-            packet = packet if not self._encode else decrypt_symmetric(packet)
-            logger.debug(f"Receiving {len(packet)} bytes from caerulean {self._address}:{self._sea_port}")
-            write(self._descriptor, packet)
+        with socket(AF_INET, SOCK_DGRAM) as gate:
+            gate.bind((self._def_ip, self._sea_port))
+            while self._operational:
+                packet = gate.recv(self._buffer)
+                packet = packet if not self._encode else decrypt_symmetric(packet)
+                logger.debug(f"Receiving {len(packet)} bytes from caerulean {self._address}:{self._sea_port}")
+                write(self._descriptor, packet)

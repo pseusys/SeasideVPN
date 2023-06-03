@@ -2,6 +2,7 @@ from random import choice, randint
 from socket import AF_INET, SHUT_WR, SOCK_DGRAM, SOCK_STREAM, gethostbyname, socket
 from string import ascii_letters, digits
 from subprocess import check_output
+from time import sleep
 from typing import Generator
 from urllib.request import urlretrieve, urlopen
 from os import environ
@@ -39,6 +40,7 @@ def test_qotd_udp_protocol(random_message):
         # Sometimes the server just doesn't respond :(
         for _ in range(0, 5):
             sock.sendto(random_message, (gethostbyname("djxmmx.net"), 17))
+            sleep(0.5)
         quote = sock.recv(message_length).decode()
         assert len(quote) > 0
         print(quote)

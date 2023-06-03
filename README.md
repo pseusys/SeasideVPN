@@ -202,10 +202,7 @@ make test
 1. Add run options to all run configurations, Makefiles, split READMEs
 2. Add CONTRIBUTING with rules, e.g. branch names with '-'
 3. Compile Go with optimizations
-4. Handle re- and average connections (control part)
-5. Goroutines for server functions
-6. Use [pytun](https://pypi.org/project/python-pytun/) library maybe?
-7. Use [wintun](https://git.zx2c4.com/wintun/about/) for windows client?
-8. Fix TODOs, try to get rid of `__init__.py`s
-9. Use `pyroute2` for IP address setup
-10. Setup initial message offset
+4. Goroutines for server functions
+5. Use [wintun](https://git.zx2c4.com/wintun/about/) for windows client?
+6. Fix TODOs, try to get rid of `__init__.py`s
+7. Setup initial message offset
