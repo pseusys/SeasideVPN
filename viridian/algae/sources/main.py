@@ -1,13 +1,14 @@
 from argparse import ArgumentParser, ArgumentTypeError
 from ipaddress import IPv4Address
-from multiprocessing import Process, current_process
+from multiprocessing import Process, current_process, set_start_method
 from signal import SIGINT, SIGTERM, signal
 from sys import argv, exit
-from typing import Sequence
+from typing import Any, Dict, Sequence
 
 from colorama import just_fix_windows_console
 from .outputs import logger
 from .tunnel import Tunnel
+from .control import initialize_control, perform_control, break_control
 
 _DEFAULT_NAME = "seatun"
 _DEFAULT_VPN = True
@@ -28,7 +29,6 @@ def boolean(value: str) -> bool:
 
 
 parser = ArgumentParser()
-# TODO: in/out ports for control, connection
 parser.add_argument("-t", "--tunnel", dest="name", default=_DEFAULT_NAME, help=f"Tunnel interface name (default: {_DEFAULT_NAME})")
 parser.add_argument("-e", "--vpn", dest="encode", default=_DEFAULT_VPN, type=boolean, help=f"Use as VPN (encode traffic) (default: {_DEFAULT_VPN})")
 parser.add_argument("-m", "--max-trans-unit", dest="mtu", default=_DEFAULT_MTU, type=int, help=f"Tunnel interface MTU (default: {_DEFAULT_MTU})")
@@ -38,40 +38,43 @@ parser.add_argument("-p", "--sea-port", dest="sea_port", default=_DEFAULT_SEA_PO
 parser.add_argument("-c", "--ctrl-port", dest="ctrl_port", default=_DEFAULT_CONTROL_PORT, type=int, help=f"Caerulean remote control port number (default: {_DEFAULT_CONTROL_PORT})")
 
 interface: Tunnel
+arguments: Dict[str, Any]
 
 
-def main(arguments: Sequence[str] = argv[1:]):
-    global interface
+def main(args: Sequence[str] = argv[1:]):
+    global interface, arguments
     just_fix_windows_console()
-    args = vars(parser.parse_args(arguments))
+    arguments = vars(parser.parse_args(args))
 
-    interface = Tunnel(**args)
+    interface = Tunnel(**arguments)
     signal(SIGTERM, finish)
     signal(SIGINT, finish)
     logger.warning("Starting algae client...")
     interface.up()
 
-    rec_proc, snd_proc = None, None
+    initialize_control(**arguments)
+    ctrl_proc, rec_proc, snd_proc = None, None, None
     try:
-        interface.initialize_control()
-        while not interface.operational:
-            pass  # TODO: change for timeout!
+        ctrl_proc = Process(target=perform_control, name="controller", args=[interface], kwargs=arguments, daemon=True)
         rec_proc = Process(target=interface.receive_from_caerulean, name="receiver", daemon=True)
         snd_proc = Process(target=interface.send_to_caerulean, name="sender", daemon=True)
+        ctrl_proc.start()
         rec_proc.start()
         snd_proc.start()
-        while True:
-            pass
-    except SystemExit or ConnectionRefusedError:
+        ctrl_proc.join()
+    except SystemExit:
+        if ctrl_proc is not None:
+            ctrl_proc.terminate()
         if rec_proc is not None:
             rec_proc.terminate()
         if snd_proc is not None:
             snd_proc.terminate()
-        # TODO: fix termination exception
 
 
 def finish(_, __):
     if current_process().name == "MainProcess":
+        logger.warning("Terminating whirlpool connection...")
+        break_control(**arguments)
         logger.warning("Gracefully stopping algae client...")
         interface.delete()
     exit(0)

@@ -81,7 +81,7 @@ def test():
     client.images.build(path=str(_ALGAE_ROOT), tag=viridian_tag, rm=True)
 
     result = 0
-    for encrypt in (True, False):
+    for encrypt in (False, True):
         print(f"Testing in {Fore.YELLOW}{'VPN' if encrypt else 'Proxy'}{Fore.RESET} mode:", end=" ")
         viridian_env["VPN"] = encrypt
         viridian_cnt = client.containers.run(viridian_tag, name="algae", detach=True, privileged=True, network=internal_net.name, environment=viridian_env)
