@@ -3,5 +3,5 @@ test-whirlpool:
 	poetry -C viridian/algae run test
 .PHONY: test-whirlpool
 
-test: test-caerulean-whirlpool test-whirlpool
+test: test-whirlpool
 .PHONY: test

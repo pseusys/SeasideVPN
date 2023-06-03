@@ -4,7 +4,6 @@ from string import ascii_letters, digits
 from subprocess import check_output
 from typing import Generator
 from urllib.request import urlretrieve, urlopen
-from .utils import env
 from os import environ
 import pytest
 
@@ -33,19 +32,21 @@ def test_caerulean_ping(caerulean_address):
     print(check_output(["ping", "-c", "8", "-s", "64", "8.8.8.8"]))
 
 
-def tet_qotd_udp_protocol():
+def test_qotd_udp_protocol(random_message):
     message_length = 4096
+    print("Testing with QOTD (UDP) protocol")
     with socket(AF_INET, SOCK_DGRAM) as sock:
-        print("Testing with QOTD (UDP) protocol")
-        sock.sendto(bytes(), (gethostbyname("djxmmx.net"), 17))
+        # Sometimes the server just doesn't respond :(
+        for _ in range(0, 5):
+            sock.sendto(random_message, (gethostbyname("djxmmx.net"), 17))
         quote = sock.recv(message_length).decode()
         assert len(quote) > 0
         print(quote)
 
 
-def tet_tcp_protocol(random_message):
+def test_tcp_protocol(random_message):
+    print(f"Testing for TCP protocol, packets size: {len(random_message)}")
     with socket(AF_INET, SOCK_STREAM) as sock:
-        print(f"Testing for TCP protocol, packets size: {len(random_message)}")
         sock.connect((gethostbyname("tcpbin.com"), 4242))
         sock.sendall(random_message)
         sock.shutdown(SHUT_WR)
@@ -53,7 +54,7 @@ def tet_tcp_protocol(random_message):
         assert random_message == tcp_echo
 
 
-def tet_ftp_protocol():
+def test_ftp_protocol():
     image_size = 1403088
     address = "https://unsplash.com/photos/w7shif_h8hU/download?ixid=M3wxMjA3fDB8MXxhbGx8fHx8fHx8fHwxNjg0NTM0NzM3fA&force=true&w=1920"
     print("Testing with FTP (TCP) protocol")
@@ -62,7 +63,7 @@ def tet_ftp_protocol():
     print("Downloaded image of size", message["Content-Length"])
 
 
-def tet_http_protocol():
+def test_http_protocol():
     address = "https://example.com/"
     print("Testing with HTTP (TCP) protocol")
     response = urlopen(address)

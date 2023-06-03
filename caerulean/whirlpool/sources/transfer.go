@@ -63,7 +63,7 @@ func ReceivePacketsFromViridian(tunnel *water.Interface) {
 			continue
 		}
 
-		logrus.Infof("Received %d bytes from viridian %v (src: %v, dst: %v)", r, address, header.Src, header.Dst)
+		logrus.Infof("Received %d bytes from viridian %v (src: %v, dst: %v)", len(packet), address, header.Src, header.Dst)
 
 		// Write packet to tunnel
 		s, err := tunnel.Write(packet)
