@@ -147,6 +147,6 @@ class Tunnel:
         caerulean_gate.bind((self._def_ip, self._sea_port))
         while self._operational:
             packet = caerulean_gate.recv(self._buffer)
-            logger.debug(f"Receiving {len(packet)} bytes from caerulean {self._address}:{self._sea_port}")
             packet = packet if not self._encode else decrypt_symmetric(packet)
+            logger.debug(f"Receiving {len(packet)} bytes from caerulean {self._address}:{self._sea_port}")
             write(self._descriptor, packet)
