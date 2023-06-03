@@ -5,7 +5,7 @@ from signal import SIGINT, SIGTERM, signal
 from sys import argv, exit
 from typing import Sequence
 
-from colorama import init
+from colorama import just_fix_windows_console
 from .outputs import logger
 from .tunnel import Tunnel
 
@@ -14,9 +14,8 @@ _DEFAULT_VPN = True
 _DEFAULT_MTU = 1500
 _DEFAULT_BUFFER = 2000
 _DEFAULT_ADDRESS = "127.0.0.1"
-_DEFAULT_INPUT_PORT = 1724
-_DEFAULT_OUTPUT_PORT = 1723
-_DEFAULT_CONTROL_PORT = 1725
+_DEFAULT_SEA_PORT = 8542
+_DEFAULT_CONTROL_PORT = 8543
 
 
 def boolean(value: str) -> bool:
@@ -35,8 +34,7 @@ parser.add_argument("-e", "--vpn", dest="encode", default=_DEFAULT_VPN, type=boo
 parser.add_argument("-m", "--max-trans-unit", dest="mtu", default=_DEFAULT_MTU, type=int, help=f"Tunnel interface MTU (default: {_DEFAULT_MTU})")
 parser.add_argument("-b", "--buffer", dest="buff", default=_DEFAULT_BUFFER, type=int, help=f"Tunnel interface buffer size (default: {_DEFAULT_BUFFER})")
 parser.add_argument("-a", "--address", dest="addr", default=_DEFAULT_ADDRESS, type=IPv4Address, help=f"Caerulean remote IP address (default: {_DEFAULT_ADDRESS})")
-parser.add_argument("-i", "--in-port", dest="in_port", default=_DEFAULT_INPUT_PORT, type=int, help=f"Caerulean remote output port number (default: {_DEFAULT_INPUT_PORT})")
-parser.add_argument("-o", "--out-port", dest="out_port", default=_DEFAULT_OUTPUT_PORT, type=int, help=f"Caerulean remote input port number (default: {_DEFAULT_OUTPUT_PORT})")
+parser.add_argument("-p", "--sea-port", dest="sea_port", default=_DEFAULT_SEA_PORT, type=int, help=f"Caerulean remote port number (default: {_DEFAULT_SEA_PORT})")
 parser.add_argument("-c", "--ctrl-port", dest="ctrl_port", default=_DEFAULT_CONTROL_PORT, type=int, help=f"Caerulean remote control port number (default: {_DEFAULT_CONTROL_PORT})")
 
 interface: Tunnel
@@ -44,7 +42,7 @@ interface: Tunnel
 
 def main(arguments: Sequence[str] = argv[1:]):
     global interface
-    init()
+    just_fix_windows_console()
     args = vars(parser.parse_args(arguments))
 
     interface = Tunnel(**args)
