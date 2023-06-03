@@ -28,8 +28,8 @@ ENV OUT_PORT 1724
 ENV CTRL_PORT 1725
 ENV USER_TTL 300
 
-EXPOSE $IN_PORT
-EXPOSE $CTRL_PORT
+EXPOSE $IN_PORT/udp
+EXPOSE $CTRL_PORT/tcp
 ENTRYPOINT ./whirlpool.run -a $ADDRESS -e $EXTERNAL -i $IN_PORT -o $OUT_PORT -c $CTRL_PORT -t $USER_TTL -u $MAX_USERS
 
 # TODO: open for PINGs and control ports, test: tcpdump -n -i eth0 ip

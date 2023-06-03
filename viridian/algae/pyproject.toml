@@ -22,21 +22,24 @@ packages = [
 python = ">=3.7,<3.12"
 colorama = "^0.4.6"
 pycryptodome = "^3.18.0"
+pyroute2 = "^0.7.9"
 flake8 = { version = "^3.9.2", optional = true }
 black = { version = "^20.8b1", optional = true }
 isort = { version = "^5.11.0", optional = true }
 pytest = { version = "^7.3.1", optional = true }
 docker = { version = "^6.1.2", optional = true }
+icmplib = { version = "^3.0.3", optional = true }
 pyinstaller = { version = "^5.11.0", optional = true }
 
 [tool.poetry.extras]
 build = ["pyinstaller"]
-test = ["pytest", "docker"]
+test = ["pytest", "docker", "icmplib"]
 devel = ["flake8", "black", "isort"]
 
 
 
 [tool.poetry.scripts]
+execute = { callable = "script:execute" }
 lint = { callable = "script:lint", extras = ["devel"] }
 format = { callable = "script:format", extras = ["devel"] }
 test = { callable = "script:test", extras = ["test"] }

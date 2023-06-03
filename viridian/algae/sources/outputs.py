@@ -1,5 +1,5 @@
 from enum import IntEnum
-from logging import StreamHandler, getLogger
+from logging import getLogger
 from os import environ
 
 
@@ -14,4 +14,3 @@ _level = environ.get("LOG_LEVEL", "DEBUG")
 
 logger = getLogger(__name__)
 logger.setLevel(LogLevel[_level])
-logger.addHandler(StreamHandler())

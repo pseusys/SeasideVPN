@@ -2,4 +2,4 @@
 
 `poetry env remove --all`
 
-`poetry run python3 sources/main.py`
+`sudo poetry run execute`

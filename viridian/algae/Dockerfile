@@ -6,9 +6,14 @@ ENV PYTHONUNBUFFERED 1
 ENV PYTHONDONTWRITEBYTECODE 1
 WORKDIR /seaside/algae
 
-RUN pip install poetry
-COPY sources/*.py ./sources
+RUN pip install --no-cache-dir poetry
+
+COPY sources/*.py ./sources/
+COPY test/*.py ./test/
 COPY script.py pyproject.toml README.md ./
+# TODO: revise inits!
+RUN touch __init__.py
+
 RUN poetry install --all-extras
 
 ENV COMMAND true
@@ -23,5 +28,6 @@ ENV IN_PORT 1724
 ENV OUT_PORT 1723
 ENV CTRL_PORT 1725
 
-EXPOSE $IN_PORT
-ENTRYPOINT (poetry run python3 main.py -t $TUNNEL -e $VPN -m $CONN_MTU -b $CONN_BUFF -a $ADDRESS -i $IN_PORT -o $OUT_PORT &) && sh -c "$COMMAND"
+EXPOSE $IN_PORT/udp
+EXPOSE $CTRL_PORT/tcp
+ENTRYPOINT poetry run execute -t $TUNNEL -e $VPN -m $CONN_MTU -b $CONN_BUFF -a $ADDRESS -i $IN_PORT -o $OUT_PORT
