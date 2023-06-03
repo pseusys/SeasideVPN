@@ -1,9 +1,9 @@
 from ipaddress import IPv4Address
-from socket import AF_INET, SOCK_STREAM, SHUT_WR, socket
+from socket import AF_INET, SHUT_WR, SOCK_STREAM, socket
 
 from .crypto import _MESSAGE_MAX_LEN, Status, decode_message, decrypt_rsa, encode_message, get_public_key, initialize_symmetric
-from .tunnel import Tunnel
 from .outputs import logger
+from .tunnel import Tunnel
 
 
 def initialize_control(addr: IPv4Address, encode: bool, ctrl_port: int, **_):
@@ -31,7 +31,7 @@ def initialize_control(addr: IPv4Address, encode: bool, ctrl_port: int, **_):
             public_key = encode_message(Status.PUBLIC, get_public_key())
             gate.sendall(public_key)
             gate.shutdown(SHUT_WR)
-            
+
             packet = gate.recv(_MESSAGE_MAX_LEN)
             status, key = decode_message(packet)
 
@@ -53,14 +53,14 @@ def perform_control(tunnel: Tunnel, addr: IPv4Address, encode: bool, ctrl_port: 
             status, _ = decode_message(packet)
 
             if status == Status.NO_PASS:
-                logger.info(f"Server lost session key, re-initializing control!")
+                logger.info("Server lost session key, re-initializing control!")
                 initialize_control(addr, encode, ctrl_port)
 
             elif status == Status.ERROR:
-                logger.warning(f"Server reports an error!")
+                logger.warning("Server reports an error!")
 
             elif status == Status.UNDEF:
-                logger.error(f"System enters undefined state!")
+                logger.error("System enters undefined state!")
 
 
 def break_control(addr: IPv4Address, ctrl_port: int, **_):

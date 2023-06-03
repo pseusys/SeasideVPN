@@ -5,13 +5,13 @@ from shutil import rmtree
 from time import sleep
 from typing import List
 
-from colorama import just_fix_windows_console, Fore
 from black import Mode, Report, WriteBack, reformat_one
+from colorama import Fore, just_fix_windows_console
+from docker import from_env
+from docker.types import IPAMConfig, IPAMPool
 from flake8.api.legacy import get_style_guide
 from isort import check_file, file
 from PyInstaller.__main__ import run
-from docker import from_env
-from docker.types import IPAMConfig, IPAMPool
 
 from sources.main import main
 

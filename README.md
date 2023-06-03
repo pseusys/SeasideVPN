@@ -204,5 +204,6 @@ make test
 3. Compile Go with optimizations
 4. Goroutines for server functions
 5. Use [wintun](https://git.zx2c4.com/wintun/about/) for windows client?
-6. Fix TODOs, try to get rid of `__init__.py`s
+6. Fix TODOs
 7. Setup initial message offset
+8. Add proper READMEs to subfolders

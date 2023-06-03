@@ -1,11 +1,12 @@
+from os import environ
 from random import choice, randint
 from socket import AF_INET, SHUT_WR, SOCK_DGRAM, SOCK_STREAM, gethostbyname, socket
 from string import ascii_letters, digits
 from subprocess import check_output
 from time import sleep
 from typing import Generator
-from urllib.request import urlretrieve, urlopen
-from os import environ
+from urllib.request import urlopen, urlretrieve
+
 import pytest
 
 # TODO: switch to logging, setup logging level

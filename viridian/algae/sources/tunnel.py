@@ -5,8 +5,8 @@ from socket import AF_INET, SOCK_DGRAM, socket
 from struct import pack
 from typing import Tuple
 
-from pyroute2 import IPRoute
 from colorama import Fore
+from pyroute2 import IPRoute
 
 from .crypto import decrypt_symmetric, encrypt_symmetric
 from .outputs import logger
@@ -24,7 +24,7 @@ _UNIX_IFNAMSIZ = 16
 
 def _create_tunnel(name: str) -> int:
     if len(name) > _UNIX_IFNAMSIZ:
-            raise ValueError(f"Tunnel interface name ({name}) is too long!")
+        raise ValueError(f"Tunnel interface name ({name}) is too long!")
     descriptor = open(_UNIX_TUN_DEVICE, O_RDWR)
     tunnel_desc = pack("16sH", name.encode("ascii"), _UNIX_IFF_TUN | _UNIX_IFF_NO_PI)
     ioctl(descriptor, _UNIX_TUNSETIFF, tunnel_desc)
@@ -52,7 +52,7 @@ class Tunnel:
     @property
     def operational(self) -> bool:
         return self._operational
-    
+
     @property
     def default_ip(self) -> str:
         return self._def_ip
@@ -114,7 +114,8 @@ class Tunnel:
                     packet = packet if not self._encode else encrypt_symmetric(packet)
                     gate.sendto(packet, (self._address, self._sea_port))
         except OSError:
-            pass  # Required as sometimes `self._descriptor` is getting destroyed so fast it breaks os.read
+            # Required as sometimes `self._descriptor` is getting destroyed so fast it breaks os.read
+            pass
 
     def receive_from_caerulean(self):
         with socket(AF_INET, SOCK_DGRAM) as gate:
