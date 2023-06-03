@@ -207,3 +207,8 @@ make test
 6. Goroutines for server functions
 7. Investigate if server can listen and send control simultaneously, add other port if not
 8. Use [pytun](https://pypi.org/project/python-pytun/) library maybe?
+9. Use [wintun](https://git.zx2c4.com/wintun/about/) for windows client?
+10. Fix TODOs, try to get rid of `__init__.py`s
+11. Migrate to ports 8531 - 8555, setup any port number for algae
+12. Use `pyroute2` for IP address setup
+13. Setup initial message offset

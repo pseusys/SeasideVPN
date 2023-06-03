@@ -31,28 +31,42 @@ func deleteViridian(userID string, timeout bool) {
 }
 
 func ListenControlPort(ip string, port int) {
-	// Open viridian control UDP connection
+	// Open viridian control TCP connection
 	network := fmt.Sprintf("%s:%d", ip, port)
 
-	gateway, err := net.ResolveUDPAddr(UDP, network)
+	gateway, err := net.ResolveTCPAddr(TCP, network)
 	if err != nil {
 		logrus.Fatalf("Couldn't resolve address (%s): %v", network, err)
 	}
 
-	connection, err := net.ListenUDP(UDP, gateway)
+	// Create a TCP listener
+	listener, err := net.ListenTCP(TCP, gateway)
 	if err != nil {
-		logrus.Fatalf("Couldn't resolve connection (%s): %v", gateway.String(), err)
+		logrus.Fatalf("Couldn't create listener (%s): %v", gateway.String(), err)
 	}
 
-	defer connection.Close()
+	defer listener.Close()
 	buffer := make([]byte, CTRLBUFFERSIZE)
 
 	for {
-		// Read CTRLBUFFERSIZE of data from tunnel
-		read, address, err := connection.ReadFromUDP(buffer)
+		// Accept the incoming TCP connection
+		connection, err := listener.AcceptTCP()
+		if err != nil {
+			logrus.Fatalf("Couldn't resolve connection (%s): %v", gateway.String(), err)
+		}
+
+		// Read CTRLBUFFERSIZE of data from viridian
+		read, err := connection.Read(buffer)
 		if err != nil || read == 0 {
 			logrus.Errorf("Reading control error (%d bytes read): %v", read, err)
-			return
+			continue
+		}
+
+		// Resolve viridian TCP address
+		address, err := net.ResolveTCPAddr(TCP, connection.RemoteAddr().String())
+		if err != nil || read == 0 {
+			logrus.Errorf("Resolving remote user address error: %v", connection.RemoteAddr().String())
+			continue
 		}
 
 		userID := address.IP.String()
@@ -62,8 +76,8 @@ func ListenControlPort(ip string, port int) {
 		status, data, err := ResolveMessage(buffer[:read])
 		if err != nil {
 			logrus.Warnln("Couldn't parse message from user", userID)
-			SendStatusToUser(ERROR, address, connection)
-			return
+			SendStatusToUser(ERROR, nil, connection)
+			continue
 		}
 
 		// Prepare answer
@@ -108,13 +122,35 @@ func ListenControlPort(ip string, port int) {
 
 		// Send answer back to user
 		logrus.Infoln("Sending result to user", userID)
-		connection.WriteToUDP(message, address)
+		connection.Write(message)
+		connection.Close()
 	}
 }
 
-func SendStatusToUser(status Status, address *net.UDPAddr, connection *net.UDPConn) {
+func SendStatusToUser(status Status, address net.IP, connection *net.TCPConn) {
+	closeConnection := false
+	if connection == nil {
+		closeConnection = true
+
+		remote, err := net.ResolveTCPAddr(TCP, fmt.Sprintf("%s:%d", address.String(), *control))
+		if err != nil {
+			logrus.Errorf("Resolving remote user address error: %v", address.String())
+			return
+		}
+
+		connection, err = net.DialTCP(TCP, nil, remote)
+		if err != nil {
+			logrus.Errorf("Dialing via TCP error to address: %v", address.String())
+			return
+		}
+	}
+
 	message, _ := EncodeMessage(status, nil)
-	connection.WriteToUDP(message, address)
+	connection.Write(message)
+
+	if closeConnection {
+		connection.Close()
+	}
 }
 
 func prepareEncryptedSymmetricalKeyForUser(buffer []byte, userID string) ([]byte, error) {

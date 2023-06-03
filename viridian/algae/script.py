@@ -1,21 +1,31 @@
 from glob import glob
+from os import getcwd
 from pathlib import Path
 from shutil import rmtree
+from time import sleep
 from typing import List
 
 from black import Mode, Report, WriteBack, reformat_one
 from flake8.api.legacy import get_style_guide
 from isort import check_file, file
 from PyInstaller.__main__ import run
-from pytest import main
+from docker import from_env
+from docker.types import IPAMConfig, IPAMPool
 
-_ALGAE_ROOT = Path(__file__).parent
+from sources.main import main
+
+_ROOT_PATH = Path(getcwd())
+_ALGAE_ROOT = _ROOT_PATH / Path("viridian/algae")
 _EXECUTABLE_NAME = "algae.run"
 _MAX_LINE_LEN = 180
 
 
 def _get_paths() -> List[Path]:
     return [path for path in _ALGAE_ROOT.glob("**/*.py")]
+
+
+def execute():
+    main()
 
 
 def lint() -> int:
@@ -43,8 +53,57 @@ def format(modify: bool = True) -> int:
 
 
 def test():
-    test_dir = _ALGAE_ROOT / Path("test/")
-    return main(["-s", str(test_dir.resolve())])
+    client = from_env()
+    internal_pool = IPAMPool(subnet="10.0.0.0/24", gateway="10.0.0.1")
+    internal_ipam = IPAMConfig(pool_configs=[internal_pool])
+    internal_net = client.networks.create("sea-int", driver="bridge", ipam=internal_ipam)
+
+    caerulean_address = "10.0.0.87"
+    caerulean_env = dict(ADDRESS="10.0.0.87", LOG_LEVEL="DEBUG")
+    viridian_env = dict(ADDRESS="10.0.0.87", LOG_LEVEL="DEBUG")
+
+    caerulean_path = _ROOT_PATH / Path("caerulean/whirlpool")
+    caerulean_tag = "whirlpool-latest"
+    client.images.build(path=str(caerulean_path), tag=caerulean_tag, rm=True)
+    caerulean_cnt = client.containers.create(caerulean_tag, name="whirlpool", detach=True, privileged=True, network="none", environment=caerulean_env)
+
+    client.networks.get("none").disconnect(caerulean_cnt)
+    internal_net.connect(caerulean_cnt, ipv4_address=caerulean_address)
+    caerulean_cnt.start()
+    # Wait for a second to make sure caerulean started
+    # TODO: use healthcheck instead
+    sleep(5)
+
+    viridian_tag = "algae-latest"
+    client.images.build(path=str(_ALGAE_ROOT), tag=viridian_tag, rm=True)
+
+    result = 0
+    for encrypt in (True, False):
+        print(f"Testing in {'VPN' if encrypt else 'Proxy'} mode:")
+        viridian_env["VPN"] = encrypt
+        viridian_cnt = client.containers.run(viridian_tag, name="algae", detach=True, privileged=True, network=internal_net.name, environment=viridian_env)
+        # Wait for a second to make sure viridian started
+        # TODO: use healthcheck instead
+        sleep(5)
+
+        exit, output = viridian_cnt.exec_run(["poetry", "run", "pytest", "-s", "test/"])
+        viridian_cnt.kill("SIGINT")
+        viridian_cnt.wait()
+        print(viridian_cnt.logs().decode())
+        viridian_cnt.remove()
+
+        # TODO: logging
+        print(output.decode())
+
+        result += exit
+        if exit != 0:
+            break
+
+    caerulean_cnt.stop()
+    caerulean_cnt.remove()
+    internal_net.remove()
+    client.close()
+    return result
 
 
 def build():

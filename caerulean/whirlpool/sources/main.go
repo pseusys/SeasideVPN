@@ -13,6 +13,7 @@ const (
 	DEF_ADDRESS   = "none"
 	TUNNEL_IP     = "192.168.0.87/24"
 	UDP           = "udp4"
+	TCP           = "tcp4"
 	INPUT_PORT    = 1723
 	OUTPUT_PORT   = 1724
 	CONTROL_PORT  = 1725

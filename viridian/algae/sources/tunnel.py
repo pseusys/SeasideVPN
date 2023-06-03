@@ -1,16 +1,18 @@
 from fcntl import ioctl
-from ipaddress import IPv4Address, IPv4Network
+from ipaddress import IPv4Address
 from os import O_RDWR, getegid, geteuid, open, read, write
 from re import compile, search
-from socket import AF_INET, SOCK_DGRAM, socket
+from socket import AF_INET, SOCK_DGRAM, SOCK_STREAM, SHUT_WR, socket
 from struct import pack
 from subprocess import check_call, check_output
 from sys import stdout
 from typing import Tuple
 
+from pyroute2 import IPRoute
 from colorama import Fore, Style
-from crypto import _MESSAGE_MAX_LEN, Status, decode_message, decrypt_rsa, decrypt_symmetric, encode_message, encrypt_symmetric, get_public_key, initialize_symmetric
-from outputs import logger
+
+from .crypto import _MESSAGE_MAX_LEN, Status, decode_message, decrypt_rsa, decrypt_symmetric, encode_message, encrypt_symmetric, get_public_key, initialize_symmetric
+from .outputs import logger
 
 _UNIX_TUNSETIFF = 0x400454CA
 _UNIX_TUNSETOWNER = 0x400454CC
@@ -70,12 +72,10 @@ class Tunnel:
         return "127.0.0.1", "eth0"
 
     def _get_default_network(self) -> Tuple[int, str]:
-        default_interface = check_output(["ip", "addr", "show", self._def_intf]).decode(stdout.encoding)
-        default_ip = search(self._DEFAULT_IP, default_interface)
-        default_ip = "127.0.0.1" if default_ip is None else default_ip.group(1)
-        default_netmask = search(self._DEFAULT_NETMASK, default_interface)
-        default_netmask = "255.255.255.0" if default_netmask is None else default_netmask.group(1)
-        return IPv4Network(f"0.0.0.0/{default_netmask}").prefixlen, str(IPv4Address(default_ip))
+        with IPRoute() as ip:
+            caerulean_dev = dict(ip.route("get", dst=self._address)[0]["attrs"])["RTA_OIF"]
+            caerulean_iface_opts = ip.get_addr(index=caerulean_dev)[0]
+            return caerulean_iface_opts["prefixlen"], dict(caerulean_iface_opts["attrs"])["IFA_ADDRESS"]
 
     def up(self):
         self._def_route, self._def_intf = self._get_default_route()
@@ -96,43 +96,58 @@ class Tunnel:
         self._operational = False
 
     def initialize_control(self):
-        self._caerulean_gate = socket(AF_INET, SOCK_DGRAM)
-        self._caerulean_gate.bind((self._def_ip, self._control_port))
+        caerulean_address = (self._address, self._control_port)
+        caerulean_gate = socket(AF_INET, SOCK_STREAM)
+        caerulean_gate.connect(caerulean_address)
+        logger.debug(f"Sending control to caerulean {self._address}:{self._control_port}")
 
         if not self._encode:
             request = encode_message(Status.SUCCESS, bytes())
-            self._caerulean_gate.sendto(request, (self._address, self._control_port))
-            self._operational = True
-            return
+            caerulean_gate.sendall(request)
+            caerulean_gate.shutdown(SHUT_WR)
 
-        public_key = encode_message(Status.PUBLIC, get_public_key())
-        # TODO: check multiple calls to control port + answers
-        # TODO: add other protocol parts implementation (i.e. key resending, etc.)
-        self._caerulean_gate.sendto(public_key, (self._address, self._control_port))
-        logger.debug(f"Sending control to caerulean {self._address}:{self._control_port}")
-        packet = self._caerulean_gate.recv(_MESSAGE_MAX_LEN)
+            packet = caerulean_gate.recv(_MESSAGE_MAX_LEN)
+            status, _ = decode_message(packet)
 
-        status, key = decode_message(packet)
-        if status == Status.SUCCESS and key is not None:
-            initialize_symmetric(decrypt_rsa(key))
-            self._operational = True
+            if status == Status.SUCCESS:
+                logger.info(f"Connected to caerulean {self._address}:{self._control_port} as Proxy successfully!")
+                self._operational = True
+            else:
+                logger.info(f"Error connecting to caerulean (status: {status})!")
+
         else:
-            raise RuntimeError(f"Couldn't exchange keys with caerulean (status: {status})!")
+            public_key = encode_message(Status.PUBLIC, get_public_key())
+            # TODO: check multiple calls to control port + answers
+            # TODO: add other protocol parts implementation (i.e. key resending, etc.)
+            caerulean_gate.sendall(public_key)
+            caerulean_gate.shutdown(SHUT_WR)
+
+            packet = caerulean_gate.recv(_MESSAGE_MAX_LEN)
+            status, key = decode_message(packet)
+
+            if status == Status.SUCCESS and key is not None:
+                initialize_symmetric(decrypt_rsa(key))
+                logger.info(f"Connected to caerulean {self._address}:{self._control_port} as VPN successfully!")
+                self._operational = True
+            else:
+                raise RuntimeError(f"Couldn't exchange keys with caerulean (status: {status})!")
+
+        caerulean_gate.close()
 
     def send_to_caerulean(self):
-        self._caerulean_gate = socket(AF_INET, SOCK_DGRAM)
-        self._caerulean_gate.bind((self._def_ip, self._output_port))
+        caerulean_gate = socket(AF_INET, SOCK_DGRAM)
+        caerulean_gate.bind((self._def_ip, self._output_port))
         while self._operational:
             packet = read(self._descriptor, self._buffer)
             logger.debug(f"Sending {len(packet)} bytes to caerulean {self._address}:{self._output_port}")
             packet = packet if not self._encode else encrypt_symmetric(packet)
-            self._caerulean_gate.sendto(packet, (self._address, self._output_port))
+            caerulean_gate.sendto(packet, (self._address, self._output_port))
 
     def receive_from_caerulean(self):
-        self._caerulean_gate = socket(AF_INET, SOCK_DGRAM)
-        self._caerulean_gate.bind((self._def_ip, self._input_port))
+        caerulean_gate = socket(AF_INET, SOCK_DGRAM)
+        caerulean_gate.bind((self._def_ip, self._input_port))
         while self._operational:
-            packet = self._caerulean_gate.recv(self._buffer)
+            packet = caerulean_gate.recv(self._buffer)
             logger.debug(f"Receiving {len(packet)} bytes from caerulean {self._address}:{self._input_port}")
             packet = packet if not self._encode else decrypt_symmetric(packet)
             write(self._descriptor, packet)
