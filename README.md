@@ -14,8 +14,8 @@ The parameters can be found in the table below:
 
 | Parameter Name | Parameter Value |
 | --- | --- |
-| Caerulean incoming UDP port | 1723 |
-| Caerulean outcoming UDP port | 1724 |
+| Seaside UDP port | 8542 |
+| Control TCP port | 8543 |
 | Caerulean tunnel network | 192.168.0.87/24 |
 | Tunnel MTU | 1500 |
 | Transmission packet buffer | 2000 |
@@ -81,12 +81,12 @@ TODO!
 Whirlpool program is written in Go language.  
 It manages encrypting, decrypting, assembling and transferring requests and responses.
 
-Whirlpool accepts client packages at UDP port 1723, no more than 2000 bytes in size, encrypted.  
+Whirlpool accepts client packages at UDP port 8542, no more than 2000 bytes in size, encrypted.  
 TODO: encryption negotiation is yet to be implemented!
 
 Whirlpool sends messages to UDP port 1724, in packets of size 2000, encrypted.
 
-> WARNING! Any UDP packets arriving to port 1723 will be treated as user packets, i.e. user should never send packets to port 1723 of any server via Seaside VPN!
+> WARNING! Any UDP packets arriving to port 8542 will be treated as user packets, i.e. user should never send packets to port 8542 of any server via Seaside VPN!
 
 Test whirlpool server (with algae client):
 
@@ -201,14 +201,11 @@ make test
 
 1. Add run options to all run configurations, Makefiles, split READMEs
 2. Add CONTRIBUTING with rules, e.g. branch names with '-'
-3. Re-write tests
-4. Compile Go with optimizations
-5. Handle re- and average connections (control part)
-6. Goroutines for server functions
-7. Investigate if server can listen and send control simultaneously, add other port if not
-8. Use [pytun](https://pypi.org/project/python-pytun/) library maybe?
-9. Use [wintun](https://git.zx2c4.com/wintun/about/) for windows client?
-10. Fix TODOs, try to get rid of `__init__.py`s
-11. Migrate to ports 8531 - 8555, setup any port number for algae
-12. Use `pyroute2` for IP address setup
-13. Setup initial message offset
+3. Compile Go with optimizations
+4. Handle re- and average connections (control part)
+5. Goroutines for server functions
+6. Use [pytun](https://pypi.org/project/python-pytun/) library maybe?
+7. Use [wintun](https://git.zx2c4.com/wintun/about/) for windows client?
+8. Fix TODOs, try to get rid of `__init__.py`s
+9. Use `pyroute2` for IP address setup
+10. Setup initial message offset

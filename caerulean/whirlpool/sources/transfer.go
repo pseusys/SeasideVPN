@@ -23,11 +23,13 @@ func init() {
 	IOBUFFERSIZE = buff + BUFFER_OVERHEAD
 }
 
-func openConnection(address string) *net.UDPConn {
+func ReceivePacketsFromViridian(tunnel *water.Interface) {
+	buffer := make([]byte, IOBUFFERSIZE)
+
 	// Resolve UDP address to send to
-	gateway, err := net.ResolveUDPAddr(UDP, address)
+	gateway, err := net.ResolveUDPAddr(UDP, fmt.Sprintf("%s:%d", *iIP, *port))
 	if err != nil {
-		logrus.Fatalf("Couldn't resolve address (%s): %v", address, err)
+		logrus.Fatalf("Couldn't resolve local address: %v", err)
 	}
 
 	// Open the corresponding UDP socket
@@ -36,14 +38,6 @@ func openConnection(address string) *net.UDPConn {
 		logrus.Fatalf("Couldn't resolve connection (%s): %v", gateway.String(), err)
 	}
 
-	return connection
-}
-
-func ReceivePacketsFromViridian(tunnel *water.Interface) {
-	buffer := make([]byte, IOBUFFERSIZE)
-
-	// Open viridian incoming UDP connection
-	connection := openConnection(fmt.Sprintf("%s:%d", *iIP, *input))
 	defer connection.Close()
 
 	for {
@@ -102,10 +96,6 @@ func decryptPacket(ciphertext []byte, address *net.UDPAddr) ([]byte, error) {
 func SendPacketsToViridian(tunnel *water.Interface) {
 	buffer := make([]byte, IOBUFFERSIZE)
 
-	// Open viridian outcoming UDP connection
-	connection := openConnection(fmt.Sprintf("%s:%d", *iIP, *output))
-	defer connection.Close()
-
 	for {
 		// Read IOBUFFERSIZE of data from tunnel
 		r, err := tunnel.Read(buffer)
@@ -122,7 +112,7 @@ func SendPacketsToViridian(tunnel *water.Interface) {
 		}
 
 		// Resolve viridian address to send to
-		gateway, err := net.ResolveUDPAddr(UDP, fmt.Sprintf("%s:%v", header.Dst.String(), *output))
+		gateway, err := net.ResolveUDPAddr(UDP, fmt.Sprintf("%s:%v", header.Dst.String(), *port))
 		if err != nil {
 			logrus.Errorln("Parsing return address error:", err)
 			continue
@@ -136,10 +126,16 @@ func SendPacketsToViridian(tunnel *water.Interface) {
 			continue
 		}
 
+		// Open the corresponding UDP connection
+		connection, err := net.DialUDP(UDP, nil, gateway)
+		if err != nil {
+			logrus.Fatalf("Couldn't resolve connection (%s): %v", gateway.String(), err)
+		}
+
 		logrus.Infof("Sending %d bytes to viridian %v (src: %v, dst: %v)", r, gateway, header.Src, header.Dst)
 
 		// Send packet to viridian
-		s, err := connection.WriteToUDP(packet, gateway)
+		s, err := connection.Write(packet)
 		if err != nil || s == 0 {
 			logrus.Errorf("Writing to viridian error (%d bytes written): %v", s, err)
 			continue

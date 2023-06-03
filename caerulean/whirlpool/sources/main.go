@@ -14,9 +14,8 @@ const (
 	TUNNEL_IP     = "192.168.0.87/24"
 	UDP           = "udp4"
 	TCP           = "tcp4"
-	INPUT_PORT    = 1723
-	OUTPUT_PORT   = 1724
-	CONTROL_PORT  = 1725
+	SEA_PORT      = 8542
+	CONTROL_PORT  = 8543
 	USER_TTL      = 300
 	MAX_USERS     = 16
 	DEF_LOG_LEVEL = "WARNING"
@@ -25,8 +24,7 @@ const (
 var (
 	iIP       = flag.String("a", DEF_ADDRESS, "Internal whirlpool IP - towards viridian (required)")
 	eIP       = flag.String("e", DEF_ADDRESS, "External whirlpool IP - towards outside world (default: same as internal address)")
-	input     = flag.Int("i", INPUT_PORT, fmt.Sprintf("UDP port for receiving UDP packets (default: %d)", INPUT_PORT))
-	output    = flag.Int("o", OUTPUT_PORT, fmt.Sprintf("UDP port for sending UDP packets (default: %d)", OUTPUT_PORT))
+	port      = flag.Int("p", SEA_PORT, fmt.Sprintf("UDP port for receiving UDP packets (default: %d)", SEA_PORT))
 	control   = flag.Int("c", CONTROL_PORT, fmt.Sprintf("TCP port for communication with viridian (default: %d)", CONTROL_PORT))
 	user_ttl  = flag.Int("t", USER_TTL, fmt.Sprintf("Time system keeps user password for without interaction, in minutes (default: %d hours)", USER_TTL/60))
 	max_users = flag.Int("u", MAX_USERS, fmt.Sprintf("Maximum number of users, that are able to connect to this whirlpool node (default: %d)", MAX_USERS))

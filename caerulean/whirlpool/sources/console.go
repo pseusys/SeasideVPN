@@ -44,7 +44,7 @@ func AllocateInterface(name string, tunnelIP *net.IP, tunnelNetwork *net.IPNet) 
 }
 
 func ConfigureForwarding(externalInterface string, internalInterface string, tunnelInterface string, tunnelIP *net.IP) {
-	portStr := strconv.Itoa(*input)
+	portStr := strconv.Itoa(*port)
 	ctrlStr := strconv.Itoa(*control)
 	markStr := strconv.Itoa(MARK)
 

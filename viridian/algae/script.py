@@ -5,6 +5,7 @@ from shutil import rmtree
 from time import sleep
 from typing import List
 
+from colorama import just_fix_windows_console, Fore
 from black import Mode, Report, WriteBack, reformat_one
 from flake8.api.legacy import get_style_guide
 from isort import check_file, file
@@ -53,7 +54,9 @@ def format(modify: bool = True) -> int:
 
 
 def test():
+    just_fix_windows_console()
     client = from_env()
+
     internal_pool = IPAMPool(subnet="10.0.0.0/24", gateway="10.0.0.1")
     internal_ipam = IPAMConfig(pool_configs=[internal_pool])
     internal_net = client.networks.create("sea-int", driver="bridge", ipam=internal_ipam)
@@ -70,7 +73,7 @@ def test():
     client.networks.get("none").disconnect(caerulean_cnt)
     internal_net.connect(caerulean_cnt, ipv4_address=caerulean_address)
     caerulean_cnt.start()
-    # Wait for a second to make sure caerulean started
+    # Wait for a second to make sure caerulean startRESETed
     # TODO: use healthcheck instead
     sleep(5)
 
@@ -79,7 +82,7 @@ def test():
 
     result = 0
     for encrypt in (True, False):
-        print(f"Testing in {'VPN' if encrypt else 'Proxy'} mode:")
+        print(f"Testing in {Fore.YELLOW}{'VPN' if encrypt else 'Proxy'}{Fore.RESET} mode:", end=" ")
         viridian_env["VPN"] = encrypt
         viridian_cnt = client.containers.run(viridian_tag, name="algae", detach=True, privileged=True, network=internal_net.name, environment=viridian_env)
         # Wait for a second to make sure viridian started
@@ -89,15 +92,18 @@ def test():
         exit, output = viridian_cnt.exec_run(["poetry", "run", "pytest", "-s", "test/"])
         viridian_cnt.kill("SIGINT")
         viridian_cnt.wait()
-        print(viridian_cnt.logs().decode())
-        viridian_cnt.remove()
 
         # TODO: logging
-        print(output.decode())
-
-        result += exit
         if exit != 0:
-            break
+            print(f"{Fore.RED}failed{Fore.RESET}!")
+            print(output.decode())
+            print(viridian_cnt.logs().decode())
+            print(caerulean_cnt.logs().decode())
+        else:
+            print(f"{Fore.GREEN}success{Fore.RESET}!")
+
+        viridian_cnt.remove()
+        result |= exit
 
     caerulean_cnt.stop()
     caerulean_cnt.remove()
