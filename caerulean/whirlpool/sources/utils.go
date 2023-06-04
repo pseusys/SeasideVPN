@@ -9,18 +9,10 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
-func concatMultipleSlices[T any](slices ...[]T) []T {
-	total := 0
-	for _, s := range slices {
-		total += len(s)
+func Min(a, b int) int {
+	if a < b {
+		return a
+	} else {
+		return b
 	}
-
-	result := make([]T, total)
-
-	counter := 0
-	for _, s := range slices {
-		counter += copy(result[counter:], s)
-	}
-
-	return result
 }

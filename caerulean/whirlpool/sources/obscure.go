@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/binary"
 	"errors"
+	"math"
 	"math/rand"
 )
 
@@ -28,65 +29,45 @@ func convertToStatus(status byte) Status {
 const (
 	MAX_MESSAGE = CTRLBUFFERSIZE
 	HEADER      = 5
+	GRAVITY     = 4
 )
 
-func ResolveMessage(data []byte) (Status, []byte, error) {
-	shortLength := uint16(len(data))
-
-	start := binary.BigEndian.Uint16(data[1:3])
-	if start > shortLength {
-		return UNDEF, nil, errors.New("wrong message formatting: start")
-	}
-
-	finish := binary.BigEndian.Uint16(data[3:5])
-	if finish > shortLength || start > finish {
-		return UNDEF, nil, errors.New("wrong message formatting: finish")
-	}
-
-	status := convertToStatus(data[0])
-	if start == 0 && finish == 0 {
-		return status, nil, nil
-	} else {
-		return status, data[start:finish], nil
-	}
-}
-
 func EncodeMessage(status Status, data []byte) ([]byte, error) {
-	allowed := MAX_MESSAGE - HEADER
+	available_space := MAX_MESSAGE - GRAVITY - HEADER
 	length := len(data)
-	if length > allowed {
+	if length > available_space {
 		return nil, errors.New("length of data is more than max message length")
 	}
 
-	header := []byte{byte(status), 0, 0, 0, 0}
-	if length != 0 {
-		start := (rand.Int() % (allowed - length)) + HEADER
-		binary.BigEndian.PutUint16(header[1:], uint16(start))
+	random_length := rand.Int() % Min(available_space-length, math.MaxUint16)
+	total_length := random_length + length + GRAVITY + HEADER
+	prefix_length := rand.Int() % Min(math.MaxUint8, total_length)
 
-		finish := start + length
-		binary.BigEndian.PutUint16(header[3:], uint16(finish))
+	payload := make([]byte, total_length)
+	_, err := rand.Read(payload)
+	if err != nil {
+		return nil, errors.New("error while generating random bytes")
+	}
 
-		prefix := make([]byte, start-HEADER)
-		_, err := rand.Read(prefix)
-		if err != nil {
-			return nil, errors.New("error while generating random string")
-		}
+	data_offset := GRAVITY + prefix_length
+	payload[GRAVITY-1] = byte(data_offset)
+	payload[data_offset] = byte(status)
+	binary.BigEndian.PutUint16(payload[data_offset+1:], uint16(length))
 
-		leftover := rand.Int() % (allowed - length)
-		postfix := make([]byte, leftover)
-		_, err = rand.Read(postfix)
-		if err != nil {
-			return nil, errors.New("error while generating random string")
-		}
+	if data != nil {
+		copy(payload[data_offset+3:], data)
+	}
+	return payload, nil
+}
 
-		return concatMultipleSlices(header, prefix, data, postfix), nil
+func DecodeMessage(data []byte) (Status, []byte, error) {
+	offset := uint16(data[GRAVITY-1])
+	status := convertToStatus(data[offset])
+	length := binary.BigEndian.Uint16(data[offset+1 : offset+3])
+	if length == 0 {
+		return status, nil, nil
 	} else {
-		tail := rand.Int() % allowed
-		filling := make([]byte, tail)
-		_, err := rand.Read(filling)
-		if err != nil {
-			return nil, errors.New("error while generating random string")
-		}
-		return concatMultipleSlices(header, filling), nil
+		start := offset + 3
+		return status, data[start : start+length], nil
 	}
 }
