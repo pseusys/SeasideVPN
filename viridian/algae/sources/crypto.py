@@ -32,7 +32,7 @@ class Status(IntEnum):
     PUBLIC = 5
 
     @classmethod
-    def _missing_(cls, _):
+    def _missing_(cls, _) -> "Status":
         return cls.UNDEF
 
 
@@ -45,7 +45,7 @@ def get_public_key() -> bytes:
     return _RSA_KEY.public_key().export_key("DER")
 
 
-def initialize_symmetric(key: bytes):
+def initialize_symmetric(key: bytes) -> None:
     global _CHACHA_KEY
     _CHACHA_KEY = key
 
@@ -89,9 +89,10 @@ def decode_message(data: bytes) -> Tuple[Status, Optional[bytes]]:
     offset = data[_MESSAGE_GRAVITY - 1]
     status = Status(data[offset])
 
-    length = int.from_bytes(data[offset+1:offset+3], "big")
+    start, end = offset + 1, offset + 3
+    length = int.from_bytes(data[start:end], "big")
     if length == 0:
         return status, None
     else:
-        start = offset + 3
-        return status, data[start:start+length]
+        start, end = offset + 3, offset + 3 + length
+        return status, data[start:end]
