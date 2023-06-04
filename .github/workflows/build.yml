@@ -21,6 +21,11 @@ jobs:
         with:
           python-version: "3.10"
 
+      - name: Install Dependencies 🔮
+        run: |
+          pip3 install poetry
+          poetry -C viridian/algae install --all-extras
+
       - name: Create Executable ID 📛
         id: id-creator
         env:
@@ -34,7 +39,7 @@ jobs:
       - name: Build Algae Executable 🏗️
         env:
           EXEC_NAME: ${{ format('algae-executable-{0}', steps.id-creator.outputs.ID) }}
-        run: make -C viridian/algae build EXECUTABLE_NAME=${{ env.EXEC_NAME }}.run
+        run: poetry -C viridian/algae run build ${{ env.EXEC_NAME }}.run
 
       - name: Save Artifact 🏺
         uses: actions/upload-artifact@v3

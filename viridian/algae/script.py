@@ -1,9 +1,10 @@
 from glob import glob
+from logging import getLogger
 from os import getcwd
 from pathlib import Path
 from shutil import rmtree
+from sys import argv
 from time import sleep
-from typing import List
 
 from black import Mode, Report, WriteBack, reformat_one
 from colorama import Fore, just_fix_windows_console
@@ -11,6 +12,7 @@ from docker import from_env
 from docker.types import IPAMConfig, IPAMPool
 from flake8.api.legacy import get_style_guide
 from isort import check_file, file
+from mypy import api
 from PyInstaller.__main__ import run
 
 from sources.main import main
@@ -20,12 +22,10 @@ _ALGAE_ROOT = _ROOT_PATH / Path("viridian/algae")
 _EXECUTABLE_NAME = "algae.run"
 _MAX_LINE_LEN = 180
 
-
-def _get_paths() -> List[Path]:
-    return [path for path in _ALGAE_ROOT.glob("**/*.py")]
+logger = getLogger(__name__)
 
 
-def execute():
+def execute() -> None:
     main()
 
 
@@ -36,8 +36,12 @@ def lint() -> int:
     report = get_style_guide(select=selector, ignore=ignore, max_line_length=_MAX_LINE_LEN).check_files()
     lint_result += sum(len(report.get_statistics(sel)) for sel in selector)
     lint_result += format(False)
-    # TODO: Add mypy testing
-    # @mypy . --exclude venv*,build
+    mypy_opts = ["--strict", "--ignore-missing-imports", "--no-namespace-packages"]
+    out, err, code = api.run(mypy_opts + [str(file) for file in _ALGAE_ROOT.glob("**/*.py")])
+    if code != 0:
+        logger.error(out)
+        logger.error(err)
+    lint_result += code
     return lint_result
 
 
@@ -45,7 +49,7 @@ def format(modify: bool = True) -> int:
     result = True
     report = Report(check=not modify, quiet=False)
     write = WriteBack.YES if modify else WriteBack.CHECK
-    for path in _get_paths():
+    for path in _ALGAE_ROOT.glob("**/*.py"):
         mode = Mode(line_length=_MAX_LINE_LEN)
         reformat_one(path, False, write, mode, report)
         edited = file(path, line_length=_MAX_LINE_LEN) if modify else check_file(path, True, line_length=_MAX_LINE_LEN)
@@ -53,7 +57,7 @@ def format(modify: bool = True) -> int:
     return report.return_code + (0 if result else 1)
 
 
-def test():
+def test() -> int:
     just_fix_windows_console()
     client = from_env()
 
@@ -82,25 +86,23 @@ def test():
 
     result = 0
     for encrypt in (False, True):
-        print(f"Testing in {Fore.YELLOW}{'VPN' if encrypt else 'Proxy'}{Fore.RESET} mode:", end=" ")
-        viridian_env["VPN"] = encrypt
+        viridian_env["VPN"] = str(encrypt)
         viridian_cnt = client.containers.run(viridian_tag, name="algae", detach=True, privileged=True, network=internal_net.name, environment=viridian_env)
         # Wait for a second to make sure viridian started
         # TODO: use healthcheck instead
         sleep(5)
 
-        exit, output = viridian_cnt.exec_run(["poetry", "run", "pytest", "-s", "test/"])
+        exit, output = viridian_cnt.exec_run(["poetry", "run", "pytest", "--log-cli-level=DEBUG", "test/"])
         viridian_cnt.kill("SIGINT")
         viridian_cnt.wait()
 
-        # TODO: logging
         if exit != 0:
-            print(f"{Fore.RED}failed{Fore.RESET}!")
-            print(output.decode())
-            print(viridian_cnt.logs().decode())
-            print(caerulean_cnt.logs().decode())
+            logger.error(f"Testing in {Fore.YELLOW}{'VPN' if encrypt else 'Proxy'}{Fore.RESET} mode: {Fore.RED}failed{Fore.RESET}!")
+            logger.error(output.decode())
+            logger.error(viridian_cnt.logs().decode())
+            logger.error(caerulean_cnt.logs().decode())
         else:
-            print(f"{Fore.GREEN}success{Fore.RESET}!")
+            logger.info(f"Testing in {Fore.YELLOW}{'VPN' if encrypt else 'Proxy'}{Fore.RESET} mode: {Fore.GREEN}success{Fore.RESET}!")
 
         viridian_cnt.remove()
         result |= exit
@@ -112,11 +114,12 @@ def test():
     return result
 
 
-def build():
-    run(["-F", "-c", "-y", "-n", _EXECUTABLE_NAME, "sources/main.py"])
+def build() -> None:
+    executable_name = argv[1] if len(argv) > 1 else _EXECUTABLE_NAME
+    run(["-F", "-c", "-y", "-n", executable_name, "sources/main.py"])
 
 
-def clean():
+def clean() -> None:
     rmtree("build", ignore_errors=True)
     rmtree("dist", ignore_errors=True)
     for path in glob("**/__pycache__", recursive=True):

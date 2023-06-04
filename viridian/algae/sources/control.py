@@ -6,7 +6,7 @@ from .outputs import logger
 from .tunnel import Tunnel
 
 
-def initialize_control(addr: IPv4Address, encode: bool, ctrl_port: int, **_):
+def initialize_control(addr: IPv4Address, encode: bool, ctrl_port: int, **_) -> None:
     address = str(addr)
     caerulean_address = (address, ctrl_port)
 
@@ -42,7 +42,7 @@ def initialize_control(addr: IPv4Address, encode: bool, ctrl_port: int, **_):
                 raise RuntimeError(f"Couldn't exchange keys with caerulean (status: {status})!")
 
 
-def perform_control(tunnel: Tunnel, addr: IPv4Address, encode: bool, ctrl_port: int, **_):
+def perform_control(tunnel: Tunnel, addr: IPv4Address, encode: bool, ctrl_port: int, **_) -> None:
     with socket(AF_INET, SOCK_STREAM) as gate:
         gate.bind((tunnel.default_ip, ctrl_port))
         gate.listen(1)
@@ -63,7 +63,7 @@ def perform_control(tunnel: Tunnel, addr: IPv4Address, encode: bool, ctrl_port: 
                 logger.error("System enters undefined state!")
 
 
-def break_control(addr: IPv4Address, ctrl_port: int, **_):
+def break_control(addr: IPv4Address, ctrl_port: int, **_) -> None:
     address = str(addr)
     caerulean_address = (address, ctrl_port)
 

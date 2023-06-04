@@ -57,7 +57,7 @@ class Tunnel:
     def default_ip(self) -> str:
         return self._def_ip
 
-    def delete(self):
+    def delete(self) -> None:
         if self._operational:
             self.down()
         with IPRoute() as ip:
@@ -77,7 +77,7 @@ class Tunnel:
             caerulean_iface_opts = ip.get_addr(index=caerulean_dev)[0]
             return caerulean_iface_opts["prefixlen"], dict(caerulean_iface_opts["attrs"])["IFA_ADDRESS"]
 
-    def up(self):
+    def up(self) -> None:
         self._def_route, self._def_intf = self._get_default_route()
         def_cidr, self._def_ip = self._get_default_network()
         logger.info(f"Default route saved (via {Fore.YELLOW}{self._def_route}{Fore.RESET} dev {Fore.YELLOW}{self._def_intf}{Fore.RESET})")
@@ -94,7 +94,7 @@ class Tunnel:
             logger.info(f"Tunnel set as default route (via {Fore.YELLOW}{self._def_ip}{Fore.RESET} dev {Fore.YELLOW}{self._name}{Fore.RESET})")
         self._operational = True
 
-    def down(self):
+    def down(self) -> None:
         with IPRoute() as ip:
             tunnel_dev = ip.link_lookup(ifname=self._name)[0]
             default_dev = ip.link_lookup(ifname=self._def_intf)[0]
@@ -104,7 +104,7 @@ class Tunnel:
             logger.info(f"Tunnel {Fore.GREEN}disabled{Fore.RESET}")
         self._operational = False
 
-    def send_to_caerulean(self):
+    def send_to_caerulean(self) -> None:
         try:
             with socket(AF_INET, SOCK_DGRAM) as gate:
                 gate.bind((self._def_ip, 0))
@@ -117,7 +117,7 @@ class Tunnel:
             # Required as sometimes `self._descriptor` is getting destroyed so fast it breaks os.read
             pass
 
-    def receive_from_caerulean(self):
+    def receive_from_caerulean(self) -> None:
         with socket(AF_INET, SOCK_DGRAM) as gate:
             gate.bind((self._def_ip, self._sea_port))
             while self._operational:

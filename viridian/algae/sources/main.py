@@ -42,7 +42,7 @@ interface: Tunnel
 arguments: Dict[str, Any]
 
 
-def main(args: Sequence[str] = argv[1:]):
+def main(args: Sequence[str] = argv[1:]) -> None:
     global interface, arguments
     just_fix_windows_console()
     arguments = vars(parser.parse_args(args))
@@ -72,7 +72,7 @@ def main(args: Sequence[str] = argv[1:]):
             snd_proc.terminate()
 
 
-def finish(_, __):
+def finish(_, __) -> None:
     global interface, arguments
     if current_process().name == "MainProcess":
         logger.warning("Terminating whirlpool connection...")
