@@ -1,6 +1,6 @@
 from glob import glob
 from logging import getLogger
-from os import getcwd
+from os import environ, getcwd
 from pathlib import Path
 from shutil import rmtree
 from sys import argv
@@ -83,6 +83,9 @@ def test() -> int:
 
     viridian_tag = "algae-latest"
     client.images.build(path=str(_ALGAE_ROOT), tag=viridian_tag, rm=True)
+
+    if "CI" in environ:
+        viridian_env["CI"] = caerulean_env["CI"] = "CI"
 
     result = 0
     for encrypt in (False, True):
