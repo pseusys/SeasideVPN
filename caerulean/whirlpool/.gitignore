@@ -1,8 +1,0 @@
-# Go build
-build/
-
-# Go workspace file
-go.work
-
-# Go versions freeze file
-go.sum

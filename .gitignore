@@ -1,6 +1,23 @@
-# Configs:
+# IDE configs:
 .idea
 .vscode
 
-# Lock file:
+# Poetry lock file:
 poetry.lock
+
+# Pyinstaller build
+build/
+dist/
+*.spec
+
+# Python cache:
+__pycache__/
+.mypy_cache/
+pytest-cache/
+
+# Go build:
+build/
+
+# Go module files:
+go.work
+go.sum

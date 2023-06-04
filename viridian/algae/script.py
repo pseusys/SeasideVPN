@@ -116,7 +116,7 @@ def test() -> int:
 
 def build() -> None:
     executable_name = argv[1] if len(argv) > 1 else _EXECUTABLE_NAME
-    run(["-F", "-c", "-y", "-n", executable_name, "sources/main.py"])
+    run(["-F", "-c", "-y", "-n", executable_name, str(_ALGAE_ROOT / Path("sources/main.py"))])
 
 
 def clean() -> None:

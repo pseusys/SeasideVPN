@@ -25,4 +25,4 @@ jobs:
         run: pip3 install poetry
 
       - name: Test Caerulean Whirlpool 🧪
-        run: make test-caerulean-whirlpool
+        run: make test-whirlpool
