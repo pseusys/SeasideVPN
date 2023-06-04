@@ -212,6 +212,8 @@ make test
 4. Fix mypy test errors in `viridian/algae` - using documentation.
 5. Write documentation for both `caerulean/whirlpool` and `viridian/algae`.
 
+## Current goals
+
 1. Add run options to all run configurations, Makefiles, split READMEs
 2. Add CONTRIBUTING with rules, e.g. branch names with '-'
 3. Compile Go with optimizations

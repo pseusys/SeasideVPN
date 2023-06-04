@@ -38,7 +38,7 @@ jobs:
 
       - name: Build Algae Executable 🏗️
         env:
-          EXEC_NAME: ${{ format('algae-executable-{0}', steps.id-creator.outputs.ID) }}
+          EXEC_NAME: ${{ format('algae-executable-{0}', env.ID) }}
         run: poetry -C viridian/algae run build ${{ env.EXEC_NAME }}.run
 
       - name: Save Artifact 🏺
