@@ -73,7 +73,7 @@ func ListenControlPort(ip string, port int) {
 		logrus.Infoln("Received control message from user:", userID)
 
 		// Resolve received message
-		status, data, err := ResolveMessage(buffer[:read])
+		status, data, err := DecodeMessage(buffer[:read])
 		if err != nil {
 			logrus.Warnln("Couldn't parse message from user", userID)
 			SendStatusToUser(ERROR, nil, connection)

@@ -15,7 +15,7 @@ def initialize_control(addr: IPv4Address, encode: bool, ctrl_port: int, **_):
         logger.debug(f"Sending control to caerulean {address}:{ctrl_port}")
 
         if not encode:
-            request = encode_message(Status.SUCCESS, bytes())
+            request = encode_message(Status.SUCCESS)
             gate.sendall(request)
             gate.shutdown(SHUT_WR)
 
@@ -69,7 +69,7 @@ def break_control(addr: IPv4Address, ctrl_port: int, **_):
 
     with socket(AF_INET, SOCK_STREAM) as gate:
         gate.connect(caerulean_address)
-        request = encode_message(Status.NO_PASS, bytes())
+        request = encode_message(Status.NO_PASS)
         gate.sendall(request)
         gate.shutdown(SHUT_WR)
 

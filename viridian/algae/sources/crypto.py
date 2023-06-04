@@ -15,8 +15,12 @@ _CHACHA_TAG_LENGTH = 16
 _RSA_KEY = RSA.generate(_RSA_KEY_SIZE, get_random_bytes, _RSA_KEY_EXPONENT)
 _CHACHA_KEY: Optional[bytes] = None
 
-_MESSAGE_HEADER_LEN = 5
+_MESSAGE_HEADER_LEN = 3
+_MESSAGE_GRAVITY = 4
 _MESSAGE_MAX_LEN = 5000
+
+_SIZE_UINT_8 = 255
+_SIZE_UINT_16 = 65535
 
 
 class Status(IntEnum):
@@ -64,37 +68,30 @@ def decrypt_symmetric(data: bytes) -> bytes:
     return cipher.decrypt_and_verify(encryption, tag)
 
 
-def encode_message(status: Status, data: bytes) -> bytes:
-    allowed = _MESSAGE_MAX_LEN - _MESSAGE_HEADER_LEN
+def encode_message(status: Status, data: Optional[bytes] = None) -> bytes:
+    data = bytes() if data is None else data
+    available_space = _MESSAGE_MAX_LEN - _MESSAGE_GRAVITY - _MESSAGE_HEADER_LEN
     length = len(data)
-    if length > allowed:
-        raise RuntimeError(f"Length of data ({length}) is greater than max message length ({allowed})!")
+    if length > available_space:
+        raise RuntimeError(f"Length of data ({length}) is greater than max message length ({available_space})!")
 
-    status_val = status.value.to_bytes(1, "big")
-    if length != 0:
-        start = randint(0, allowed - length) + _MESSAGE_HEADER_LEN
-        finish = start + length
-        prefix = get_random_bytes(start - _MESSAGE_HEADER_LEN)
-        postfix = get_random_bytes(randint(0, _MESSAGE_MAX_LEN - finish))
-        return status_val + start.to_bytes(2, "big") + finish.to_bytes(2, "big") + prefix + data + postfix
-    else:
-        filling = get_random_bytes(randint(0, allowed))
-        return status_val + bytearray(4) + filling
+    random_length = randint(0, min(available_space - length, _SIZE_UINT_16))
+    prefix_length = randint(0, min(_SIZE_UINT_8, random_length))
+
+    pointer = (prefix_length + _MESSAGE_GRAVITY).to_bytes(1, "big")
+    prefix = get_random_bytes(_MESSAGE_GRAVITY - 1) + pointer + get_random_bytes(prefix_length)
+    content = status.value.to_bytes(1, "big") + length.to_bytes(2, "big") + data
+    postfix = get_random_bytes(random_length - prefix_length)
+    return prefix + content + postfix
 
 
 def decode_message(data: bytes) -> Tuple[Status, Optional[bytes]]:
-    length = len(data)
-    status = Status.from_bytes(data[0:1], "big")
+    offset = data[_MESSAGE_GRAVITY - 1]
+    status = Status(data[offset])
 
-    start = int.from_bytes(data[1:3], "big")
-    if start > length:
-        raise RuntimeError(f"Wrong message formatting: start ({start}) is greater than length ({length})!")
-
-    finish = int.from_bytes(data[3:5], "big")
-    if finish > length or start > finish:
-        raise RuntimeError(f"Wrong message formatting: finish ({finish}) is greater than start ({start}) or length ({length})!")
-
-    if start == 0 and finish == 0:
+    length = int.from_bytes(data[offset+1:offset+3], "big")
+    if length == 0:
         return status, None
     else:
-        return status, data[start:finish]
+        start = offset + 3
+        return status, data[start:start+length]
