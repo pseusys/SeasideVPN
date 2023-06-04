@@ -197,22 +197,25 @@ make -C viridian/algae clean
 make test
 ```
 
-## Roadmap
+## Future development
+
+### Roadmap
 
 - `caerulean/surface` - distributed node manager
 - `viridian/...` - google chrome extension
 - `viridian/...` - windows and linux GUI client ([wintun](https://git.zx2c4.com/wintun/about/) + [qt](https://www.qt.io/))
 - `viridian/...` - android / ios clients
 
-## TODOs
+### TODOs
 
 1. Add termination signal handler for server - send special code to clients.
 2. Check `NO_PASS` signal handling on client - messages should _not_ get through tunnel!
 3. Add unit tests to both `caerulean/whirlpool` and `viridian/algae`.
 4. Fix mypy test errors in `viridian/algae` - using documentation.
 5. Write documentation for both `caerulean/whirlpool` and `viridian/algae`.
+6. Add further integration tests - connection, disconnection, errors.
 
-## Current goals
+### Current goals
 
 1. Add run options to all run configurations, Makefiles, split READMEs
 2. Add CONTRIBUTING with rules, e.g. branch names with '-'
@@ -221,3 +224,4 @@ make test
 5. Fix TODOs
 6. Add proper READMEs to subfolders
 7. Add build and make scripts, covering all variables (generation?) and dependencies
+8. Ip tables management library for Go
