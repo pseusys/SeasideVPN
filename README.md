@@ -215,13 +215,13 @@ make test
 5. Write documentation for both `caerulean/whirlpool` and `viridian/algae`.
 6. Add further integration tests - connection, disconnection, errors.
 
+### Considerations
+
+1. Use a library for `iptables` management in `viridian/algae` - if some other types of operations (not adding) are required; same about `ip route` and regex in `sources/console.go`.
+
 ### Current goals
 
 1. Add run options to all run configurations, Makefiles, split READMEs
-2. Add CONTRIBUTING with rules, e.g. branch names with '-'
-3. Compile Go with optimizations
-4. Goroutines for server functions
-5. Fix TODOs
-6. Add proper READMEs to subfolders
-7. Add build and make scripts, covering all variables (generation?) and dependencies
-8. Ip tables management library for Go
+2. Fix TODOs
+3. Add proper READMEs to subfolders
+4. Add build and make scripts, covering all variables (generation?) and dependencies
