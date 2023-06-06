@@ -77,9 +77,9 @@ def test() -> int:
     client.networks.get("none").disconnect(caerulean_cnt)
     internal_net.connect(caerulean_cnt, ipv4_address=caerulean_address)
     caerulean_cnt.start()
-    # Wait for a second to make sure caerulean startRESETed
-    # TODO: use healthcheck instead
-    sleep(5)
+
+    # Wait for a second to make sure caerulean started
+    sleep(1)
 
     viridian_tag = "algae-latest"
     client.images.build(path=str(_ALGAE_ROOT), tag=viridian_tag, rm=True)
@@ -91,9 +91,9 @@ def test() -> int:
     for encrypt in (False, True):
         viridian_env["VPN"] = str(encrypt)
         viridian_cnt = client.containers.run(viridian_tag, name="algae", detach=True, privileged=True, network=internal_net.name, environment=viridian_env)
+
         # Wait for a second to make sure viridian started
-        # TODO: use healthcheck instead
-        sleep(5)
+        sleep(1)
 
         exit, output = viridian_cnt.exec_run(["poetry", "run", "pytest", "--log-cli-level=DEBUG", "test/"])
         viridian_cnt.kill("SIGINT")
