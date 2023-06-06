@@ -8,6 +8,22 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  caerulean-whirlpool:
+    name: Test Caerulean Whirlpool Server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v3
+
+      - name: Setup Go 1.20 🦫
+        uses: actions/setup-go@v4
+        with:
+          go-version: "^1.20.4"
+
+      - name: Lint Caerulean Whirlpool 🧪
+        run: make lint-whirlpool
+
   viridian-algae:
     name: Test Viridian Algae Client
     runs-on: ubuntu-latest
@@ -24,5 +40,5 @@ jobs:
       - name: Install Dependencies 🔮
         run: pip3 install poetry
 
-      - name: Test Viridian Algae 🧪
-        run: make test-algae
+      - name: Lint Viridian Algae 🧪
+        run: make lint-algae

@@ -210,7 +210,7 @@ make test
 
 1. Add termination signal handler for server - send special code to clients.
 2. Check `NO_PASS` signal handling on client - messages should _not_ get through tunnel!
-3. Add unit tests to both `caerulean/whirlpool` and `viridian/algae`.
+3. Add unit tests to both `caerulean/whirlpool` and `viridian/algae` (do not run them in Docker).
 4. Fix mypy test errors in `viridian/algae` - using documentation.
 5. Write documentation for both `caerulean/whirlpool` and `viridian/algae`.
 6. Add further integration tests - connection, disconnection, errors.
