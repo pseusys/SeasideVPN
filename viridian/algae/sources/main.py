@@ -1,15 +1,14 @@
 from argparse import ArgumentParser, ArgumentTypeError
 from ipaddress import IPv4Address
-from multiprocessing import Process, current_process
+from multiprocessing import current_process
 from signal import SIGINT, SIGTERM, signal
 from sys import argv, exit
-from typing import Any, Dict, Sequence
+from typing import Sequence
 
 from colorama import just_fix_windows_console
 
-from .control import break_control, initialize_control, perform_control
+from .control import Controller
 from .outputs import logger
-from .tunnel import Tunnel
 
 _DEFAULT_NAME = "seatun"
 _DEFAULT_VPN = True
@@ -38,47 +37,25 @@ parser.add_argument("-a", "--address", dest="addr", default=_DEFAULT_ADDRESS, ty
 parser.add_argument("-p", "--sea-port", dest="sea_port", default=_DEFAULT_SEA_PORT, type=int, help=f"Caerulean remote port number (default: {_DEFAULT_SEA_PORT})")
 parser.add_argument("-c", "--ctrl-port", dest="ctrl_port", default=_DEFAULT_CONTROL_PORT, type=int, help=f"Caerulean remote control port number (default: {_DEFAULT_CONTROL_PORT})")
 
-interface: Tunnel
-arguments: Dict[str, Any]
+controller: Controller
 
 
 def main(args: Sequence[str] = argv[1:]) -> None:
-    global interface, arguments
+    global controller
     just_fix_windows_console()
     arguments = vars(parser.parse_args(args))
 
-    interface = Tunnel(**arguments)
+    controller = Controller(**arguments)
     signal(SIGTERM, finish)
     signal(SIGINT, finish)
-    logger.warning("Starting algae client...")
-    interface.up()
-
-    initialize_control(**arguments)
-    ctrl_proc, rec_proc, snd_proc = None, None, None
-    try:
-        ctrl_proc = Process(target=perform_control, name="controller", args=[interface], kwargs=arguments, daemon=True)
-        rec_proc = Process(target=interface.receive_from_caerulean, name="receiver", daemon=True)
-        snd_proc = Process(target=interface.send_to_caerulean, name="sender", daemon=True)
-        ctrl_proc.start()
-        rec_proc.start()
-        snd_proc.start()
-        ctrl_proc.join()
-    except SystemExit:
-        if ctrl_proc is not None:
-            ctrl_proc.terminate()
-        if rec_proc is not None:
-            rec_proc.terminate()
-        if snd_proc is not None:
-            snd_proc.terminate()
+    logger.warning("Starting algae client controller...")
+    controller.start()
 
 
-def finish(_, __) -> None:
-    global interface, arguments
+def finish(_, __) -> None:  # type: ignore[no-untyped-def]
+    global controller
     if current_process().name == "MainProcess":
-        logger.warning("Terminating whirlpool connection...")
-        break_control(**arguments)
-        logger.warning("Gracefully stopping algae client...")
-        interface.delete()
+        controller.break_control()
     exit(0)
 
 

@@ -44,13 +44,13 @@ def _check_ping_output(ping_params: List[str]) -> bool:
 
 
 @pytest.mark.skipif("CI" in environ, reason="Ping test shouldn't be run in CI environment as most of them don't support PING")
-def test_caerulean_ping(caerulean_address) -> None:
+def test_caerulean_ping(caerulean_address: str) -> None:
     logger.info("Testing with PING porotocol")
     assert _check_ping_output(["-c", "1", "-s", "16", caerulean_address])
     assert _check_ping_output(["-c", "8", "-s", "64", "8.8.8.8"])
 
 
-def test_qotd_udp_protocol(random_message) -> None:
+def test_qotd_udp_protocol(random_message: bytes) -> None:
     message_length = 4096
     logger.info(f"Testing with QOTD (UDP) protocol, packets size: {len(random_message)}")
     with socket(AF_INET, SOCK_DGRAM) as sock:
@@ -63,7 +63,7 @@ def test_qotd_udp_protocol(random_message) -> None:
         logger.info(f"Quote received: {quote}")
 
 
-def test_tcp_protocol(random_message) -> None:
+def test_tcp_protocol(random_message: bytes) -> None:
     logger.info(f"Testing for TCP protocol, packets size: {len(random_message)}")
     with socket(AF_INET, SOCK_STREAM) as sock:
         sock.connect((gethostbyname("tcpbin.com"), 4242))

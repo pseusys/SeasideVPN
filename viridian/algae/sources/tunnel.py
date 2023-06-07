@@ -34,7 +34,7 @@ def _create_tunnel(name: str) -> int:
 
 
 class Tunnel:
-    def __init__(self, name: str, encode: bool, mtu: int, buff: int, addr: IPv4Address, sea_port: int, **_):
+    def __init__(self, name: str, encode: bool, mtu: int, buff: int, addr: IPv4Address, sea_port: int):
         self._mtu = mtu
         self._name = name
         self._encode = encode
@@ -105,17 +105,13 @@ class Tunnel:
         self._operational = False
 
     def send_to_caerulean(self) -> None:
-        try:
-            with socket(AF_INET, SOCK_DGRAM) as gate:
-                gate.bind((self._def_ip, 0))
-                while self._operational:
-                    packet = read(self._descriptor, self._buffer)
-                    logger.debug(f"Sending {len(packet)} bytes to caerulean {self._address}:{self._sea_port}")
-                    packet = packet if not self._encode else encrypt_symmetric(packet)
-                    gate.sendto(packet, (self._address, self._sea_port))
-        except OSError:
-            # Required as sometimes `self._descriptor` is getting destroyed so fast it breaks os.read
-            pass
+        with socket(AF_INET, SOCK_DGRAM) as gate:
+            gate.bind((self._def_ip, 0))
+            while self._operational:
+                packet = read(self._descriptor, self._buffer)
+                logger.debug(f"Sending {len(packet)} bytes to caerulean {self._address}:{self._sea_port}")
+                packet = packet if not self._encode else encrypt_symmetric(packet)
+                gate.sendto(packet, (self._address, self._sea_port))
 
     def receive_from_caerulean(self) -> None:
         with socket(AF_INET, SOCK_DGRAM) as gate:
