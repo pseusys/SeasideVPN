@@ -32,7 +32,7 @@ class Status(IntEnum):
     PUBLIC = 5
 
     @classmethod
-    def _missing_(cls, _) -> "Status":
+    def _missing_(cls, _) -> "Status":  # type: ignore[no-untyped-def]
         return cls.UNDEF
 
 
