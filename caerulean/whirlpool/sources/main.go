@@ -4,6 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/sirupsen/logrus"
 	"github.com/songgao/water"
@@ -86,5 +89,10 @@ func main() {
 	go ListenControlPort(*iIP, *control)
 	go ReceivePacketsFromViridian(tunnel)
 	go SendPacketsToViridian(tunnel)
-	select {}
+
+	exitSignal := make(chan os.Signal)
+	signal.Notify(exitSignal, syscall.SIGINT, syscall.SIGTERM)
+	<-exitSignal
+
+	// TODO: notify clients (if needed)
 }

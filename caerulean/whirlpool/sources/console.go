@@ -52,7 +52,7 @@ func ConfigureForwarding(externalInterface string, internalInterface string, tun
 	runCommand("iptables", "-F")
 	runCommand("iptables", "-t", "nat", "-F")
 	runCommand("iptables", "-t", "mangle", "-F")
-	// Accept packets to port 1723, pass to VPN decoder
+	// Accept packets to port 8542, pass to VPN decoder
 	runCommand("iptables", "-A", "INPUT", "-p", "udp", "-d", *iIP, "--dport", portStr, "-i", internalInterface, "-j", "ACCEPT")
 	runCommand("iptables", "-A", "INPUT", "-p", "tcp", "-d", *iIP, "--dport", ctrlStr, "-i", internalInterface, "-j", "ACCEPT")
 	runCommand("iptables", "-A", "INPUT", "-p", "icmp", "-d", *iIP, "-i", internalInterface, "-j", "ACCEPT")
