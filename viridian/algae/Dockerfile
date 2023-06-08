@@ -14,7 +14,6 @@ COPY script.py pyproject.toml README.md ./
 
 RUN poetry install --all-extras
 
-ENV COMMAND true
 ENV LOG_LEVEL DEBUG
 
 ENV VPN True
@@ -27,4 +26,4 @@ ENV CTRL_PORT 8543
 
 EXPOSE $SEA_PORT/udp
 EXPOSE $CTRL_PORT/tcp
-ENTRYPOINT poetry run execute -t $TUNNEL -e $VPN -m $CONN_MTU -b $CONN_BUFF -a $ADDRESS -p $SEA_PORT
+ENTRYPOINT poetry run execute -t $TUNNEL -e $VPN -m $CONN_MTU -b $CONN_BUFF -a $ADDRESS -p $SEA_PORT -c $CTRL_PORT

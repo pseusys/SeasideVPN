@@ -1,9 +1,11 @@
+EXECUTABLE_NAME = whirlpool.run
+
 dependencies:
 	go mod tidy
 .PHONY: dependencies
 
 build: dependencies
-	go build -o build/main.run ./sources
+	go build -o build/$(EXECUTABLE_NAME) ./sources
 .PHONY: build
 
 save:
@@ -11,7 +13,7 @@ save:
 .PHONY: save
 
 run: build save
-	sudo build/main.run -ip 127.0.0.1
+	sudo build/$(EXECUTABLE_NAME) -ip 127.0.0.1
 .PHONY: run
 
 restore:

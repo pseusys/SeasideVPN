@@ -6,9 +6,66 @@ A simple PPTP UDP Proxy and VPN system
 
 My first program in `Go`, written with assistance of multiple tutorials and ChatGPT.
 
-## Conventions
+## General info
 
-The number of important parameters define the VPN system.
+Seaside is a VPN and Proxy distributed system, focused on making final user traffic not easily detectable so that the whole system access blocking becomes not cost-effective.
+
+For user traffic encryption in VPN mode `XChaCha20-Poly1305` and `RSA2048` hybrid encryption is used.
+For protocol obfuscation special [`wavy messages`](#wavy-messages) protocol is used.
+
+Target users of the system are **groups** of people (companies, communities, etc.), residing in different countries and wishing to create their own VPN network.
+System deployment and integration is (planned) to be easy even for not very familiar with networking people, so each system instance will consist of several connected individually managed nodes.
+
+> **NB!** As no global infrastructure (i.e. public servers, domen names, etc.) is planned, user privacy and safety solely depends on the each system instance _node operators_.
+> System can only exist and be active until the people that use it **trust each other**! 🤝
+
+### System structure
+
+Below, you can see the (planned) system structure.
+Following naming is used:
+
+- [`Surface`](#surface) is the main node of the system instance.
+  It keeps track of actual gateway worker nodes, collects statistics, performs load-balancing and user distribution.
+  Basically, the owner of the `surface` node owns (and is responsible) for the whole system instance.
+- [`Whirlpool`](#whirlpool) is a worker node.
+  It allows user traffic forwarding (VPN or Proxy), encryption, etc.
+  Several `whirlpool` nodes in different locations and of different performance can be included into a single system instance.
+  In order to make the ssytem truly P2P, all system instance users are encouraged to manage their own `whirlpool` node and though contribute to the system.
+- [`Viridian`](#viridian-client) is a user application (desctop, mobile, browser, etc.).
+  One `viridian` can be connected to one seaside system instance at a time, but is allowed to choose between different `whirlpool`s in it.
+
+```mermaid
+stateDiagram
+    Surface --> Whirlpool1
+    Surface --> Whirlpool2
+    Surface --> Whirlpool3
+
+    Whirlpool1 --> [*]
+    Whirlpool2 --> [*]
+    Whirlpool3 --> [*]
+
+    Viridian1 --> Surface
+    Viridian1 --> Whirlpool1
+
+    Viridian2 --> Surface
+    Viridian2 --> Whirlpool1
+
+    Viridian3 --> Surface
+    Viridian3 --> Whirlpool1
+
+    Viridian4 --> Surface
+    Viridian4 --> Whirlpool2
+
+    Viridian5 --> Surface
+    Viridian5 --> Whirlpool2
+
+```
+
+Here, you can see, three users connected to internet (marked by `*` this character) via `whirlpool` №1 and two other users via `whirlpool` №2.
+
+### Conventions
+
+The number of important parameters define the system.
 They define IP addresses, port numbers, names, etc.  
 The parameters can be found in the table below:
 
@@ -34,39 +91,98 @@ They should be specified with environmental variable `LOG_LEVEL`.
 
 There are some important notes and conditions that must be fulfilled in order for system to work as expected:
 
-- Viridian packet must have client external IP as source IP and 1723 port as source port.
-- ...
+- Viridian packet must have client external IP (not a tunnel IP) as source IP.
 
-## Control Protocol
+## Data, connections and protocols
 
-Some important outlines:
+Packets, forwarded via "seaside port" (encrypted or not) are just raw data packed into UDP packets,
+no headers, states or protocols are used.
 
-1. One host can not send two messages one after the other: oce it sent a message, it waits for an answer.
-2. Communication is done via UDP on a separate port.
+It makes packets forwarded via SeasideVPN indifferent from all the other packets sent across internet,
+so it becomes not as easy to distinguish and block them.
+
+Packets sent to "control port" control viridian to caerulean connection (connected user number, passwords, etc.).
+
+These packets use special "control protocol" (described [later in this section](#viridian-to-whirlpool-connection)).
+Moreover, they are obfuscated with special "wavy protocol" (described [right below](#wavy-messages)).
+
+### Wavy messages
+
+Many messages have the same size (1 byte) and a limited amount of status codes.
+That makes system potentionally voulnerable to distinguishing and blocking.
+
+In order to prevent this, all the messages are "waved" and
+instead of the original message, the following structure is sent:
+
+| Random (gravity) bytes | Data pointer | Random (prefix) bytes | Status | Data length | Data | Random (postfix) bytes
+| --- | --- | --- | --- | --- | --- | --- |
+| 5 bytes | 1 byte | (random) | 1 byte | 2 bytes | (defined) | (random) |
+
+> Total message length: not more than 65536
+
+### Viridian to whirlpool connection
 
 ```mermaid
 sequenceDiagram
-    actor Viridian
+    participant Viridian
     participant Caerulean
 
-    Note right of Viridian: Connection request
-    Viridian ->> Caerulean: Public key, base64
-    
-    Note left of Caerulean: Generate symmetric key
-    Caerulean ->> Viridian: Symmetric key, encrypted with public key
+    link Viridian: Viridian @ https://github.com/pseusys/SeasideVPN/blob/main/viridian/algae/README.md
+    link Caerulean: Caerulean @ https://github.com/pseusys/SeasideVPN/blob/main/caerulean/whirlpool/README.md
 
-    Note right of Viridian: Some packets, transmitted via VPN
-    Viridian ->> Caerulean: Requests, encrypted with symmetric key
+    alt Connection to VPN
+        Note left of Viridian: Viridian forms an RSA keypair
+        Viridian ->> Caerulean: [PUBLIC, RSA public key]
+        Note right of Caerulean: Caerulean forms symmetric key for viridian
+        Caerulean ->> Viridian: [SUCCESS, Symmetric key]
+        Note left of Viridian: Viridian is connected, go to [Packet exchange]
+        Note right of Caerulean: Caerulean user capacity reached
+        Caerulean -->> Viridian: [OVERLOAD, <null>]
+        Note left of Viridian: Viridian is not connected, should try another viridian
+        Note right of Caerulean: Caerulean can't manage cryptography
+        Caerulean -->> Viridian: [ERROR, <null>]
+        Note left of Viridian: Viridian is not connected, should try another viridian
+    else Connection to Proxy
+        Note left of Viridian: Viridian requests connection
+        Viridian ->> Caerulean: [SUCCESS, <null>]
+        Note right of Caerulean: Caerulean registers viridian
+        Caerulean ->> Viridian: [SUCCESS, <null>]
+        Note left of Viridian: Viridian is connected, go to [Packet exchange]
+        Note right of Caerulean: Caerulean user capacity reached
+        Caerulean -->> Viridian: [OVERLOAD, <null>]
+        Note left of Viridian: Viridian is not connected, should try another viridian
+    end
 
-    Note left of Caerulean: Some packets, transmitted via VPN
-    Caerulean ->> Viridian: Responses, encrypted with symmetric key
+    opt Packet exchange
+        Viridian ->> Caerulean: Some packets sent via SEA port
+        Caerulean ->> Viridian: Some packets received via SEA port
+    end
 
-    Note right of Viridian: Disconnection request
-    Viridian ->> Caerulean: Packet, encrypted with symmetric key
+    opt Caerulean error
+        Note right of Caerulean: Caerulean might not be operational anymore
+        Caerulean ->> Viridian: [ERROR or UNDEF, <null>]
+        Note left of Viridian: Viridian goes to [Disconnection]
+    end
 
-    Note left of Caerulean: Delete symmetric key
-    Caerulean ->> Viridian: Acknowledgement, encrypted with public key
+    opt Caerulean ignorance
+        Note right of Caerulean: Caerulean for some reason has lost user symmetric key
+        Caerulean ->> Viridian: [NO_KEY, <null>]
+        Note left of Viridian: Viridian goes to [Connection to ...]
+    end
+
+    opt Disconnection
+        Note left of Viridian: Viridian wishes to disconnect
+        Viridian ->> Caerulean: [NO_KEY, <null>]
+        Note right of Caerulean: Caerulean deletes user symmetric key
+        Caerulean ->> Viridian: [SUCCESS, <null>]
+        Note left of Viridian: Viridian is disconnected
+    end
 ```
+
+Here optional messages are shown in dotted lines.
+
+> **NB!** Although the protocol is stateful, the current stateis not really important:
+> viridian can re-connect to caerulean in _any_ mode _any_ time it wants!
 
 ## Caerulean (server)
 
@@ -74,90 +190,11 @@ Caerulean is server side of Seaside VPN, it consists of several parts:
 
 ### Surface
 
-TODO!
+🚧 Under construction! 🚧
 
 ### Whirlpool
 
-Whirlpool program is written in Go language.  
-It manages encrypting, decrypting, assembling and transferring requests and responses.
-
-Whirlpool accepts client packages at UDP port 8542, no more than 2000 bytes in size, encrypted.  
-TODO: encryption negotiation is yet to be implemented!
-
-Whirlpool sends messages to UDP port 1724, in packets of size 2000, encrypted.
-
-> WARNING! Any UDP packets arriving to port 8542 will be treated as user packets, i.e. user should never send packets to port 8542 of any server via Seaside VPN!
-
-Test whirlpool server (with algae client):
-
-```bash
-make test-caerulean-whirlpool
-```
-
-#### Run whirlpool server
-
-> Required packages: `iptables`, `ip`
-
-Run whirlpool server:
-
-```bash
-make -C caerulean/whirlpool run
-```
-
-Lint and format golang files:
-
-```bash
-make -C caerulean/whirlpool lint
-```
-
-Restore `iptables` configuration after run:
-
-```bash
-make -C caerulean/whirlpool restore
-```
-
-Clean build artifacts:
-
-```bash
-make -C caerulean/whirlpool clean
-```
-
-#### Time diagram
-
-```mermaid
-sequenceDiagram
-    actor Client
-    box Caerulean
-    participant Input as Caerulean UDP port 1723
-    participant Tunnel
-    participant Output as Caerulean Output
-    end
-    participant Server
-
-    Note right of Client: Encrypt request, pack in UDP
-    Client ->> Input: Encrypted & packed client request
-    
-    Note right of Input: Decrypt and unpack request
-    Input ->> Tunnel: Decrypted client request binary
-
-    Note right of Tunnel: Construct original packet
-    Tunnel ->> Output: Decrypted client request
-
-    Note right of Output: Masquerade and send packet
-    Output ->> Server: Client request
-
-    Note right of Output: Receive and unmasquerade packet
-    Server ->> Output: Server response
-    
-    Note right of Tunnel: Send packet to tunnel
-    Output ->> Tunnel: Routed server response
-
-    Note right of Input: Encrypt request, pack in UDP
-    Tunnel ->> Input: Encrypted server response
-
-    Note right of Client: Decrypt and unpack request
-    Input ->> Client: Encrypted & packed server response (UDP)
-```
+See detailed documentation [here](https://github.com/pseusys/SeasideVPN/blob/main/caerulean/whirlpool/README.md).
 
 ## Viridian (client)
 
@@ -165,44 +202,31 @@ Viridian is client side of Seaside VPN, there are several client options:
 
 ### Algae
 
-Small CLI-based client application, written in Python3.
-It can be run on linux (in for- and background), it's highly customizable.
-Created mainly for development and testing purposes.
+See detailed documentation [here](https://github.com/pseusys/SeasideVPN/blob/main/viridian/algae/README.md).
 
-#### Run algae client
+## General launching commands
 
-> Required packages: `ip`
+Commands for all projects testing and linting are defined in root `Makefile`.
+These are:
 
-Run algae client (superuser permissions required):
+- ```bash
+  make test
+  ```
 
-```bash
-make -C viridian/algae run
-```
+  for testing all system components, including integration tests.
 
-Build standalone executable (OS-specific):
+- ```bash
+  make lint
+  ```
 
-```bash
-make -C viridian/algae build
-```
-
-Clean build artifacts:
-
-```bash
-make -C viridian/algae clean
-```
-
-## Turquoise (test)
-
-```bash
-make test
-```
+  for linting all system components.
 
 ## Future development
 
 ### Roadmap
 
 - `caerulean/surface` - distributed node manager
-- `viridian/...` - google chrome extension
+- `viridian/...` - google chrome (and other browser) extension
 - `viridian/...` - windows and linux GUI client ([wintun](https://git.zx2c4.com/wintun/about/) + [qt](https://www.qt.io/))
 - `viridian/...` - android / ios clients
 
@@ -212,14 +236,15 @@ make test
 2. Add unit tests to both `caerulean/whirlpool` and `viridian/algae` (do not run them in Docker).
 3. Write documentation for both `caerulean/whirlpool` and `viridian/algae`.
 4. Add further integration tests - connection, disconnection, errors.
+5. Remove all `(planned)` marks from READMEs.
+6. Fix TODO in `main.go` -> add new signal to inform user about server going down + restore envirenment (iptables, etc.).
+7. Add shell build, generation, etc. script for easy `caerulean/whirlpool` deployment (with and without container).
+8. Add general make script to check dependencies, environment, etc.
 
 ### Considerations
 
-1. Use a library for `iptables` management in `viridian/algae` - if some other types of operations (not adding) are required; same about `ip route` and regex in `sources/console.go`.
+1. Use a library for `iptables` management in `caerulean/whirlpool` - if some other types of operations (not adding) are required; same about `ip route` and regex in `sources/console.go`.
 
 ### Current goals
 
-1. Add run options to all run configurations, Makefiles, split READMEs
-2. Fix TODOs
-3. Add proper READMEs to subfolders
-4. Add build and make scripts, covering all variables (generation?) and dependencies
+- All done for now!
