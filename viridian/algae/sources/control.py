@@ -107,12 +107,17 @@ class Controller:
                     self._clean_tunnel()
                     raise RuntimeError("Seaside system entered an undefined state!")
 
+                elif status == Status.TERMIN:
+                    logger.error("Server sent a disconnection request!")
+                    self._clean_tunnel()
+                    raise SystemExit("Requested caerulean is no longer available!")
+
     def break_control(self) -> None:
         caerulean_address = (self._address, self._ctrl_port)
 
         with socket(AF_INET, SOCK_STREAM) as gate:
             gate.connect(caerulean_address)
-            request = encode_message(Status.NO_PASS)
+            request = encode_message(Status.TERMIN)
             gate.sendall(request)
             gate.shutdown(SHUT_WR)
 

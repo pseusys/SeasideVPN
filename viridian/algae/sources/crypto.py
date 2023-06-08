@@ -30,6 +30,7 @@ class Status(IntEnum):
     OVERLOAD = 3
     NO_PASS = 4
     PUBLIC = 5
+    TERMIN = 6
 
     @classmethod
     def _missing_(cls, _) -> "Status":  # type: ignore[no-untyped-def]
