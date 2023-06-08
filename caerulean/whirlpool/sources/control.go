@@ -109,8 +109,8 @@ func ListenControlPort(ip string, port int) {
 					message, _ = EncodeMessage(SUCCESS, message)
 				}
 			}
-		// In case of NO_PASS status - delete user record
-		case NO_PASS:
+		// In case of TERMIN status - delete user record
+		case TERMIN:
 			logrus.Infoln("Deleting user", userID)
 			deleteViridian(userID, false)
 			message, _ = EncodeMessage(SUCCESS, nil)

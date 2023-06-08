@@ -159,9 +159,9 @@ sequenceDiagram
     end
 
     opt Caerulean error
-        Note right of Caerulean: Caerulean might not be operational anymore
+        Note right of Caerulean: Current connection session might be messed up
         Caerulean ->> Viridian: [ERROR or UNDEF, <null>]
-        Note left of Viridian: Viridian goes to [Disconnection]
+        Note left of Viridian: Viridian goes to [Viridian disconnection]
     end
 
     opt Caerulean ignorance
@@ -170,12 +170,18 @@ sequenceDiagram
         Note left of Viridian: Viridian goes to [Connection to ...]
     end
 
-    opt Disconnection
+    opt Viridian disconnection
         Note left of Viridian: Viridian wishes to disconnect
-        Viridian ->> Caerulean: [NO_KEY, <null>]
+        Viridian ->> Caerulean: [TERMIN, <null>]
         Note right of Caerulean: Caerulean deletes user symmetric key
         Caerulean ->> Viridian: [SUCCESS, <null>]
         Note left of Viridian: Viridian is disconnected
+    end
+
+    opt Caerulean disconnection
+        Note right of Caerulean: Caerulean wishes to interrupt all connections
+        Caerulean ->> Viridian: [TERMIN, <null>]
+        Note right of Caerulean: Viridian disconnects from caerulean
     end
 ```
 
@@ -232,18 +238,17 @@ These are:
 
 ### TODOs
 
-1. Add termination signal handler for server - send special code to clients.
-2. Add unit tests to both `caerulean/whirlpool` and `viridian/algae` (do not run them in Docker).
-3. Write documentation for both `caerulean/whirlpool` and `viridian/algae`.
-4. Add further integration tests - connection, disconnection, errors.
-5. Remove all `(planned)` marks from READMEs.
-6. Fix TODO in `main.go` -> add new signal to inform user about server going down + restore envirenment (iptables, etc.).
-7. Add shell build, generation, etc. script for easy `caerulean/whirlpool` deployment (with and without container).
-8. Add general make script to check dependencies, environment, etc.
+1. Add unit tests to both `caerulean/whirlpool` and `viridian/algae` (do not run them in Docker).
+2. Write documentation for both `caerulean/whirlpool` and `viridian/algae`.
+3. Add further integration tests - connection, disconnection, errors.
+4. Remove all `(planned)` marks from READMEs.
+5. Add shell build, generation, etc. script for easy `caerulean/whirlpool` deployment (with and without container).
+6. Add general make script to check dependencies, environment, etc.
 
 ### Considerations
 
 1. Use a library for `iptables` management in `caerulean/whirlpool` - if some other types of operations (not adding) are required; same about `ip route` and regex in `sources/console.go`.
+   If so, consider also environment restoration in the end of main in `main.go`.
 
 ### Current goals
 

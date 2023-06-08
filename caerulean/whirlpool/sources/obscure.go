@@ -14,12 +14,13 @@ const (
 	SUCCESS  Status = iota // Operation success, e.g. user password deletion
 	ERROR    Status = iota // Operation error, sent if any operation failed on server side
 	OVERLOAD Status = iota // Too many users connected to caerulean, can't accept more connections
-	NO_PASS  Status = iota // No password exists: if sent by user requests to delete password, if sent by server requests to reauthenticate
+	NO_PASS  Status = iota // No password exists: server requests user to requests to reauthenticate
 	PUBLIC   Status = iota // Public RSA key is attached, not a real status (as can't be encrypted) - means no protocol
+	TERMIN   Status = iota // Current session is requested to be terninated
 )
 
 func convertToStatus(status byte) Status {
-	if status >= byte(UNDEF) && status <= byte(PUBLIC) {
+	if status >= byte(UNDEF) && status <= byte(TERMIN) {
 		return Status(status)
 	} else {
 		return UNDEF

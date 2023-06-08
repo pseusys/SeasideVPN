@@ -94,5 +94,7 @@ func main() {
 	signal.Notify(exitSignal, syscall.SIGINT, syscall.SIGTERM)
 	<-exitSignal
 
-	// TODO: notify clients (if needed)
+	for k := range VIRIDIANS {
+		SendStatusToUser(TERMIN, net.ParseIP(k), nil)
+	}
 }
