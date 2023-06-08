@@ -9,25 +9,25 @@
 # Python:
 
 ## Poetry lock file:
-poetry.lock
+**/poetry.lock
 
 ## Pyinstaller build:
-build/
-dist/
-*.spec
+**/build/
+**/dist/
+**/*.spec
 
 ## Python (and test) cache:
-__pycache__/
-.mypy_cache/
-pytest-cache/
+**/__pycache__/
+**/.mypy_cache/
+**/pytest-cache/
 
 
 
 # Golang:
 
 ## Go build:
-build/
+**/build/
 
 ## Go module files:
-go.work
-go.sum
+**/go.work
+**/go.sum
