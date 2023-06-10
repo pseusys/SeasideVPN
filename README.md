@@ -181,7 +181,7 @@ sequenceDiagram
     opt Caerulean disconnection
         Note right of Caerulean: Caerulean wishes to interrupt all connections
         Caerulean ->> Viridian: [TERMIN, <null>]
-        Note right of Caerulean: Viridian disconnects from caerulean
+        Note left of Viridian: Viridian disconnects from caerulean
     end
 ```
 
