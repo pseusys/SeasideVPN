@@ -8,7 +8,7 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  caerulean-whirlpool:
+  caerulean-whirlpool-lint:
     name: Lint Caerulean Whirlpool Server
     runs-on: ubuntu-latest
 
@@ -27,7 +27,7 @@ jobs:
       - name: Lint Caerulean Whirlpool 🧪
         run: make lint-whirlpool
 
-  viridian-algae:
+  viridian-algae-lint:
     name: Lint Viridian Algae Client
     runs-on: ubuntu-latest
 
