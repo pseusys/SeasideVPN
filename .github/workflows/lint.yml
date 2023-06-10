@@ -21,6 +21,9 @@ jobs:
         with:
           go-version: "^1.20.4"
 
+      - name: Install Dependencies 🔮
+        run: go get -u golang.org/x/lint/golint
+
       - name: Lint Caerulean Whirlpool 🧪
         run: make lint-whirlpool
 
