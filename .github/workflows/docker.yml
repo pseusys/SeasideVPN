@@ -8,7 +8,7 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  build-all:
+  all-container:
     name: Build ${{ matrix.name }} Image
     runs-on: ubuntu-latest
     strategy:

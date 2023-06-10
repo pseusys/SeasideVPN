@@ -8,7 +8,7 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  viridian-algae:
+  viridian-algae-build:
     name: Build Viridian Algae Client Executable
     runs-on: ubuntu-latest
 
