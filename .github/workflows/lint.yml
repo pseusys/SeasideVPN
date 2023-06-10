@@ -1,4 +1,4 @@
-name: TEST
+name: LINT
 
 on:
   push:
@@ -9,7 +9,7 @@ concurrency:
 
 jobs:
   caerulean-whirlpool:
-    name: Test Caerulean Whirlpool Server
+    name: Lint Caerulean Whirlpool Server
     runs-on: ubuntu-latest
 
     steps:
@@ -25,7 +25,7 @@ jobs:
         run: make lint-whirlpool
 
   viridian-algae:
-    name: Test Viridian Algae Client
+    name: Lint Viridian Algae Client
     runs-on: ubuntu-latest
 
     steps:
