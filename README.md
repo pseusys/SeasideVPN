@@ -252,4 +252,8 @@ These are:
 
 ### Current goals
 
-- All done for now!
+- Add healthcheck to all containers. Health chech special env var [here](https://ma.ttias.be/show-the-environment-variables-of-a-running-process-in-linux/) is a guide on how to do that.
+- Add `try ... except ...` blocks for missing imports in `viridian/algae/script.py`
+- Use monkeypatching to replace random bytes function with one returning zeros and random int with one returning const for easier message obfuscation testing.
+- Pass `gravity` as an input parameter.
+- Add "connection certificate" description to README.md.
