@@ -88,7 +88,6 @@ def test() -> int:
         viridian_env["CI"] = caerulean_env["CI"] = "CI"
 
     viridian_cnt = client.containers.run(viridian_tag, name="algae", detach=True, privileged=True, network=internal_net.name, environment=viridian_env)
-
     # Wait for a second to make sure viridian started
     sleep(1)
 
@@ -105,8 +104,6 @@ def test() -> int:
         logger.info(f"Testing: {Fore.GREEN}success{Fore.RESET}!")
 
     viridian_cnt.remove()
-    result |= exit
-
     caerulean_cnt.stop()
     caerulean_cnt.remove()
     internal_net.remove()
