@@ -108,7 +108,7 @@ def test() -> int:
     caerulean_cnt.remove()
     internal_net.remove()
     client.close()
-    return exit
+    return int(exit)
 
 
 def build() -> None:
