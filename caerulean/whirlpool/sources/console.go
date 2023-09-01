@@ -85,9 +85,9 @@ func FindAddress(address string) (string, error) {
 	interfaces := strings.Split(runCommand("ip", "route"), "\n")
 	for _, line := range interfaces {
 		result := ADDR_INTF_REGEXP.FindStringSubmatch(line)
-		if result != nil && len(result) == 3 {
+		if len(result) == 3 {
 			return result[1], nil
 		}
 	}
-	return "", errors.New("no valid interfaces found!")
+	return "", errors.New("no valid interfaces found")
 }

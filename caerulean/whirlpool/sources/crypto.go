@@ -11,15 +11,6 @@ import (
 	"golang.org/x/crypto/chacha20poly1305"
 )
 
-func EncryptRSA(plaintext []byte, key *rsa.PublicKey) ([]byte, error) {
-	ciphertext, err := rsa.EncryptOAEP(sha256.New(), rand.Reader, key, plaintext, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return ciphertext, nil
-}
-
 func ParsePublicKey(rawKey []byte) (*rsa.PublicKey, error) {
 	decodedKey, err := x509.ParsePKIXPublicKey(rawKey)
 	if err != nil {
@@ -32,6 +23,24 @@ func ParsePublicKey(rawKey []byte) (*rsa.PublicKey, error) {
 	}
 
 	return rsaPublicKey, nil
+}
+
+func EncryptRSA(plaintext []byte, key *rsa.PublicKey) ([]byte, error) {
+	ciphertext, err := rsa.EncryptOAEP(sha256.New(), rand.Reader, key, plaintext, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return ciphertext, nil
+}
+
+func DecryptRSA(ciphertext []byte, key *rsa.PrivateKey) ([]byte, error) {
+	plaintext, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, key, ciphertext, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return plaintext, nil
 }
 
 func GenerateSymmetricalAlgorithm() (cipher.AEAD, []byte, error) {
