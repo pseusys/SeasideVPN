@@ -83,7 +83,7 @@ func ListenControlPort(ip string, port int) {
 		// Prepare answer
 		var message, _ = EncodeMessage(UNDEF, nil)
 		switch status {
-		// In case of PUBLIC status - register user as VPN user
+		// In case of PUBLIC status - register user
 		case PUBLIC:
 			if len(VIRIDIANS) >= *max_users {
 				logrus.Infoln("User number overload, cannot connect VPN user", userID)
