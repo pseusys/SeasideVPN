@@ -48,7 +48,7 @@ func ReceivePacketsFromViridian(tunnel *water.Interface) {
 			continue
 		}
 
-		// Decrypt packet (if user is connected in VPN mode)
+		// Decrypt packet
 		packet, err := decryptPacket(buffer[:r], address)
 		if err != nil {
 			logrus.Errorln("Decrypting packet error:", err)
@@ -78,9 +78,6 @@ func decryptPacket(ciphertext []byte, address *net.UDPAddr) ([]byte, error) {
 	viridian, exists := VIRIDIANS[address.IP.String()]
 	if !exists {
 		return nil, errors.New("user not registered")
-	}
-	if viridian.aead == nil {
-		return ciphertext, nil
 	}
 
 	viridian.expire.Reset(USER_LIFETIME)
@@ -118,7 +115,7 @@ func SendPacketsToViridian(tunnel *water.Interface) {
 			continue
 		}
 
-		// Encrypt packet (if user is connected in VPN mode)
+		// Encrypt packet
 		packet, err := encryptPacket(buffer[:r], gateway)
 		if err != nil {
 			logrus.Errorln("Encrypting packet error:", err)
@@ -147,9 +144,6 @@ func encryptPacket(plaintext []byte, address *net.UDPAddr) ([]byte, error) {
 	viridian, exists := VIRIDIANS[address.IP.String()]
 	if !exists {
 		return nil, errors.New("user not registered")
-	}
-	if viridian.aead == nil {
-		return plaintext, nil
 	}
 
 	ciphertext, err := EncryptSymmetrical(viridian.aead, plaintext)

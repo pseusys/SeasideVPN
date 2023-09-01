@@ -33,7 +33,6 @@ superuser rights required for tunnel interface creation.
 It can be run with following arguments:
 
 - `-t <tunnel_name>` - name of the tunnel device that will be used for packet forwarding (default: "seatun").
-- `-e <encrypt>` - execution mode: whether algae is run in VPN (True) or Proxy (False) mode (default: True).
 - `-m <connection_mtu>` - tunnel MTU (default: 1500).
 - `-b <connection buffer>` - connection buffer size, in bytes (default: 2000).
 - `-a <address>` - caerulean server address, to connect to (default: 127.0.0.1).

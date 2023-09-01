@@ -87,34 +87,31 @@ def test() -> int:
     if "CI" in environ:
         viridian_env["CI"] = caerulean_env["CI"] = "CI"
 
-    result = 0
-    for encrypt in (False, True):
-        viridian_env["VPN"] = str(encrypt)
-        viridian_cnt = client.containers.run(viridian_tag, name="algae", detach=True, privileged=True, network=internal_net.name, environment=viridian_env)
+    viridian_cnt = client.containers.run(viridian_tag, name="algae", detach=True, privileged=True, network=internal_net.name, environment=viridian_env)
 
-        # Wait for a second to make sure viridian started
-        sleep(1)
+    # Wait for a second to make sure viridian started
+    sleep(1)
 
-        exit, output = viridian_cnt.exec_run(["poetry", "run", "pytest", "--log-cli-level=DEBUG", "test/"])
-        viridian_cnt.kill("SIGINT")
-        viridian_cnt.wait()
+    exit, output = viridian_cnt.exec_run(["poetry", "run", "pytest", "--log-cli-level=DEBUG", "test/"])
+    viridian_cnt.kill("SIGINT")
+    viridian_cnt.wait()
 
-        if exit != 0:
-            logger.error(f"Testing in {Fore.YELLOW}{'VPN' if encrypt else 'Proxy'}{Fore.RESET} mode: {Fore.RED}failed{Fore.RESET}!")
-            logger.error(output.decode())
-            logger.error(viridian_cnt.logs().decode())
-            logger.error(caerulean_cnt.logs().decode())
-        else:
-            logger.info(f"Testing in {Fore.YELLOW}{'VPN' if encrypt else 'Proxy'}{Fore.RESET} mode: {Fore.GREEN}success{Fore.RESET}!")
+    if exit != 0:
+        logger.error(f"Testing: {Fore.RED}failed{Fore.RESET}!")
+        logger.error(output.decode())
+        logger.error(viridian_cnt.logs().decode())
+        logger.error(caerulean_cnt.logs().decode())
+    else:
+        logger.info(f"Testing: {Fore.GREEN}success{Fore.RESET}!")
 
-        viridian_cnt.remove()
-        result |= exit
+    viridian_cnt.remove()
+    result |= exit
 
     caerulean_cnt.stop()
     caerulean_cnt.remove()
     internal_net.remove()
     client.close()
-    return result
+    return exit
 
 
 def build() -> None:

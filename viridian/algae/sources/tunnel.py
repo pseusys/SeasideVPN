@@ -34,10 +34,9 @@ def _create_tunnel(name: str) -> int:
 
 
 class Tunnel:
-    def __init__(self, name: str, encode: bool, mtu: int, buff: int, addr: IPv4Address, sea_port: int):
+    def __init__(self, name: str, mtu: int, buff: int, addr: IPv4Address, sea_port: int):
         self._mtu = mtu
         self._name = name
-        self._encode = encode
         self._buffer = buff
         self._address = str(addr)
         self._sea_port = sea_port
@@ -110,14 +109,12 @@ class Tunnel:
             while self._operational:
                 packet = read(self._descriptor, self._buffer)
                 logger.debug(f"Sending {len(packet)} bytes to caerulean {self._address}:{self._sea_port}")
-                packet = packet if not self._encode else encrypt_symmetric(packet)
-                gate.sendto(packet, (self._address, self._sea_port))
+                gate.sendto(encrypt_symmetric(packet), (self._address, self._sea_port))
 
     def receive_from_caerulean(self) -> None:
         with socket(AF_INET, SOCK_DGRAM) as gate:
             gate.bind((self._def_ip, self._sea_port))
             while self._operational:
-                packet = gate.recv(self._buffer)
-                packet = packet if not self._encode else decrypt_symmetric(packet)
+                packet = decrypt_symmetric(gate.recv(self._buffer))
                 logger.debug(f"Receiving {len(packet)} bytes from caerulean {self._address}:{self._sea_port}")
                 write(self._descriptor, packet)

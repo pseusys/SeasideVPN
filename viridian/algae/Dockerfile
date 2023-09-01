@@ -16,7 +16,6 @@ RUN poetry install --all-extras
 
 ENV LOG_LEVEL DEBUG
 
-ENV VPN True
 ENV TUNNEL seatun
 ENV CONN_MTU 1500
 ENV CONN_BUFF 2000
@@ -26,4 +25,4 @@ ENV CTRL_PORT 8543
 
 EXPOSE $SEA_PORT/udp
 EXPOSE $CTRL_PORT/tcp
-ENTRYPOINT poetry run execute -t $TUNNEL -e $VPN -m $CONN_MTU -b $CONN_BUFF -a $ADDRESS -p $SEA_PORT -c $CTRL_PORT
+ENTRYPOINT poetry run execute -t $TUNNEL -m $CONN_MTU -b $CONN_BUFF -a $ADDRESS -p $SEA_PORT -c $CTRL_PORT
