@@ -1,6 +1,6 @@
 # SeasideVPN
 
-A simple PPTP UDP Proxy and VPN system
+A simple PPTP UDP and VPN system
 
 > Inspired by [this](https://github.com/habibiefaried/vpn-protocol-udp-pptp) project and tutorial.
 
@@ -8,9 +8,9 @@ My first program in `Go`, written with assistance of multiple tutorials and Chat
 
 ## General info
 
-Seaside is a VPN and Proxy distributed system, focused on making final user traffic not easily detectable so that the whole system access blocking becomes not cost-effective.
+Seaside is a VPN and distributed system, focused on making final user traffic not easily detectable so that the whole system access blocking becomes not cost-effective.
 
-For user traffic encryption in VPN mode `XChaCha20-Poly1305` and `RSA2048` hybrid encryption is used.
+For user traffic encryption `XChaCha20-Poly1305` and `RSA2048` hybrid encryption is used.
 For protocol obfuscation special [`wavy messages`](#wavy-messages) protocol is used.
 
 Target users of the system are **groups** of people (companies, communities, etc.), residing in different countries and wishing to create their own VPN network.
@@ -28,7 +28,7 @@ Following naming is used:
   It keeps track of actual gateway worker nodes, collects statistics, performs load-balancing and user distribution.
   Basically, the owner of the `surface` node owns (and is responsible) for the whole system instance.
 - [`Whirlpool`](#whirlpool) is a worker node.
-  It allows user traffic forwarding (VPN or Proxy), encryption, etc.
+  It allows user traffic forwarding, encryption, etc.
   Several `whirlpool` nodes in different locations and of different performance can be included into a single system instance.
   In order to make the ssytem truly P2P, all system instance users are encouraged to manage their own `whirlpool` node and though contribute to the system.
 - [`Viridian`](#viridian-client) is a user application (desctop, mobile, browser, etc.).
@@ -142,15 +142,6 @@ sequenceDiagram
         Note right of Caerulean: Caerulean can't manage cryptography
         Caerulean -->> Viridian: [ERROR, <null>]
         Note left of Viridian: Viridian is not connected, should try another viridian
-    else Connection to Proxy
-        Note left of Viridian: Viridian requests connection
-        Viridian ->> Caerulean: [SUCCESS, <null>]
-        Note right of Caerulean: Caerulean registers viridian
-        Caerulean ->> Viridian: [SUCCESS, <null>]
-        Note left of Viridian: Viridian is connected, go to [Packet exchange]
-        Note right of Caerulean: Caerulean user capacity reached
-        Caerulean -->> Viridian: [OVERLOAD, <null>]
-        Note left of Viridian: Viridian is not connected, should try another viridian
     end
 
     opt Packet exchange
@@ -188,7 +179,7 @@ sequenceDiagram
 Here optional messages are shown in dotted lines.
 
 > **NB!** Although the protocol is stateful, the current stateis not really important:
-> viridian can re-connect to caerulean in _any_ mode _any_ time it wants!
+> viridian can re-connect to caerulean _any_ time it wants!
 
 ## Caerulean (server)
 
@@ -244,6 +235,7 @@ These are:
 4. Remove all `(planned)` marks from READMEs.
 5. Add shell build, generation, etc. script for easy `caerulean/whirlpool` deployment (with and without container).
 6. Add general make script to check dependencies, environment, etc.
+7. Add clean make rule to clean docker images + networks.
 
 ### Considerations
 

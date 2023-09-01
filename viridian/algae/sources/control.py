@@ -8,11 +8,10 @@ from .tunnel import Tunnel
 
 
 class Controller:
-    def __init__(self, name: str, encode: bool, mtu: int, buff: int, addr: IPv4Address, sea_port: int, ctrl_port: int):
-        self._encode = encode
+    def __init__(self, name: str, mtu: int, buff: int, addr: IPv4Address, sea_port: int, ctrl_port: int):
         self._address = str(addr)
         self._ctrl_port = ctrl_port
-        self._interface = Tunnel(name, encode, mtu, buff, addr, sea_port)
+        self._interface = Tunnel(name, mtu, buff, addr, sea_port)
 
         self._receiver_process: Process
         self._sender_process: Process
@@ -35,32 +34,18 @@ class Controller:
             gate.connect(caerulean_address)
             logger.debug(f"Sending control to caerulean {self._address}:{self._ctrl_port}")
 
-            if not self._encode:
-                request = encode_message(Status.SUCCESS)
-                gate.sendall(request)
-                gate.shutdown(SHUT_WR)
+            public_key = encode_message(Status.PUBLIC, get_public_key())
+            gate.sendall(public_key)
+            gate.shutdown(SHUT_WR)
 
-                packet = gate.recv(_MESSAGE_MAX_LEN)
-                status, _ = decode_message(packet)
+            packet = gate.recv(_MESSAGE_MAX_LEN)
+            status, key = decode_message(packet)
 
-                if status == Status.SUCCESS:
-                    logger.info(f"Connected to caerulean {self._address}:{self._ctrl_port} as Proxy successfully!")
-                else:
-                    logger.info(f"Error connecting to caerulean (status: {status})!")
-
+            if status == Status.SUCCESS and key is not None:
+                initialize_symmetric(decrypt_rsa(key))
+                logger.info(f"Connected to caerulean {self._address}:{self._ctrl_port} as VPN successfully!")
             else:
-                public_key = encode_message(Status.PUBLIC, get_public_key())
-                gate.sendall(public_key)
-                gate.shutdown(SHUT_WR)
-
-                packet = gate.recv(_MESSAGE_MAX_LEN)
-                status, key = decode_message(packet)
-
-                if status == Status.SUCCESS and key is not None:
-                    initialize_symmetric(decrypt_rsa(key))
-                    logger.info(f"Connected to caerulean {self._address}:{self._ctrl_port} as VPN successfully!")
-                else:
-                    raise RuntimeError(f"Couldn't exchange keys with caerulean (status: {status})!")
+                raise RuntimeError(f"Couldn't exchange keys with caerulean (status: {status})!")
 
     def _turn_tunnel_on(self) -> None:
         self._interface.up()

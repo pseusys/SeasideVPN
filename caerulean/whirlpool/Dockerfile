@@ -1,6 +1,6 @@
 FROM golang:1.19-alpine3.17 as builder
 
-WORKDIR /seaside/algae
+WORKDIR /seaside/caerulean
 
 COPY go.* ./
 RUN go get ./...
@@ -15,8 +15,8 @@ FROM alpine:3.17 as default
 
 RUN apk add --no-cache iptables
 
-WORKDIR /seaside/algae
-COPY --from=builder /seaside/algae/whirlpool.run ./
+WORKDIR /seaside/caerulean
+COPY --from=builder /seaside/caerulean/whirlpool.run ./
 
 ENV LOG_LEVEL WARNING
 ENV MAX_USERS 16
@@ -30,5 +30,3 @@ ENV USER_TTL 300
 EXPOSE $SEA_PORT/udp
 EXPOSE $CTRL_PORT/tcp
 ENTRYPOINT ./whirlpool.run -a $ADDRESS -e $EXTERNAL -p $SEA_PORT -c $CTRL_PORT -t $USER_TTL -u $MAX_USERS
-
-# Test: tcpdump -n -i eth0 ip

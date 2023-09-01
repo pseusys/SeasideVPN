@@ -11,7 +11,6 @@ from .control import Controller
 from .outputs import logger
 
 _DEFAULT_NAME = "seatun"
-_DEFAULT_VPN = True
 _DEFAULT_MTU = 1500
 _DEFAULT_BUFFER = 2000
 _DEFAULT_ADDRESS = "127.0.0.1"
@@ -30,7 +29,6 @@ def boolean(value: str) -> bool:
 
 parser = ArgumentParser()
 parser.add_argument("-t", "--tunnel", dest="name", default=_DEFAULT_NAME, help=f"Tunnel interface name (default: {_DEFAULT_NAME})")
-parser.add_argument("-e", "--vpn", dest="encode", default=_DEFAULT_VPN, type=boolean, help=f"Use as VPN (encode traffic) (default: {_DEFAULT_VPN})")
 parser.add_argument("-m", "--max-trans-unit", dest="mtu", default=_DEFAULT_MTU, type=int, help=f"Tunnel interface MTU (default: {_DEFAULT_MTU})")
 parser.add_argument("-b", "--buffer", dest="buff", default=_DEFAULT_BUFFER, type=int, help=f"Tunnel interface buffer size (default: {_DEFAULT_BUFFER})")
 parser.add_argument("-a", "--address", dest="addr", default=_DEFAULT_ADDRESS, type=IPv4Address, help=f"Caerulean remote IP address (default: {_DEFAULT_ADDRESS})")

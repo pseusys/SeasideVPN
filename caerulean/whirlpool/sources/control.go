@@ -83,17 +83,6 @@ func ListenControlPort(ip string, port int) {
 		// Prepare answer
 		var message, _ = EncodeMessage(UNDEF, nil)
 		switch status {
-		// In case of SUCCESS status - register user as PROXY user
-		case SUCCESS:
-			if len(VIRIDIANS) >= *max_users {
-				logrus.Infoln("User number overload, cannot connect PROXY user", userID)
-				message, _ = EncodeMessage(OVERLOAD, nil)
-			} else {
-				logrus.Infoln("PROXY connecting user", userID)
-				deletionTimer := time.AfterFunc(USER_LIFETIME, func() { deleteViridian(userID, true) })
-				VIRIDIANS[userID] = Viridian{nil, deletionTimer}
-				message, _ = EncodeMessage(SUCCESS, nil)
-			}
 		// In case of PUBLIC status - register user as VPN user
 		case PUBLIC:
 			if len(VIRIDIANS) >= *max_users {

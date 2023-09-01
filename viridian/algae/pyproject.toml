@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "SeasideVPN"
 version = "0.0.1"
-description = "A simple PPTP UDP Proxy and VPN system"
+description = "A simple PPTP UDP VPN system"
 license = "MIT"
 authors = [
     "Alexander Sergeev <alexander.sergeev@onmail.com>",
@@ -9,7 +9,7 @@ authors = [
 
 readme = "README.md"
 repository = "https://github.com/pseusys/SeasideVPN"
-keywords = ["open-source", "proxy", "udp", "distributed", "vpn", "client-server", "pptp", "p2p-network"]
+keywords = ["open-source", "udp", "distributed", "vpn", "client-server", "pptp", "p2p-network"]
 
 packages = [
     { include = "sources" },
