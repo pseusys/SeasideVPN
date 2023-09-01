@@ -1,10 +1,10 @@
 package main
 
 import (
+	"crypto/rand"
 	"encoding/binary"
 	"errors"
 	"math"
-	"math/rand"
 )
 
 type Status byte
@@ -40,9 +40,9 @@ func EncodeMessage(status Status, data []byte) ([]byte, error) {
 		return nil, errors.New("length of data is more than max message length")
 	}
 
-	random_length := rand.Int() % Min(available_space-length, math.MaxUint16)
+	random_length := RandInt() % Min(available_space-length, math.MaxUint16)
 	total_length := random_length + length + GRAVITY + HEADER
-	prefix_length := rand.Int() % Min(math.MaxUint8, total_length)
+	prefix_length := RandInt() % Min(math.MaxUint8, total_length)
 
 	payload := make([]byte, total_length)
 	_, err := rand.Read(payload)

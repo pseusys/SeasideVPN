@@ -13,22 +13,25 @@ import (
 )
 
 const (
-	DEF_ADDRESS   = "none"
+	NONE_ADDRESS  = "none"
 	TUNNEL_IP     = "192.168.0.87/24"
 	UDP           = "udp4"
 	TCP           = "tcp4"
 	SEA_PORT      = 8542
 	CONTROL_PORT  = 8543
+	NET_PORT      = 8587
 	USER_TTL      = 300
 	MAX_USERS     = 16
 	DEF_LOG_LEVEL = "WARNING"
 )
 
 var (
-	iIP       = flag.String("a", DEF_ADDRESS, "Internal whirlpool IP - towards viridian (required)")
-	eIP       = flag.String("e", DEF_ADDRESS, "External whirlpool IP - towards outside world (default: same as internal address)")
+	iIP       = flag.String("a", NONE_ADDRESS, "Internal whirlpool IP - towards viridian (required)")
+	eIP       = flag.String("e", NONE_ADDRESS, "External whirlpool IP - towards outside world (default: same as internal address)")
+	surfaceIP = flag.String("s", NONE_ADDRESS, "Network surface address (required for network usage)")
 	port      = flag.Int("p", SEA_PORT, fmt.Sprintf("UDP port for receiving UDP packets (default: %d)", SEA_PORT))
 	control   = flag.Int("c", CONTROL_PORT, fmt.Sprintf("TCP port for communication with viridian (default: %d)", CONTROL_PORT))
+	network   = flag.Int("n", NET_PORT, fmt.Sprintf("Network API port (default: %d)", NET_PORT))
 	user_ttl  = flag.Int("t", USER_TTL, fmt.Sprintf("Time system keeps user password for without interaction, in minutes (default: %d hours)", USER_TTL/60))
 	max_users = flag.Int("u", MAX_USERS, fmt.Sprintf("Maximum number of users, that are able to connect to this whirlpool node (default: %d)", MAX_USERS))
 	help      = flag.Bool("h", false, "Print this message again and exit")
@@ -50,11 +53,11 @@ func main() {
 		return
 	}
 
-	if *iIP == DEF_ADDRESS {
+	if *iIP == NONE_ADDRESS {
 		logrus.Fatalln("Internal whirlpool IP (towards viridian) is not specified (but required)!")
 	}
 
-	if *eIP == DEF_ADDRESS {
+	if *eIP == NONE_ADDRESS {
 		*eIP = *iIP
 	}
 
@@ -90,10 +93,16 @@ func main() {
 	go ReceivePacketsFromViridian(tunnel)
 	go SendPacketsToViridian(tunnel)
 
-	exitSignal := make(chan os.Signal)
+	// Start web API, connect to surface if available
+	go InitNetAPI(*eIP, *network)
+	RetrieveNodeKey(*surfaceIP)
+
+	// Prepare termination signal
+	exitSignal := make(chan os.Signal, 1)
 	signal.Notify(exitSignal, syscall.SIGINT, syscall.SIGTERM)
 	<-exitSignal
 
+	// Send disconnection status to all connected users
 	for k := range VIRIDIANS {
 		SendStatusToUser(TERMIN, net.ParseIP(k), nil)
 	}
