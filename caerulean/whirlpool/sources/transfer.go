@@ -146,6 +146,8 @@ func encryptPacket(plaintext []byte, address *net.UDPAddr) ([]byte, error) {
 		return nil, errors.New("user not registered")
 	}
 
+	viridian.expire.Reset(USER_LIFETIME)
+
 	ciphertext, err := EncryptSymmetrical(viridian.aead, plaintext)
 	if err != nil {
 		return nil, err

@@ -9,22 +9,27 @@ import (
 	"fmt"
 	"html"
 	"net/http"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/chacha20poly1305"
 )
 
 const (
-	RSA_BIT_LENGTH   = 4096
-	OWNER_KEY_LENGTH = 32
-	RAW_DATA_TYPE    = "application/octet-stream"
+	RSA_BIT_LENGTH       = 4096
+	GOVERNING_KEY_LENGTH = 32
+	RAW_DATA_TYPE        = "application/octet-stream"
+	AUTORESEED_DELAY     = time.Hour * time.Duration(24*3)
 )
 
 var (
-	RSA_NODE_KEY   *rsa.PrivateKey
-	SYMM_NODE_KEY  []byte
-	SYMM_NODE_AEAD cipher.AEAD
-	NODE_OWNER_KEY []byte
+	RSA_NODE_KEY      *rsa.PrivateKey
+	SYMM_NODE_KEY     []byte
+	SYMM_NODE_AEAD    cipher.AEAD
+	NODE_OWNER_KEY    []byte
+	NODE_NETWORK_KEY  []byte
+	NETWORK_CONNECTED bool
+	AUTORESEED_TIMER  *time.Ticker
 )
 
 func init() {
@@ -33,9 +38,13 @@ func init() {
 	if err != nil {
 		logrus.Fatalln("Unable to generate RSA node key:", err)
 	}
-	NODE_OWNER_KEY, err = RandByteStr(OWNER_KEY_LENGTH)
+	NODE_OWNER_KEY, err = RandByteStr(GOVERNING_KEY_LENGTH)
 	if err != nil {
 		logrus.Fatalln("Unable to generate node owner key:", err)
+	}
+	NODE_NETWORK_KEY, err = RandByteStr(GOVERNING_KEY_LENGTH)
+	if err != nil {
+		logrus.Fatalln("Unable to generate node network key:", err)
 	}
 }
 
@@ -49,10 +58,18 @@ func public(w http.ResponseWriter, _ *http.Request) {
 	w.Write(publicBytes)
 }
 
+func autoReseed() (err error) {
+	SYMM_NODE_KEY = make([]byte, chacha20poly1305.KeySize)
+	if _, err := rand.Read(SYMM_NODE_KEY); err != nil {
+		return err
+	}
+	SYMM_NODE_AEAD, err = chacha20poly1305.NewX(SYMM_NODE_KEY)
+	return err
+}
+
 func reseed(w http.ResponseWriter, request *http.Request) {
 	encryptedReseedBytes := make([]byte, request.ContentLength)
-	reseedLength, err := request.Body.Read(encryptedReseedBytes)
-	if err != nil {
+	if _, err := request.Body.Read(encryptedReseedBytes); err != nil {
 		logrus.Errorln("Unable to read reseed value:", err)
 	}
 
@@ -60,14 +77,14 @@ func reseed(w http.ResponseWriter, request *http.Request) {
 	if err != nil {
 		logrus.Errorln("Unable to decrypt reseed value:", err)
 	}
-	expectedReseedLength := OWNER_KEY_LENGTH + chacha20poly1305.KeySize
+	expectedReseedLength := GOVERNING_KEY_LENGTH + chacha20poly1305.KeySize
 	if len(reseedBytes) != expectedReseedLength {
-		logrus.Errorln("Reseed value has unexpected size:", reseedLength)
+		logrus.Errorln("Reseed value has unexpected size:", reseedBytes)
 	}
 
-	ownerKey, newNodeKey := reseedBytes[OWNER_KEY_LENGTH:], reseedBytes[:chacha20poly1305.KeySize]
-	if !bytes.Equal(NODE_OWNER_KEY, ownerKey) {
-		logrus.Errorln("Reseed value owner key doesn't match node owner key", string(ownerKey))
+	networkKey, newNodeKey := reseedBytes[GOVERNING_KEY_LENGTH:], reseedBytes[:chacha20poly1305.KeySize]
+	if !bytes.Equal(NODE_NETWORK_KEY, networkKey) {
+		logrus.Errorln("Reseed value owner key doesn't match node owner key", string(networkKey))
 	} else {
 		newNodeAead, err := chacha20poly1305.NewX(newNodeKey)
 		if err != nil {
@@ -76,6 +93,7 @@ func reseed(w http.ResponseWriter, request *http.Request) {
 			SYMM_NODE_KEY = newNodeKey
 			SYMM_NODE_AEAD = newNodeAead
 			logrus.Infof("Symmetric node key reseeded, new value: 0x%x", SYMM_NODE_KEY)
+			AUTORESEED_TIMER.Reset(AUTORESEED_DELAY)
 		}
 	}
 }
@@ -104,15 +122,12 @@ func InitNetAPI(ip string, port int) {
 }
 
 func RetrieveNodeKey(surface string) {
-	if surface == NONE_ADDRESS {
-		var err error
-		SYMM_NODE_KEY = make([]byte, chacha20poly1305.KeySize)
-		if _, err := rand.Read(SYMM_NODE_KEY); err != nil {
-			logrus.Fatalln("Unable to generate symmetric node key:", err)
-		}
-		SYMM_NODE_AEAD, err = chacha20poly1305.NewX(SYMM_NODE_KEY)
+	NETWORK_CONNECTED = surface != NONE_ADDRESS
+
+	if !NETWORK_CONNECTED {
+		err := autoReseed()
 		if err != nil {
-			logrus.Fatalln("Unable to create symmetric cipher AEAD:", err)
+			logrus.Fatalln("Unable to seed symmetric node key:", err)
 		}
 		logrus.Infof("Symmetric node key seeded, value: 0x%x", SYMM_NODE_KEY)
 	} else {
@@ -128,12 +143,8 @@ func RetrieveNodeKey(surface string) {
 		}
 
 		surfaceKeyBytes := make([]byte, bodySizeExpected)
-		bodySizeActual, err := publicKeyResp.Body.Read(surfaceKeyBytes)
-		if err != nil {
+		if _, err := publicKeyResp.Body.Read(surfaceKeyBytes); err != nil {
 			logrus.Fatalln("Unable to read Surface public key:", err)
-		}
-		if bodySizeExpected != int64(bodySizeActual) {
-			logrus.Fatalln("Network Surface public key has unexpected size:", bodySizeExpected)
 		}
 
 		surfaceKey, err := ParsePublicKey(surfaceKeyBytes)
@@ -141,19 +152,28 @@ func RetrieveNodeKey(surface string) {
 			logrus.Fatalln("Unable to parse Surface public key:", err)
 		}
 
-		encryptedNodeOwnerKey, err := EncryptRSA(NODE_OWNER_KEY, surfaceKey)
+		encryptedNodeNetworkKey, err := EncryptRSA(NODE_NETWORK_KEY, surfaceKey)
 		if err != nil {
-			logrus.Fatalln("Unable to encrypt node owner key with Surface public key:", err)
+			logrus.Fatalln("Unable to encrypt node network key with Surface public key:", err)
 		}
 
-		nodeOwnerKeyReader := bytes.NewReader(encryptedNodeOwnerKey)
+		nodeNetworkKeyReader := bytes.NewReader(encryptedNodeNetworkKey)
 		connectionSurfaceEndpoint := fmt.Sprintf("%s/connect", surface)
-		connectionResp, err := http.Post(connectionSurfaceEndpoint, RAW_DATA_TYPE, nodeOwnerKeyReader)
+		connectionResp, err := http.Post(connectionSurfaceEndpoint, RAW_DATA_TYPE, nodeNetworkKeyReader)
 		if err != nil {
 			logrus.Fatalln("Unable to post to network Surface:", err)
 		}
 		if connectionResp.StatusCode != http.StatusOK {
 			logrus.Fatalln("Unable to connect to network Surface:", err)
 		}
+	}
+
+	AUTORESEED_TIMER := time.NewTicker(AUTORESEED_DELAY)
+	for range AUTORESEED_TIMER.C {
+		err := autoReseed()
+		if err != nil {
+			logrus.Fatalln("Unable to reseed symmetric node key:", err)
+		}
+		logrus.Infof("Symmetric node key automatically reseeded, value: 0x%x", SYMM_NODE_KEY)
 	}
 }
