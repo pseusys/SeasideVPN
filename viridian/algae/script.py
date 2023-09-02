@@ -2,6 +2,7 @@ from glob import glob
 from logging import getLogger
 from os import environ, getcwd
 from pathlib import Path
+from re import search, compile
 from shutil import rmtree
 from sys import argv
 from time import sleep
@@ -21,6 +22,8 @@ _ROOT_PATH = Path(getcwd())
 _ALGAE_ROOT = _ROOT_PATH / Path("viridian/algae")
 _EXECUTABLE_NAME = "algae.run"
 _MAX_LINE_LEN = 180
+
+_OWNER_KEY_REGEX = compile(r"\"Node API setup, node owner key: \S{32}\"")
 
 logger = getLogger(__name__)
 
@@ -90,6 +93,12 @@ def test() -> int:
     viridian_cnt = client.containers.run(viridian_tag, name="algae", detach=True, privileged=True, network=internal_net.name, environment=viridian_env)
     # Wait for a second to make sure viridian started
     sleep(1)
+
+    owner_key = search(_OWNER_KEY_REGEX, caerulean_cnt.logs().decode())
+    if owner_key is not None:
+        logger.info(f"Node owner key extracted: {Fore.BLUE}{owner_key.groups(1)}{Fore.RESET}.")
+    else:
+        return 1
 
     exit, output = viridian_cnt.exec_run(["poetry", "run", "pytest", "--log-cli-level=DEBUG", "test/"])
     viridian_cnt.kill("SIGINT")
