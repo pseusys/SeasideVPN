@@ -8,7 +8,7 @@ from sys import argv
 from time import sleep
 
 from black import Mode, Report, WriteBack, reformat_one
-from colorama import Fore, just_fix_windows_console
+from colorama import Fore, Style, just_fix_windows_console
 from docker import from_env
 from docker.types import IPAMConfig, IPAMPool
 from flake8.api.legacy import get_style_guide
@@ -23,7 +23,7 @@ _ALGAE_ROOT = _ROOT_PATH / Path("viridian/algae")
 _EXECUTABLE_NAME = "algae.run"
 _MAX_LINE_LEN = 180
 
-_OWNER_KEY_REGEX = compile(r"\"Node API setup, node owner key: \S{32}\"")
+_OWNER_KEY_REGEX = compile(r"\"Node API setup, node owner key: (\S{32})\"")
 
 logger = getLogger(__name__)
 
@@ -96,7 +96,7 @@ def test() -> int:
 
     owner_key = search(_OWNER_KEY_REGEX, caerulean_cnt.logs().decode())
     if owner_key is not None:
-        logger.info(f"Node owner key extracted: {Fore.BLUE}{owner_key.groups(1)}{Fore.RESET}.")
+        logger.info(f"Node owner key extracted: {Fore.BLUE}{Style.BRIGHT}{owner_key.group(1)}{Style.RESET_ALL}.")
     else:
         return 1
 
