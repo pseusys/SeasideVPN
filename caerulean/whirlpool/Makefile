@@ -1,10 +1,14 @@
 EXECUTABLE_NAME = whirlpool.run
 
 dependencies:
-	go mod tidy
+	# TODO: move to prerequisites!
+	apt install protobuf-compiler protoc-gen-go
+	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 .PHONY: dependencies
 
 build: dependencies
+	protoc -I=../../vessels/ --go_out=. --experimental_allow_proto3_optional ../../vessels/*.proto
+	go mod tidy
 	go build -o build/$(EXECUTABLE_NAME) ./sources
 .PHONY: build
 
