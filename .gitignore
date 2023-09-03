@@ -4,6 +4,10 @@
 .idea
 .vscode
 
+## Logs
+**/logs
+**/*.log
+
 
 
 # Python:
@@ -12,8 +16,8 @@
 **/poetry.lock
 
 ## Pyinstaller build:
-**/build/
-**/dist/
+viridian/algae/build/
+viridian/algae/dist/
 **/*.spec
 
 ## Python (and test) cache:
@@ -26,8 +30,11 @@
 # Golang:
 
 ## Go build:
-**/build/
+caerulean/whirlpool/build/
 
 ## Go module files:
 **/go.work
 **/go.sum
+
+## Go generated files:
+**/*.pb.go
