@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "/generated";
+
+
+
+message UserData {
+    bytes ownerKey = 1;
+    string uid = 2;
+    bytes session = 3;
+}
+
+
+
+message UserToken {
+    string uid = 1;
+    bytes session = 2;
+    Role role = 3;
+    optional google.protobuf.Timestamp subscription = 4;
+}
+
+message Date {
+    uint32 year = 1;
+    uint32 day = 2;
+}
+
+enum Role {
+    FREE = 0;
+    PREMIUM = 1;
+    ADMIN = 2;
+}

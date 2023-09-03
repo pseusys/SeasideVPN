@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+option go_package = "/generated";
+
+
+
+message ReseedRequest {
+    bytes previousKey = 1;
+    bytes newKey = 2;
+}
+
+
+
+message ReconnectionRequest {
+    bytes ownerKey = 1;
+    string newNetwork = 2;
+}
