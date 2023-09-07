@@ -2,7 +2,7 @@ from glob import glob
 from logging import getLogger
 from os import environ, getcwd
 from pathlib import Path
-from re import search, compile
+from re import compile, search
 from shutil import rmtree
 from sys import argv
 from time import sleep
