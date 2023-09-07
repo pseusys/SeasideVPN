@@ -249,6 +249,7 @@ These are:
 19. Check non-url deep links
 20. Empty heartbeat messages in control channel: random time intervals, add noise to connection.
 21. Surface to whirlpool status connections: different time intervals.
+22. Add image build target to whirlpool make, add executable build workflow
 
 All user requests to control port encrypted with public key, all answers with session key.
 Both requests and responses to sea port encrypted with session key.
