@@ -6,10 +6,15 @@ option go_package = "/generated";
 
 
 
-message UserData {
-    bytes ownerKey = 1;
+message UserAdminData {
+    string ownerKey = 1;
     string uid = 2;
     bytes session = 3;
+}
+
+message UserCertificate {
+    bytes token = 1;
+    int32 gravity = 2;
 }
 
 

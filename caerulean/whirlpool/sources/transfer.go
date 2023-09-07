@@ -82,7 +82,7 @@ func decryptPacket(ciphertext []byte, address *net.UDPAddr) ([]byte, error) {
 
 	viridian.expire.Reset(USER_LIFETIME)
 
-	plaintext, err := DecryptSymmetrical(viridian.aead, ciphertext)
+	plaintext, err := DecryptSymmetrical(ciphertext, viridian.aead)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +148,7 @@ func encryptPacket(plaintext []byte, address *net.UDPAddr) ([]byte, error) {
 
 	viridian.expire.Reset(USER_LIFETIME)
 
-	ciphertext, err := EncryptSymmetrical(viridian.aead, plaintext)
+	ciphertext, err := EncryptSymmetrical(plaintext, viridian.aead)
 	if err != nil {
 		return nil, err
 	}

@@ -95,7 +95,7 @@ func main() {
 
 	// Start web API, connect to surface if available
 	go InitNetAPI(*eIP, *network)
-	RetrieveNodeKey(*surfaceIP)
+	RetrieveNodeKey()
 
 	// Prepare termination signal
 	exitSignal := make(chan os.Signal, 1)
