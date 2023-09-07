@@ -2,7 +2,7 @@ FROM golang:1.19-alpine3.17 as builder
 
 WORKDIR /seaside/caerulean
 
-RUN apk add --no-cache protobuf
+RUN apk add --no-cache protobuf protobuf-dev
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 
 COPY caerulean/whirlpool/go.* ./
