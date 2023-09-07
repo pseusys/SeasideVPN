@@ -23,7 +23,7 @@ _ALGAE_ROOT = _ROOT_PATH / Path("viridian/algae")
 _EXECUTABLE_NAME = "algae.run"
 _MAX_LINE_LEN = 180
 
-_OWNER_KEY_REGEX = compile(r"\"Node API setup, node owner key: (\S{32})\"")
+_OWNER_KEY_REGEX = compile(r"\"Node API setup, node owner key: (\S{32}:(\d))\"")
 
 logger = getLogger(__name__)
 
@@ -82,7 +82,16 @@ def test() -> int:
     caerulean_cnt.start()
 
     # Wait for a second to make sure caerulean started
-    sleep(1)
+    sleep(3)
+
+    owner_key = search(_OWNER_KEY_REGEX, caerulean_cnt.logs().decode())
+    if owner_key is not None:
+        logger.info(f"Node owner key extracted: {Fore.BLUE}{Style.BRIGHT}{owner_key.group(1)}{Style.RESET_ALL}, gravity: {owner_key.group(2)}.")
+    else:
+        logger.critical("Node owner key not found!")
+        caerulean_cnt.remove(force=True)
+        internal_net.remove()
+        return 1
 
     viridian_tag = "algae-latest"
     client.images.build(path=str(_ALGAE_ROOT), tag=viridian_tag, rm=True)
@@ -93,12 +102,6 @@ def test() -> int:
     viridian_cnt = client.containers.run(viridian_tag, name="algae", detach=True, privileged=True, network=internal_net.name, environment=viridian_env)
     # Wait for a second to make sure viridian started
     sleep(1)
-
-    owner_key = search(_OWNER_KEY_REGEX, caerulean_cnt.logs().decode())
-    if owner_key is not None:
-        logger.info(f"Node owner key extracted: {Fore.BLUE}{Style.BRIGHT}{owner_key.group(1)}{Style.RESET_ALL}.")
-    else:
-        return 1
 
     exit, output = viridian_cnt.exec_run(["poetry", "run", "pytest", "--log-cli-level=DEBUG", "test/"])
     viridian_cnt.kill("SIGINT")
