@@ -10,12 +10,10 @@ import (
 	"html"
 	"main/m/v2/generated"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/chacha20poly1305"
-	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -41,11 +39,10 @@ func init() {
 	if err != nil {
 		logrus.Fatalln("error generating RSA node key:", err)
 	}
-	nodeOwnerKeyData, err := RandByteStr(OWNER_KEY_LENGTH)
+	NODE_OWNER_KEY, err = RandByteStr(OWNER_KEY_LENGTH)
 	if err != nil {
 		logrus.Fatalln("error generating node owner key:", err)
 	}
-	NODE_OWNER_KEY = nodeOwnerKeyData + ":" + strconv.Itoa(GRAVITY)
 }
 
 func public(w http.ResponseWriter, _ *http.Request) {
@@ -62,16 +59,11 @@ func stats(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Hello, %q, stats are not available yet :(", html.EscapeString(r.URL.Path))
 }
 
-func admin(w http.ResponseWriter, r *http.Request) {
-	message := &generated.UserAdminData{}
-	err := UnmarshalDecrypting(&r.Body, r.ContentLength, RSA_NODE_KEY, message)
+func auth(w http.ResponseWriter, r *http.Request) {
+	message := &generated.UserDataWhirlpool{}
+	err := UnmarshalDecrypting(r, RSA_NODE_KEY, message)
 	if err != nil {
-		WriteAndLogError(w, http.StatusBadRequest, "error processing admin request", err)
-		return
-	}
-
-	if message.OwnerKey != NODE_OWNER_KEY {
-		WriteAndLogError(w, http.StatusBadRequest, "owner key doesn't match", err)
+		WriteAndLogError(w, http.StatusBadRequest, "error processing auth request", err)
 		return
 	}
 
@@ -82,10 +74,15 @@ func admin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	token := &generated.UserToken{
-		Uid:          message.Uid,
-		Session:      message.Session,
-		Role:         generated.Role_ADMIN,
-		Subscription: nil,
+		Uid:         message.Uid,
+		Session:     message.Session,
+		FromNetwork: false,
+	}
+	if message.OwnerKey != nil && *message.OwnerKey == NODE_OWNER_KEY {
+		token.Role = generated.Role_ADMIN
+		token.OwnerKey = &NODE_OWNER_KEY
+	} else {
+		token.Role = generated.Role_FREE
 	}
 	tokenData, err := MarshalEncrypting(SYMM_NODE_AEAD, token)
 	if err != nil {
@@ -95,7 +92,6 @@ func admin(w http.ResponseWriter, r *http.Request) {
 
 	response := &generated.UserCertificate{
 		Token:       tokenData,
-		Gravity:     GRAVITY,
 		SeaPort:     int32(*port),
 		ControlPort: int32(*control),
 	}
@@ -108,9 +104,9 @@ func admin(w http.ResponseWriter, r *http.Request) {
 	WriteRawData(w, http.StatusOK, responseData)
 }
 
-func reconn(w http.ResponseWriter, r *http.Request) {
+func connect(w http.ResponseWriter, r *http.Request) {
 	message := &generated.ReconnectionRequest{}
-	err := UnmarshalDecrypting(&r.Body, r.ContentLength, RSA_NODE_KEY, message)
+	err := UnmarshalDecrypting(r, RSA_NODE_KEY, message)
 	if err != nil {
 		WriteAndLogError(w, http.StatusBadRequest, "error processing reconnection request", err)
 		return
@@ -121,23 +117,17 @@ func reconn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	certificate := &generated.NetworkCertificate{}
-	err = proto.Unmarshal(message.NewNetwork, certificate)
-	if err != nil {
-		WriteAndLogError(w, http.StatusBadRequest, "error parsing network certificate", err)
-		return
-	}
-
 	logrus.Infof("Symmetric node key seeded for reconnection, new value: 0x%x", SYMM_NODE_KEY)
-	*surfaceIP = certificate.Address
+	newNetwork := message.NewNetwork
 
-	if *surfaceIP != NONE_ADDRESS {
-		logrus.Infoln("Requested connection to new network:", *surfaceIP)
-	} else {
+	if newNetwork == NONE_ADDRESS {
 		logrus.Infoln("Network connection disabled")
+	} else {
+		logrus.Infoln("Requested connection to new network:", newNetwork)
+		// TODO: disconnect all network users.
 	}
 
-	err = reseedAndReconnect(*surfaceIP)
+	err = reseedAndReconnect(newNetwork)
 	if err != nil {
 		WriteAndLogError(w, http.StatusBadRequest, "error reseeding node key", err)
 		return
@@ -145,6 +135,7 @@ func reconn(w http.ResponseWriter, r *http.Request) {
 		AUTORESEED_TIMER.Reset(AUTORESEED_DELAY)
 	}
 
+	*surfaceIP = newNetwork
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -153,29 +144,28 @@ func InitNetAPI(ip string, port int) {
 
 	http.HandleFunc("/public", public)
 	http.HandleFunc("/stats", stats)
-	http.HandleFunc("/admin", admin)
-	http.HandleFunc("/reconn", reconn)
+	http.HandleFunc("/auth", auth)
+	http.HandleFunc("/connect", connect)
 
 	network := fmt.Sprintf("%s:%d", ip, port)
 	logrus.Fatalf("Net server error: %s", http.ListenAndServe(network, nil))
 }
 
-func connectToNetwork(surface string) error {
+func connectToNetwork(surface string) (bool, error) {
 	publicKeySurfaceEndpoint := fmt.Sprintf("%s/public", surface)
 	publicKeyResp, err := http.Get(publicKeySurfaceEndpoint)
 	if err != nil || publicKeyResp.StatusCode != http.StatusOK {
-		return JoinError("unable to get network surface public key", err, publicKeyResp.StatusCode)
+		return false, JoinError("unable to get network surface public key", err, publicKeyResp.StatusCode)
 	}
 
 	surfaceKey, err := ReadRSAKeyFromRequest(&publicKeyResp.Body, publicKeyResp.ContentLength)
 	if err != nil {
-		return JoinError("unable to parse surface public key", err)
+		return false, JoinError("unable to parse surface public key", err)
 	}
 
 	connectionRequest := &generated.ConnectionRequest{
 		UserId:       USER_ID,
 		NodeName:     NODE_NAME,
-		NodeGravity:  GRAVITY,
 		NodeKey:      SYMM_NODE_KEY,
 		NodeCapacity: int32(*max_users),
 		SeaPort:      int32(*port),
@@ -183,24 +173,23 @@ func connectToNetwork(surface string) error {
 	}
 	marshRequest, err := MarshalEncrypting(surfaceKey, connectionRequest)
 	if err != nil {
-		return JoinError("unable to marshal connection request", err)
+		return false, JoinError("unable to marshal connection request", err)
 	}
 
 	nodeNetworkKeyReader := bytes.NewReader(marshRequest)
 	connectionSurfaceEndpoint := fmt.Sprintf("%s/connect", surface)
 	connectionResp, err := http.Post(connectionSurfaceEndpoint, "application/octet-stream", nodeNetworkKeyReader)
 	if err != nil || connectionResp.StatusCode != http.StatusOK {
-		return JoinError("error connecting to network surface", err, connectionResp.StatusCode)
+		return false, JoinError("error connecting to network surface", err, connectionResp.StatusCode)
 	}
 
 	message := &generated.ConnectionResponse{}
-	err = UnmarshalDecrypting(&connectionResp.Body, connectionResp.ContentLength, RSA_NODE_KEY, message)
+	err = UnmarshalDecrypting(connectionResp, RSA_NODE_KEY, message)
 	if err != nil {
-		return JoinError("error decrypting connection response", err)
+		return false, JoinError("error decrypting connection response", err)
 	}
 
-	IS_PREMIUM = message.IsPremium
-	return nil
+	return message.IsPremium, nil
 }
 
 func reseedAndReconnect(surface string) error {
@@ -213,8 +202,9 @@ func reseedAndReconnect(surface string) error {
 		return JoinError("error creating new node symmetric cipher", err)
 	}
 
+	var newIsPremium = false
 	if surface != NONE_ADDRESS {
-		err = connectToNetwork(surface)
+		newIsPremium, err = connectToNetwork(surface)
 		if err == nil {
 			logrus.Infoln("Connected to network with Surface node on:", surface)
 		} else {
@@ -224,6 +214,14 @@ func reseedAndReconnect(surface string) error {
 		logrus.Infoln("No connection to any network requested")
 	}
 
+	if newIsPremium && !IS_PREMIUM {
+		// TODO: disconnect all free users.
+	} else if !newIsPremium && IS_PREMIUM {
+		// TODO: disable timers for all premium userss
+	}
+
+	IS_PREMIUM = newIsPremium
+	logrus.Infof("Node has declared itself as premium: %t", IS_PREMIUM)
 	SYMM_NODE_KEY = newNodeKey
 	SYMM_NODE_AEAD = newNodeAead
 	logrus.Infof("Symmetric node key seeded, value: 0x%x", SYMM_NODE_KEY)
