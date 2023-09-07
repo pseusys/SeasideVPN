@@ -23,7 +23,7 @@ _ALGAE_ROOT = _ROOT_PATH / Path("viridian/algae")
 _EXECUTABLE_NAME = "algae.run"
 _MAX_LINE_LEN = 180
 
-_OWNER_KEY_REGEX = compile(r"\"Node API setup, node owner key: (\S{32}:(\d))\"")
+_OWNER_KEY_REGEX = compile(r"\"Node API setup, node owner key: (\S{32})\"")
 
 logger = getLogger(__name__)
 
@@ -86,7 +86,7 @@ def test() -> int:
 
     owner_key = search(_OWNER_KEY_REGEX, caerulean_cnt.logs().decode())
     if owner_key is not None:
-        logger.info(f"Node owner key extracted: {Fore.BLUE}{Style.BRIGHT}{owner_key.group(1)}{Style.RESET_ALL}, gravity: {owner_key.group(2)}.")
+        logger.info(f"Node owner key extracted: {Fore.BLUE}{Style.BRIGHT}{owner_key.group(1)}{Style.RESET_ALL}")
     else:
         logger.critical("Node owner key not found!")
         caerulean_cnt.remove(force=True)
