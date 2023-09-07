@@ -81,8 +81,8 @@ def test() -> int:
     internal_net.connect(caerulean_cnt, ipv4_address=caerulean_address)
     caerulean_cnt.start()
 
-    # Wait for a second to make sure caerulean started
-    sleep(3)
+    # Wait for a second to make sure caerulean started TODO: use healthcheck instead
+    sleep(5)
 
     owner_key = search(_OWNER_KEY_REGEX, caerulean_cnt.logs().decode())
     if owner_key is not None:
@@ -100,7 +100,7 @@ def test() -> int:
         viridian_env["CI"] = caerulean_env["CI"] = "CI"
 
     viridian_cnt = client.containers.run(viridian_tag, name="algae", detach=True, privileged=True, network=internal_net.name, environment=viridian_env)
-    # Wait for a second to make sure viridian started
+    # Wait for a second to make sure viridian started TODO: use healthcheck instead
     sleep(1)
 
     exit, output = viridian_cnt.exec_run(["poetry", "run", "pytest", "--log-cli-level=DEBUG", "test/"])
