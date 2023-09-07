@@ -5,11 +5,11 @@ WORKDIR /seaside/caerulean
 RUN apk add --no-cache protobuf
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 
-COPY vessels ./vessels
-RUN protoc -I=vessels --go_out=. --experimental_allow_proto3_optional vessels/*.proto
-
 COPY caerulean/whirlpool/go.* ./
 RUN go get ./...
+
+COPY vessels ./vessels
+RUN protoc -I=vessels --go_out=. --experimental_allow_proto3_optional vessels/*.proto
 
 COPY caerulean/whirlpool/sources ./
 RUN go get main/m/v2
