@@ -22,7 +22,13 @@ jobs:
           go-version: "^1.20.4"
 
       - name: Install Dependencies 🔮
-        run: go install golang.org/x/lint/golint@latest
+        run: |
+          apt install protobuf-compiler protoc-gen-go
+          go install golang.org/x/lint/golint@latest
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+
+      - name: Generate Code 🗜
+        run: protoc -I=../../ --go_out=. --experimental_allow_proto3_optional ../../vessels/*.proto
 
       - name: Lint Caerulean Whirlpool 🧪
         run: make lint-whirlpool
