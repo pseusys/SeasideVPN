@@ -258,6 +258,8 @@ Upon initialization make a file dump with all values generated -> volume
 Logrus write to file?
 Default vilumes in docker compose, default log level below info
 
+Connection can be done via network surface or directly to a node (http://NODE_IP/auth)
+
 ### Considerations
 
 1. Use a library for `iptables` management in `caerulean/whirlpool` - if some other types of operations (not adding) are required; same about `ip route` and regex in `sources/console.go`.
