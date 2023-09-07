@@ -2,7 +2,7 @@ EXECUTABLE_NAME = whirlpool.run
 
 dependencies:
 	# TODO: move to prerequisites!
-	apt install protobuf-compiler
+	apt install protobuf-compiler protoc-gen-go
 	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 	go mod tidy
 .PHONY: dependencies
