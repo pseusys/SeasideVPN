@@ -16,6 +16,7 @@ jobs:
       matrix:
         include:
           - name: Caerulean Whirlpool
+            root: caerulean/whirlpool
             image: ghcr.io/${{ github.repository }}/caerulean-whirlpool
     permissions:
       contents: read
@@ -48,6 +49,7 @@ jobs:
       - name: Build and push Docker image 🏗️
         uses: docker/build-push-action@v4
         with:
+          file: ${{ matrix.root }}/Dockerfile
           target: default
           push: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/releases') }}
           tags: ${{ steps.meta.outputs.tags }}
