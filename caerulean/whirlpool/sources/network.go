@@ -10,6 +10,7 @@ import (
 	"html"
 	"main/m/v2/generated"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -40,10 +41,11 @@ func init() {
 	if err != nil {
 		logrus.Fatalln("error generating RSA node key:", err)
 	}
-	NODE_OWNER_KEY, err = RandByteStr(OWNER_KEY_LENGTH)
+	nodeOwnerKeyData, err := RandByteStr(OWNER_KEY_LENGTH)
 	if err != nil {
 		logrus.Fatalln("error generating node owner key:", err)
 	}
+	NODE_OWNER_KEY = nodeOwnerKeyData + ":" + strconv.Itoa(GRAVITY)
 }
 
 func public(w http.ResponseWriter, _ *http.Request) {
@@ -92,8 +94,10 @@ func admin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := &generated.UserCertificate{
-		Token:   tokenData,
-		Gravity: GRAVITY,
+		Token:       tokenData,
+		Gravity:     GRAVITY,
+		SeaPort:     int32(*port),
+		ControlPort: int32(*control),
 	}
 	responseData, err := MarshalEncrypting(sessionAEAD, response)
 	if err != nil {
