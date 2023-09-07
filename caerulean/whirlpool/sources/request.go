@@ -12,10 +12,23 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
-func UnmarshalDecrypting(requestBody *io.ReadCloser, contentLength int64, key any, message proto.Message) error {
-	encryptedBytes := make([]byte, contentLength)
-	if _, err := (*requestBody).Read(encryptedBytes); err != nil {
-		return JoinError("error reading request bytes", err)
+func UnmarshalDecrypting(source any, key any, message proto.Message) error {
+	var encryptedBytes []byte
+	switch value := source.(type) {
+	case []byte:
+		encryptedBytes = value
+	case *http.Request:
+		encryptedBytes = make([]byte, value.ContentLength)
+		if _, err := value.Body.Read(encryptedBytes); err != nil {
+			return JoinError("error reading request bytes", err)
+		}
+	case *http.Response:
+		encryptedBytes = make([]byte, value.ContentLength)
+		if _, err := value.Body.Read(encryptedBytes); err != nil {
+			return JoinError("error reading response bytes", err)
+		}
+	default:
+		return JoinError("unexpected data source", reflect.TypeOf(source))
 	}
 
 	var err error
