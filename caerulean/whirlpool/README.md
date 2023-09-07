@@ -9,7 +9,26 @@ Whirlpool accepts client packages at UDP port 8542, no more than 2000 bytes in s
 
 Whirlpool sends messages to UDP port 8542, in packets of size 2000, encrypted.
 
-> WARNING! Any UDP packets arriving to port 8542 will be treated as user packets, i.e. user should never send packets to port 8542 of any server via Seaside VPN!
+> TODO: update (and check) ports.
+> WARNING! Any UDP packets arriving to ports 8542 and 8587 will be treated as user packets, i.e. user should never expect to receive any packets from these ports from any server via Seaside VPN!
+
+## Web API
+
+TODO: automate build (installation script?) + actions + provide list of requirements
+
+TODO: write docstrings + tests + finalize whirlpool before surface
+
+TODO: rewrite control part to http (it's safe), use tokens there, move control to network (partly), split network into parts?
+
+- `/public`
+- `/reseed`
+- `/stats`
+- `/admin`
+
+If key is not updated for 3 consecutive days, node gets disconnected from network and starts updating autonomously.
+
+> WARNING! Same applies for initial network connection.
+> If network administrator doesn't approve request for 3 days, the node gets desynchronized.
 
 ## Configuration
 

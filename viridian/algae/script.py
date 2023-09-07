@@ -72,9 +72,9 @@ def test() -> int:
     caerulean_env = dict(ADDRESS="10.0.0.87", LOG_LEVEL="DEBUG")
     viridian_env = dict(ADDRESS="10.0.0.87", LOG_LEVEL="DEBUG")
 
-    caerulean_path = _ROOT_PATH / Path("caerulean/whirlpool")
+    caerulean_path = _ROOT_PATH / Path("caerulean/whirlpool/Dockertile")
     caerulean_tag = "whirlpool-latest"
-    client.images.build(path=str(caerulean_path), tag=caerulean_tag, rm=True)
+    client.images.build(path=str(_ROOT_PATH), dockerfile=str(caerulean_path), tag=caerulean_tag, rm=True)
     caerulean_cnt = client.containers.create(caerulean_tag, name="whirlpool", detach=True, privileged=True, network="none", environment=caerulean_env)
 
     client.networks.get("none").disconnect(caerulean_cnt)
