@@ -4,14 +4,30 @@ option go_package = "/generated";
 
 
 
-message ReseedRequest {
-    bytes previousKey = 1;
-    bytes newKey = 2;
+message NetworkCertificate {
+    string address = 1;
+    int32 gravity = 2;
+}
+
+
+
+message ConnectionResponse {
+    bool isPremium = 1;
+}
+
+message ConnectionRequest {
+    bytes userId = 1;
+    string nodeName = 2;
+    int32 nodeGravity = 3;
+    bytes nodeKey = 4;
+    int32 nodeCapacity = 5;
+    int32 seaPort = 6;
+    int32 controlPort = 7;
 }
 
 
 
 message ReconnectionRequest {
-    bytes ownerKey = 1;
-    string newNetwork = 2;
+    string ownerKey = 1;
+    bytes newNetwork = 2;
 }

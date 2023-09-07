@@ -73,6 +73,7 @@ The parameters can be found in the table below:
 | --- | --- |
 | Seaside UDP port | 8542 |
 | Control TCP port | 8543 |
+| Caerulean Whirlpool API port | 8587 |
 | Caerulean tunnel network | 192.168.0.87/24 |
 | Tunnel MTU | 1500 |
 | Transmission packet buffer | 2000 |
@@ -236,6 +237,25 @@ These are:
 5. Add shell build, generation, etc. script for easy `caerulean/whirlpool` deployment (with and without container).
 6. Add general make script to check dependencies, environment, etc.
 7. Add clean make rule to clean docker images + networks.
+8. Merge READMEs
+9. Check control connections to whirlpool, maybe http.
+
+12. Different max user values for network and internal (reserved users)
+14. During tests: check whirlpool logs for connections, test with several clients
+15. Rename main module
+16. Move cli args to env vars
+17. All errors to JoinErro
+18. Add gravity to all user requests and responses.
+19. Check non-url deep links
+20. Empty heartbeat messages in control channel: random time intervals, add noise to connection.
+21. Surface to whirlpool status connections: different time intervals.
+
+All user requests to control port encrypted with public key, all answers with session key.
+Both requests and responses to sea port encrypted with session key.
+
+Upon initialization make a file dump with all values generated -> volume
+Logrus write to file?
+Default vilumes in docker compose, default log level below info
 
 ### Considerations
 

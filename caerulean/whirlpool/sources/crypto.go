@@ -57,7 +57,7 @@ func GenerateSymmetricalAlgorithm() (cipher.AEAD, []byte, error) {
 	return aead, key, nil
 }
 
-func EncryptSymmetrical(aead cipher.AEAD, plaintext []byte) ([]byte, error) {
+func EncryptSymmetrical(plaintext []byte, aead cipher.AEAD) ([]byte, error) {
 	nonce := make([]byte, aead.NonceSize(), aead.NonceSize()+len(plaintext)+aead.Overhead())
 	if _, err := rand.Read(nonce); err != nil {
 		return nil, err
@@ -65,13 +65,12 @@ func EncryptSymmetrical(aead cipher.AEAD, plaintext []byte) ([]byte, error) {
 
 	return aead.Seal(nonce, nonce, plaintext, nil), nil
 }
-
-func DecryptSymmetrical(aead cipher.AEAD, payload []byte) ([]byte, error) {
-	if len(payload) < aead.NonceSize() {
+func DecryptSymmetrical(ciphertext []byte, aead cipher.AEAD) ([]byte, error) {
+	if len(ciphertext) < aead.NonceSize() {
 		return nil, errors.New("ciphertext too short")
 	}
 
-	nonce, ciphertext := payload[:aead.NonceSize()], payload[aead.NonceSize():]
+	nonce, ciphertext := ciphertext[:aead.NonceSize()], ciphertext[aead.NonceSize():]
 	result, err := aead.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
 		return nil, err

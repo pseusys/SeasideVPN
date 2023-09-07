@@ -10,6 +10,7 @@ import (
 	"html"
 	"main/m/v2/generated"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -18,72 +19,43 @@ import (
 )
 
 const (
+	NODE_NAME        = "Node name TODO: pass through env"
 	RSA_BIT_LENGTH   = 4096
 	OWNER_KEY_LENGTH = 32
-	AUTORESEED_DELAY = time.Hour * time.Duration(24*3)
+	AUTORESEED_DELAY = time.Hour * time.Duration(24)
 )
 
 var (
+	USER_ID          = []byte("User id TODO: pass through env")
 	RSA_NODE_KEY     *rsa.PrivateKey
 	SYMM_NODE_KEY    []byte
 	SYMM_NODE_AEAD   cipher.AEAD
-	NODE_OWNER_KEY   []byte
+	NODE_OWNER_KEY   string
 	AUTORESEED_TIMER *time.Ticker
+	IS_PREMIUM       = false
 )
 
 func init() {
 	var err error
 	RSA_NODE_KEY, err = rsa.GenerateKey(rand.Reader, RSA_BIT_LENGTH)
 	if err != nil {
-		logrus.Fatalln("Unable to generate RSA node key:", err)
+		logrus.Fatalln("error generating RSA node key:", err)
 	}
-	NODE_OWNER_KEY, err = RandByteStr(OWNER_KEY_LENGTH)
+	nodeOwnerKeyData, err := RandByteStr(OWNER_KEY_LENGTH)
 	if err != nil {
-		logrus.Fatalln("Unable to generate node owner key:", err)
+		logrus.Fatalln("error generating node owner key:", err)
 	}
+	NODE_OWNER_KEY = nodeOwnerKeyData + ":" + strconv.Itoa(GRAVITY)
 }
 
 func public(w http.ResponseWriter, _ *http.Request) {
 	publicBytes, err := x509.MarshalPKIXPublicKey(RSA_NODE_KEY.PublicKey)
 	if err != nil {
-		writeAndLogError(w, http.StatusBadRequest, "Unable to load RSA node key bytes:", err)
+		WriteAndLogError(w, http.StatusBadRequest, "error loading RSA node key bytes", err)
 		return
 	}
 
-	writeRawData(w, http.StatusOK, publicBytes)
-}
-
-func reseed(w http.ResponseWriter, r *http.Request) {
-	newNodeKey, err := readFromRequest(r)
-	if err != nil {
-		writeAndLogError(w, http.StatusBadRequest, "Couldn't read and decrypt reseed request:", err)
-		return
-	}
-
-	message := &generated.ReseedRequest{}
-	err = proto.Unmarshal(newNodeKey, message)
-	if err != nil {
-		writeAndLogError(w, http.StatusBadRequest, "Couldn't unmarshall reseed request:", err)
-		return
-	}
-
-	if !bytes.Equal(message.PreviousKey, SYMM_NODE_KEY) {
-		writeAndLogError(w, http.StatusBadRequest, "Previous node key doesn't match while reseed:", err)
-		return
-	}
-
-	newNodeAead, err := chacha20poly1305.NewX(message.NewKey)
-	if err != nil {
-		writeAndLogError(w, http.StatusBadRequest, "Reseed value can't be used to create symmetric cipher AEAD:", err)
-		return
-	}
-
-	SYMM_NODE_KEY = message.NewKey
-	SYMM_NODE_AEAD = newNodeAead
-	logrus.Infof("Symmetric node key reseeded, new value: 0x%x", SYMM_NODE_KEY)
-	AUTORESEED_TIMER.Reset(AUTORESEED_DELAY)
-
-	w.WriteHeader(http.StatusOK)
+	WriteRawData(w, http.StatusOK, publicBytes)
 }
 
 func stats(w http.ResponseWriter, r *http.Request) {
@@ -91,21 +63,21 @@ func stats(w http.ResponseWriter, r *http.Request) {
 }
 
 func admin(w http.ResponseWriter, r *http.Request) {
-	adminRequest, err := readFromRequest(r)
+	message := &generated.UserAdminData{}
+	err := UnmarshalDecrypting(&r.Body, r.ContentLength, RSA_NODE_KEY, message)
 	if err != nil {
-		writeAndLogError(w, http.StatusBadRequest, "Couldn't read and decrypt admin request:", err)
+		WriteAndLogError(w, http.StatusBadRequest, "error processing admin request", err)
 		return
 	}
 
-	message := &generated.UserData{}
-	err = proto.Unmarshal(adminRequest, message)
-	if err != nil {
-		writeAndLogError(w, http.StatusBadRequest, "Couldn't unmarshall admin request:", err)
+	if message.OwnerKey != NODE_OWNER_KEY {
+		WriteAndLogError(w, http.StatusBadRequest, "owner key doesn't match", err)
 		return
 	}
 
-	if !bytes.Equal(message.OwnerKey, NODE_OWNER_KEY) {
-		writeAndLogError(w, http.StatusBadRequest, "Owner key doesn't match while admin request:", err)
+	sessionAEAD, err := chacha20poly1305.NewX(message.Session)
+	if err != nil {
+		WriteAndLogError(w, http.StatusBadRequest, "error creating session cipher", err)
 		return
 	}
 
@@ -115,60 +87,69 @@ func admin(w http.ResponseWriter, r *http.Request) {
 		Role:         generated.Role_ADMIN,
 		Subscription: nil,
 	}
-	tokenData, err := proto.Marshal(token)
+	tokenData, err := MarshalEncrypting(SYMM_NODE_AEAD, token)
 	if err != nil {
-		writeAndLogError(w, http.StatusInternalServerError, "Couldn't marshall admin token:", err)
+		WriteAndLogError(w, http.StatusInternalServerError, "error processing admin token", err)
 		return
 	}
 
-	tokenEncrypted, err := EncryptSymmetrical(SYMM_NODE_AEAD, tokenData)
+	response := &generated.UserCertificate{
+		Token:   tokenData,
+		Gravity: GRAVITY,
+	}
+	responseData, err := MarshalEncrypting(sessionAEAD, response)
 	if err != nil {
-		writeAndLogError(w, http.StatusInternalServerError, "Couldn't encrypt admin token:", err)
+		WriteAndLogError(w, http.StatusInternalServerError, "error processing admin response", err)
 		return
 	}
 
-	writeRawData(w, http.StatusOK, tokenEncrypted)
+	WriteRawData(w, http.StatusOK, responseData)
 }
 
 func reconn(w http.ResponseWriter, r *http.Request) {
-	newNetworkSurface, err := readFromRequest(r)
-	if err != nil {
-		writeAndLogError(w, http.StatusBadRequest, "Couldn't read and decrypt reconnection request:", err)
-		return
-	}
-
 	message := &generated.ReconnectionRequest{}
-	err = proto.Unmarshal(newNetworkSurface, message)
+	err := UnmarshalDecrypting(&r.Body, r.ContentLength, RSA_NODE_KEY, message)
 	if err != nil {
-		writeAndLogError(w, http.StatusBadRequest, "Couldn't unmarshall reconnection request:", err)
+		WriteAndLogError(w, http.StatusBadRequest, "error processing reconnection request", err)
 		return
 	}
 
-	if !bytes.Equal(message.OwnerKey, NODE_OWNER_KEY) {
-		writeAndLogError(w, http.StatusBadRequest, "Owner key doesn't match while reconnection:", err)
+	if message.OwnerKey != NODE_OWNER_KEY {
+		WriteAndLogError(w, http.StatusBadRequest, "owner key doesn't match", err)
 		return
 	}
 
-	err = autoReseed()
+	certificate := &generated.NetworkCertificate{}
+	err = proto.Unmarshal(message.NewNetwork, certificate)
 	if err != nil {
-		writeAndLogError(w, http.StatusInternalServerError, "Unable to reseed symmetric node key while reconnecting:", err)
+		WriteAndLogError(w, http.StatusBadRequest, "error parsing network certificate", err)
 		return
 	}
 
 	logrus.Infof("Symmetric node key seeded for reconnection, new value: 0x%x", SYMM_NODE_KEY)
-	*surfaceIP = message.NewNetwork
-	connectToNetwork(*surfaceIP)
-	logrus.Infoln("Requested connection to new network:", *surfaceIP)
-	AUTORESEED_TIMER.Reset(AUTORESEED_DELAY)
+	*surfaceIP = certificate.Address
+
+	if *surfaceIP != NONE_ADDRESS {
+		logrus.Infoln("Requested connection to new network:", *surfaceIP)
+	} else {
+		logrus.Infoln("Network connection disabled")
+	}
+
+	err = reseedAndReconnect(*surfaceIP)
+	if err != nil {
+		WriteAndLogError(w, http.StatusBadRequest, "error reseeding node key", err)
+		return
+	} else {
+		AUTORESEED_TIMER.Reset(AUTORESEED_DELAY)
+	}
 
 	w.WriteHeader(http.StatusOK)
 }
 
 func InitNetAPI(ip string, port int) {
-	logrus.Infoln("Node API setup, node owner key:", string(NODE_OWNER_KEY))
+	logrus.Infoln("Node API setup, node owner key:", NODE_OWNER_KEY)
 
 	http.HandleFunc("/public", public)
-	http.HandleFunc("/reseed", reseed)
 	http.HandleFunc("/stats", stats)
 	http.HandleFunc("/admin", admin)
 	http.HandleFunc("/reconn", reconn)
@@ -177,101 +158,81 @@ func InitNetAPI(ip string, port int) {
 	logrus.Fatalf("Net server error: %s", http.ListenAndServe(network, nil))
 }
 
-func writeAndLogError(w http.ResponseWriter, code int, message string, err error) {
-	logrus.Errorln(message, err)
-	w.Header().Add("Content-Type", "text/plain")
-	w.WriteHeader(code)
-	w.Write([]byte(message + " " + err.Error()))
-}
-
-func writeRawData(w http.ResponseWriter, code int, data []byte) {
-	w.Header().Add("Content-Type", "application/octet-stream")
-	w.WriteHeader(code)
-	w.Write(data)
-}
-
-func autoReseed() (err error) {
-	newNodeKey := make([]byte, chacha20poly1305.KeySize)
-	if _, err := rand.Read(newNodeKey); err != nil {
-		return err
+func connectToNetwork(surface string) error {
+	publicKeySurfaceEndpoint := fmt.Sprintf("%s/public", surface)
+	publicKeyResp, err := http.Get(publicKeySurfaceEndpoint)
+	if err != nil || publicKeyResp.StatusCode != http.StatusOK {
+		return JoinError("unable to get network surface public key", err, publicKeyResp.StatusCode)
 	}
-	newNodeAead, err := chacha20poly1305.NewX(SYMM_NODE_KEY)
+
+	surfaceKey, err := ReadRSAKeyFromRequest(&publicKeyResp.Body, publicKeyResp.ContentLength)
 	if err != nil {
-		return err
+		return JoinError("unable to parse surface public key", err)
 	}
-	SYMM_NODE_KEY = newNodeKey
-	SYMM_NODE_AEAD = newNodeAead
+
+	connectionRequest := &generated.ConnectionRequest{
+		UserId:       USER_ID,
+		NodeName:     NODE_NAME,
+		NodeGravity:  GRAVITY,
+		NodeKey:      SYMM_NODE_KEY,
+		NodeCapacity: int32(*max_users),
+		SeaPort:      int32(*port),
+		ControlPort:  int32(*control),
+	}
+	marshRequest, err := MarshalEncrypting(surfaceKey, connectionRequest)
+	if err != nil {
+		return JoinError("unable to marshal connection request", err)
+	}
+
+	nodeNetworkKeyReader := bytes.NewReader(marshRequest)
+	connectionSurfaceEndpoint := fmt.Sprintf("%s/connect", surface)
+	connectionResp, err := http.Post(connectionSurfaceEndpoint, "application/octet-stream", nodeNetworkKeyReader)
+	if err != nil || connectionResp.StatusCode != http.StatusOK {
+		return JoinError("error connecting to network surface", err, connectionResp.StatusCode)
+	}
+
+	message := &generated.ConnectionResponse{}
+	err = UnmarshalDecrypting(&connectionResp.Body, connectionResp.ContentLength, RSA_NODE_KEY, message)
+	if err != nil {
+		return JoinError("error decrypting connection response", err)
+	}
+
+	IS_PREMIUM = message.IsPremium
 	return nil
 }
 
-func readFromRequest(request *http.Request) ([]byte, error) {
-	encryptedBytes := make([]byte, request.ContentLength)
-	if _, err := request.Body.Read(encryptedBytes); err != nil {
-		return nil, err
+func reseedAndReconnect(surface string) error {
+	newNodeKey := make([]byte, chacha20poly1305.KeySize)
+	if _, err := rand.Read(newNodeKey); err != nil {
+		return JoinError("error creating new node symmetric key", err)
 	}
-
-	decryptedBytes, err := DecryptRSA(encryptedBytes, RSA_NODE_KEY)
+	newNodeAead, err := chacha20poly1305.NewX(SYMM_NODE_KEY)
 	if err != nil {
-		return nil, err
+		return JoinError("error creating new node symmetric cipher", err)
 	}
-	return decryptedBytes, nil
-}
-
-func connectToNetwork(surface string) {
-	publicKeySurfaceEndpoint := fmt.Sprintf("%s/public", surface)
-	publicKeyResp, err := http.Get(publicKeySurfaceEndpoint)
-	if err != nil {
-		logrus.Fatalln("Unable to get network Surface public key:", err)
-	}
-
-	bodySizeExpected := publicKeyResp.ContentLength
-	if bodySizeExpected != RSA_BIT_LENGTH {
-		logrus.Fatalln("Network Surface response body has unexpected size:", bodySizeExpected)
-	}
-
-	surfaceKeyBytes := make([]byte, bodySizeExpected)
-	if _, err := publicKeyResp.Body.Read(surfaceKeyBytes); err != nil {
-		logrus.Fatalln("Unable to read Surface public key:", err)
-	}
-
-	surfaceKey, err := ParsePublicKey(surfaceKeyBytes)
-	if err != nil {
-		logrus.Fatalln("Unable to parse Surface public key:", err)
-	}
-
-	encryptedNodeNetworkKey, err := EncryptRSA(SYMM_NODE_KEY, surfaceKey)
-	if err != nil {
-		logrus.Fatalln("Unable to encrypt node network key with Surface public key:", err)
-	}
-
-	nodeNetworkKeyReader := bytes.NewReader(encryptedNodeNetworkKey)
-	connectionSurfaceEndpoint := fmt.Sprintf("%s/connect", surface)
-	connectionResp, err := http.Post(connectionSurfaceEndpoint, "application/octet-stream", nodeNetworkKeyReader)
-	if err != nil {
-		logrus.Fatalln("Unable to post to network Surface:", err)
-	}
-	if connectionResp.StatusCode != http.StatusOK {
-		logrus.Fatalln("Unable to connect to network Surface:", err)
-	}
-}
-
-func RetrieveNodeKey(surface string) {
-	err := autoReseed()
-	if err != nil {
-		logrus.Fatalln("Unable to seed symmetric node key:", err)
-	}
-	logrus.Infof("Symmetric node key seeded, value: 0x%x", SYMM_NODE_KEY)
 
 	if surface != NONE_ADDRESS {
-		connectToNetwork(surface)
+		err = connectToNetwork(surface)
+		if err == nil {
+			logrus.Infoln("Connected to network with Surface node on:", surface)
+		} else {
+			logrus.Errorf("Network Surface %s connection error: %v", surface, err)
+		}
+	} else {
+		logrus.Infoln("No connection to any network requested")
 	}
+
+	SYMM_NODE_KEY = newNodeKey
+	SYMM_NODE_AEAD = newNodeAead
+	logrus.Infof("Symmetric node key seeded, value: 0x%x", SYMM_NODE_KEY)
+	return nil
+}
+
+func RetrieveNodeKey() {
+	reseedAndReconnect(*surfaceIP)
 
 	AUTORESEED_TIMER := time.NewTicker(AUTORESEED_DELAY)
 	for range AUTORESEED_TIMER.C {
-		err := autoReseed()
-		if err != nil {
-			logrus.Fatalln("Unable to reseed symmetric node key:", err)
-		}
-		logrus.Infof("Symmetric node key automatically reseeded, value: 0x%x", SYMM_NODE_KEY)
+		reseedAndReconnect(*surfaceIP)
 	}
 }
