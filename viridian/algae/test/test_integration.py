@@ -54,7 +54,7 @@ def test_qotd_udp_protocol(random_message: bytes) -> None:
     message_length = 4096
     logger.info(f"Testing with QOTD (UDP) protocol, packets size: {len(random_message)}")
     with socket(AF_INET, SOCK_DGRAM) as sock:
-        # Sometimes the server just doesn't respond :(
+        # Sometimes the server just doesn't respond :( TODO: find other protocol
         for _ in range(0, 5):
             sock.sendto(random_message, (gethostbyname("djxmmx.net"), 17))
             sleep(0.5)

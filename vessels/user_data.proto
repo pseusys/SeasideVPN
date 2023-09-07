@@ -12,6 +12,9 @@ message UserDataWhirlpool {
     optional string ownerKey = 3;
 }
 
+// TODO: user data surface
+
+// TODO: optional, add field for error: too many users, node not free
 message UserCertificate {
     bytes token = 1;
     int32 seaPort = 2;
