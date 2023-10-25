@@ -8,11 +8,12 @@ WORKDIR /seaside/algae
 
 RUN pip install --no-cache-dir poetry
 
+COPY scripts/*.py ./scripts/
 COPY sources/*.py ./sources/
-COPY test/*.py ./test/
-COPY script.py pyproject.toml README.md ./
+COPY tests/*.py ./tests/
+COPY pyproject.toml README.md ./
 
-RUN poetry install --all-extras
+RUN poetry install --extras test
 
 ENV LOG_LEVEL DEBUG
 

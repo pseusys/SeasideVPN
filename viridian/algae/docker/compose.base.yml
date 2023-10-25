@@ -1,0 +1,32 @@
+version: "3.9"
+
+services:
+  algae:
+    image: algae-latest
+    container_name: algae
+    privileged: true
+    build:
+      dockerfile: docker/Dockerfile.algae
+      context: ..
+    environment:
+      CI: ${CI:-}
+      LOG_LEVEL: DEBUG
+
+  whirlpool:
+    image: whirlpool-latest
+    container_name: whirlpool
+    privileged: true
+    build:
+      dockerfile: caerulean/whirlpool/Dockerfile
+      context: ../../..
+    environment:
+      CI: ${CI:-}
+      LOG_LEVEL: DEBUG
+
+  echo:
+    image: seaside-echo-latest
+    container_name: seaside-echo
+    privileged: true
+    build:
+      dockerfile: docker/Dockerfile.echo
+      context: ..

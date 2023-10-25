@@ -250,6 +250,7 @@ These are:
 20. Empty heartbeat messages in control channel: random time intervals, add noise to connection.
 21. Surface to whirlpool status connections: different time intervals.
 22. Add image build target to whirlpool make, add executable build workflow
+23. Fix CI var
 
 All user requests to control port encrypted with public key, all answers with session key.
 Both requests and responses to sea port encrypted with session key.
