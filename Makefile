@@ -1,5 +1,5 @@
 test-algae:
-	poetry -C viridian/algae install --all-extras
+	poetry -C viridian/algae install --extras test
 	poetry -C viridian/algae run test
 .PHONY: test-algae
 
@@ -13,7 +13,7 @@ lint-whirlpool:
 .PHONY: lint-whirlpool
 
 lint-algae:
-	poetry -C viridian/algae install --all-extras
+	poetry -C viridian/algae install --extras devel
 	poetry -C viridian/algae run lint
 .PHONY: lint-algae
 

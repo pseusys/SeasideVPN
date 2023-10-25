@@ -13,13 +13,13 @@ keywords = ["open-source", "udp", "distributed", "vpn", "client-server", "pptp",
 
 packages = [
     { include = "sources" },
-    { include = "script.py" },
+    { include = "scripts/*.py" },
 ]
 
 
 
 [tool.poetry.dependencies]
-python = ">=3.7,<3.12"
+python = ">=3.8,<3.12"
 colorama = "^0.4.6"
 pyroute2 = "^0.7.9"
 pycryptodome = "^3.18.0"
@@ -28,24 +28,24 @@ flake8 = { version = "^3.9.2", optional = true }
 black = { version = "^20.8b1", optional = true }
 isort = { version = "^5.11.0", optional = true }
 pytest = { version = "^7.3.1", optional = true }
-docker = { version = "^6.1.2", optional = true }
 icmplib = { version = "^3.0.3", optional = true }
 pyinstaller = { version = "^5.11.0", optional = true }
+python-on-whales = { version = "^0.65.0", optional = true }
 
+# TODO: make groups
 [tool.poetry.extras]
 build = ["pyinstaller"]
-test = ["pytest", "docker", "icmplib"]
-devel = ["flake8", "black", "isort", "mypy"]
-
+devel = ["flake8", "black", "isort", "mypy", "pytest"]
+test = ["pytest", "python-on-whales", "icmplib"]
 
 
 [tool.poetry.scripts]
-execute = { callable = "script:execute" }
-lint = { callable = "script:lint", extras = ["devel"] }
-format = { callable = "script:format", extras = ["devel"] }
-test = { callable = "script:test", extras = ["test"] }
-build = { callable = "script:build", extras = ["build"] }
-clean = { callable = "script:clean" }
+execute = { callable = "sources.main:main" }
+lint = { callable = "scripts.codestyle:lint", extras = ["devel"] }
+format = { callable = "scripts.codestyle:format", extras = ["devel"] }
+test = { callable = "scripts.test:test", extras = ["test"] }
+compile = { callable = "scripts.process:compile", extras = ["build"] }
+clean = { callable = "scripts.process:clean", extras = ["build"] }
 
 
 
