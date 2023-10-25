@@ -96,10 +96,15 @@ func ReadRSAKeyFromRequest(requestBody *io.ReadCloser, contentLength int64) (*rs
 }
 
 func WriteAndLogError(w http.ResponseWriter, code int, message string, err error) {
-	logrus.Errorln(message, err)
 	w.Header().Add("Content-Type", "text/plain")
 	w.WriteHeader(code)
-	w.Write([]byte(JoinError(message, err).Error()))
+	if err != nil {
+		logrus.Errorln(message, err)
+		w.Write([]byte(JoinError(message, err).Error()))
+	} else {
+		logrus.Errorln(message)
+		w.Write([]byte(message))
+	}
 }
 
 func WriteRawData(w http.ResponseWriter, code int, data []byte) {

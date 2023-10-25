@@ -9,12 +9,11 @@ option go_package = "/generated";
 message UserDataWhirlpool {
     string uid = 1;
     bytes session = 2;
-    optional string ownerKey = 3;
+    string ownerKey = 3;
 }
 
 // TODO: user data surface
 
-// TODO: optional, add field for error: too many users, node not free
 message UserCertificate {
     bytes token = 1;
     int32 seaPort = 2;
@@ -26,19 +25,6 @@ message UserCertificate {
 message UserToken {
     string uid = 1;
     bytes session = 2;
-    Role role = 3;
-    bool fromNetwork = 4;
-    optional google.protobuf.Timestamp subscription = 5;
-    optional string ownerKey = 6;
-}
-
-message Date {
-    uint32 year = 1;
-    uint32 day = 2;
-}
-
-enum Role {
-    FREE = 0;
-    PREMIUM = 1;
-    ADMIN = 2;
+    bool privileged = 3;
+    optional google.protobuf.Timestamp subscription = 4;
 }
