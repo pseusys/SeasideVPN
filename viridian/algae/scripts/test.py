@@ -1,5 +1,5 @@
 from logging import getLogger
-from os import getcwd
+from os import environ, getcwd
 from pathlib import Path
 from re import compile, search
 from time import sleep
@@ -32,7 +32,8 @@ def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remot
         return 1
 
     try:
-        docker.compose.execute("algae", ["poetry", "run", "pytest", "--log-cli-level=DEBUG", f"tests/test_{profile}.py"])
+        test_command = ["poetry", "run", "pytest", "--log-cli-level=DEBUG", f"tests/test_{profile}.py"]
+        docker.compose.execute("algae", test_command, envs=dict() if "CI" not in environ else {"CI": environ["CI"]})
         docker.compose.kill(signal="SIGINT")
         logger.info(f"Testing {profile}: {Fore.GREEN}success{Fore.RESET}!")
     except DockerException:
