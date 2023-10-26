@@ -6,8 +6,9 @@ services:
       file: compose.base.yml
       service: algae
     environment:
+      BUFFER_SIZE: 8192
       ADDRESS: 10.0.0.87
-      LOCAL_ECHO: 10.0.0.69
+      LOCAL_ECHO: 10.0.0.69:5000
     networks:
       default:
         ipv4_address: 10.0.0.65
@@ -26,6 +27,9 @@ services:
     extends:
       file: compose.base.yml
       service: echo
+    environment:
+      BUFFER_SIZE: 8192
+      ECHO_PORT: 5000
     networks:
       default:
         ipv4_address: 10.0.0.69
