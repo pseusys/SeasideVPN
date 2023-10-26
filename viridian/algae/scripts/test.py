@@ -38,8 +38,13 @@ def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remot
         logger.info(f"Testing {profile}: {Fore.GREEN}success{Fore.RESET}!")
     except DockerException:
         logger.error(f"Testing {profile}: {Fore.RED}failed{Fore.RESET}!")
+
+        # Wait for a second to synchronize whirlpool logs
+        sleep(1)
+
         logger.error(docker.container.logs("whirlpool"))
         logger.error(docker.container.logs("algae"))
+        logger.error(docker.container.logs("seaside-echo"))
         return 1
 
     return 0
@@ -55,5 +60,5 @@ def test() -> int:
     result = _test_set(docker_path, "local") + _test_set(docker_path, "remote")
     result += pytest(["--log-cli-level=DEBUG", _ALGAE_ROOT / "tests" / "test_unit.py"])
 
-    docker.compose.rm()
+    docker.compose.rm(stop=True)
     return result
