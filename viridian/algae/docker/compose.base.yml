@@ -9,7 +9,6 @@ services:
       dockerfile: docker/Dockerfile.algae
       context: ..
     environment:
-      CI: ${CI:-}
       LOG_LEVEL: DEBUG
 
   whirlpool:
@@ -20,7 +19,6 @@ services:
       dockerfile: caerulean/whirlpool/Dockerfile
       context: ../../..
     environment:
-      CI: ${CI:-}
       LOG_LEVEL: DEBUG
 
   echo:
