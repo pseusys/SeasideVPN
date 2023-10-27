@@ -6,8 +6,8 @@ services:
     container_name: algae
     privileged: true
     build:
-      dockerfile: docker/Dockerfile.algae
-      context: ..
+      dockerfile: viridian/algae/docker/Dockerfile.algae
+      context: ../../..
     environment:
       LOG_LEVEL: DEBUG
 

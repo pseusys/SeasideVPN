@@ -97,7 +97,7 @@ func main() {
 	go SendPacketsToViridian(tunnel)
 
 	// Start web API, connect to surface if available
-	go InitNetAPI(*eIP, *network)
+	go InitNetAPI(*network)
 	RetrieveNodeKey()
 
 	// Prepare termination signal

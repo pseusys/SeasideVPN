@@ -1,8 +1,9 @@
 FROM python:3.11-alpine3.17 as default
 
+WORKDIR /seaside/echo
+
 ENV PYTHONUNBUFFERED 1
 ENV PYTHONDONTWRITEBYTECODE 1
-WORKDIR /seaside/echo
 
 COPY docker/echo_server.py ./
 ENTRYPOINT python3 echo_server.py

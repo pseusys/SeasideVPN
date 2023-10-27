@@ -1,10 +1,17 @@
+.ONESHELL:
+
 EXECUTABLE_NAME = whirlpool.run
 
 dependencies:
-	# TODO: move to prerequisites!
-	apt install protobuf-compiler protoc-gen-go
-	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-	go mod tidy
+	@
+	protoc-gen-go --version 2>&1 1>/dev/null || {
+		echo "Installing protobuf go generator..."
+		go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+	}
+	go mod verify 2>&1 1>/dev/null || {
+		echo "Installing and verifying module..."
+		go mod tidy
+	}
 .PHONY: dependencies
 
 build: dependencies

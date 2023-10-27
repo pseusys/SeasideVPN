@@ -8,7 +8,7 @@ from colorama import Fore, just_fix_windows_console
 from pytest import main as pytest
 from python_on_whales import DockerClient, DockerException
 
-_ALGAE_ROOT = Path(getcwd()) / "viridian" / "algae"
+from scripts._utils import ALGAE_ROOT
 
 logger = getLogger(__name__)
 
@@ -44,7 +44,7 @@ def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remot
 
 def test() -> int:
     just_fix_windows_console()
-    docker_path = _ALGAE_ROOT / "docker"
+    docker_path = ALGAE_ROOT / "docker"
 
     docker = DockerClient(compose_files=[docker_path / "compose.base.yml"])
     docker.compose.build()

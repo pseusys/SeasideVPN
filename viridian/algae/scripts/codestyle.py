@@ -7,7 +7,8 @@ from flake8.api.legacy import get_style_guide
 from isort import check_file, file
 from mypy import api
 
-_ALGAE_ROOT = Path(getcwd()) / "viridian" / "algae"
+from scripts._utils import ALGAE_ROOT
+
 _MAX_LINE_LEN = 180
 
 logger = getLogger(__name__)
@@ -21,7 +22,7 @@ def lint() -> int:
     lint_result += sum(len(report.get_statistics(sel)) for sel in selector)
     lint_result += format(False)
     mypy_opts = ["--strict", "--ignore-missing-imports", "--no-namespace-packages"]
-    out, err, code = api.run(mypy_opts + [str(file) for file in _ALGAE_ROOT.glob("**/*.py")])
+    out, err, code = api.run(mypy_opts + [str(file) for file in ALGAE_ROOT.glob("**/*.py")])
     if code != 0:
         logger.error(out)
         logger.error(err)
@@ -33,7 +34,7 @@ def format(modify: bool = True) -> int:
     result = True
     report = Report(check=not modify, quiet=False)
     write = WriteBack.YES if modify else WriteBack.CHECK
-    for path in _ALGAE_ROOT.glob("**/*.py"):
+    for path in ALGAE_ROOT.glob("**/*.py"):
         mode = Mode(line_length=_MAX_LINE_LEN)
         reformat_one(path, False, write, mode, report)
         edited = file(path, line_length=_MAX_LINE_LEN) if modify else check_file(path, True, line_length=_MAX_LINE_LEN)

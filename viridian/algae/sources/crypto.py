@@ -2,6 +2,7 @@ from enum import IntEnum
 from typing import Optional, Tuple
 
 from Crypto.Cipher import PKCS1_OAEP, ChaCha20_Poly1305
+from Crypto.Cipher.PKCS1_OAEP import PKCS1OAEP_Cipher
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Random import get_random_bytes
@@ -9,6 +10,7 @@ from Crypto.Random.random import randint
 
 _RSA_KEY_SIZE = 2048
 _RSA_KEY_EXPONENT = 65537
+_CHACHA_KEY_LENGTH = 32
 _CHACHA_NONCE_LENGTH = 24
 _CHACHA_TAG_LENGTH = 16
 
@@ -37,6 +39,11 @@ class Status(IntEnum):
         return cls.UNDEF
 
 
+def construct_cipher(public_key: bytes) -> PKCS1OAEP_Cipher:
+    recipient_key = RSA.import_key(public_key)
+    return PKCS1_OAEP.new(recipient_key, SHA256)
+
+
 def decrypt_rsa(data: bytes) -> bytes:
     cipher = PKCS1_OAEP.new(_RSA_KEY, SHA256)
     return cipher.decrypt(data)
@@ -46,9 +53,10 @@ def get_public_key() -> bytes:
     return _RSA_KEY.public_key().export_key("DER")
 
 
-def initialize_symmetric(key: bytes) -> None:
+def initialize_symmetric() -> bytes:
     global _CHACHA_KEY
-    _CHACHA_KEY = key
+    _CHACHA_KEY = get_random_bytes(_CHACHA_KEY_LENGTH)
+    return _CHACHA_KEY
 
 
 def encrypt_symmetric(data: bytes) -> bytes:
@@ -77,7 +85,7 @@ def encode_message(status: Status, data: Optional[bytes] = None) -> bytes:
         raise RuntimeError(f"Length of data ({length}) is greater than max message length ({available_space})!")
 
     random_length = randint(0, min(available_space - length, _SIZE_UINT_16))
-    prefix_length = randint(0, min(_SIZE_UINT_8, random_length))
+    prefix_length = randint(0, min(_SIZE_UINT_8 - _MESSAGE_GRAVITY, random_length))
 
     pointer = (prefix_length + _MESSAGE_GRAVITY).to_bytes(1, "big")
     prefix = get_random_bytes(_MESSAGE_GRAVITY - 1) + pointer + get_random_bytes(prefix_length)

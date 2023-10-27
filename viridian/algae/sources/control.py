@@ -3,13 +3,16 @@ from multiprocessing import Process
 from socket import AF_INET, SHUT_WR, SOCK_STREAM, socket
 from urllib.request import urlopen
 
-from .crypto import _MESSAGE_MAX_LEN, Status, decode_message, decrypt_rsa, encode_message, get_public_key, initialize_symmetric
+from .crypto import _MESSAGE_MAX_LEN, Status, decode_message, decrypt_rsa, encode_message, get_public_key, initialize_symmetric, construct_cipher
 from .outputs import logger
 from .tunnel import Tunnel
+
+from generated.user_data_pb2 import UserDataWhirlpool
 
 
 class Controller:
     def __init__(self, key: str, name: str, mtu: int, buff: int, addr: IPv4Address, sea_port: int, net_port: int, ctrl_port: int):
+        self._key = key
         self._address = str(addr)
         self._net_port = net_port
         self._ctrl_port = ctrl_port
@@ -33,10 +36,12 @@ class Controller:
             self._clean_tunnel()
 
     def _receive_token(self) -> None:
-        logger.warning(f"Calling for key: http://{self._address}:{self._net_port}/public")
-        response = urlopen(f"http://{self._address}:{self._net_port}/public")
-        logger.warning(response.read())
-        response.close()
+        with urlopen(f"http://{self._address}:{self._net_port}/public") as response:
+            public_cipher = construct_cipher(response.read())
+        # TODO: uid to args, MAX uid == 100, MAX owner key == 32
+        session = initialize_symmetric()
+        user_data = UserDataWhirlpool(uid="some_cool_uid", session=session, ownerKey=self._key)
+        logger.error(public_cipher.encrypt(user_data.SerializeToString()))
 
     def _initialize_control(self) -> None:
         caerulean_address = (self._address, self._ctrl_port)
@@ -88,8 +93,11 @@ class Controller:
                 status, _ = decode_message(packet)
 
                 if status == Status.NO_PASS:
-                    logger.info("Server lost session key, re-initializing control!")
+                    logger.info("Server lost session key!")
                     self._turn_tunnel_off()
+                    logger.info("Re-fetching token!")
+                    self._receive_token()
+                    logger.info("Re-initializing control!")
                     self._initialize_control()
                     self._turn_tunnel_on()
 
