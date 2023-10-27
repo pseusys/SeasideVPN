@@ -35,14 +35,10 @@ func init() {
 	if err != nil {
 		logrus.Fatalln("error generating RSA node key:", err)
 	}
-	NODE_OWNER_KEY, err = RandByteStr(OWNER_KEY_LENGTH)
-	if err != nil {
-		logrus.Fatalln("error generating node owner key:", err)
-	}
 }
 
 func public(w http.ResponseWriter, _ *http.Request) {
-	publicBytes, err := x509.MarshalPKIXPublicKey(RSA_NODE_KEY.PublicKey)
+	publicBytes, err := x509.MarshalPKIXPublicKey(&(RSA_NODE_KEY.PublicKey))
 	if err != nil {
 		WriteAndLogError(w, http.StatusBadRequest, "error loading RSA node key bytes", err)
 		return
@@ -96,14 +92,19 @@ func auth(w http.ResponseWriter, r *http.Request) {
 }
 
 func InitNetAPI(ip string, port int) {
-	logrus.Infoln("Node API setup, node owner key:", NODE_OWNER_KEY)
+	if NODE_OWNER_KEY == NONE_ARG {
+		logrus.Fatalln("owner key not provided")
+	} else {
+		logrus.Infoln("Node API setup, node owner key:", NODE_OWNER_KEY)
+	}
 
 	http.HandleFunc("/public", public)
 	// TODO: distribute stats: http.HandleFunc("/stats", stats)
 	http.HandleFunc("/auth", auth)
 	// TODO: connect to network: http.HandleFunc("/connect", connect)
 
-	network := fmt.Sprintf("%s:%d", ip, port)
+	network := fmt.Sprintf("0.0.0.0:%d", port)
+	logrus.Infoln("Listening for HTTP requests at:", network)
 	logrus.Fatalf("Net server error: %s", http.ListenAndServe(network, nil))
 }
 

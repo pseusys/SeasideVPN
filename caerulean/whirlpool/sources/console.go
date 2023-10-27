@@ -44,6 +44,7 @@ func AllocateInterface(name string, tunnelIP *net.IP, tunnelNetwork *net.IPNet) 
 }
 
 func ConfigureForwarding(externalInterface string, internalInterface string, tunnelInterface string, tunnelIP *net.IP) {
+	netStr := strconv.Itoa(*network)
 	portStr := strconv.Itoa(*port)
 	ctrlStr := strconv.Itoa(*control)
 	markStr := strconv.Itoa(MARK)
@@ -52,9 +53,10 @@ func ConfigureForwarding(externalInterface string, internalInterface string, tun
 	runCommand("iptables", "-F")
 	runCommand("iptables", "-t", "nat", "-F")
 	runCommand("iptables", "-t", "mangle", "-F")
-	// Accept packets to port 8542, pass to VPN decoder
+	// Accept packets to port network, control and whirlpool ports, also accept PING packets
 	runCommand("iptables", "-A", "INPUT", "-p", "udp", "-d", *iIP, "--dport", portStr, "-i", internalInterface, "-j", "ACCEPT")
 	runCommand("iptables", "-A", "INPUT", "-p", "tcp", "-d", *iIP, "--dport", ctrlStr, "-i", internalInterface, "-j", "ACCEPT")
+	runCommand("iptables", "-A", "INPUT", "-p", "tcp", "-d", *iIP, "--dport", netStr, "-i", internalInterface, "-j", "ACCEPT")
 	runCommand("iptables", "-A", "INPUT", "-p", "icmp", "-d", *iIP, "-i", internalInterface, "-j", "ACCEPT")
 	// Else drop all input packets
 	runCommand("iptables", "-P", "INPUT", "DROP")

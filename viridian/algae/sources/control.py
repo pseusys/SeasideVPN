@@ -1,6 +1,7 @@
 from ipaddress import IPv4Address
 from multiprocessing import Process
 from socket import AF_INET, SHUT_WR, SOCK_STREAM, socket
+from urllib.request import urlopen
 
 from .crypto import _MESSAGE_MAX_LEN, Status, decode_message, decrypt_rsa, encode_message, get_public_key, initialize_symmetric
 from .outputs import logger
@@ -8,16 +9,20 @@ from .tunnel import Tunnel
 
 
 class Controller:
-    def __init__(self, name: str, mtu: int, buff: int, addr: IPv4Address, sea_port: int, ctrl_port: int):
+    def __init__(self, key: str, name: str, mtu: int, buff: int, addr: IPv4Address, sea_port: int, net_port: int, ctrl_port: int):
         self._address = str(addr)
+        self._net_port = net_port
         self._ctrl_port = ctrl_port
         self._interface = Tunnel(name, mtu, buff, addr, sea_port)
 
+        self._owner_key: bytes
         self._receiver_process: Process
         self._sender_process: Process
 
     def start(self) -> None:
         try:
+            logger.info("Receiving user token...")
+            self._receive_token()
             logger.info("Exchanging basic information...")
             self._initialize_control()
             logger.info("Starting tunnel worker processes...")
@@ -26,6 +31,12 @@ class Controller:
             self._perform_control()
         except SystemExit:
             self._clean_tunnel()
+
+    def _receive_token(self) -> None:
+        logger.warning(f"Calling for key: http://{self._address}:{self._net_port}/public")
+        response = urlopen(f"http://{self._address}:{self._net_port}/public")
+        logger.warning(response.read())
+        response.close()
 
     def _initialize_control(self) -> None:
         caerulean_address = (self._address, self._ctrl_port)
@@ -97,7 +108,7 @@ class Controller:
                     self._clean_tunnel()
                     raise SystemExit("Requested caerulean is no longer available!")
 
-    def break_control(self) -> None:
+    def interrupt(self) -> None:
         caerulean_address = (self._address, self._ctrl_port)
 
         with socket(AF_INET, SOCK_STREAM) as gate:

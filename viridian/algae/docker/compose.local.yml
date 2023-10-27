@@ -7,8 +7,9 @@ services:
       service: algae
     environment:
       BUFFER_SIZE: 8192
-      ADDRESS: 10.0.0.87
+      NODE_ADDR: 10.0.0.87
       LOCAL_ECHO: 10.0.0.69:5000
+      OWNER_KEY: SuperSafeNodeOwnerKey
     networks:
       default:
         ipv4_address: 10.0.0.65
@@ -19,6 +20,7 @@ services:
       service: whirlpool
     environment:
       ADDRESS: 10.0.0.87
+      OWNER_KEY: SuperSafeNodeOwnerKey
     networks:
       default:
         ipv4_address: 10.0.0.87

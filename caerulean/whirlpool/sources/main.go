@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"net"
 	"os"
 	"os/signal"
@@ -13,7 +12,7 @@ import (
 )
 
 const (
-	NONE_ADDRESS  = "none"
+	NONE_ARG      = "none"
 	TUNNEL_IP     = "192.168.0.87/24"
 	UDP           = "udp4"
 	TCP           = "tcp4"
@@ -26,16 +25,20 @@ const (
 )
 
 var (
-	iIP       = flag.String("a", NONE_ADDRESS, "Internal whirlpool IP - towards viridian (required)")
-	eIP       = flag.String("e", NONE_ADDRESS, "External whirlpool IP - towards outside world (default: same as internal address)")
-	surfaceIP = flag.String("s", NONE_ADDRESS, "Network surface address (required for network usage)")
-	port      = flag.Int("p", SEA_PORT, fmt.Sprintf("UDP port for receiving UDP packets (default: %d)", SEA_PORT))
-	control   = flag.Int("c", CONTROL_PORT, fmt.Sprintf("TCP port for communication with viridian (default: %d)", CONTROL_PORT))
-	network   = flag.Int("n", NET_PORT, fmt.Sprintf("Network API port (default: %d)", NET_PORT))
-	user_ttl  = flag.Int("t", USER_TTL, fmt.Sprintf("Time system keeps user password for without interaction, in minutes (default: %d hours)", USER_TTL/60))
-	max_users = flag.Int("u", MAX_USERS, fmt.Sprintf("Maximum number of users, that are able to connect to this whirlpool node (default: %d)", MAX_USERS))
+	iIP       = flag.String("a", NONE_ARG, "Internal whirlpool IP - towards viridian (required)")
+	eIP       = flag.String("e", NONE_ARG, "External whirlpool IP - towards outside world (default: same as internal address)")
+	surfaceIP = flag.String("s", NONE_ARG, "Network surface address (required for network usage)")
+	port      = flag.Int("p", SEA_PORT, "UDP port for receiving UDP packets")
+	control   = flag.Int("c", CONTROL_PORT, "TCP port for communication with viridian")
+	network   = flag.Int("n", NET_PORT, "Network API port")
+	user_ttl  = flag.Int("t", USER_TTL, "Time system keeps user password for without interaction, in minutes")
+	max_users = flag.Int("u", MAX_USERS, "Maximum number of users, that are able to connect to this whirlpool node")
 	help      = flag.Bool("h", false, "Print this message again and exit")
 )
+
+func init() {
+	flag.StringVar(&NODE_OWNER_KEY, "o", NONE_ARG, "Node owner key string (required)")
+}
 
 func init() {
 	level, err := logrus.ParseLevel(getEnv("LOG_LEVEL", DEF_LOG_LEVEL))
@@ -53,11 +56,11 @@ func main() {
 		return
 	}
 
-	if *iIP == NONE_ADDRESS {
+	if *iIP == NONE_ARG {
 		logrus.Fatalln("Internal whirlpool IP (towards viridian) is not specified (but required)!")
 	}
 
-	if *eIP == NONE_ADDRESS {
+	if *eIP == NONE_ARG {
 		*eIP = *iIP
 	}
 
