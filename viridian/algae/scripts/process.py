@@ -1,18 +1,27 @@
 from glob import glob
-from os import getcwd
 from pathlib import Path
 from shutil import rmtree
+from subprocess import run
 from sys import argv
 
-from PyInstaller.__main__ import run
+from PyInstaller.__main__ import run as install
 
-_ALGAE_ROOT = Path(getcwd()) / "viridian" / "algae"
+from scripts._utils import ALGAE_ROOT
+
 _EXECUTABLE_NAME = "algae.run"
+
+
+def generate() -> None:
+    command = "protoc -I=vessels --python_out=viridian/algae/generated --experimental_allow_proto3_optional vessels/*.proto"
+    generated_dir = ALGAE_ROOT / "generated"
+    rmtree(generated_dir, ignore_errors=True)
+    generated_dir.mkdir(exist_ok=True)
+    run(command, cwd=ALGAE_ROOT.parent.parent, shell=True, check=True)
 
 
 def compile() -> None:
     executable_name = argv[1] if len(argv) > 1 else _EXECUTABLE_NAME
-    run(["-F", "-c", "-y", "-n", executable_name, str(_ALGAE_ROOT / "sources" / "main.py")])
+    install(["-F", "-c", "-y", "-n", executable_name, str(ALGAE_ROOT / "sources" / "main.py")])
 
 
 def clean() -> None:

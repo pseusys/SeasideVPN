@@ -249,7 +249,9 @@ These are:
 19. Check non-url deep links
 20. Empty heartbeat messages in control channel: random time intervals, add noise to connection.
 21. Surface to whirlpool status connections: different time intervals.
-22. Add image build target to whirlpool make, add executable build workflow
+22. Add image build target to whirlpool make, add executable build workflow.
+23. Add test with three devices in docker: output packet info, check if hides real source, probably add nftables config option for hiding.
+24. Healthcheck: ports occupied.
 
 All user requests to control port encrypted with public key, all answers with session key.
 Both requests and responses to sea port encrypted with session key.
@@ -272,3 +274,7 @@ Connection can be done via network surface or directly to a node (http://NODE_IP
 - Use monkeypatching to replace random bytes function with one returning zeros and random int with one returning const for easier message obfuscation testing.
 - Pass `gravity` as an input parameter.
 - Add "connection certificate" description to README.md.
+
+### Dependencies
+
+- `protoc` (can be installed via package manager, e.g. `apt install protobuf-compiler` for Ubuntu)

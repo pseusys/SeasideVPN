@@ -25,6 +25,8 @@ viridian/algae/dist/
 **/.mypy_cache/
 **/pytest-cache/
 
+## Python generated files:
+**/*pb2.py
 
 
 # Golang:

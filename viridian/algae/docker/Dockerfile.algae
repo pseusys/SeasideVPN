@@ -1,17 +1,20 @@
 FROM python:3.11-alpine3.17 as default
 
-RUN apk update && apk add --virtual build-dependencies build-base gcc
+WORKDIR /seaside/algae
 
 ENV PYTHONUNBUFFERED 1
 ENV PYTHONDONTWRITEBYTECODE 1
-WORKDIR /seaside/algae
 
+RUN apk add --no-cache build-base gcc protobuf protobuf-dev
 RUN pip install --no-cache-dir poetry
 
-COPY scripts/*.py ./scripts/
-COPY sources/*.py ./sources/
-COPY tests/*.py ./tests/
-COPY pyproject.toml README.md ./
+COPY vessels ./vessels
+RUN mkdir generated && protoc -I=vessels --python_out=generated --experimental_allow_proto3_optional vessels/*.proto
+
+COPY viridian/algae/scripts/*.py ./scripts/
+COPY viridian/algae/sources/*.py ./sources/
+COPY viridian/algae/tests/*.py ./tests/
+COPY viridian/algae/pyproject.toml viridian/algae/README.md ./
 
 RUN poetry install --extras test
 

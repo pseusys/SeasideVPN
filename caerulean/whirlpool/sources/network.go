@@ -91,7 +91,7 @@ func auth(w http.ResponseWriter, r *http.Request) {
 	WriteRawData(w, http.StatusOK, responseData)
 }
 
-func InitNetAPI(ip string, port int) {
+func InitNetAPI(port int) {
 	if NODE_OWNER_KEY == NONE_ARG {
 		logrus.Fatalln("owner key not provided")
 	} else {
