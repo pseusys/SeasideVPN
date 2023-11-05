@@ -19,12 +19,12 @@ func UnmarshalDecrypting(source any, key any, message proto.Message) error {
 		encryptedBytes = value
 	case *http.Request:
 		encryptedBytes = make([]byte, value.ContentLength)
-		if _, err := value.Body.Read(encryptedBytes); err != nil {
+		if num, err := value.Body.Read(encryptedBytes); num == 0 && err != nil {
 			return JoinError("error reading request bytes", err)
 		}
 	case *http.Response:
 		encryptedBytes = make([]byte, value.ContentLength)
-		if _, err := value.Body.Read(encryptedBytes); err != nil {
+		if num, err := value.Body.Read(encryptedBytes); num == 0 && err != nil {
 			return JoinError("error reading response bytes", err)
 		}
 	default:
@@ -35,9 +35,9 @@ func UnmarshalDecrypting(source any, key any, message proto.Message) error {
 	var decryptedBytes []byte
 	switch value := key.(type) {
 	case cipher.AEAD:
-		decryptedBytes, err = EncryptSymmetrical(encryptedBytes, value)
-	case *rsa.PublicKey:
-		decryptedBytes, err = EncryptRSA(encryptedBytes, value)
+		decryptedBytes, err = DecryptSymmetrical(encryptedBytes, value)
+	case *rsa.PrivateKey:
+		decryptedBytes, err = DecryptBlockRSA(encryptedBytes, value)
 	default:
 		return JoinError("unexpected cipher type", reflect.TypeOf(key))
 	}
@@ -83,7 +83,7 @@ func ReadRSAKeyFromRequest(requestBody *io.ReadCloser, contentLength int64) (*rs
 	}
 
 	surfaceKeyBytes := make([]byte, bodySizeExpected)
-	if _, err := (*requestBody).Read(surfaceKeyBytes); err != nil {
+	if num, err := (*requestBody).Read(surfaceKeyBytes); num == 0 && err != nil {
 		return nil, JoinError("error reading request RSA key bytes", err)
 	}
 

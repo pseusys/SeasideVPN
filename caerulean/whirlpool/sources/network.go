@@ -38,6 +38,7 @@ func init() {
 }
 
 func public(w http.ResponseWriter, _ *http.Request) {
+	// TODO: check GET request
 	publicBytes, err := x509.MarshalPKIXPublicKey(&(RSA_NODE_KEY.PublicKey))
 	if err != nil {
 		WriteAndLogError(w, http.StatusBadRequest, "error loading RSA node key bytes", err)
@@ -48,6 +49,7 @@ func public(w http.ResponseWriter, _ *http.Request) {
 }
 
 func auth(w http.ResponseWriter, r *http.Request) {
+	// TODO: check POST request
 	message := &generated.UserDataWhirlpool{}
 	err := UnmarshalDecrypting(r, RSA_NODE_KEY, message)
 	if err != nil {
@@ -113,7 +115,7 @@ func reseed(surface string) error {
 	if _, err := rand.Read(newNodeKey); err != nil {
 		return JoinError("error creating new node symmetric key", err)
 	}
-	newNodeAead, err := chacha20poly1305.NewX(SYMM_NODE_KEY)
+	newNodeAead, err := chacha20poly1305.NewX(newNodeKey)
 	if err != nil {
 		return JoinError("error creating new node symmetric cipher", err)
 	}
@@ -124,11 +126,15 @@ func reseed(surface string) error {
 	return nil
 }
 
-func RetrieveNodeKey() {
-	reseed(*surfaceIP)
+func RetrieveNodeKey() error {
+	err := reseed(*surfaceIP)
+	if err != nil {
+		return JoinError("error initial cipher seeding", err)
+	}
 
 	AUTORESEED_TIMER := time.NewTicker(AUTORESEED_DELAY)
 	for range AUTORESEED_TIMER.C {
 		reseed(*surfaceIP)
 	}
+	return nil
 }

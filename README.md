@@ -252,6 +252,10 @@ These are:
 22. Add image build target to whirlpool make, add executable build workflow.
 23. Add test with three devices in docker: output packet info, check if hides real source, probably add nftables config option for hiding.
 24. Healthcheck: ports occupied.
+25. Use http.Error in network.go.
+26. Think about migrating from poetry (or at least to specify requirements for Dockerfile).
+27. Set GET and POST checks in GO.
+28. Change obfuscation methods, apply them for HTTP requests.
 
 All user requests to control port encrypted with public key, all answers with session key.
 Both requests and responses to sea port encrypted with session key.

@@ -96,7 +96,7 @@ func SendPacketsToViridian(tunnel *water.Interface) {
 	for {
 		// Read IOBUFFERSIZE of data from tunnel
 		r, err := tunnel.Read(buffer)
-		if err != nil || r == 0 {
+		if r == 0 && err != nil {
 			logrus.Errorf("Reading from tunnel error (%d bytes read): %v", r, err)
 			continue
 		}

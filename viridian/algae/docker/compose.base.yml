@@ -10,6 +10,8 @@ services:
       context: ../../..
     environment:
       LOG_LEVEL: DEBUG
+    depends_on:
+      - whirlpool
 
   whirlpool:
     image: whirlpool-latest

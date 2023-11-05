@@ -8,7 +8,7 @@ from typing import Tuple
 from colorama import Fore
 from pyroute2 import IPRoute
 
-from .crypto import decrypt_symmetric, encrypt_symmetric
+from .crypto1 import decrypt_symmetric, encrypt_symmetric
 from .outputs import logger
 
 _UNIX_TUNSETIFF = 0x400454CA

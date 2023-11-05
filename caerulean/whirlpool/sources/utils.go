@@ -16,7 +16,7 @@ func JoinError(message string, errs ...any) error {
 	for i := range errs {
 		traces[i] = fmt.Sprint(errs[i])
 	}
-	return fmt.Errorf("%s: %v", message, strings.Join(traces, ", "))
+	return fmt.Errorf("%s: %v", message, strings.Join(traces, ": "))
 }
 
 func getEnv(key, fallback string) string {
