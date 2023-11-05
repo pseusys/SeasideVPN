@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/rsa"
@@ -8,7 +9,13 @@ import (
 	"crypto/x509"
 	"errors"
 
+	"github.com/zenazn/pkcs7pad"
 	"golang.org/x/crypto/chacha20poly1305"
+)
+
+const (
+	RSA_BLOCK_DATA_SIZE = 128
+	RSA_BLOCK_HASH_SIZE = 32
 )
 
 func ParsePublicKey(rawKey []byte) (*rsa.PublicKey, error) {
@@ -34,10 +41,39 @@ func EncryptRSA(plaintext []byte, key *rsa.PublicKey) ([]byte, error) {
 	return ciphertext, nil
 }
 
-func DecryptRSA(ciphertext []byte, key *rsa.PrivateKey) ([]byte, error) {
-	plaintext, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, key, ciphertext, nil)
+func DecryptBlockRSA(ciphertext []byte, key *rsa.PrivateKey) ([]byte, error) {
+	blockSize := RSA_BIT_LENGTH / 8
+	blockNum := len(ciphertext) / blockSize
+
+	var initialVector []byte
+	decrypted := make([]byte, blockNum*RSA_BLOCK_DATA_SIZE)
+
+	for i := blockNum - 1; i >= 0; i-- {
+		rl := i * blockSize
+		ru := rl + blockSize
+		fl := i * RSA_BLOCK_DATA_SIZE
+		fu := fl + RSA_BLOCK_DATA_SIZE
+
+		block, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, key, ciphertext[rl:ru], nil)
+		if err != nil {
+			return nil, err
+		}
+
+		initialVector = block[:RSA_BLOCK_HASH_SIZE]
+		copy(decrypted[fl:fu], block[RSA_BLOCK_HASH_SIZE:])
+	}
+
+	plaintext, err := pkcs7pad.Unpad(decrypted)
 	if err != nil {
 		return nil, err
+	}
+
+	hash := sha256.New()
+	hash.Write(plaintext)
+	hsum := hash.Sum(nil)
+
+	if initialVector == nil || !bytes.Equal(initialVector, hsum) {
+		return nil, errors.New("plaintext damaged or changed")
 	}
 
 	return plaintext, nil

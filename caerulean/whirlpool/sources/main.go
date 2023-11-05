@@ -98,7 +98,10 @@ func main() {
 
 	// Start web API, connect to surface if available
 	go InitNetAPI(*network)
-	RetrieveNodeKey()
+	err = RetrieveNodeKey()
+	if err != nil {
+		logrus.Fatalf("Initial symmetric node ciphering failed: %v", err)
+	}
 
 	// Prepare termination signal
 	exitSignal := make(chan os.Signal, 1)

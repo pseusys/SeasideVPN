@@ -1,10 +1,11 @@
 from ipaddress import IPv4Address
 from multiprocessing import Process
 from socket import AF_INET, SHUT_WR, SOCK_STREAM, socket
-from urllib.request import urlopen
 
-from .crypto import _MESSAGE_MAX_LEN, Status, decode_message, decrypt_rsa, encode_message, get_public_key, initialize_symmetric, construct_cipher
+from .crypto import RSACipher
+from .crypto1 import _MESSAGE_MAX_LEN, Status, decode_message, decrypt_rsa, decrypt_symmetric, encode_message, get_public_key, initialize_symmetric, construct_cipher
 from .outputs import logger
+from .requests import get, post
 from .tunnel import Tunnel
 
 from generated.user_data_pb2 import UserDataWhirlpool
@@ -19,6 +20,7 @@ class Controller:
         self._interface = Tunnel(name, mtu, buff, addr, sea_port)
 
         self._owner_key: bytes
+        self._session_token: bytes
         self._receiver_process: Process
         self._sender_process: Process
 
@@ -36,12 +38,18 @@ class Controller:
             self._clean_tunnel()
 
     def _receive_token(self) -> None:
-        with urlopen(f"http://{self._address}:{self._net_port}/public") as response:
-            public_cipher = construct_cipher(response.read())
+        logger.debug("Requesting whirlpool public key...")
+        with get(f"http://{self._address}:{self._net_port}/public") as response:
+            public_cipher = RSACipher(response.read())
         # TODO: uid to args, MAX uid == 100, MAX owner key == 32
         session = initialize_symmetric()
+        logger.debug(f"Symmetric session cipher initialized: {session}")
         user_data = UserDataWhirlpool(uid="some_cool_uid", session=session, ownerKey=self._key)
-        logger.error(public_cipher.encrypt(user_data.SerializeToString()))
+        user_encrypted = public_cipher.encrypt_rsa(user_data.SerializeToString())
+        logger.debug("Requesting whirlpool token...")
+        with post(f"http://{self._address}:{self._net_port}/auth", user_encrypted) as response:
+            self._session_token = decrypt_symmetric(response.read())
+        logger.debug(f"Symmetric session token received: {self._session_token}")
 
     def _initialize_control(self) -> None:
         caerulean_address = (self._address, self._ctrl_port)
