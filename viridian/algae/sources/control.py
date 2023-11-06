@@ -8,7 +8,7 @@ from .outputs import logger
 from .requests import get, post
 from .tunnel import Tunnel
 
-from generated.user_data_pb2 import UserDataWhirlpool
+from generated.user_data_pb2 import UserDataWhirlpool, UserCertificate, UserControlMessage, UserControlResponseStatus, UserControlRequestStatus
 
 
 class Controller:
@@ -21,6 +21,7 @@ class Controller:
 
         self._owner_key: bytes
         self._session_token: bytes
+        self._public_cipher: RSACipher
         self._receiver_process: Process
         self._sender_process: Process
 
@@ -39,16 +40,19 @@ class Controller:
 
     def _receive_token(self) -> None:
         logger.debug("Requesting whirlpool public key...")
+        logger.debug(f"http://{self._address}:{self._net_port}/public")
         with get(f"http://{self._address}:{self._net_port}/public") as response:
-            public_cipher = RSACipher(response.read())
-        # TODO: uid to args, MAX uid == 100, MAX owner key == 32
+            self._public_cipher = RSACipher(response.read())
+        # TODO: uid to args, MAX uid == 100, MAX owner key == 32 OR test with longer
         session = initialize_symmetric()
         logger.debug(f"Symmetric session cipher initialized: {session}")
         user_data = UserDataWhirlpool(uid="some_cool_uid", session=session, ownerKey=self._key)
-        user_encrypted = public_cipher.encrypt_rsa(user_data.SerializeToString())
+        user_encrypted = self._public_cipher.encrypt_rsa(user_data.SerializeToString())
         logger.debug("Requesting whirlpool token...")
         with post(f"http://{self._address}:{self._net_port}/auth", user_encrypted) as response:
-            self._session_token = decrypt_symmetric(response.read())
+            certificate = UserCertificate()
+            certificate.ParseFromString(decrypt_symmetric(response.read()))
+            self._session_token = certificate.token
         logger.debug(f"Symmetric session token received: {self._session_token}")
 
     def _initialize_control(self) -> None:
@@ -58,16 +62,16 @@ class Controller:
             gate.connect(caerulean_address)
             logger.debug(f"Sending control to caerulean {self._address}:{self._ctrl_port}")
 
-            public_key = encode_message(Status.PUBLIC, get_public_key())
-            gate.sendall(public_key)
+            control_message = UserControlMessage(token=self._session_token, status=UserControlRequestStatus.CONNECTION)
+            encrypted_message = self._public_cipher.encrypt_rsa(control_message.SerializeToString())
+            gate.sendall(encrypted_message)
             gate.shutdown(SHUT_WR)
 
             packet = gate.recv(_MESSAGE_MAX_LEN)
-            status, key = decode_message(packet)
+            status = packet[0]
 
-            if status == Status.SUCCESS and key is not None:
-                initialize_symmetric(decrypt_rsa(key))
-                logger.info(f"Connected to caerulean {self._address}:{self._ctrl_port} as VPN successfully!")
+            if status == UserControlResponseStatus.SUCCESS:
+                logger.info(f"Connected to caerulean {self._address}:{self._ctrl_port} successfully!")
             else:
                 raise RuntimeError(f"Couldn't exchange keys with caerulean (status: {status})!")
 

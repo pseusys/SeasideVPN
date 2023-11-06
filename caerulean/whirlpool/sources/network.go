@@ -105,7 +105,7 @@ func InitNetAPI(port int) {
 	http.HandleFunc("/auth", auth)
 	// TODO: connect to network: http.HandleFunc("/connect", connect)
 
-	network := fmt.Sprintf("0.0.0.0:%d", port)
+	network := fmt.Sprintf("%s:%d", *iIP, port)
 	logrus.Infoln("Listening for HTTP requests at:", network)
 	logrus.Fatalf("Net server error: %s", http.ListenAndServe(network, nil))
 }

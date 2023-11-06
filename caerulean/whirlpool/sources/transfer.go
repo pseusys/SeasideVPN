@@ -52,7 +52,7 @@ func ReceivePacketsFromViridian(tunnel *water.Interface) {
 		packet, err := decryptPacket(buffer[:r], address)
 		if err != nil {
 			logrus.Errorln("Decrypting packet error:", err)
-			SendStatusToUser(NO_PASS, address.IP, nil)
+			SendStatusToUser(NO_PASS, address.IP, nil, true)
 			continue
 		}
 
@@ -119,7 +119,7 @@ func SendPacketsToViridian(tunnel *water.Interface) {
 		packet, err := encryptPacket(buffer[:r], gateway)
 		if err != nil {
 			logrus.Errorln("Encrypting packet error:", err)
-			SendStatusToUser(NO_PASS, gateway.IP, nil)
+			SendStatusToUser(NO_PASS, gateway.IP, nil, true)
 			continue
 		}
 

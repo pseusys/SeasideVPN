@@ -16,10 +16,15 @@ logger = getLogger(__name__)
 def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remote"]]) -> int:
     logger.info(f"Testing {profile}...")
     docker = DockerClient(compose_files=[docker_path / f"compose.{profile}.yml"])
-    docker.compose.up(wait=True, detach=True)
+    docker.compose.up(["whirlpool", "echo"], wait=True, detach=True)
 
-    # Wait for 15 seconds to make sure caerulean started TODO: use healthcheck instead
-    sleep(15)
+    # Wait for 10 seconds to make sure caerulean started TODO: use healthcheck instead
+    sleep(10)
+
+    docker.compose.up(["algae"], wait=True, detach=True)
+
+    # Wait for 5 seconds to make sure caerulean started TODO: use healthcheck instead
+    sleep(5)
 
     try:
         test_command = ["poetry", "run", "pytest", "--log-cli-level=DEBUG", f"tests/test_{profile}.py"]
@@ -27,7 +32,14 @@ def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remot
         docker.compose.kill(signal="SIGINT")
         logger.info(f"Testing {profile}: {Fore.GREEN}success{Fore.RESET}!")
     except DockerException:
-        logger.error(f"Testing {profile}: {Fore.RED}failed{Fore.RESET}!")
+        #logger.error(f"Testing {profile}: {Fore.RED}failed{Fore.RESET}!")
+        #print("\n\nFilter table:\n")
+        #docker.compose.execute("whirlpool", ["iptables", "-L", "-v", "-n"])
+        #print("\n\nMangle table:\n")
+        #docker.compose.execute("whirlpool", ["iptables", "-t", "mangle", "-L", "-v", "-n"])
+        #print("\n\nNat table:\n")
+        #docker.compose.execute("whirlpool", ["iptables", "-t", "nat", "-L", "-v", "-n"])
+        #print("\n")
 
         # Wait for a second to synchronize whirlpool logs
         sleep(1)

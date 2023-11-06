@@ -256,6 +256,7 @@ These are:
 26. Think about migrating from poetry (or at least to specify requirements for Dockerfile).
 27. Set GET and POST checks in GO.
 28. Change obfuscation methods, apply them for HTTP requests.
+29. Whirlpool: also reseed public key.
 
 All user requests to control port encrypted with public key, all answers with session key.
 Both requests and responses to sea port encrypted with session key.

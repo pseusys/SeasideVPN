@@ -4,7 +4,7 @@ from urllib.request import Request, urlopen, HTTPError
 
 def _send_request(url: str, method: str, data: Optional[bytes]) -> BinaryIO:
     headers = {"Content-Type": "application/octet-stream"}
-    response = urlopen(Request(url, data, headers, method=method))
+    response = urlopen(Request(url, data, headers, method=method), timeout=3)
     return response
 
 

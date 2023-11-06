@@ -28,3 +28,24 @@ message UserToken {
     bool privileged = 3;
     optional google.protobuf.Timestamp subscription = 4;
 }
+
+enum UserControlRequestStatus {
+    CONNECTION = 0;
+    DISCONNECTION = 1;
+    HEALTHPING = 2;
+}
+
+enum UserControlResponseStatus {
+    UNDEFINED = 0;
+    SUCCESS = 1;
+    ERROR = 2;
+    OVERLOAD = 3;
+    OVERTIME = 4;
+    HEALTHPONG = 5;
+    TERMINATED = 6;
+}
+
+message UserControlMessage {
+    bytes token = 1;
+    UserControlRequestStatus status = 2;
+}

@@ -1,6 +1,7 @@
 from enum import IntEnum
-from logging import getLogger
+from logging import getLogger, StreamHandler
 from os import environ
+from sys import stdout
 
 
 class LogLevel(IntEnum):
@@ -12,5 +13,9 @@ class LogLevel(IntEnum):
 
 _level = environ.get("LOG_LEVEL", "DEBUG")
 
+_handler = StreamHandler(stdout)
+_handler.setLevel(LogLevel[_level])
+
 logger = getLogger(__name__)
 logger.setLevel(LogLevel[_level])
+logger.addHandler(_handler)

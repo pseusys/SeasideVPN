@@ -93,6 +93,15 @@ func GenerateSymmetricalAlgorithm() (cipher.AEAD, []byte, error) {
 	return aead, key, nil
 }
 
+func ParseSymmetricalAlgorithm(key []byte) (cipher.AEAD, error) {
+	aead, err := chacha20poly1305.NewX(key)
+	if err != nil {
+		return nil, err
+	}
+
+	return aead, nil
+}
+
 func EncryptSymmetrical(plaintext []byte, aead cipher.AEAD) ([]byte, error) {
 	nonce := make([]byte, aead.NonceSize(), aead.NonceSize()+len(plaintext)+aead.Overhead())
 	if _, err := rand.Read(nonce); err != nil {

@@ -110,6 +110,6 @@ func main() {
 
 	// Send disconnection status to all connected users
 	for k := range VIRIDIANS {
-		SendStatusToUser(TERMIN, net.ParseIP(k), nil)
+		SendStatusToUser(TERMIN, net.ParseIP(k), nil, true)
 	}
 }

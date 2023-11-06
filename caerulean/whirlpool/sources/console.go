@@ -73,7 +73,7 @@ func ConfigureForwarding(externalInterface string, internalInterface string, tun
 	runCommand("iptables", "-t", "mangle", "-A", "PREROUTING", "-m", "state", "--state", "ESTABLISHED,RELATED", "-i", externalInterface, "-j", "MARK", "--set-mark", markStr)
 	// Clear routing table number 87
 	runCommand("ip", "route", "flush", "table", markStr)
-	// Seting default route for table 87 through tunnel interface IP
+	// Setting default route for table 87 through tunnel interface IP
 	runCommand("ip", "route", "add", "table", markStr, "default", "via", tunnelIP.String(), "dev", tunnelInterface)
 	// Forwarding packets marked with 87 with table number 87
 	runCommand("ip", "rule", "add", "fwmark", markStr, "table", markStr)

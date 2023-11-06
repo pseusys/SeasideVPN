@@ -6,24 +6,30 @@ services:
       file: compose.base.yml
       service: algae
     environment:
+      LOG_LEVEL: DEBUG
       BUFFER_SIZE: 8192
-      NODE_ADDR: 10.0.0.87
-      LOCAL_ECHO: 10.0.0.69:5000
+      NODE_ADDR: 87.0.0.87
+      SEA_PORT: 8542
+      LOCAL_ECHO: 69.0.0.69:5000
       OWNER_KEY: SuperSafeNodeOwnerKey
     networks:
-      default:
-        ipv4_address: 10.0.0.65
+      sea_int:
+        ipv4_address: 87.0.0.65
 
   whirlpool:
     extends:
       file: compose.base.yml
       service: whirlpool
     environment:
-      ADDRESS: 10.0.0.87
+      LOG_LEVEL: DEBUG
+      ADDRESS: 87.0.0.87
+      EXTERNAL: 69.0.0.87
       OWNER_KEY: SuperSafeNodeOwnerKey
     networks:
-      default:
-        ipv4_address: 10.0.0.87
+      sea_int:
+        ipv4_address: 87.0.0.87
+      sea_ext:
+        ipv4_address: 69.0.0.87
 
   echo:
     extends:
@@ -33,14 +39,21 @@ services:
       BUFFER_SIZE: 8192
       ECHO_PORT: 5000
     networks:
-      default:
-        ipv4_address: 10.0.0.69
+      sea_ext:
+        ipv4_address: 69.0.0.69
 
 networks:
-  default:
+  sea_int:
     driver: bridge
-    name: sea-int
+    internal: true
     ipam:
       config:
-        - subnet: 10.0.0.0/24
-          gateway: 10.0.0.1
+        - subnet: 87.0.0.0/24
+          gateway: 87.0.0.1
+  sea_ext:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 69.0.0.0/24
+          gateway: 69.0.0.1
