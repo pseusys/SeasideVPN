@@ -9,6 +9,7 @@ services:
       LOG_LEVEL: DEBUG
       BUFFER_SIZE: 8192
       NODE_ADDR: 87.0.0.87
+      LOCAL_ADDR: 87.0.0.65
       SEA_PORT: 8542
       LOCAL_ECHO: 69.0.0.69:5000
       OWNER_KEY: SuperSafeNodeOwnerKey
@@ -44,14 +45,12 @@ services:
 
 networks:
   sea_int:
-    driver: bridge
     internal: true
     ipam:
       config:
         - subnet: 87.0.0.0/24
           gateway: 87.0.0.1
   sea_ext:
-    driver: bridge
     internal: true
     ipam:
       config:

@@ -40,7 +40,6 @@ class Controller:
 
     def _receive_token(self) -> None:
         logger.debug("Requesting whirlpool public key...")
-        logger.debug(f"http://{self._address}:{self._net_port}/public")
         with get(f"http://{self._address}:{self._net_port}/public") as response:
             self._public_cipher = RSACipher(response.read())
         # TODO: uid to args, MAX uid == 100, MAX owner key == 32 OR test with longer

@@ -19,15 +19,6 @@ _DEFAULT_SEA_PORT = 8542
 _DEFAULT_CONTROL_PORT = 8543
 
 
-def boolean(value: str) -> bool:
-    if value.lower() in ("yes", "true", "1"):
-        return True
-    elif value.lower() in ("no", "false", "0"):
-        return False
-    else:
-        raise ArgumentTypeError(f"Unknown boolean value: {value}")
-
-
 parser = ArgumentParser()
 parser.add_argument("key", help=f"Whirlpool node owner key (required!)")
 parser.add_argument("-t", "--tunnel", dest="name", default=_DEFAULT_NAME, help=f"Tunnel interface name (default: {_DEFAULT_NAME})")
