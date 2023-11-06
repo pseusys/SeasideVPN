@@ -89,7 +89,7 @@ func main() {
 	// Create and configure tunnel interface
 	iname := tunnel.Name()
 	AllocateInterface(iname, &tunnelAddress, tunnelNetwork)
-	ConfigureForwarding(internalInterface, externalInterface, iname, &tunnelAddress)
+	ConfigureForwarding(externalInterface, internalInterface, iname, &tunnelAddress)
 
 	// Start goroutines for packet forwarding
 	go ListenControlPort(*iIP, *control)
