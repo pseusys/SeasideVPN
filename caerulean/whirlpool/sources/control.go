@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/cipher"
 	"fmt"
+	"main/m/v2/generated"
 	"net"
 	"time"
 
@@ -27,6 +28,35 @@ func deleteViridian(userID string, timeout bool) {
 		logrus.Infof("User %s deleted by inactivity timeout (%d minutes)", userID, *user_ttl)
 	} else {
 		logrus.Infof("User %s deleted successfully", userID)
+	}
+}
+
+func connectViridian(userID string, encrypted_token []byte) generated.UserControlResponseStatus {
+	token := &generated.UserToken{}
+	err := UnmarshalDecrypting(encrypted_token, SYMM_NODE_AEAD, token)
+	if err != nil {
+		logrus.Warnln("Couldn't parse token from user", userID, err)
+		return generated.UserControlResponseStatus_ERROR
+	}
+
+	if !token.Privileged && token.Subscription.AsTime().Before(time.Now().UTC()) {
+		logrus.Warnln("User subscription outdated, cannot connect VPN user", userID)
+		return generated.UserControlResponseStatus_OVERTIME
+	} else if !token.Privileged && len(VIRIDIANS) >= *max_users {
+		logrus.Warnln("User number overload, cannot connect VPN user", userID)
+		return generated.UserControlResponseStatus_OVERLOAD
+	} else {
+		// Parse user XChaCha-Poly1305 key
+		aead, err := ParseSymmetricalAlgorithm(token.Session)
+		if err != nil {
+			logrus.Warnln("Couldn't parse encryption algorithm for user", userID)
+			return generated.UserControlResponseStatus_ERROR
+		}
+		// Setup inactivity deletion timer for user
+		deletionTimer := time.AfterFunc(USER_LIFETIME, func() { deleteViridian(userID, true) })
+		VIRIDIANS[userID] = Viridian{aead, deletionTimer}
+		logrus.Infoln("Connected user", userID)
+		return generated.UserControlResponseStatus_SUCCESS
 	}
 }
 
@@ -57,14 +87,14 @@ func ListenControlPort(ip string, port int) {
 
 		// Read CTRLBUFFERSIZE of data from viridian
 		read, err := connection.Read(buffer)
-		if err != nil || read == 0 {
+		if read == 0 && err != nil {
 			logrus.Errorf("Reading control error (%d bytes read): %v", read, err)
 			continue
 		}
 
 		// Resolve viridian TCP address
 		address, err := net.ResolveTCPAddr(TCP, connection.RemoteAddr().String())
-		if err != nil || read == 0 {
+		if err != nil {
 			logrus.Errorf("Resolving remote user address error: %v", connection.RemoteAddr().String())
 			continue
 		}
@@ -73,40 +103,31 @@ func ListenControlPort(ip string, port int) {
 		logrus.Infoln("Received control message from user:", userID)
 
 		// Resolve received message
-		status, data, err := DecodeMessage(buffer[:read])
+		control := &generated.UserControlMessage{}
+		err = UnmarshalDecrypting(buffer[:read], RSA_NODE_KEY, control)
 		if err != nil {
 			logrus.Warnln("Couldn't parse message from user", userID)
-			SendStatusToUser(ERROR, nil, connection)
-			continue
+			SendStatusToUser(ERROR, nil, connection, true)
+			return
 		}
 
 		// Prepare answer
-		var message, _ = EncodeMessage(UNDEF, nil)
-		switch status {
+		var message = EncodeStatus(generated.UserControlResponseStatus_UNDEFINED)
+		switch control.Status {
 		// In case of PUBLIC status - register user
-		case PUBLIC:
-			if len(VIRIDIANS) >= *max_users {
-				logrus.Infoln("User number overload, cannot connect VPN user", userID)
-				message, _ = EncodeMessage(OVERLOAD, nil)
-			} else {
-				logrus.Infoln("VPN connecting user", userID)
-				message, err = prepareEncryptedSymmetricalKeyForUser(data, userID)
-				if err != nil {
-					logrus.Warnf("Couldn't decrypt message from user %s: %v", userID, err)
-					message, _ = EncodeMessage(ERROR, nil)
-				} else {
-					message, _ = EncodeMessage(SUCCESS, message)
-				}
-			}
+		case generated.UserControlRequestStatus_CONNECTION:
+			logrus.Infoln("Connecting user", userID)
+			status := connectViridian(userID, control.Token)
+			message = EncodeStatus(status)
 		// In case of TERMIN status - delete user record
-		case TERMIN:
+		case generated.UserControlRequestStatus_DISCONNECTION:
 			logrus.Infoln("Deleting user", userID)
 			deleteViridian(userID, false)
-			message, _ = EncodeMessage(SUCCESS, nil)
+			message = EncodeStatus(generated.UserControlResponseStatus_SUCCESS)
 		// Default action - send user undefined status
 		default:
-			logrus.Infof("Unexpected status %v received from user %s", status, userID)
-			message, _ = EncodeMessage(UNDEF, nil)
+			logrus.Infof("Unexpected status %v received from user %s", control.Status, userID)
+			message = EncodeStatus(generated.UserControlResponseStatus_UNDEFINED)
 		}
 
 		// Send answer back to user
@@ -116,8 +137,7 @@ func ListenControlPort(ip string, port int) {
 	}
 }
 
-func SendStatusToUser(status Status, address net.IP, connection *net.TCPConn) {
-	closeConnection := false
+func SendStatusToUser(status Status, address net.IP, connection *net.TCPConn, closeConnection bool) {
 	if connection == nil {
 		closeConnection = true
 
@@ -142,32 +162,8 @@ func SendStatusToUser(status Status, address net.IP, connection *net.TCPConn) {
 	}
 }
 
-func prepareEncryptedSymmetricalKeyForUser(buffer []byte, userID string) ([]byte, error) {
-	// Generate XChaCha-Poly1305 key
-	aead, key, err := GenerateSymmetricalAlgorithm()
-	if err != nil {
-		logrus.Warnln("Couldn't create an encryption algorithm for user", userID)
-		return nil, err
-	}
-
-	// Setup inactivity deletion timer for user
-	deletionTimer := time.AfterFunc(USER_LIFETIME, func() { deleteViridian(userID, true) })
-	VIRIDIANS[userID] = Viridian{aead, deletionTimer}
-
-	// Parse user public RSA key
-	public, err := ParsePublicKey(buffer)
-	if err != nil {
-		logrus.Warnln("Couldn't resolve public key of user", userID)
-		return nil, err
-	}
-
-	// Encrypt user XChaCha-Poly1305 key with public RSA key
-	data, err := EncryptRSA(key, public)
-	if err != nil {
-		logrus.Warnln("Couldn't encrypt symmetrical key for user", userID)
-		return nil, err
-	}
-
-	logrus.Infoln("Symmetrical key prepared for user", userID)
-	return data, nil
+func EncodeStatus(status generated.UserControlResponseStatus) []byte {
+	payload := make([]byte, 1)
+	payload[0] = uint8(status)
+	return payload
 }

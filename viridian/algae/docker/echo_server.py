@@ -1,7 +1,7 @@
 from logging import getLogger, INFO
 from pickle import dumps
 from os import environ
-from socket import socket, AF_INET, SOCK_DGRAM, SHUT_WR
+from socket import socket, AF_INET, SOCK_DGRAM
 
 logger = getLogger(__name__)
 logger.setLevel(INFO)
@@ -16,4 +16,3 @@ while True:
     payload = {"message": message, "from": address}
     logger.info(f"Processing object: {payload}")
     sock.sendto(dumps(payload), address)
-    sock.shutdown(SHUT_WR)
