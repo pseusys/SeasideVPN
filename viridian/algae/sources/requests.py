@@ -1,5 +1,5 @@
 from typing import BinaryIO, Optional
-from urllib.request import Request, urlopen, HTTPError
+from urllib.request import Request, urlopen
 
 
 def _send_request(url: str, method: str, data: Optional[bytes]) -> BinaryIO:

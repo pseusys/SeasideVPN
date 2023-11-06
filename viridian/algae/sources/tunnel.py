@@ -3,12 +3,12 @@ from ipaddress import IPv4Address
 from os import O_RDWR, getegid, geteuid, open, read, write
 from socket import AF_INET, SOCK_DGRAM, socket
 from struct import pack
-from typing import Tuple
+from typing import Optional, Tuple
 
 from colorama import Fore
 from pyroute2 import IPRoute
 
-from .crypto1 import decrypt_symmetric, encrypt_symmetric
+from .crypto import SymmetricalCipher
 from .outputs import logger
 
 _UNIX_TUNSETIFF = 0x400454CA
@@ -41,9 +41,11 @@ class Tunnel:
         self._address = str(addr)
         self._sea_port = sea_port
 
-        self._def_route, self._def_intf = "", ""
+        self._def_route: str
+        self._def_intf: str
         self._def_ip = "127.0.0.1"
         self._operational = False
+        self._cipher = None
 
         self._descriptor = _create_tunnel(name)
         logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} created (buffer: {Fore.BLUE}{buff}{Fore.RESET})")
@@ -55,6 +57,9 @@ class Tunnel:
     @property
     def default_ip(self) -> str:
         return self._def_ip
+
+    def setup(self, cipher: SymmetricalCipher) -> None:
+        self._cipher = cipher
 
     def delete(self) -> None:
         if self._operational:
@@ -77,6 +82,9 @@ class Tunnel:
             return caerulean_iface_opts["prefixlen"], dict(caerulean_iface_opts["attrs"])["IFA_ADDRESS"]
 
     def up(self) -> None:
+        if self._cipher is None:
+            raise ValueError("Tunnel symmetrical cipher not initialized!")
+
         self._def_route, self._def_intf = self._get_default_route()
         def_cidr, self._def_ip = self._get_default_network()
         logger.info(f"Default route saved (via {Fore.YELLOW}{self._def_route}{Fore.RESET} dev {Fore.YELLOW}{self._def_intf}{Fore.RESET})")
@@ -109,12 +117,12 @@ class Tunnel:
             while self._operational:
                 packet = read(self._descriptor, self._buffer)
                 logger.debug(f"Sending {len(packet)} bytes to caerulean {self._address}:{self._sea_port}")
-                gate.sendto(encrypt_symmetric(packet), (self._address, self._sea_port))
+                gate.sendto(self._cipher.encrypt(packet), (self._address, self._sea_port))
 
     def receive_from_caerulean(self) -> None:
         with socket(AF_INET, SOCK_DGRAM) as gate:
             gate.bind((self._def_ip, self._sea_port))
             while self._operational:
-                packet = decrypt_symmetric(gate.recv(self._buffer))
+                packet = self._cipher.decrypt(gate.recv(self._buffer))
                 logger.debug(f"Receiving {len(packet)} bytes from caerulean {self._address}:{self._sea_port}")
                 write(self._descriptor, packet)
