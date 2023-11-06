@@ -1,4 +1,4 @@
-from argparse import ArgumentParser, ArgumentTypeError
+from argparse import ArgumentParser
 from ipaddress import IPv4Address
 from multiprocessing import current_process
 from signal import SIGINT, SIGTERM, signal

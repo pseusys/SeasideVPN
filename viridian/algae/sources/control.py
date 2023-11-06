@@ -2,8 +2,8 @@ from ipaddress import IPv4Address
 from multiprocessing import Process
 from socket import AF_INET, SHUT_WR, SOCK_STREAM, socket
 
-from .crypto import RSACipher
-from .crypto1 import _MESSAGE_MAX_LEN, Status, decode_message, decrypt_rsa, decrypt_symmetric, encode_message, get_public_key, initialize_symmetric, construct_cipher
+from .crypto import RSACipher, SymmetricalCipher
+from .crypto1 import _MESSAGE_MAX_LEN, decode_message, encode_message, Status
 from .outputs import logger
 from .requests import get, post
 from .tunnel import Tunnel
@@ -43,16 +43,17 @@ class Controller:
         with get(f"http://{self._address}:{self._net_port}/public") as response:
             self._public_cipher = RSACipher(response.read())
         # TODO: uid to args, MAX uid == 100, MAX owner key == 32 OR test with longer
-        session = initialize_symmetric()
-        logger.debug(f"Symmetric session cipher initialized: {session}")
-        user_data = UserDataWhirlpool(uid="some_cool_uid", session=session, ownerKey=self._key)
+        cipher = SymmetricalCipher()
+        logger.debug(f"Symmetric session cipher initialized: {cipher.key}")
+        user_data = UserDataWhirlpool(uid="some_cool_uid", session=cipher.key, ownerKey=self._key)
         user_encrypted = self._public_cipher.encrypt_rsa(user_data.SerializeToString())
         logger.debug("Requesting whirlpool token...")
         with post(f"http://{self._address}:{self._net_port}/auth", user_encrypted) as response:
             certificate = UserCertificate()
-            certificate.ParseFromString(decrypt_symmetric(response.read()))
+            certificate.ParseFromString(cipher.decrypt(response.read()))
             self._session_token = certificate.token
         logger.debug(f"Symmetric session token received: {self._session_token}")
+        self._interface.setup(cipher)
 
     def _initialize_control(self) -> None:
         caerulean_address = (self._address, self._ctrl_port)
