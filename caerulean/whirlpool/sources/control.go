@@ -2,15 +2,15 @@ package main
 
 import (
 	"crypto/cipher"
+	"crypto/rand"
 	"fmt"
+	"io"
 	"main/m/v2/generated"
 	"net"
 	"time"
 
 	"github.com/sirupsen/logrus"
 )
-
-const CTRLBUFFERSIZE = 5000
 
 type Viridian struct {
 	aead   cipher.AEAD
@@ -33,7 +33,7 @@ func deleteViridian(userID string, timeout bool) {
 
 func connectViridian(userID string, encrypted_token []byte) generated.UserControlResponseStatus {
 	token := &generated.UserToken{}
-	err := UnmarshalDecrypting(encrypted_token, SYMM_NODE_AEAD, token)
+	err := UnmarshalDecrypting(encrypted_token, SYMM_NODE_AEAD, token, false)
 	if err != nil {
 		logrus.Warnln("Couldn't parse token from user", userID, err)
 		return generated.UserControlResponseStatus_ERROR
@@ -76,7 +76,6 @@ func ListenControlPort(ip string, port int) {
 	}
 
 	defer listener.Close()
-	buffer := make([]byte, CTRLBUFFERSIZE)
 
 	for {
 		// Accept the incoming TCP connection
@@ -86,9 +85,9 @@ func ListenControlPort(ip string, port int) {
 		}
 
 		// Read CTRLBUFFERSIZE of data from viridian
-		read, err := connection.Read(buffer)
-		if read == 0 && err != nil {
-			logrus.Errorf("Reading control error (%d bytes read): %v", read, err)
+		buffer, err := io.ReadAll(connection)
+		if err != nil {
+			logrus.Errorf("Reading control error: %v", err)
 			continue
 		}
 
@@ -104,40 +103,38 @@ func ListenControlPort(ip string, port int) {
 
 		// Resolve received message
 		control := &generated.UserControlMessage{}
-		err = UnmarshalDecrypting(buffer[:read], RSA_NODE_KEY, control)
+		err = UnmarshalDecrypting(buffer, RSA_NODE_KEY, control, true)
 		if err != nil {
-			logrus.Warnln("Couldn't parse message from user", userID)
-			SendStatusToUser(ERROR, nil, connection, true)
+			logrus.Warnln("Couldn't parse message from user", userID, err)
+			SendMessageToUser(generated.UserControlResponseStatus_ERROR, address.IP, connection, true)
 			return
 		}
 
 		// Prepare answer
-		var message = EncodeStatus(generated.UserControlResponseStatus_UNDEFINED)
+		message := generated.UserControlResponseStatus_UNDEFINED
 		switch control.Status {
 		// In case of PUBLIC status - register user
 		case generated.UserControlRequestStatus_CONNECTION:
 			logrus.Infoln("Connecting user", userID)
-			status := connectViridian(userID, control.Token)
-			message = EncodeStatus(status)
+			message = connectViridian(userID, control.Token)
 		// In case of TERMIN status - delete user record
 		case generated.UserControlRequestStatus_DISCONNECTION:
 			logrus.Infoln("Deleting user", userID)
 			deleteViridian(userID, false)
-			message = EncodeStatus(generated.UserControlResponseStatus_SUCCESS)
+			message = generated.UserControlResponseStatus_SUCCESS
 		// Default action - send user undefined status
 		default:
 			logrus.Infof("Unexpected status %v received from user %s", control.Status, userID)
-			message = EncodeStatus(generated.UserControlResponseStatus_UNDEFINED)
+			message = generated.UserControlResponseStatus_UNDEFINED
 		}
 
 		// Send answer back to user
 		logrus.Infoln("Sending result to user", userID)
-		connection.Write(message)
-		connection.Close()
+		SendMessageToUser(message, address.IP, connection, true)
 	}
 }
 
-func SendStatusToUser(status Status, address net.IP, connection *net.TCPConn, closeConnection bool) {
+func SendMessageToUser(message any, address net.IP, connection *net.TCPConn, closeConnection bool) {
 	if connection == nil {
 		closeConnection = true
 
@@ -154,16 +151,41 @@ func SendStatusToUser(status Status, address net.IP, connection *net.TCPConn, cl
 		}
 	}
 
-	message, _ := EncodeMessage(status, nil)
-	connection.Write(message)
+	var payload []byte
+	switch value := message.(type) {
+	case []byte:
+		payload = value
+	case generated.UserControlResponseStatus:
+		payload = []byte{byte(value)}
+	default:
+		payload = []byte{byte(generated.UserControlResponseStatus_ERROR)}
+	}
+
+	encoded, err := EncodeMessage(payload, true)
+	if err != nil {
+		logrus.Errorf("Sending message to user error: %v", err)
+		return
+	}
+
+	var encrypted []byte
+	viridian, exists := VIRIDIANS[address.String()]
+	if !exists {
+		encrypted = make([]byte, len(encoded))
+		if _, err := rand.Read(encrypted); err != nil {
+			logrus.Errorf("Sending message to user error: %v", err)
+			return
+		}
+	} else {
+		encrypted, err = EncryptSymmetrical(encoded, viridian.aead)
+		if err != nil {
+			logrus.Errorf("Sending message to user error: %v", err)
+			return
+		}
+	}
+
+	connection.Write(encrypted)
 
 	if closeConnection {
 		connection.Close()
 	}
-}
-
-func EncodeStatus(status generated.UserControlResponseStatus) []byte {
-	payload := make([]byte, 1)
-	payload[0] = uint8(status)
-	return payload
 }

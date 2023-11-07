@@ -41,7 +41,7 @@ func EncryptRSA(plaintext []byte, key *rsa.PublicKey) ([]byte, error) {
 	return ciphertext, nil
 }
 
-func DecryptBlockRSA(ciphertext []byte, key *rsa.PrivateKey) ([]byte, error) {
+func DecryptBlockRSA(ciphertext []byte, key *rsa.PrivateKey) (plaintext []byte, err error) {
 	blockSize := RSA_BIT_LENGTH / 8
 	blockNum := len(ciphertext) / blockSize
 
@@ -56,16 +56,16 @@ func DecryptBlockRSA(ciphertext []byte, key *rsa.PrivateKey) ([]byte, error) {
 
 		block, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, key, ciphertext[rl:ru], nil)
 		if err != nil {
-			return nil, err
+			return nil, JoinError("RSA step decryption error", i, err)
 		}
 
 		initialVector = block[:RSA_BLOCK_HASH_SIZE]
 		copy(decrypted[fl:fu], block[RSA_BLOCK_HASH_SIZE:])
 	}
 
-	plaintext, err := pkcs7pad.Unpad(decrypted)
+	plaintext, err = pkcs7pad.Unpad(decrypted)
 	if err != nil {
-		return nil, err
+		return nil, JoinError("padding error", err)
 	}
 
 	hash := sha256.New()
@@ -110,6 +110,7 @@ func EncryptSymmetrical(plaintext []byte, aead cipher.AEAD) ([]byte, error) {
 
 	return aead.Seal(nonce, nonce, plaintext, nil), nil
 }
+
 func DecryptSymmetrical(ciphertext []byte, aead cipher.AEAD) ([]byte, error) {
 	if len(ciphertext) < aead.NonceSize() {
 		return nil, errors.New("ciphertext too short")

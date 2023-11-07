@@ -2,8 +2,7 @@ from ipaddress import IPv4Address
 from multiprocessing import Process
 from socket import AF_INET, SHUT_WR, SOCK_STREAM, socket
 
-from .crypto import RSACipher, SymmetricalCipher
-from .crypto1 import _MESSAGE_MAX_LEN, decode_message, encode_message, Status
+from .crypto import MAX_MESSAGE_SIZE, RSACipher, SymmetricalCipher, decode_message, decode_status, encode_message
 from .outputs import logger
 from .requests import get, post
 from .tunnel import Tunnel
@@ -42,18 +41,22 @@ class Controller:
         logger.debug("Requesting whirlpool public key...")
         with get(f"http://{self._address}:{self._net_port}/public") as response:
             self._public_cipher = RSACipher(response.read())
+
         # TODO: uid to args, MAX uid == 100, MAX owner key == 32 OR test with longer
-        cipher = SymmetricalCipher()
-        logger.debug(f"Symmetric session cipher initialized: {cipher.key}")
-        user_data = UserDataWhirlpool(uid="some_cool_uid", session=cipher.key, ownerKey=self._key)
-        user_encrypted = self._public_cipher.encrypt_rsa(user_data.SerializeToString())
+        self._cipher = SymmetricalCipher()
+        logger.debug(f"Symmetric session cipher initialized: {self._cipher.key}")
+        user_data = UserDataWhirlpool(uid="some_cool_uid", session=self._cipher.key, ownerKey=self._key)
+        user_encoded = encode_message(user_data.SerializeToString())
+        user_encrypted = self._public_cipher.encrypt(user_encoded)
         logger.debug("Requesting whirlpool token...")
+
         with post(f"http://{self._address}:{self._net_port}/auth", user_encrypted) as response:
             certificate = UserCertificate()
-            certificate.ParseFromString(cipher.decrypt(response.read()))
+            certificate.ParseFromString(decode_message(self._cipher.decrypt(response.read())))
             self._session_token = certificate.token
+
         logger.debug(f"Symmetric session token received: {self._session_token}")
-        self._interface.setup(cipher)
+        self._interface.setup(self._cipher)
 
     def _initialize_control(self) -> None:
         caerulean_address = (self._address, self._ctrl_port)
@@ -63,12 +66,14 @@ class Controller:
             logger.debug(f"Sending control to caerulean {self._address}:{self._ctrl_port}")
 
             control_message = UserControlMessage(token=self._session_token, status=UserControlRequestStatus.CONNECTION)
-            encrypted_message = self._public_cipher.encrypt_rsa(control_message.SerializeToString())
+            encoded_message = encode_message(control_message.SerializeToString())
+            encrypted_message = self._public_cipher.encrypt(encoded_message)
             gate.sendall(encrypted_message)
             gate.shutdown(SHUT_WR)
 
-            packet = gate.recv(_MESSAGE_MAX_LEN)
-            status = packet[0]
+            encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
+            encoded_message = self._cipher.decrypt(encrypted_message)
+            status = decode_status(encoded_message)
 
             if status == UserControlResponseStatus.SUCCESS:
                 logger.info(f"Connected to caerulean {self._address}:{self._ctrl_port} successfully!")
@@ -100,11 +105,28 @@ class Controller:
             gate.listen(1)
 
             while self._interface.operational:
-                connection, _ = gate.accept()
-                packet = connection.recv(_MESSAGE_MAX_LEN)
-                status, _ = decode_message(packet)
+                try:
+                    connection, _ = gate.accept()
+                    packet = connection.recv(MAX_MESSAGE_SIZE)
+                    encoded = self._cipher.decrypt(packet)
+                    status = decode_status(encoded)
 
-                if status == Status.NO_PASS:
+                    if status == UserControlResponseStatus.ERROR:
+                        logger.warning("Server reports an error!")
+                        self._clean_tunnel()
+                        raise RuntimeError("Caerulean server reported an error!")
+
+                    elif status == UserControlResponseStatus.UNDEFINED:
+                        logger.error("System enters an undefined state!")
+                        self._clean_tunnel()
+                        raise RuntimeError("Seaside system entered an undefined state!")
+
+                    elif status == UserControlResponseStatus.TERMINATED:
+                        logger.error("Server sent a disconnection request!")
+                        self._clean_tunnel()
+                        raise SystemExit("Requested caerulean is no longer available!")
+
+                except ValueError:
                     logger.info("Server lost session key!")
                     self._turn_tunnel_off()
                     logger.info("Re-fetching token!")
@@ -113,34 +135,21 @@ class Controller:
                     self._initialize_control()
                     self._turn_tunnel_on()
 
-                elif status == Status.ERROR:
-                    logger.warning("Server reports an error!")
-                    self._clean_tunnel()
-                    raise RuntimeError("Caerulean server reported an error!")
-
-                elif status == Status.UNDEF:
-                    logger.error("System enters an undefined state!")
-                    self._clean_tunnel()
-                    raise RuntimeError("Seaside system entered an undefined state!")
-
-                elif status == Status.TERMIN:
-                    logger.error("Server sent a disconnection request!")
-                    self._clean_tunnel()
-                    raise SystemExit("Requested caerulean is no longer available!")
-
     def interrupt(self) -> None:
         caerulean_address = (self._address, self._ctrl_port)
 
         with socket(AF_INET, SOCK_STREAM) as gate:
             gate.connect(caerulean_address)
-            request = encode_message(Status.TERMIN)
-            gate.sendall(request)
+            encoded = encode_message(UserControlRequestStatus.DISCONNECTION)
+            encrypted = self._public_cipher.encrypt(encoded)
+            gate.sendall(encrypted)
             gate.shutdown(SHUT_WR)
 
-            packet = gate.recv(_MESSAGE_MAX_LEN)
-            status, _ = decode_message(packet)
+            packet = gate.recv(MAX_MESSAGE_SIZE)
+            encoded = self._cipher.decrypt(packet)
+            status = decode_status(encoded)
 
-            if status == Status.SUCCESS:
+            if status == UserControlResponseStatus.SUCCESS:
                 logger.info(f"Disconnected from caerulean {self._address}:{self._ctrl_port} successfully!")
             else:
                 logger.info(f"Error disconnecting from caerulean (status: {status})!")

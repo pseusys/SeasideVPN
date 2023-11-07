@@ -30,19 +30,19 @@ message UserToken {
 }
 
 enum UserControlRequestStatus {
-    CONNECTION = 0;
-    DISCONNECTION = 1;
-    HEALTHPING = 2;
+    CONNECTION = 0;  // User to server connection request
+    DISCONNECTION = 1;  // User from server disconnection request
+    HEALTHPING = 2;  // Obfuscation PING request, sent from time to time
 }
 
 enum UserControlResponseStatus {
-    UNDEFINED = 0;
-    SUCCESS = 1;
-    ERROR = 2;
-    OVERLOAD = 3;
-    OVERTIME = 4;
-    HEALTHPONG = 5;
-    TERMINATED = 6;
+    UNDEFINED = 0;  // Undefined status, always leads to an error
+    SUCCESS = 1;  // Operation success, e.g. user connection termination
+    ERROR = 2;  // Operation error, sent if any operation failed on server side
+    OVERLOAD = 3;  // Too many users connected to caerulean, can't accept more connections
+    OVERTIME = 4;  // User subscription outdated, user will be disconnected
+    HEALTHPONG = 6;  // Response to obfuscation PING request
+    TERMINATED = 7;  // Server stopped, all user connections are terminated
 }
 
 message UserControlMessage {

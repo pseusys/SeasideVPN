@@ -39,7 +39,11 @@ func RandInt() (v int) {
 	if err != nil {
 		v = rand.Int()
 	}
-	return v
+	if v < 0 {
+		return -v
+	} else {
+		return v
+	}
 }
 
 func RandByteStr(length int) (string, error) {

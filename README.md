@@ -257,6 +257,7 @@ These are:
 27. Set GET and POST checks in GO.
 28. Change obfuscation methods, apply them for HTTP requests.
 29. Whirlpool: also reseed public key.
+30. Reshuffle go code.
 
 All user requests to control port encrypted with public key, all answers with session key.
 Both requests and responses to sea port encrypted with session key.
