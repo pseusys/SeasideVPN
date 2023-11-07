@@ -3,7 +3,7 @@ from ipaddress import IPv4Address
 from os import O_RDWR, getegid, geteuid, open, read, write
 from socket import AF_INET, SOCK_DGRAM, socket
 from struct import pack
-from typing import Optional, Tuple
+from typing import Tuple
 
 from colorama import Fore
 from pyroute2 import IPRoute

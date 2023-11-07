@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"main/m/v2/generated"
 	"net"
 	"strconv"
 
@@ -13,7 +14,7 @@ import (
 
 const BUFFER_OVERHEAD = 500
 
-var IOBUFFERSIZE int
+var IOBUFFERSIZE int // TODO: examine size of math.MaxUint16
 
 func init() {
 	buff, err := strconv.Atoi(MTU)
@@ -52,7 +53,7 @@ func ReceivePacketsFromViridian(tunnel *water.Interface) {
 		packet, err := decryptPacket(buffer[:r], address)
 		if err != nil {
 			logrus.Errorln("Decrypting packet error:", err)
-			SendStatusToUser(NO_PASS, address.IP, nil, true)
+			SendMessageToUser(generated.UserControlResponseStatus_ERROR, address.IP, nil, true)
 			continue
 		}
 
@@ -119,7 +120,7 @@ func SendPacketsToViridian(tunnel *water.Interface) {
 		packet, err := encryptPacket(buffer[:r], gateway)
 		if err != nil {
 			logrus.Errorln("Encrypting packet error:", err)
-			SendStatusToUser(NO_PASS, gateway.IP, nil, true)
+			SendMessageToUser(generated.UserControlResponseStatus_ERROR, gateway.IP, nil, true)
 			continue
 		}
 

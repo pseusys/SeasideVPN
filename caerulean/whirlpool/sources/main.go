@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"main/m/v2/generated"
 	"net"
 	"os"
 	"os/signal"
@@ -110,6 +111,6 @@ func main() {
 
 	// Send disconnection status to all connected users
 	for k := range VIRIDIANS {
-		SendStatusToUser(TERMIN, net.ParseIP(k), nil, true)
+		SendMessageToUser(generated.UserControlResponseStatus_TERMINATED, net.ParseIP(k), nil, true)
 	}
 }

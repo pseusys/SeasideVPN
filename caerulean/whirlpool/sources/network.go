@@ -45,13 +45,19 @@ func public(w http.ResponseWriter, _ *http.Request) {
 		return
 	}
 
-	WriteRawData(w, http.StatusOK, publicBytes)
+	publicEncoded, err := EncodeMessage(publicBytes, false)
+	if err != nil {
+		WriteAndLogError(w, http.StatusBadRequest, "error encoding RSA node key bytes", err)
+		return
+	}
+
+	WriteRawData(w, http.StatusOK, publicEncoded)
 }
 
 func auth(w http.ResponseWriter, r *http.Request) {
 	// TODO: check POST request
 	message := &generated.UserDataWhirlpool{}
-	err := UnmarshalDecrypting(r, RSA_NODE_KEY, message)
+	err := UnmarshalDecrypting(r, RSA_NODE_KEY, message, true)
 	if err != nil {
 		WriteAndLogError(w, http.StatusBadRequest, "error processing auth request", err)
 		return
@@ -73,7 +79,7 @@ func auth(w http.ResponseWriter, r *http.Request) {
 		Session:    message.Session,
 		Privileged: true,
 	}
-	tokenData, err := MarshalEncrypting(SYMM_NODE_AEAD, token)
+	tokenData, err := MarshalEncrypting(SYMM_NODE_AEAD, token, false)
 	if err != nil {
 		WriteAndLogError(w, http.StatusInternalServerError, "error processing admin token", err)
 		return
@@ -84,7 +90,7 @@ func auth(w http.ResponseWriter, r *http.Request) {
 		SeaPort:     int32(*port),
 		ControlPort: int32(*control),
 	}
-	responseData, err := MarshalEncrypting(sessionAEAD, response)
+	responseData, err := MarshalEncrypting(sessionAEAD, response, true)
 	if err != nil {
 		WriteAndLogError(w, http.StatusInternalServerError, "error processing admin response", err)
 		return
