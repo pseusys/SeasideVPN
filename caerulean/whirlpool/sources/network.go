@@ -132,15 +132,14 @@ func reseed(surface string) error {
 	return nil
 }
 
-func RetrieveNodeKey() error {
+func RetrieveNodeKey() {
 	err := reseed(*surfaceIP)
 	if err != nil {
-		return JoinError("error initial cipher seeding", err)
+		logrus.Fatalln("error initial cipher seeding", err)
 	}
 
 	AUTORESEED_TIMER := time.NewTicker(AUTORESEED_DELAY)
 	for range AUTORESEED_TIMER.C {
 		reseed(*surfaceIP)
 	}
-	return nil
 }

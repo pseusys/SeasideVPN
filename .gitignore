@@ -23,16 +23,18 @@ viridian/algae/dist/
 ## Python (and test) cache:
 **/__pycache__/
 **/.mypy_cache/
-**/pytest-cache/
+**/.pytest-cache/
 
 ## Python generated files:
 **/*pb2.py
 
 
+
 # Golang:
 
 ## Go build:
-caerulean/whirlpool/build/
+caerulean/whirlpool/build/*.run
+caerulean/whirlpool/build/recovery.txt
 
 ## Go module files:
 **/go.work

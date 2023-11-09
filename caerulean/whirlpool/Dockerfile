@@ -19,9 +19,9 @@ RUN go build -o whirlpool.run
 
 FROM alpine:3.17 as default
 
-RUN apk add --no-cache iptables
-
 WORKDIR /seaside/caerulean
+
+RUN apk add --no-cache iptables
 COPY --from=builder /seaside/caerulean/whirlpool.run ./
 
 ENV LOG_LEVEL WARNING
@@ -40,3 +40,6 @@ EXPOSE $SEA_PORT/udp
 EXPOSE $CTRL_PORT/tcp
 EXPOSE $NET_PORT/tcp
 ENTRYPOINT ./whirlpool.run -a $ADDRESS -e $EXTERNAL -s $SURFACE -p $SEA_PORT -c $CTRL_PORT -n $NET_PORT -t $USER_TTL -u $MAX_USERS -o $OWNER_KEY
+
+# Check recovery file: in the end of whirlpool setup it should contain 5 lines of critical settings
+HEALTHCHECK --interval=3s --timeout=1s --retries=100 CMD cat ./recovery.txt | wc -l | xargs test 5 -eq

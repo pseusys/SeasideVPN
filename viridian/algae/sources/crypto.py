@@ -6,7 +6,7 @@ from Crypto.Random import get_random_bytes
 from Crypto.Random.random import randint
 from Crypto.Util.Padding import pad
 
-from generated.user_data_pb2 import UserControlRequestStatus, UserControlResponseStatus
+from .generated.user_data_pb2 import UserControlRequestStatus, UserControlResponseStatus
 
 ENCODING_MAX_SIZE = 8192
 MAX_MESSAGE_SIZE = 65535

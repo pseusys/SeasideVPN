@@ -6,8 +6,7 @@ services:
       file: compose.base.yml
       service: algae
     environment:
-      ADDRESS: 10.0.0.87
-      LOCAL_ECHO: 10.0.0.69
+      NODE_ADDR: 10.0.0.87
     networks:
       default:
         ipv4_address: 10.0.0.65
@@ -24,8 +23,6 @@ services:
 
 networks:
   default:
-    driver: host
-    name: sea-int
     ipam:
       config:
         - subnet: 10.0.0.0/24

@@ -1,5 +1,5 @@
 from logging import getLogger
-from os import environ
+from os import environ, stat
 from random import choice, randint
 from re import compile
 from socket import AF_INET, SHUT_WR, SOCK_DGRAM, SOCK_STREAM, gethostbyname, socket
@@ -24,10 +24,10 @@ def random_message() -> Generator[bytes, None, None]:
 
 @pytest.fixture(scope="function")
 def caerulean_address() -> Generator[str, None, None]:
-    if "ADDRESS" in environ:
-        yield environ["ADDRESS"]
+    if "NODE_ADDR" in environ:
+        yield environ["NODE_ADDR"]
     else:
-        raise RuntimeError("Caerulean IP ('ADDRESS' environmental variable) is not defined!")
+        raise RuntimeError("Caerulean IP ('NODE_ADDR' environmental variable) is not defined!")
 
 
 def _check_ping_output(ping_params: List[str]) -> bool:
@@ -74,11 +74,10 @@ def test_tcp_protocol(random_message: bytes) -> None:
 
 
 def test_ftp_protocol() -> None:
-    image_size = 1403088
     address = "https://unsplash.com/photos/w7shif_h8hU/download?ixid=M3wxMjA3fDB8MXxhbGx8fHx8fHx8fHwxNjg0NTM0NzM3fA&force=true&w=1920"
     logger.info("Testing with FTP protocol")
-    _, message = urlretrieve(address)
-    assert int(message["Content-Length"]) == image_size
+    file, message = urlretrieve(address)
+    assert int(message["Content-Length"]) == stat(file).st_size != 0
     logger.info(f"Downloaded image of size {message['Content-Length']}")
 
 

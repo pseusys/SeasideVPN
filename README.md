@@ -266,7 +266,7 @@ Upon initialization make a file dump with all values generated -> volume
 Logrus write to file?
 Default vilumes in docker compose, default log level below info
 
-Connection can be done via network surface or directly to a node (http://NODE_IP/auth)
+Connection can be done via network surface or directly to a node (http://[NODE_IP]/auth)
 
 ### Considerations
 

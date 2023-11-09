@@ -7,7 +7,7 @@ from .outputs import logger
 from .requests import get, post
 from .tunnel import Tunnel
 
-from generated.user_data_pb2 import UserDataWhirlpool, UserCertificate, UserControlMessage, UserControlResponseStatus, UserControlRequestStatus
+from .generated.user_data_pb2 import UserDataWhirlpool, UserCertificate, UserControlMessage, UserControlResponseStatus, UserControlRequestStatus
 
 
 class Controller:
