@@ -16,18 +16,13 @@ logger = getLogger(__name__)
 def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remote"]]) -> int:
     logger.info(f"Testing {profile}...")
     docker = DockerClient(compose_files=[docker_path / f"compose.{profile}.yml"])
-    docker.compose.up(["whirlpool", "echo"], wait=True, detach=True)
+    docker.compose.up(wait=True, detach=True)
 
-    # Wait for 10 seconds to make sure caerulean started TODO: use healthcheck instead
-    sleep(10)
-
-    docker.compose.up(["algae"], wait=True, detach=True)
-
-    # Wait for 5 seconds to make sure caerulean started TODO: use healthcheck instead
+    # Wait for 5 seconds to make sure viridian started TODO: use healthcheck instead
     sleep(5)
 
     try:
-        test_command = ["poetry", "run", "pytest", "--log-cli-level=DEBUG", f"tests/test_{profile}.py"]
+        test_command = ["pytest", "--log-cli-level=DEBUG", f"tests/test_{profile}.py"]
         docker.compose.execute("algae", test_command, envs=dict() if "CI" not in environ else {"CI": environ["CI"]})
         docker.compose.kill(signal="SIGINT")
         logger.info(f"Testing {profile}: {Fore.GREEN}success{Fore.RESET}!")
@@ -46,9 +41,9 @@ def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remot
         # Wait for a second to synchronize whirlpool logs
         sleep(1)
 
-        logger.error(docker.container.logs("algae"))
-        logger.error(docker.container.logs("whirlpool"))
-        logger.error(docker.container.logs("seaside-echo"))
+        # logger.error(docker.container.logs("algae"))
+        # logger.error(docker.container.logs("whirlpool"))
+        # logger.error(docker.container.logs("seaside-echo"))
 
         docker.compose.kill()
         return 1
@@ -63,7 +58,7 @@ def test() -> int:
     docker = DockerClient(compose_files=[docker_path / "compose.base.yml"])
     docker.compose.build()
 
-    result = _test_set(docker_path, "local") # + _test_set(docker_path, "remote")
+    result = _test_set(docker_path, "local") + _test_set(docker_path, "remote")
     # result += pytest(["--log-cli-level=DEBUG", _ALGAE_ROOT / "tests" / "test_unit.py"])
 
     docker.compose.rm(stop=True)

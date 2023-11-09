@@ -19,7 +19,7 @@ def random_message() -> Generator[bytes, None, None]:
 
 def test_local_echo(random_message: bytes) -> None:
     logger.info("Testing with local echo server")
-    echo_address, echo_port = environ["LOCAL_ECHO"].split(":")
+    echo_address, echo_port = environ["LOCAL_ECHO"], int(environ["LOCAL_ECHO_PORT"])
     local_address, vpn_port = environ["LOCAL_ADDR"], int(environ["SEA_PORT"])
     buffer = int(environ["BUFFER_SIZE"])
 

@@ -10,8 +10,12 @@ services:
       context: ../../..
     environment:
       LOG_LEVEL: DEBUG
+      BUFFER_SIZE: 8192  # Buffer for echo server message storing
+      LOCAL_ECHO_PORT: 5000  # Port for echo server accessing
+      OWNER_KEY: SuperSafeNodeOwnerKey  # Whirlpool node owner key
     depends_on:
-      - whirlpool
+      whirlpool:
+        condition: service_healthy
 
   whirlpool:
     image: whirlpool-latest
@@ -22,6 +26,7 @@ services:
       context: ../../..
     environment:
       LOG_LEVEL: DEBUG
+      OWNER_KEY: SuperSafeNodeOwnerKey  # Whirlpool node owner key
 
   echo:
     image: seaside-echo-latest
@@ -30,3 +35,6 @@ services:
     build:
       dockerfile: docker/Dockerfile.echo
       context: ..
+    environment:
+      BUFFER_SIZE: 8192  # Buffer for echo server message storing
+      ECHO_PORT: 5000  # Port for echo server accessing

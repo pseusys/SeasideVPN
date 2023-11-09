@@ -1,3 +1,17 @@
+FROM python:3.11-alpine3.17 as builder
+
+WORKDIR /seaside/algae
+
+RUN apk add --no-cache build-base gcc protobuf protobuf-dev
+RUN pip install --upgrade --no-cache-dir pip poetry poetry-plugin-export
+
+COPY viridian/algae/pyproject.toml ./
+RUN poetry export -f requirements.txt --with dev --without-hashes --output requirements.txt
+
+COPY vessels ./vessels
+RUN mkdir generated && protoc -I=vessels --python_out=generated --experimental_allow_proto3_optional vessels/*.proto
+
+
 FROM python:3.11-alpine3.17 as default
 
 WORKDIR /seaside/algae
@@ -5,18 +19,12 @@ WORKDIR /seaside/algae
 ENV PYTHONUNBUFFERED 1
 ENV PYTHONDONTWRITEBYTECODE 1
 
-RUN apk add --no-cache build-base gcc protobuf protobuf-dev
-RUN pip install --no-cache-dir poetry
+COPY --from=builder /seaside/algae/requirements.txt ./
+RUN pip install --upgrade --no-cache-dir pip --no-cache-dir -r requirements.txt
 
-COPY vessels ./vessels
-RUN mkdir generated && protoc -I=vessels --python_out=generated --experimental_allow_proto3_optional vessels/*.proto
-
-COPY viridian/algae/scripts/*.py ./scripts/
+COPY --from=builder /seaside/algae/generated ./sources/generated/
 COPY viridian/algae/sources/*.py ./sources/
 COPY viridian/algae/tests/*.py ./tests/
-COPY viridian/algae/pyproject.toml viridian/algae/README.md ./
-
-RUN poetry install --extras test
 
 ENV LOG_LEVEL DEBUG
 
@@ -31,4 +39,6 @@ ENV CTRL_PORT 8543
 
 EXPOSE $SEA_PORT/udp
 EXPOSE $CTRL_PORT/tcp
-ENTRYPOINT poetry run execute $OWNER_KEY -t $TUNNEL -m $CONN_MTU -b $CONN_BUFF -a $NODE_ADDR -n $NET_PORT -p $SEA_PORT -c $CTRL_PORT
+ENTRYPOINT python3 -m sources.main $OWNER_KEY -t $TUNNEL -m $CONN_MTU -b $CONN_BUFF -a $NODE_ADDR -n $NET_PORT -p $SEA_PORT -c $CTRL_PORT
+
+# TODO: HEALTHCHECK
