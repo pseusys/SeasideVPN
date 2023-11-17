@@ -58,6 +58,7 @@ func ConfigureForwarding(externalInterface string, internalInterface string, tun
 	runCommand("iptables", "-A", "INPUT", "-p", "tcp", "-d", *iIP, "--dport", ctrlStr, "-i", internalInterface, "-j", "ACCEPT")
 	runCommand("iptables", "-A", "INPUT", "-p", "tcp", "-d", *iIP, "--dport", netStr, "-i", internalInterface, "-j", "ACCEPT")
 	runCommand("iptables", "-A", "INPUT", "-p", "icmp", "-d", *iIP, "-i", internalInterface, "-j", "ACCEPT")
+	runCommand("iptables", "-A", "INPUT", "-p", "tcp", "-i", "lo", "-j", "ACCEPT")
 	// Else drop all input packets
 	runCommand("iptables", "-P", "INPUT", "DROP")
 	// Enable forwarding from tun0 to eth0 (forward)

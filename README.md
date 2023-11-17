@@ -258,6 +258,10 @@ These are:
 28. Change obfuscation methods, apply them for HTTP requests.
 29. Whirlpool: also reseed public key.
 30. Reshuffle go code.
+31. Save and restore all iptables configs (whirlpool) - use lib
+32. Check other tools (nftables) / libs for server
+33. Network for all tests: with common "internet" router
+34. Move some configs tp env
 
 All user requests to control port encrypted with public key, all answers with session key.
 Both requests and responses to sea port encrypted with session key.
