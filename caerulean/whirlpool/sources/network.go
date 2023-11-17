@@ -16,7 +16,6 @@ import (
 
 const (
 	NODE_NAME        = "Node name TODO: pass through env"
-	RSA_BIT_LENGTH   = 4096
 	OWNER_KEY_LENGTH = 32
 	AUTORESEED_DELAY = time.Hour * time.Duration(24)
 )
@@ -27,10 +26,17 @@ var (
 	SYMM_NODE_AEAD   cipher.AEAD
 	NODE_OWNER_KEY   string
 	AUTORESEED_TIMER *time.Ticker
+	RSA_BIT_LENGTH   int
 )
 
 func init() {
 	var err error
+
+	RSA_BIT_LENGTH, err = getIntEnv("RSA_LENGTH")
+	if err != nil {
+		logrus.Fatalln("error obtaining RSA key length:", err)
+	}
+
 	RSA_NODE_KEY, err = rsa.GenerateKey(rand.Reader, RSA_BIT_LENGTH)
 	if err != nil {
 		logrus.Fatalln("error generating RSA node key:", err)

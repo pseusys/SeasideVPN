@@ -34,7 +34,6 @@ viridian/algae/dist/
 
 ## Go build:
 caerulean/whirlpool/build/*.run
-caerulean/whirlpool/build/recovery.txt
 
 ## Go module files:
 **/go.work

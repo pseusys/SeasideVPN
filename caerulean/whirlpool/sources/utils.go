@@ -6,6 +6,7 @@ import (
 	"fmt"
 	rand "math/rand"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -19,11 +20,38 @@ func JoinError(message string, errs ...any) error {
 	return fmt.Errorf("%s: %v", message, strings.Join(traces, ": "))
 }
 
-func getEnv(key, fallback string) string {
+func getEnv(key string) (string, error) {
 	if value, ok := os.LookupEnv(key); ok {
-		return value
+		return value, nil
 	}
-	return fallback
+	return "", fmt.Errorf("env var '%s' undefined", key)
+}
+
+func getIntEnv(key string) (int, error) {
+	if value, ok := os.LookupEnv(key); ok {
+		number, err := strconv.Atoi(value)
+		if err == nil {
+			return number, nil
+		}
+		return 0, JoinError("variable not converted", err)
+	}
+	return 0, fmt.Errorf("env var '%s' undefined", key)
+}
+
+func getEnvDefalut(key, fallback string) string {
+	value, err := getEnv(key)
+	if err != nil {
+		return fallback
+	}
+	return value
+}
+
+func getIntEnvDefalut(key string, fallback int) int {
+	value, err := getIntEnv(key)
+	if err != nil {
+		return fallback
+	}
+	return value
 }
 
 func Min(a, b int) int {

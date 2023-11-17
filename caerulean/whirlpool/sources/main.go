@@ -42,7 +42,7 @@ func init() {
 }
 
 func init() {
-	level, err := logrus.ParseLevel(getEnv("LOG_LEVEL", DEF_LOG_LEVEL))
+	level, err := logrus.ParseLevel(getEnvDefalut("LOG_LEVEL", DEF_LOG_LEVEL))
 	if err != nil {
 		logrus.Fatalln("Couldn't parse log level environmental variable!")
 	}
@@ -100,9 +100,6 @@ func main() {
 	// Start web API, connect to surface if available
 	go InitNetAPI(*network)
 	go RetrieveNodeKey()
-
-	// Write critical system settings to local recovery file
-	WriteRecoveryFile()
 
 	// Prepare termination signal
 	exitSignal := make(chan os.Signal, 1)
