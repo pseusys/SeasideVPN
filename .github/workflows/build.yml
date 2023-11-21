@@ -24,7 +24,7 @@ jobs:
       - name: Install Dependencies 🔮
         run: |
           pip3 install poetry
-          poetry -C viridian/algae install --all-extras
+          poetry -C viridian/algae install
 
       - name: Create Executable ID 📛
         id: id-creator

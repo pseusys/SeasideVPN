@@ -19,7 +19,7 @@ pip3 install poetry
 All required dependencies can be installed with this command:
 
 ```bash
-poetry install --all-extras
+poetry install --only script
 ```
 
 Algae can be executed with following command:
