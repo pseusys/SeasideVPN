@@ -21,10 +21,18 @@ jobs:
         with:
           python-version: "3.10"
 
+      - name: Install Protoc 🏞️
+        uses: arduino/setup-protoc@v2
+        with:
+          version: "25.1"
+
       - name: Install Dependencies 🔮
         run: |
           pip3 install poetry
-          poetry -C viridian/algae install
+          poetry -C viridian/algae install --without devel
+
+      - name: Generate Code 🚧
+        run: poetry -C viridian/algae run generate
 
       - name: Create Executable ID 📛
         id: id-creator
@@ -39,7 +47,7 @@ jobs:
       - name: Build Algae Executable 🏗️
         env:
           EXEC_NAME: ${{ format('algae-executable-{0}', env.ID) }}
-        run: poetry -C viridian/algae run generate ${{ env.EXEC_NAME }}.run
+        run: poetry -C viridian/algae run compile ${{ env.EXEC_NAME }}.run
 
       - name: Save Artifact 🏺
         uses: actions/upload-artifact@v3

@@ -5,9 +5,10 @@ WORKDIR /seaside/algae
 ENV PYTHONUNBUFFERED 1
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV DEBIAN_FRONTEND noninteractive
+ENV PROTOC_ZIP protoc-25.1-linux-x86_64.zip
 
 RUN apt-get update && apt-get install -y --no-install-recommends python3-pip wget unzip && rm -rf /var/lib/apt/lists/*
-RUN PROTOC_ZIP=protoc-25.1-linux-x86_64.zip && wget -qO $PROTOC_ZIP https://github.com/protocolbuffers/protobuf/releases/download/v25.1/$PROTOC_ZIP && unzip -o $PROTOC_ZIP -d /usr/local bin/protoc && unzip -o $PROTOC_ZIP -d /usr/local 'include/*' && rm -f $PROTOC_ZIP
+RUN wget -qO $PROTOC_ZIP https://github.com/protocolbuffers/protobuf/releases/download/v25.1/$PROTOC_ZIP && unzip -o $PROTOC_ZIP -d /usr/local bin/protoc && unzip -o $PROTOC_ZIP -d /usr/local 'include/*' && rm -f $PROTOC_ZIP
 RUN pip install --upgrade --no-cache-dir pip poetry && poetry self add poetry-plugin-export
 
 COPY viridian/algae/pyproject.toml ./
