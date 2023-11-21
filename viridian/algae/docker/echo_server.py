@@ -17,7 +17,11 @@ buffer = int(environ["BUFFER_SIZE"])
 sock.bind(("0.0.0.0", int(environ["ECHO_PORT"])))
 
 while True:
-    message, address = sock.recvfrom(buffer)
-    payload = {"message": message, "from": address}
-    logger.info(f"Processing object: {payload}")
-    sock.sendto(dumps(payload), address)
+    try:
+        message, address = sock.recvfrom(buffer)
+        payload = {"message": message, "from": address}
+        logger.info(f"Processing object: {payload}")
+        sock.sendto(dumps(payload), address)
+    except KeyboardInterrupt:
+        logger.info("Server stopped")
+        exit(0)

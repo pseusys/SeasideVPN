@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import Union
 from Crypto.Cipher import PKCS1_OAEP, ChaCha20_Poly1305
 from Crypto.Hash import SHA256
