@@ -55,3 +55,4 @@ jobs:
           name: algae-executable
           path: dist/
           retention-days: 3
+          if-no-files-found: error
