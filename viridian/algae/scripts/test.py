@@ -1,11 +1,10 @@
 from logging import getLogger
-from os import environ, getcwd
+from os import environ
 from pathlib import Path
 from time import sleep
 from typing import Literal, Union
 
 from colorama import Fore, just_fix_windows_console
-from pytest import main as pytest
 from python_on_whales import DockerClient, DockerException
 
 from scripts._utils import ALGAE_ROOT
