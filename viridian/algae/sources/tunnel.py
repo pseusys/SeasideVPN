@@ -1,11 +1,12 @@
 from fcntl import ioctl
-from ipaddress import IPv4Address
+from ipaddress import IPv4Address, IPv4Interface, IPv4Network
 from os import O_RDWR, getegid, geteuid, open, read, write
 from socket import AF_INET, SOCK_DGRAM, socket
 from struct import pack
 from typing import Tuple
 
 from colorama import Fore
+from iptc import Rule, Target, Chain, Table
 from pyroute2 import IPRoute
 
 from .crypto import SymmetricalCipher
@@ -21,8 +22,10 @@ _UNIX_IFF_NO_PI = 0x1000
 _UNIX_TUN_DEVICE = "/dev/net/tun"
 _UNIX_IFNAMSIZ = 16
 
+_SVA_CODE = 65
 
-def _create_tunnel(name: str) -> int:
+
+def _create_tunnel(name: str) -> Tuple[int, str]:
     if len(name) > _UNIX_IFNAMSIZ:
         raise ValueError(f"Tunnel interface name ({name}) is too long!")
     descriptor = open(_UNIX_TUN_DEVICE, O_RDWR)
@@ -30,7 +33,39 @@ def _create_tunnel(name: str) -> int:
     ioctl(descriptor, _UNIX_TUNSETIFF, tunnel_desc)
     ioctl(descriptor, _UNIX_TUNSETOWNER, geteuid())
     ioctl(descriptor, _UNIX_TUNSETGROUP, getegid())
-    return descriptor
+    with IPRoute() as ip:
+        tunnel_dev = ip.link_lookup(ifname=name)[0]
+    return descriptor, tunnel_dev
+
+
+def _get_default_interface(seaside_address: str) -> Tuple[IPv4Interface, str]:
+    with IPRoute() as ip:
+        caerulean_dev = dict(ip.route("get", dst=seaside_address)[0]["attrs"])["RTA_OIF"]
+        caerulean_iface_opts = ip.get_addr(index=caerulean_dev)[0]
+        default_iface_attrs = dict(caerulean_iface_opts["attrs"])
+        default_iface = default_iface_attrs["IFA_LABEL"]
+        default_ip = default_iface_attrs["IFA_ADDRESS"]
+        default_cidr = caerulean_iface_opts["prefixlen"]
+        return IPv4Interface(f"{default_ip}/{default_cidr}"), default_iface
+
+
+def _create_caerulean_rule(seaside_address: str, default_interface: str) -> Rule:
+    rule = Rule()
+    rule.protocol = "udp"
+    rule.out_interface = default_interface
+    rule.dst = seaside_address
+    rule.target = Target(rule, "ACCEPT")
+    return rule
+
+
+def _create_internet_rule(default_ip: IPv4Interface, default_interface: str) -> Rule:
+    rule = Rule()
+    rule.out_interface = default_interface
+    rule.dst = f"!{default_ip.with_prefixlen}"
+    mark = Target(rule, "MARK")
+    mark.set_mark = str(_SVA_CODE)
+    rule.target = mark
+    return rule
 
 
 class Tunnel:
@@ -41,14 +76,22 @@ class Tunnel:
         self._address = str(addr)
         self._sea_port = sea_port
 
-        self._def_route: str
-        self._def_intf: str
-        self._def_ip = "127.0.0.1"
+        self._tunnel_ip = "192.168.0.65"
+        self._tunnel_cdr = 24
+        self._def_ip, def_iface = _get_default_interface(self._address)
+
         self._operational = False
         self._cipher = None
 
-        self._descriptor = _create_tunnel(name)
+        self._descriptor, self._tunnel_dev = _create_tunnel(name)
         logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} created (buffer: {Fore.BLUE}{buff}{Fore.RESET})")
+
+        self._send_to_caerulean_rule = _create_caerulean_rule(self._address, def_iface)
+        self._send_to_internet_rule = _create_internet_rule(self._def_ip, def_iface)
+        logger.info(f"Packet capturing rules {Fore.GREEN}created{Fore.RESET}")
+
+        self._filter_output_chain = Chain(Table(Table.MANGLE), "OUTPUT")
+        self._filter_forward_chain = Chain(Table(Table.MANGLE), "FORWARD")
 
     @property
     def operational(self) -> bool:
@@ -56,7 +99,7 @@ class Tunnel:
 
     @property
     def default_ip(self) -> str:
-        return self._def_ip
+        return str(self._def_ip.ip)
 
     def setup(self, cipher: SymmetricalCipher) -> None:
         self._cipher = cipher
@@ -65,55 +108,50 @@ class Tunnel:
         if self._operational:
             self.down()
         with IPRoute() as ip:
-            tunnel_dev = ip.link_lookup(ifname=self._name)[0]
-            ip.link("del", index=tunnel_dev)
+            ip.link("del", index=self._tunnel_dev)
             logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} deleted")
-
-    def _get_default_route(self) -> Tuple[str, str]:
-        with IPRoute() as ip:
-            default_dev_attrs = dict(ip.get_default_routes()[0]["attrs"])
-            default_iface_attrs = dict(ip.get_addr(index=default_dev_attrs["RTA_OIF"])[0]["attrs"])
-            return default_dev_attrs["RTA_GATEWAY"], default_iface_attrs["IFA_LABEL"]
-
-    def _get_default_network(self) -> Tuple[int, str]:
-        with IPRoute() as ip:
-            caerulean_dev = dict(ip.route("get", dst=self._address)[0]["attrs"])["RTA_OIF"]
-            caerulean_iface_opts = ip.get_addr(index=caerulean_dev)[0]
-            return caerulean_iface_opts["prefixlen"], dict(caerulean_iface_opts["attrs"])["IFA_ADDRESS"]
 
     def up(self) -> None:
         if self._cipher is None:
             raise ValueError("Tunnel symmetrical cipher not initialized!")
 
-        self._def_route, self._def_intf = self._get_default_route()
-        def_cidr, self._def_ip = self._get_default_network()
-        logger.info(f"Default route saved (via {Fore.YELLOW}{self._def_route}{Fore.RESET} dev {Fore.YELLOW}{self._def_intf}{Fore.RESET})")
+        self._filter_output_chain.append_rule(self._send_to_caerulean_rule)
+        self._filter_output_chain.append_rule(self._send_to_internet_rule)
+        self._filter_forward_chain.append_rule(self._send_to_caerulean_rule)
+        self._filter_forward_chain.append_rule(self._send_to_internet_rule)
+        logger.info(f"Packet forwarding with mark {Fore.BLUE}{_SVA_CODE}{Fore.RESET} via table {Fore.BLUE}{_SVA_CODE}{Fore.RESET} configured")
 
         with IPRoute() as ip:
-            tunnel_dev = ip.link_lookup(ifname=self._name)[0]
-            ip.link("set", index=tunnel_dev, mtu=self._mtu)
+            ip.link("set", index=self._tunnel_dev, mtu=self._mtu)
             logger.info(f"Tunnel MTU set to {Fore.BLUE}{self._mtu}{Fore.RESET}")
-            ip.addr("add", index=tunnel_dev, address=self._def_ip, mask=def_cidr)
-            logger.info(f"Tunnel IP address set to {Fore.BLUE}{self._def_ip}{Fore.RESET}")
-            ip.link("set", index=tunnel_dev, state="up")
+            ip.addr("add", index=self._tunnel_dev, address=self._tunnel_ip, mask=self._tunnel_cdr)
+            logger.info(f"Tunnel IP address set to {Fore.BLUE}{self._tunnel_ip}{Fore.RESET}")
+            ip.link("set", index=self._tunnel_dev, state="up")
             logger.info(f"Tunnel {Fore.GREEN}enabled{Fore.RESET}")
-            ip.route("replace", dst="default", gateway=self._def_ip, oif=tunnel_dev)
-            logger.info(f"Tunnel set as default route (via {Fore.YELLOW}{self._def_ip}{Fore.RESET} dev {Fore.YELLOW}{self._name}{Fore.RESET})")
+            ip.flush_routes(table=_SVA_CODE)
+            ip.route("add", table=_SVA_CODE, dst="default", gateway=self._tunnel_ip, oif=self._tunnel_dev)
+            ip.rule("add", fwmark=_SVA_CODE, table=_SVA_CODE)
+            logger.info(f"Packet forwarding via tunnel {Fore.GREEN}enabled{Fore.RESET}")
         self._operational = True
 
     def down(self) -> None:
+        self._filter_output_chain.delete_rule(self._send_to_caerulean_rule)
+        self._filter_output_chain.delete_rule(self._send_to_internet_rule)
+        self._filter_forward_chain.delete_rule(self._send_to_caerulean_rule)
+        self._filter_forward_chain.delete_rule(self._send_to_internet_rule)
+        logger.info(f"Packet forwarding with mark {Fore.BLUE}{_SVA_CODE}{Fore.RESET} via table {Fore.BLUE}{_SVA_CODE}{Fore.RESET} removed")
+
         with IPRoute() as ip:
-            tunnel_dev = ip.link_lookup(ifname=self._name)[0]
-            default_dev = ip.link_lookup(ifname=self._def_intf)[0]
-            ip.route("replace", dst="default", gateway=self._def_route, oif=default_dev)
-            logger.info(f"Default route restored (via {Fore.YELLOW}{self._def_route}{Fore.RESET} dev {Fore.YELLOW}{self._def_intf}{Fore.RESET})")
-            ip.link("set", index=tunnel_dev, state="down")
+            ip.flush_routes(table=_SVA_CODE)
+            ip.rule("remove", fwmark=_SVA_CODE, table=_SVA_CODE)
+            logger.info(f"Packet forwarding via tunnel {Fore.GREEN}disabled{Fore.RESET}")
+            ip.link("set", index=self._tunnel_dev, state="down")
             logger.info(f"Tunnel {Fore.GREEN}disabled{Fore.RESET}")
         self._operational = False
 
     def send_to_caerulean(self) -> None:
         with socket(AF_INET, SOCK_DGRAM) as gate:
-            gate.bind((self._def_ip, 0))
+            gate.bind((self.default_ip, 0))
             while self._operational:
                 packet = read(self._descriptor, self._buffer)
                 logger.debug(f"Sending {len(packet)} bytes to caerulean {self._address}:{self._sea_port}")
@@ -121,7 +159,7 @@ class Tunnel:
 
     def receive_from_caerulean(self) -> None:
         with socket(AF_INET, SOCK_DGRAM) as gate:
-            gate.bind((self._def_ip, self._sea_port))
+            gate.bind((self.default_ip, self._sea_port))
             while self._operational:
                 packet = self._cipher.decrypt(gate.recv(self._buffer))
                 logger.debug(f"Receiving {len(packet)} bytes from caerulean {self._address}:{self._sea_port}")
