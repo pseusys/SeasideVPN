@@ -260,8 +260,6 @@ These are:
 32. Check other tools (nftables) / libs for server
 33. Network for all tests: with common "internet" router
 34. Move some configs tp env
-35. Caerulean fix healthcheck
-36. Test fix output printing
 
 All user requests to control port encrypted with public key, all answers with session key.
 Both requests and responses to sea port encrypted with session key.

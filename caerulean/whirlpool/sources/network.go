@@ -32,10 +32,7 @@ var (
 func init() {
 	var err error
 
-	RSA_BIT_LENGTH, err = getIntEnv("RSA_LENGTH")
-	if err != nil {
-		logrus.Fatalln("error obtaining RSA key length:", err)
-	}
+	RSA_BIT_LENGTH = getIntEnv("RSA_LENGTH") * 8
 
 	RSA_NODE_KEY, err = rsa.GenerateKey(rand.Reader, RSA_BIT_LENGTH)
 	if err != nil {

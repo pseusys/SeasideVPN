@@ -8,6 +8,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/sirupsen/logrus"
 )
 
 const LETTER_BYTES = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
@@ -20,38 +22,24 @@ func JoinError(message string, errs ...any) error {
 	return fmt.Errorf("%s: %v", message, strings.Join(traces, ": "))
 }
 
-func getEnv(key string) (string, error) {
+func getEnv(key string) string {
 	if value, ok := os.LookupEnv(key); ok {
-		return value, nil
+		return value
 	}
-	return "", fmt.Errorf("env var '%s' undefined", key)
+	logrus.Fatalf("env var '%s' undefined", key)
+	return ""
 }
 
-func getIntEnv(key string) (int, error) {
+func getIntEnv(key string) int {
 	if value, ok := os.LookupEnv(key); ok {
 		number, err := strconv.Atoi(value)
 		if err == nil {
-			return number, nil
+			return number
 		}
-		return 0, JoinError("variable not converted", err)
+		logrus.Fatalf("env var '%s' not converted", key)
 	}
-	return 0, fmt.Errorf("env var '%s' undefined", key)
-}
-
-func getEnvDefalut(key, fallback string) string {
-	value, err := getEnv(key)
-	if err != nil {
-		return fallback
-	}
-	return value
-}
-
-func getIntEnvDefalut(key string, fallback int) int {
-	value, err := getIntEnv(key)
-	if err != nil {
-		return fallback
-	}
-	return value
+	logrus.Fatalf("env var '%s' undefined", key)
+	return -1
 }
 
 func Min(a, b int) int {
