@@ -26,7 +26,7 @@ ENV PYTHONUNBUFFERED 1
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential iptables python3-pip iputils-ping && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential iptables python3-pip && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /seaside/algae/requirements.txt ./
 RUN pip install --upgrade --no-cache-dir pip -r requirements.txt
 
@@ -49,4 +49,4 @@ EXPOSE $SEA_PORT/udp
 EXPOSE $CTRL_PORT/tcp
 ENTRYPOINT python3 -m sources.main $OWNER_KEY -t $TUNNEL -m $CONN_MTU -b $CONN_BUFF -a $NODE_ADDR -n $NET_PORT -p $SEA_PORT -c $CTRL_PORT
 
-# TODO: HEALTHCHECK
+HEALTHCHECK --interval=3s --timeout=1s --retries=3 --start-period=10s CMD ls /sys/class/net | grep $TUNNEL > /dev/null

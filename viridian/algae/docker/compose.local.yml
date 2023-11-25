@@ -10,8 +10,11 @@ services:
       LOCAL_ADDR: 87.0.0.65
       LOCAL_ECHO: 69.0.0.69
     networks:
-      sea_int:
+      sea-int:
         ipv4_address: 87.0.0.65
+    depends_on:
+      echo:
+        condition: service_healthy
 
   whirlpool:
     extends:
@@ -21,9 +24,9 @@ services:
       ADDRESS: 87.0.0.87
       EXTERNAL: 69.0.0.87
     networks:
-      sea_int:
+      sea-int:
         ipv4_address: 87.0.0.87
-      sea_ext:
+      sea-ext:
         ipv4_address: 69.0.0.87
 
   echo:
@@ -31,17 +34,17 @@ services:
       file: compose.base.yml
       service: echo
     networks:
-      sea_ext:
+      sea-ext:
         ipv4_address: 69.0.0.69
 
 networks:
-  sea_int:
+  sea-int:
     internal: true
     ipam:
       config:
         - subnet: 87.0.0.0/24
           gateway: 87.0.0.1
-  sea_ext:
+  sea-ext:
     internal: true
     ipam:
       config:

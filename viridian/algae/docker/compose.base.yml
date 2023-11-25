@@ -31,7 +31,6 @@ services:
   echo:
     image: seaside-echo-latest
     container_name: seaside-echo
-    privileged: true
     build:
       dockerfile: docker/Dockerfile.echo
       context: ..

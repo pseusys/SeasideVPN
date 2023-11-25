@@ -22,22 +22,19 @@ def _print_container_logs(docker: DockerClient, container: str) -> None:
 
 
 def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remote"]]) -> int:
-    logger.info(f"Testing {profile}...")
+    logger.info(f"{Style.BRIGHT}{Fore.BLUE}Testing {profile}...{Style.RESET_ALL}")
     docker = DockerClient(compose_files=[docker_path / f"compose.{profile}.yml"])
 
     try:
         docker.compose.up(wait=True, detach=True)
 
-        # Wait for 5 seconds to make sure viridian started TODO: use healthcheck instead
-        sleep(5)
-
         test_command = ["pytest", "--log-cli-level=DEBUG", f"tests/test_{profile}.py"]
         docker.compose.execute("algae", test_command, envs=dict() if "CI" not in environ else {"CI": environ["CI"]})
 
         docker.compose.kill(signal="SIGINT")
-        logger.info(f"Testing {profile}: {Fore.GREEN}success{Fore.RESET}!")
+        logger.info(f"{Style.BRIGHT}Testing {profile}: {Fore.GREEN}success{Fore.RESET}!{Style.RESET_ALL}")
     except DockerException:
-        logger.error(f"Testing {profile}: {Fore.RED}failed{Fore.RESET}!")
+        logger.error(f"Testing {profile}: {Style.BRIGHT}{Fore.RED}failed{Fore.RESET}!{Style.RESET_ALL}")
 
         # Wait for a second to synchronize whirlpool logs
         sleep(1)
