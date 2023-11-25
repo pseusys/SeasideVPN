@@ -13,16 +13,15 @@ import (
 )
 
 const (
-	NONE_ARG      = "none"
-	TUNNEL_IP     = "192.168.0.87/24"
-	UDP           = "udp4"
-	TCP           = "tcp4"
-	SEA_PORT      = 8542
-	CONTROL_PORT  = 8543
-	NET_PORT      = 8587
-	USER_TTL      = 300
-	MAX_USERS     = 16
-	DEF_LOG_LEVEL = "WARNING"
+	NONE_ARG     = "none"
+	TUNNEL_IP    = "192.168.0.87/24"
+	UDP          = "udp4"
+	TCP          = "tcp4"
+	SEA_PORT     = 8542
+	CONTROL_PORT = 8543
+	NET_PORT     = 8587
+	USER_TTL     = 300
+	MAX_USERS    = 16
 )
 
 var (
@@ -42,7 +41,7 @@ func init() {
 }
 
 func init() {
-	level, err := logrus.ParseLevel(getEnvDefalut("LOG_LEVEL", DEF_LOG_LEVEL))
+	level, err := logrus.ParseLevel(getEnv("LOG_LEVEL"))
 	if err != nil {
 		logrus.Fatalln("Couldn't parse log level environmental variable!")
 	}
