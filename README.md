@@ -245,12 +245,9 @@ These are:
 16. Move cli args to env vars
 17. All errors to JoinErro
 18. Add gravity to all user requests and responses.
-19. Check non-url deep links
 20. Empty heartbeat messages in control channel: random time intervals, add noise to connection.
 21. Surface to whirlpool status connections: different time intervals.
 22. Add image build target to whirlpool make, add executable build workflow.
-23. Add test with three devices in docker: output packet info, check if hides real source, probably add nftables config option for hiding.
-24. Healthcheck: ports occupied.
 25. Use http.Error in network.go.
 27. Set GET and POST checks in GO.
 28. Change obfuscation methods, apply them for HTTP requests.

@@ -26,7 +26,7 @@ def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remot
     docker = DockerClient(compose_files=[docker_path / f"compose.{profile}.yml"])
 
     try:
-        docker.compose.up(wait=True, detach=True)
+        docker.compose.up(wait=True, detach=True, quiet=True)
 
         test_command = ["pytest", "--log-cli-level=DEBUG", f"tests/test_{profile}.py"]
         docker.compose.execute("algae", test_command, envs=dict() if "CI" not in environ else {"CI": environ["CI"]})
@@ -54,7 +54,7 @@ def test() -> int:
     docker_path = ALGAE_ROOT / "docker"
 
     docker = DockerClient(compose_files=[docker_path / "compose.base.yml"])
-    docker.compose.build()
+    docker.compose.build(quiet=True)
 
     result = _test_set(docker_path, "local") + _test_set(docker_path, "remote")
     # result += pytest(["--log-cli-level=DEBUG", _ALGAE_ROOT / "tests" / "test_unit.py"])
