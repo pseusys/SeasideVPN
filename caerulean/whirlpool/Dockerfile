@@ -43,4 +43,4 @@ EXPOSE $NET_PORT/tcp
 ENTRYPOINT ./whirlpool.run -a $ADDRESS -e $EXTERNAL -s $SURFACE -p $SEA_PORT -c $CTRL_PORT -n $NET_PORT -t $USER_TTL -u $MAX_USERS -o $OWNER_KEY
 
 # TODO: after docker engine 25 is out, change to: --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s
-HEALTHCHECK --interval=3s --timeout=1s --retries=1 --start-period=10s CMD wget -qO- http://$ADDRESS:$NET_PORT/public | wc -c | xargs test $RSA_LENGTH -lt
+HEALTHCHECK --interval=3s --timeout=1s --retries=3 --start-period=10s CMD wget -qO- http://$ADDRESS:$NET_PORT/public | wc -c | xargs test $RSA_LENGTH -lt
