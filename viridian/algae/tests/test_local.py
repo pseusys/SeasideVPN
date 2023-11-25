@@ -1,20 +1,9 @@
 from logging import getLogger
 from os import environ
-from random import choice, randint
 from socket import AF_INET, SOCK_DGRAM, socket
-from string import ascii_letters, digits
-from typing import Generator
 from pickle import loads
 
-import pytest
-
 logger = getLogger(__name__)
-
-
-@pytest.fixture(scope="function")
-def random_message() -> Generator[bytes, None, None]:
-    size = randint(64, 128)
-    yield "".join(choice(ascii_letters + digits) for _ in range(size)).encode()
 
 
 def test_local_echo(random_message: bytes) -> None:
