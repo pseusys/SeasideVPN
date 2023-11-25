@@ -239,7 +239,6 @@ These are:
 7. Add clean make rule to clean docker images + networks.
 8. Merge READMEs
 9. Check control connections to whirlpool, maybe http.
-
 12. Different max user values for network and internal (reserved users)
 14. During tests: check whirlpool logs for connections, test with several clients
 15. Rename main module
@@ -253,7 +252,6 @@ These are:
 23. Add test with three devices in docker: output packet info, check if hides real source, probably add nftables config option for hiding.
 24. Healthcheck: ports occupied.
 25. Use http.Error in network.go.
-26. Think about migrating from poetry (or at least to specify requirements for Dockerfile).
 27. Set GET and POST checks in GO.
 28. Change obfuscation methods, apply them for HTTP requests.
 29. Whirlpool: also reseed public key.
@@ -262,6 +260,8 @@ These are:
 32. Check other tools (nftables) / libs for server
 33. Network for all tests: with common "internet" router
 34. Move some configs tp env
+35. Caerulean fix healthcheck
+36. Test fix output printing
 
 All user requests to control port encrypted with public key, all answers with session key.
 Both requests and responses to sea port encrypted with session key.
