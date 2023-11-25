@@ -28,10 +28,11 @@ def test_caerulean_ping(caerulean_address: str) -> None:
     assert ping("8.8.8.8", count=8, size=64).success(SuccessOn.All)
 
 
-def n_test_qotd_udp_protocol(random_message: bytes) -> None:
+def test_qotd_udp_protocol(random_message: bytes) -> None:
     message_length = 4096
     logger.info(f"Testing with QOTD (UDP) protocol, packets size: {len(random_message)}")
     with socket(AF_INET, SOCK_DGRAM) as sock:
+        sock.settimeout(3.0)
         # Sometimes the server just doesn't respond :( TODO: find other protocol
         for _ in range(0, 5):
             sock.sendto(random_message, (gethostbyname("djxmmx.net"), 17))
@@ -44,6 +45,7 @@ def n_test_qotd_udp_protocol(random_message: bytes) -> None:
 def test_tcp_protocol(random_message: bytes) -> None:
     logger.info(f"Testing for TCP protocol, packets size: {len(random_message)}")
     with socket(AF_INET, SOCK_STREAM) as sock:
+        sock.settimeout(3.0)
         sock.connect((gethostbyname("tcpbin.com"), 4242))
         sock.sendall(random_message)
         sock.shutdown(SHUT_WR)
