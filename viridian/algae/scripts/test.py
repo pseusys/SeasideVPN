@@ -21,16 +21,16 @@ def _print_container_logs(docker: DockerClient, container: str, last: int = 100)
         logger.error(f"{Style.BRIGHT}{Fore.RED}No container {container} found!{Style.RESET_ALL}")
 
 
-def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remote"]]) -> int:
+def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remote"]], local: bool) -> int:
     logger.info(f"{Style.BRIGHT}{Fore.BLUE}Testing {profile}...{Style.RESET_ALL}")
     docker = DockerClient(compose_files=[docker_path / f"compose.{profile}.yml"])
     before_networks = set([net.name for net in docker.network.list()])
 
     try:
-        docker.compose.up(wait=True, detach=True, quiet=True)
+        docker.compose.up(wait=True, detach=True, quiet=local)
 
         test_command = ["pytest", "--log-cli-level=DEBUG", f"tests/test_{profile}.py"]
-        docker.compose.execute("algae", test_command, envs=dict() if "CI" not in environ else {"CI": environ["CI"]})
+        docker.compose.execute("algae", test_command, envs=dict() if local else {"CI": environ["CI"]})
 
         docker.compose.kill(signal="SIGINT")
         logger.info(f"{Style.BRIGHT}Testing {profile}: {Fore.GREEN}success{Fore.RESET}!{Style.RESET_ALL}")
@@ -57,12 +57,13 @@ def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remot
 
 def test() -> int:
     just_fix_windows_console()
+    local = "CI" not in environ
     docker_path = ALGAE_ROOT / "docker"
 
     docker = DockerClient(compose_files=[docker_path / "compose.base.yml"])
-    docker.compose.build(quiet=True)
+    docker.compose.build(quiet=local)
 
-    result = _test_set(docker_path, "local") + _test_set(docker_path, "remote")
+    result = _test_set(docker_path, "local", local) + _test_set(docker_path, "remote", local)
     # result += pytest(["--log-cli-level=DEBUG", _ALGAE_ROOT / "tests" / "test_unit.py"])
 
     docker.compose.rm(stop=True)
