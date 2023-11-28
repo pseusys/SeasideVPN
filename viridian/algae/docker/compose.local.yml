@@ -13,6 +13,8 @@ services:
       sea-int:
         ipv4_address: 87.0.0.65
     depends_on:
+      whirlpool:
+        condition: service_healthy
       echo:
         condition: service_healthy
 

@@ -13,10 +13,10 @@ from scripts._utils import ALGAE_ROOT
 logger = getLogger(__name__)
 
 
-def _print_container_logs(docker: DockerClient, container: str) -> None:
+def _print_container_logs(docker: DockerClient, container: str, last: int = 100) -> None:
     try:
         logger.error(f"{Style.BRIGHT}{Fore.YELLOW}Container {container} logs:{Style.RESET_ALL}")
-        logger.error(docker.container.logs(container))
+        logger.error(docker.container.logs(container, tail=last))
     except NoSuchContainer: 
         logger.error(f"{Style.BRIGHT}{Fore.RED}No container {container} found!{Style.RESET_ALL}")
 
@@ -24,6 +24,7 @@ def _print_container_logs(docker: DockerClient, container: str) -> None:
 def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remote"]]) -> int:
     logger.info(f"{Style.BRIGHT}{Fore.BLUE}Testing {profile}...{Style.RESET_ALL}")
     docker = DockerClient(compose_files=[docker_path / f"compose.{profile}.yml"])
+    before_networks = set([net.name for net in docker.network.list()])
 
     try:
         docker.compose.up(wait=True, detach=True, quiet=True)
@@ -33,8 +34,10 @@ def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remot
 
         docker.compose.kill(signal="SIGINT")
         logger.info(f"{Style.BRIGHT}Testing {profile}: {Fore.GREEN}success{Fore.RESET}!{Style.RESET_ALL}")
-    except DockerException:
+        exit_code = 0
+    except DockerException as exc:
         logger.error(f"Testing {profile}: {Style.BRIGHT}{Fore.RED}failed{Fore.RESET}!{Style.RESET_ALL}")
+        logger.error(f"Error message: {exc}")
 
         # Wait for a second to synchronize whirlpool logs
         sleep(1)
@@ -44,9 +47,12 @@ def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remot
         _print_container_logs(docker, "seaside-echo")
 
         docker.compose.kill()
-        return 1
+        exit_code = 1
 
-    return 0
+    after_networks = set([net.name for net in docker.network.list()]) - before_networks
+    docker.compose.rm(stop=True)
+    docker.network.remove(list(after_networks))
+    return exit_code
 
 
 def test() -> int:
