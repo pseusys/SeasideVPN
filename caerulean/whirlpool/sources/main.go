@@ -41,7 +41,8 @@ func init() {
 }
 
 func init() {
-	level, err := logrus.ParseLevel(getEnv("LOG_LEVEL"))
+	default_level := "INFO"
+	level, err := logrus.ParseLevel(getEnv("LOG_LEVEL", &default_level))
 	if err != nil {
 		logrus.Fatalln("Couldn't parse log level environmental variable!")
 	}

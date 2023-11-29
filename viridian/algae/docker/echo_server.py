@@ -1,15 +1,17 @@
-from logging import StreamHandler, getLogger, INFO
+from logging import StreamHandler, getLogger
 from pickle import dumps
 from os import environ
 from socket import socket, AF_INET, SOCK_DGRAM
 from sys import stdout
 
-_handler = StreamHandler(stdout)
-_handler.setLevel(INFO)
+LOG_LEVEL = environ.get("LOG_LEVEL", "INFO")
+
+handler = StreamHandler(stdout)
+handler.setLevel(LOG_LEVEL)
 
 logger = getLogger(__name__)
-logger.setLevel(INFO)
-logger.addHandler(_handler)
+logger.setLevel(LOG_LEVEL)
+logger.addHandler(handler)
 
 
 sock = socket(AF_INET, SOCK_DGRAM)
