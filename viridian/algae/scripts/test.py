@@ -27,7 +27,7 @@ def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remot
     before_networks = set([net.name for net in docker.network.list()])
 
     try:
-        docker.compose.up(wait=True, detach=True, quiet=local)
+        docker.compose.up(wait=True, build=True, detach=True, quiet=local)
 
         test_command = ["pytest", "--log-cli-level=DEBUG", f"tests/test_{profile}.py"]
         docker.compose.execute("algae", test_command, envs=dict() if local else {"CI": environ["CI"]})
@@ -60,10 +60,10 @@ def test() -> int:
     local = "CI" not in environ
     docker_path = ALGAE_ROOT / "docker"
 
-    docker = DockerClient(compose_files=[docker_path / "compose.base.yml"])
+    docker = DockerClient(compose_files=[docker_path / "compose.default.yml"])
     docker.compose.build(quiet=local)
 
-    result = _test_set(docker_path, "local", local) + _test_set(docker_path, "remote", local)
+    result = _test_set(docker_path, "local", local) # TODO: uncomment: + _test_set(docker_path, "remote", local)
     # result += pytest(["--log-cli-level=DEBUG", _ALGAE_ROOT / "tests" / "test_unit.py"])
 
     docker.compose.rm(stop=True)

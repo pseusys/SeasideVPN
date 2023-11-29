@@ -2,12 +2,12 @@ version: "3.9"
 
 services:
   algae:
-    image: algae-latest
-    container_name: algae
+    image: seaside-algae-test
+    container_name: seaside-algae
     privileged: true
     build:
-      dockerfile: viridian/algae/docker/Dockerfile.algae
-      context: ../../..
+      dockerfile: Dockerfile.algae
+      target: test
     environment:
       LOG_LEVEL: DEBUG
       BUFFER_SIZE: 8192  # Buffer for echo server message storing
@@ -15,22 +15,31 @@ services:
       OWNER_KEY: SuperSafeNodeOwnerKey  # Whirlpool node owner key
 
   whirlpool:
-    image: whirlpool-latest
-    container_name: whirlpool
+    image: seaside-whirlpool-test
+    container_name: seaside-whirlpool
     privileged: true
     build:
-      dockerfile: caerulean/whirlpool/Dockerfile
-      context: ../../..
+      dockerfile: Dockerfile.whirlpool
+      target: test
     environment:
       LOG_LEVEL: DEBUG
       OWNER_KEY: SuperSafeNodeOwnerKey  # Whirlpool node owner key
 
   echo:
-    image: seaside-echo-latest
+    image: seaside-echo-test
     container_name: seaside-echo
+    privileged: true
     build:
-      dockerfile: docker/Dockerfile.echo
-      context: ..
+      dockerfile: Dockerfile.echo
+      target: test
     environment:
+      LOG_LEVEL: DEBUG
       BUFFER_SIZE: 8192  # Buffer for echo server message storing
       ECHO_PORT: 5000  # Port for echo server accessing
+
+  router:
+    image: seaside-router-test
+    privileged: true
+    build:
+      dockerfile: Dockerfile.router
+      target: test

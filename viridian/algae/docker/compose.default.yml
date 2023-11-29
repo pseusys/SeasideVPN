@@ -1,0 +1,25 @@
+version: "3.9"
+
+services:
+  algae:
+    image: seaside-algae-default
+    privileged: true
+    build:
+      dockerfile: viridian/algae/docker/Dockerfile.algae
+      context: ../../..
+      target: default
+
+  whirlpool:
+    image: seaside-whirlpool-default
+    privileged: true
+    build:
+      dockerfile: caerulean/whirlpool/Dockerfile
+      context: ../../..
+      target: default
+
+  echo:
+    image: seaside-echo-default
+    build:
+      dockerfile: docker/Dockerfile.echo
+      context: ..
+      target: default

@@ -1,54 +1,94 @@
-version: "3.9"
+version: "3.3"
 
 services:
   algae:
     extends:
       file: compose.base.yml
       service: algae
+    build:
+      args:
+        NETWORK_GATEWAY: 10.65.0.100
     environment:
-      NODE_ADDR: 87.0.0.87
-      LOCAL_ADDR: 87.0.0.65
-      LOCAL_ECHO: 69.0.0.69
+      NODE_ADDR: 10.87.65.87
+      LOCAL_ADDR: 10.65.0.65
+      LOCAL_ECHO: 10.42.0.42
     networks:
-      sea-int:
-        ipv4_address: 87.0.0.65
+      sea-cli-int:
+        ipv4_address: 10.65.0.65
     depends_on:
       whirlpool:
         condition: service_healthy
+      int-router:
+        condition: service_started
+      ext-router:
+        condition: service_started
       echo:
         condition: service_healthy
+
+  int-router:
+    extends:
+      file: compose.base.yml
+      service: router
+    container_name: seaside-internal-router
+    networks:
+      sea-cli-int:
+        ipv4_address: 10.65.0.100
+      sea-rout-int:
+        ipv4_address: 10.87.65.100
 
   whirlpool:
     extends:
       file: compose.base.yml
       service: whirlpool
+    build:
+      args:
+        NETWORK_GATEWAY: 10.87.42.100
     environment:
-      ADDRESS: 87.0.0.87
-      EXTERNAL: 69.0.0.87
+      ADDRESS: 10.87.65.87
+      EXTERNAL: 10.87.42.87
     networks:
-      sea-int:
-        ipv4_address: 87.0.0.87
-      sea-ext:
-        ipv4_address: 69.0.0.87
+      sea-rout-int:
+        ipv4_address: 10.87.65.87
+      sea-rout-ext:
+        ipv4_address: 10.87.42.87
+
+  ext-router:
+    extends:
+      file: compose.base.yml
+      service: router
+    container_name: seaside-external-router
+    networks:
+      sea-rout-ext:
+        ipv4_address: 10.87.42.100
+      sea-serv-ext:
+        ipv4_address: 10.42.0.100
 
   echo:
     extends:
       file: compose.base.yml
       service: echo
+    build:
+      args:
+        NETWORK_GATEWAY: 10.42.0.100
     networks:
-      sea-ext:
-        ipv4_address: 69.0.0.69
+      sea-serv-ext:
+        ipv4_address: 10.42.0.42
+
 
 networks:
-  sea-int:
-    internal: true
+  sea-cli-int:
     ipam:
       config:
-        - subnet: 87.0.0.0/24
-          gateway: 87.0.0.1
-  sea-ext:
-    internal: true
+        - subnet: 10.65.0.0/24
+  sea-rout-int:
     ipam:
       config:
-        - subnet: 69.0.0.0/24
-          gateway: 69.0.0.1
+        - subnet: 10.87.65.0/24
+  sea-rout-ext:
+    ipam:
+      config:
+        - subnet: 10.87.42.0/24
+  sea-serv-ext:
+    ipam:
+      config:
+        - subnet: 10.42.0.0/24
