@@ -3,7 +3,7 @@ from os import environ
 from sys import stdout
 
 
-_level = environ.get("LOG_LEVEL", "DEBUG")
+_level = environ.get("LOG_LEVEL", "INFO")
 
 _handler = StreamHandler(stdout)
 _handler.setLevel(_level)

@@ -32,7 +32,8 @@ var (
 func init() {
 	var err error
 
-	RSA_BIT_LENGTH = getIntEnv("RSA_LENGTH") * 8
+	default_byte_length := 512
+	RSA_BIT_LENGTH = getIntEnv("RSA_LENGTH", &default_byte_length) * 8
 
 	RSA_NODE_KEY, err = rsa.GenerateKey(rand.Reader, RSA_BIT_LENGTH)
 	if err != nil {

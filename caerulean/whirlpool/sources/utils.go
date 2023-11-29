@@ -22,21 +22,25 @@ func JoinError(message string, errs ...any) error {
 	return fmt.Errorf("%s: %v", message, strings.Join(traces, ": "))
 }
 
-func getEnv(key string) string {
+func getEnv(key string, def *string) string {
 	if value, ok := os.LookupEnv(key); ok {
 		return value
+	} else if def != nil {
+		return *def
 	}
 	logrus.Fatalf("env var '%s' undefined", key)
 	return ""
 }
 
-func getIntEnv(key string) int {
+func getIntEnv(key string, def *int) int {
 	if value, ok := os.LookupEnv(key); ok {
 		number, err := strconv.Atoi(value)
 		if err == nil {
 			return number
 		}
 		logrus.Fatalf("env var '%s' not converted", key)
+	} else if def != nil {
+		return *def
 	}
 	logrus.Fatalf("env var '%s' undefined", key)
 	return -1
