@@ -14,3 +14,12 @@ COPY docker/echo_server.py ./
 ENTRYPOINT python3 echo_server.py
 
 HEALTHCHECK --interval=3s --timeout=1s --retries=3 --start-period=10s CMD lsof -i -P -n | grep python3 > /dev/null
+
+
+FROM seaside-echo-default as test
+
+ARG NETWORK_GATEWAY
+ENV ARG_NETWORK_GATEWAY $NETWORK_GATEWAY
+
+ENTRYPOINT ip route replace default via $ARG_NETWORK_GATEWAY && \
+    python3 echo_server.py
