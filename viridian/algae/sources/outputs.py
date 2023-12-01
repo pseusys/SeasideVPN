@@ -1,9 +1,9 @@
 from logging import getLogger, StreamHandler
-from os import environ
+from os import getenv
 from sys import stdout
 
 
-_level = environ.get("LOG_LEVEL", "INFO")
+_level = getenv("LOG_LEVEL", "INFO")
 
 _handler = StreamHandler(stdout)
 _handler.setLevel(_level)
