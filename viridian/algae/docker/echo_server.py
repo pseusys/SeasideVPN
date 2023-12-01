@@ -1,10 +1,10 @@
 from logging import StreamHandler, getLogger
 from pickle import dumps
-from os import environ
+from os import environ, getenv
 from socket import socket, AF_INET, SOCK_DGRAM
 from sys import stdout
 
-LOG_LEVEL = environ.get("LOG_LEVEL", "INFO")
+LOG_LEVEL = getenv("LOG_LEVEL", "INFO")
 
 handler = StreamHandler(stdout)
 handler.setLevel(LOG_LEVEL)
