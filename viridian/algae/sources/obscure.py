@@ -10,7 +10,7 @@ def _xor_bytes(bytes_array: int, xor: int, count: int, order: Literal["little", 
     return bytes([b ^ xor for b in bytes_array.to_bytes(count, order)])
 
 
-def obfuscate(gravity: int, encrypted_packet: Union[bytes, UserControlRequestStatus], user_token: Optional[int] = None) -> bytes:
+def obfuscate(gravity: int, encrypted_packet: Union[bytes, int], user_token: Optional[int] = None) -> bytes:
     if isinstance(encrypted_packet, int):
         encrypted_packet = encrypted_packet.to_bytes(1, "big")
     tail_length = randint(0, 256) >> 1

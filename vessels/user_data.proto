@@ -16,8 +16,9 @@ message UserDataWhirlpool {
 
 message UserCertificate {
     bytes token = 1;
-    int32 seaPort = 2;
-    int32 controlPort = 3;
+    int32 gravity = 2;
+    int32 seaPort = 3;
+    int32 controlPort = 4;
 }
 
 

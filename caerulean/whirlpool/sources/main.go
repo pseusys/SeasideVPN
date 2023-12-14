@@ -6,6 +6,8 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"syscall"
 
 	"github.com/sirupsen/logrus"
@@ -64,6 +66,14 @@ func main() {
 	if *eIP == NONE_ARG {
 		*eIP = *iIP
 	}
+
+	// Parse node owner key and GRAVITY byte
+	gravity_value := strings.Split(NODE_OWNER_KEY, ":")[1]
+	gravity, err := strconv.Atoi(gravity_value)
+	if err != nil {
+		logrus.Fatalln("Couldn't parse GRAVITY:", gravity_value)
+	}
+	GRAVITY = byte(gravity)
 
 	// Create and get IP for tunnel interface
 	tunnelAddress, tunnelNetwork, err := net.ParseCIDR(TUNNEL_IP)

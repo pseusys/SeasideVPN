@@ -12,7 +12,7 @@ services:
       LOG_LEVEL: DEBUG
       BUFFER_SIZE: 8192  # Buffer for echo server message storing
       LOCAL_ECHO_PORT: 5000  # Port for echo server accessing
-      OWNER_KEY: SuperSafeNodeOwnerKey  # Whirlpool node owner key
+      OWNER_KEY: SuperSafeNodeOwnerKey:142  # Whirlpool node owner key
 
   whirlpool:
     image: seaside-whirlpool-test
@@ -23,7 +23,7 @@ services:
       target: test
     environment:
       LOG_LEVEL: DEBUG
-      OWNER_KEY: SuperSafeNodeOwnerKey  # Whirlpool node owner key
+      OWNER_KEY: SuperSafeNodeOwnerKey:142  # Whirlpool node owner key
 
   echo:
     image: seaside-echo-test
