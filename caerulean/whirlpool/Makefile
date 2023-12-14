@@ -15,7 +15,7 @@ dependencies:
 .PHONY: dependencies
 
 build: dependencies
-	protoc -I=../../ --go_out=. --experimental_allow_proto3_optional ../../vessels/*.proto
+	protoc -I=../../ --go_out=. ../../vessels/*.proto
 	go build -o build/$(EXECUTABLE_NAME) ./sources
 .PHONY: build
 
