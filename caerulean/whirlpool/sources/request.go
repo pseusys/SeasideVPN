@@ -47,7 +47,7 @@ func UnmarshalDecrypting(source any, key any, message proto.Message, decode bool
 
 	var decodedBytes []byte
 	if decode {
-		decodedBytes, err = DecodeMessage(decryptedBytes)
+		decodedBytes, _, err = Deobfuscate(decryptedBytes)
 		if err != nil {
 			return JoinError("error decoding request bytes", err)
 		}
@@ -71,7 +71,7 @@ func MarshalEncrypting(key any, message protoreflect.ProtoMessage, encode bool) 
 
 	var encodedBytes []byte
 	if encode {
-		encodedBytes, err = EncodeMessage(marshRequest, true)
+		encodedBytes, err = Obfuscate(marshRequest, nil)
 		if err != nil {
 			return nil, JoinError("error encoding message bytes", err)
 		}

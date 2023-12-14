@@ -49,7 +49,7 @@ func public(w http.ResponseWriter, _ *http.Request) {
 		return
 	}
 
-	publicEncoded, err := EncodeMessage(publicBytes, false)
+	publicEncoded, err := Obfuscate(publicBytes, nil)
 	if err != nil {
 		WriteAndLogError(w, http.StatusBadRequest, "error encoding RSA node key bytes", err)
 		return

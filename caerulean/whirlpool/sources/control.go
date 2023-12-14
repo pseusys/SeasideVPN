@@ -161,7 +161,7 @@ func SendMessageToUser(message any, address net.IP, connection *net.TCPConn, clo
 		payload = []byte{byte(generated.UserControlResponseStatus_ERROR)}
 	}
 
-	encoded, err := EncodeMessage(payload, true)
+	encoded, err := Obfuscate(payload, nil)
 	if err != nil {
 		logrus.Errorf("Sending message to user error: %v", err)
 		return

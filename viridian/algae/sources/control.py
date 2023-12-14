@@ -2,7 +2,8 @@ from ipaddress import IPv4Address
 from multiprocessing import Process
 from socket import AF_INET, SHUT_WR, SOCK_STREAM, socket
 
-from .crypto import MAX_MESSAGE_SIZE, RSACipher, SymmetricalCipher, decode_message, decode_status, encode_message
+from .crypto import MAX_MESSAGE_SIZE, RSACipher, SymmetricalCipher
+from .obscure import obfuscate, deobfuscate, deobfuscate_status
 from .outputs import logger
 from .requests import get, post
 from .tunnel import Tunnel
@@ -40,19 +41,19 @@ class Controller:
     def _receive_token(self) -> None:
         logger.debug("Requesting whirlpool public key...")
         with get(f"http://{self._address}:{self._net_port}/public") as response:
-            self._public_cipher = RSACipher(response.read())
+            self._public_cipher = RSACipher(deobfuscate(178, response.read())[0])  # TODO: include gravity
 
-        # TODO: uid to args, MAX uid == 100, MAX owner key == 32 OR test with longer
         self._cipher = SymmetricalCipher()
         logger.debug(f"Symmetric session cipher initialized: {self._cipher.key}")
         user_data = UserDataWhirlpool(uid="some_cool_uid", session=self._cipher.key, ownerKey=self._key)
-        user_encoded = encode_message(user_data.SerializeToString())
+        user_encoded = obfuscate(178, user_data.SerializeToString())  # TODO: include gravity
         user_encrypted = self._public_cipher.encrypt(user_encoded)
         logger.debug("Requesting whirlpool token...")
 
         with post(f"http://{self._address}:{self._net_port}/auth", user_encrypted) as response:
             certificate = UserCertificate()
-            certificate.ParseFromString(decode_message(self._cipher.decrypt(response.read())))
+            obfuscated = deobfuscate(178, self._cipher.decrypt(response.read()))  # TODO: include gravity
+            certificate.ParseFromString(obfuscated[0])
             self._session_token = certificate.token
 
         logger.debug(f"Symmetric session token received: {self._session_token}")
@@ -66,14 +67,14 @@ class Controller:
             logger.debug(f"Sending control to caerulean {self._address}:{self._ctrl_port}")
 
             control_message = UserControlMessage(token=self._session_token, status=UserControlRequestStatus.CONNECTION)
-            encoded_message = encode_message(control_message.SerializeToString())
+            encoded_message = obfuscate(178, control_message.SerializeToString())  # TODO: include gravity
             encrypted_message = self._public_cipher.encrypt(encoded_message)
             gate.sendall(encrypted_message)
             gate.shutdown(SHUT_WR)
 
             encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
             encoded_message = self._cipher.decrypt(encrypted_message)
-            status = decode_status(encoded_message)
+            status = deobfuscate_status(178, encoded_message)  # TODO: include gravity
 
             if status == UserControlResponseStatus.SUCCESS:
                 logger.info(f"Connected to caerulean {self._address}:{self._ctrl_port} successfully!")
@@ -109,7 +110,7 @@ class Controller:
                     connection, _ = gate.accept()
                     packet = connection.recv(MAX_MESSAGE_SIZE)
                     encoded = self._cipher.decrypt(packet)
-                    status = decode_status(encoded)
+                    status = deobfuscate_status(178, encoded)  # TODO: include gravity
 
                     if status == UserControlResponseStatus.ERROR:
                         logger.warning("Server reports an error!")
@@ -140,14 +141,14 @@ class Controller:
 
         with socket(AF_INET, SOCK_STREAM) as gate:
             gate.connect(caerulean_address)
-            encoded = encode_message(UserControlRequestStatus.DISCONNECTION)
+            encoded = obfuscate(178, UserControlRequestStatus.DISCONNECTION)  # TODO: include gravity
             encrypted = self._public_cipher.encrypt(encoded)
             gate.sendall(encrypted)
             gate.shutdown(SHUT_WR)
 
             packet = gate.recv(MAX_MESSAGE_SIZE)
             encoded = self._cipher.decrypt(packet)
-            status = decode_status(encoded)
+            status = deobfuscate_status(178, encoded)  # TODO: include gravity
 
             if status == UserControlResponseStatus.SUCCESS:
                 logger.info(f"Disconnected from caerulean {self._address}:{self._ctrl_port} successfully!")
