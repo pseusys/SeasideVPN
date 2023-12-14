@@ -3,14 +3,14 @@ from typing import Literal, Optional, Tuple, Union
 from Crypto.Random import get_random_bytes
 from Crypto.Random.random import randint
 
-from .generated.user_data_pb2 import UserControlRequestStatus, UserControlResponseStatus
+from .generated import UserControlRequestStatus, UserControlResponseStatus
 
 
 def _xor_bytes(bytes_array: int, xor: int, count: int, order: Literal["little", "big"]):
     return bytes([b ^ xor for b in bytes_array.to_bytes(count, order)])
 
 
-def obfuscate(gravity: int, encrypted_packet: Union[bytes, int], user_token: Optional[int] = None) -> bytes:
+def obfuscate(gravity: int, encrypted_packet: Union[bytes, UserControlRequestStatus], user_token: Optional[int] = None) -> bytes:
     if isinstance(encrypted_packet, int):
         encrypted_packet = encrypted_packet.to_bytes(1, "big")
     tail_length = randint(0, 256) >> 1
@@ -37,4 +37,4 @@ def deobfuscate(gravity: int, obfuscated_packet: bytes) -> Tuple[bytes, Optional
 
 
 def deobfuscate_status(gravity: int, obfuscated_packet: bytes) -> UserControlResponseStatus:
-    return deobfuscate(gravity, obfuscated_packet)[0][0]
+    return UserControlResponseStatus(deobfuscate(gravity, obfuscated_packet)[0][0])

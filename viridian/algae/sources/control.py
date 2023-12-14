@@ -8,7 +8,7 @@ from .outputs import logger
 from .requests import get, post
 from .tunnel import Tunnel
 
-from .generated.user_data_pb2 import UserDataWhirlpool, UserCertificate, UserControlMessage, UserControlResponseStatus, UserControlRequestStatus
+from .generated import UserDataWhirlpool, UserCertificate, UserControlMessage, UserControlResponseStatus, UserControlRequestStatus
 
 
 class Controller:
@@ -46,16 +46,15 @@ class Controller:
 
         self._cipher = SymmetricalCipher()
         logger.debug(f"Symmetric session cipher initialized: {self._cipher.key}")
-        user_data = UserDataWhirlpool(uid="some_cool_uid", session=self._cipher.key, ownerKey=self._key)
-        user_encoded = obfuscate(self._gravity, user_data.SerializeToString())
+        user_data = UserDataWhirlpool(uid="some_cool_uid", session=self._cipher.key, owner_key=self._key)
+        user_encoded = obfuscate(self._gravity, bytes(user_data))
         user_encrypted = self._public_cipher.encrypt(user_encoded)
         logger.debug("Requesting whirlpool token...")
 
         with post(f"http://{self._address}:{self._net_port}/auth", user_encrypted) as response:
-            certificate = UserCertificate()
             obfuscated = deobfuscate(self._gravity, self._cipher.decrypt(response.read()))
-            certificate.ParseFromString(obfuscated[0])
-            self._session_token = certificate.token
+            certificate = UserCertificate().parse(obfuscated[0])
+            self._session_token = certificate.token  # TODO: extract sea and control ports
 
         logger.debug(f"Symmetric session token received: {self._session_token}")
         self._interface.setup(self._cipher)
@@ -68,7 +67,7 @@ class Controller:
             logger.debug(f"Sending control to caerulean {self._address}:{self._ctrl_port}")
 
             control_message = UserControlMessage(token=self._session_token, status=UserControlRequestStatus.CONNECTION)
-            encoded_message = obfuscate(self._gravity, control_message.SerializeToString())
+            encoded_message = obfuscate(self._gravity, bytes(control_message))
             encrypted_message = self._public_cipher.encrypt(encoded_message)
             gate.sendall(encrypted_message)
             gate.shutdown(SHUT_WR)

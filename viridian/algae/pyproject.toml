@@ -26,7 +26,7 @@ colorama = "^0.4.6"
 [tool.poetry.group.client.dependencies]
 pyroute2 = "^0.7.9"
 python-iptables = "^1.0.1"
-protobuf = "^4.24.4"
+betterproto = "^2.0.0b6"
 pycryptodome = "^3.18.0"
 
 [tool.poetry.group.devel.dependencies]
@@ -40,6 +40,7 @@ black = "^20.8b1"
 isort = "^5.11.0"
 pyinstaller = "^5.11.0"
 python-on-whales = "^0.65.0"
+betterproto = { version = "^2.0.0b6", extras = ["compiler"] }
 
 
 [tool.poetry.scripts]
