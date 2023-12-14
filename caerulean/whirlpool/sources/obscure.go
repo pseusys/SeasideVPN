@@ -4,36 +4,42 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"errors"
-	"math"
 )
 
-const ENCODING_MAX_SIZE = 8192
+const GRAVITY_BYTE = 178
 
-func EncodeMessage(data []byte, includeLength bool) ([]byte, error) {
-	payload := make([]byte, len(data))
-	copy(payload, data)
-
-	if includeLength {
-		payload = append([]byte{0, 0}, payload...)
-		binary.BigEndian.PutUint16(payload, uint16(len(payload)))
+func Obfuscate(data []byte, userID *uint16) ([]byte, error) {
+	tailLength := (RandInt() % 256) >> 1
+	if userID == nil {
+		obfuscated := make([]byte, 1+len(data)+tailLength)
+		obfuscated[0] = byte((tailLength << 1) ^ GRAVITY_BYTE)
+		copy(obfuscated[1:], data)
+		if n, err := rand.Read(obfuscated[1+len(data):]); n != tailLength || err != nil {
+			return nil, errors.New("error while generating random bytes")
+		}
+		return obfuscated, nil
+	} else {
+		obfuscated := make([]byte, 3+len(data)+tailLength)
+		obfuscated[0] = byte(((tailLength << 1) + 1) ^ GRAVITY_BYTE)
+		obfID := *userID ^ ((GRAVITY_BYTE << 8) + GRAVITY_BYTE)
+		binary.BigEndian.PutUint16(obfuscated[1:], uint16(obfID))
+		copy(obfuscated[3:], data)
+		if n, err := rand.Read(obfuscated[1+len(data):]); n != tailLength || err != nil {
+			return nil, errors.New("error while generating random bytes")
+		}
+		return obfuscated, nil
 	}
-
-	tailSize := RandInt() % (Min(ENCODING_MAX_SIZE, math.MaxUint16) - len(payload))
-	tailBytes := make([]byte, tailSize)
-	if n, err := rand.Read(tailBytes); n != tailSize || err != nil {
-		return nil, errors.New("error while generating random bytes")
-	}
-
-	payload = append(payload, tailBytes...)
-	return payload, nil
 }
 
-func DecodeMessage(data []byte) ([]byte, error) {
-	length := binary.BigEndian.Uint16(data[:2])
-
-	if len(data) < int(length) {
-		return nil, errors.New("insufficient bytes length")
+func Deobfuscate(data []byte) ([]byte, *uint16, error) {
+	signature := data[0] ^ GRAVITY_BYTE
+	payload_end := len(data) - int(signature>>1)
+	if signature%2 == 1 {
+		uh := data[1] ^ GRAVITY_BYTE
+		ul := data[2] ^ GRAVITY_BYTE
+		user_id := binary.BigEndian.Uint16([]byte{uh, ul})
+		return data[3:payload_end], &user_id, nil
+	} else {
+		return data[1:payload_end], nil, nil
 	}
-
-	return data[2:length], nil
 }
