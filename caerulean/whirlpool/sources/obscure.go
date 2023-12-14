@@ -6,13 +6,13 @@ import (
 	"errors"
 )
 
-const GRAVITY_BYTE = 178
+var GRAVITY byte
 
 func Obfuscate(data []byte, userID *uint16) ([]byte, error) {
 	tailLength := (RandInt() % 256) >> 1
 	if userID == nil {
 		obfuscated := make([]byte, 1+len(data)+tailLength)
-		obfuscated[0] = byte((tailLength << 1) ^ GRAVITY_BYTE)
+		obfuscated[0] = byte(tailLength<<1) ^ GRAVITY
 		copy(obfuscated[1:], data)
 		if n, err := rand.Read(obfuscated[1+len(data):]); n != tailLength || err != nil {
 			return nil, errors.New("error while generating random bytes")
@@ -20,9 +20,9 @@ func Obfuscate(data []byte, userID *uint16) ([]byte, error) {
 		return obfuscated, nil
 	} else {
 		obfuscated := make([]byte, 3+len(data)+tailLength)
-		obfuscated[0] = byte(((tailLength << 1) + 1) ^ GRAVITY_BYTE)
-		obfID := *userID ^ ((GRAVITY_BYTE << 8) + GRAVITY_BYTE)
-		binary.BigEndian.PutUint16(obfuscated[1:], uint16(obfID))
+		obfuscated[0] = byte(((tailLength << 1) + 1)) ^ GRAVITY
+		obfID := *userID ^ ((uint16(GRAVITY) << 8) + uint16(GRAVITY))
+		binary.BigEndian.PutUint16(obfuscated[1:], obfID)
 		copy(obfuscated[3:], data)
 		if n, err := rand.Read(obfuscated[1+len(data):]); n != tailLength || err != nil {
 			return nil, errors.New("error while generating random bytes")
@@ -32,11 +32,11 @@ func Obfuscate(data []byte, userID *uint16) ([]byte, error) {
 }
 
 func Deobfuscate(data []byte) ([]byte, *uint16, error) {
-	signature := data[0] ^ GRAVITY_BYTE
+	signature := data[0] ^ GRAVITY
 	payload_end := len(data) - int(signature>>1)
 	if signature%2 == 1 {
-		uh := data[1] ^ GRAVITY_BYTE
-		ul := data[2] ^ GRAVITY_BYTE
+		uh := data[1] ^ GRAVITY
+		ul := data[2] ^ GRAVITY
 		user_id := binary.BigEndian.Uint16([]byte{uh, ul})
 		return data[3:payload_end], &user_id, nil
 	} else {

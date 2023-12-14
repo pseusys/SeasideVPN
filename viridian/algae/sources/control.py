@@ -18,6 +18,7 @@ class Controller:
         self._net_port = net_port
         self._ctrl_port = ctrl_port
         self._interface = Tunnel(name, mtu, buff, addr, sea_port)
+        self._gravity = int(key.split(":")[1])
 
         self._owner_key: bytes
         self._session_token: bytes
@@ -41,18 +42,18 @@ class Controller:
     def _receive_token(self) -> None:
         logger.debug("Requesting whirlpool public key...")
         with get(f"http://{self._address}:{self._net_port}/public") as response:
-            self._public_cipher = RSACipher(deobfuscate(178, response.read())[0])  # TODO: include gravity
+            self._public_cipher = RSACipher(deobfuscate(self._gravity, response.read())[0])
 
         self._cipher = SymmetricalCipher()
         logger.debug(f"Symmetric session cipher initialized: {self._cipher.key}")
         user_data = UserDataWhirlpool(uid="some_cool_uid", session=self._cipher.key, ownerKey=self._key)
-        user_encoded = obfuscate(178, user_data.SerializeToString())  # TODO: include gravity
+        user_encoded = obfuscate(self._gravity, user_data.SerializeToString())
         user_encrypted = self._public_cipher.encrypt(user_encoded)
         logger.debug("Requesting whirlpool token...")
 
         with post(f"http://{self._address}:{self._net_port}/auth", user_encrypted) as response:
             certificate = UserCertificate()
-            obfuscated = deobfuscate(178, self._cipher.decrypt(response.read()))  # TODO: include gravity
+            obfuscated = deobfuscate(self._gravity, self._cipher.decrypt(response.read()))
             certificate.ParseFromString(obfuscated[0])
             self._session_token = certificate.token
 
@@ -67,14 +68,14 @@ class Controller:
             logger.debug(f"Sending control to caerulean {self._address}:{self._ctrl_port}")
 
             control_message = UserControlMessage(token=self._session_token, status=UserControlRequestStatus.CONNECTION)
-            encoded_message = obfuscate(178, control_message.SerializeToString())  # TODO: include gravity
+            encoded_message = obfuscate(self._gravity, control_message.SerializeToString())
             encrypted_message = self._public_cipher.encrypt(encoded_message)
             gate.sendall(encrypted_message)
             gate.shutdown(SHUT_WR)
 
             encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
             encoded_message = self._cipher.decrypt(encrypted_message)
-            status = deobfuscate_status(178, encoded_message)  # TODO: include gravity
+            status = deobfuscate_status(self._gravity, encoded_message)
 
             if status == UserControlResponseStatus.SUCCESS:
                 logger.info(f"Connected to caerulean {self._address}:{self._ctrl_port} successfully!")
@@ -110,7 +111,7 @@ class Controller:
                     connection, _ = gate.accept()
                     packet = connection.recv(MAX_MESSAGE_SIZE)
                     encoded = self._cipher.decrypt(packet)
-                    status = deobfuscate_status(178, encoded)  # TODO: include gravity
+                    status = deobfuscate_status(self._gravity, encoded)
 
                     if status == UserControlResponseStatus.ERROR:
                         logger.warning("Server reports an error!")
@@ -141,14 +142,14 @@ class Controller:
 
         with socket(AF_INET, SOCK_STREAM) as gate:
             gate.connect(caerulean_address)
-            encoded = obfuscate(178, UserControlRequestStatus.DISCONNECTION)  # TODO: include gravity
+            encoded = obfuscate(self._gravity, UserControlRequestStatus.DISCONNECTION)
             encrypted = self._public_cipher.encrypt(encoded)
             gate.sendall(encrypted)
             gate.shutdown(SHUT_WR)
 
             packet = gate.recv(MAX_MESSAGE_SIZE)
             encoded = self._cipher.decrypt(packet)
-            status = deobfuscate_status(178, encoded)  # TODO: include gravity
+            status = deobfuscate_status(self._gravity, encoded)
 
             if status == UserControlResponseStatus.SUCCESS:
                 logger.info(f"Disconnected from caerulean {self._address}:{self._ctrl_port} successfully!")

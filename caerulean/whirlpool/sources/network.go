@@ -91,6 +91,7 @@ func auth(w http.ResponseWriter, r *http.Request) {
 
 	response := &generated.UserCertificate{
 		Token:       tokenData,
+		Gravity:     int32(GRAVITY),
 		SeaPort:     int32(*port),
 		ControlPort: int32(*control),
 	}
