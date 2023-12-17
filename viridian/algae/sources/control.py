@@ -1,6 +1,6 @@
 from ipaddress import IPv4Address
 from multiprocessing import Process
-from socket import AF_INET, SHUT_WR, SOCK_STREAM, socket
+from socket import AF_INET, SHUT_WR, SOCK_DGRAM, SOCK_STREAM, socket, inet_aton
 
 from .crypto import MAX_MESSAGE_SIZE, RSACipher, SymmetricalCipher
 from .obscure import obfuscate, deobfuscate, deobfuscate_status
@@ -8,7 +8,7 @@ from .outputs import logger
 from .requests import get, post
 from .tunnel import Tunnel
 
-from .generated import UserDataWhirlpool, UserCertificate, UserControlMessage, UserControlResponseStatus, UserControlRequestStatus
+from .generated import UserDataWhirlpool, UserCertificate, UserControlMessage, UserControlResponseStatus, UserControlRequestStatus, UserControlMessageConnectionMessage, WhirlpoolControlMessage
 
 
 class Controller:
@@ -19,12 +19,14 @@ class Controller:
         self._ctrl_port = ctrl_port
         self._interface = Tunnel(name, mtu, buff, addr, sea_port)
         self._gravity = int(key.split(":")[1])
+        self._user_id = 0
 
         self._owner_key: bytes
         self._session_token: bytes
         self._public_cipher: RSACipher
         self._receiver_process: Process
         self._sender_process: Process
+        self._gate_port: socket
 
     def start(self) -> None:
         try:
@@ -66,7 +68,8 @@ class Controller:
             gate.connect(caerulean_address)
             logger.debug(f"Sending control to caerulean {self._address}:{self._ctrl_port}")
 
-            control_message = UserControlMessage(token=self._session_token, status=UserControlRequestStatus.CONNECTION)
+            connection_message = UserControlMessageConnectionMessage(token=self._session_token, address=inet_aton(self._interface.default_ip))
+            control_message = UserControlMessage(status=UserControlRequestStatus.CONNECTION, message=connection_message)
             encoded_message = obfuscate(self._gravity, bytes(control_message))
             encrypted_message = self._public_cipher.encrypt(encoded_message)
             gate.sendall(encrypted_message)
@@ -74,7 +77,8 @@ class Controller:
 
             encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
             encoded_message = self._cipher.decrypt(encrypted_message)
-            status = deobfuscate_status(self._gravity, encoded_message)
+            answer_message, self._user_id = deobfuscate(self._gravity, encoded_message)
+            status = WhirlpoolControlMessage().parse(answer_message).status
 
             if status == UserControlResponseStatus.SUCCESS:
                 logger.info(f"Connected to caerulean {self._address}:{self._ctrl_port} successfully!")
@@ -83,14 +87,17 @@ class Controller:
 
     def _turn_tunnel_on(self) -> None:
         self._interface.up()
-        self._receiver_process = Process(target=self._interface.receive_from_caerulean, name="receiver", daemon=True)
-        self._sender_process = Process(target=self._interface.send_to_caerulean, name="sender", daemon=True)
+        self._gate_socket = socket(AF_INET, SOCK_DGRAM)
+        self._gate_socket.bind((self._interface.default_ip, self._interface.sea_port))
+        self._receiver_process = Process(target=self._interface.receive_from_caerulean, name="receiver", args=[self._gate_socket, self._gravity, self._user_id], daemon=True)
+        self._sender_process = Process(target=self._interface.send_to_caerulean, name="sender", args=[self._gate_socket, self._gravity, self._user_id], daemon=True)
         self._receiver_process.start()
         self._sender_process.start()
 
     def _turn_tunnel_off(self) -> None:
         self._receiver_process.terminate()
         self._sender_process.terminate()
+        self._gate_socket.close()
         self._interface.down()
 
     def _clean_tunnel(self) -> None:
@@ -141,7 +148,7 @@ class Controller:
 
         with socket(AF_INET, SOCK_STREAM) as gate:
             gate.connect(caerulean_address)
-            encoded = obfuscate(self._gravity, UserControlRequestStatus.DISCONNECTION)
+            encoded = obfuscate(self._gravity, UserControlRequestStatus.DISCONNECTION, self._user_id)
             encrypted = self._public_cipher.encrypt(encoded)
             gate.sendall(encrypted)
             gate.shutdown(SHUT_WR)

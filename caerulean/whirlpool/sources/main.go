@@ -2,7 +2,7 @@ package main
 
 import (
 	"flag"
-	"main/m/v2/generated"
+	"fmt"
 	"net"
 	"os"
 	"os/signal"
@@ -16,7 +16,7 @@ import (
 
 const (
 	NONE_ARG     = "none"
-	TUNNEL_IP    = "192.168.0.87/24"
+	TUNNEL_IP    = "192.168.0.87/16"
 	UDP          = "udp4"
 	TCP          = "tcp4"
 	SEA_PORT     = 8542
@@ -102,10 +102,22 @@ func main() {
 	AllocateInterface(iname, &tunnelAddress, tunnelNetwork)
 	ConfigureForwarding(externalInterface, internalInterface, iname, &tunnelAddress)
 
+	// Resolve UDP address to send to
+	gateway, err := net.ResolveUDPAddr(UDP, fmt.Sprintf("%s:%d", *iIP, *port))
+	if err != nil {
+		logrus.Fatalf("Couldn't resolve local address: %v", err)
+	}
+
+	// Open the corresponding UDP socket
+	SEA_CONNECTION, err = net.ListenUDP(UDP, gateway)
+	if err != nil {
+		logrus.Fatalf("Couldn't resolve connection (%s): %v", gateway.String(), err)
+	}
+
 	// Start goroutines for packet forwarding
 	go ListenControlPort(*iIP, *control)
-	go ReceivePacketsFromViridian(tunnel)
-	go SendPacketsToViridian(tunnel)
+	go ReceivePacketsFromViridian(tunnel, tunnelNetwork)
+	go SendPacketsToViridian(tunnel, tunnelNetwork)
 
 	// Start web API, connect to surface if available
 	go InitNetAPI(*network)
@@ -117,7 +129,9 @@ func main() {
 	<-exitSignal
 
 	// Send disconnection status to all connected users
-	for k := range VIRIDIANS {
-		SendMessageToUser(generated.UserControlResponseStatus_TERMINATED, net.ParseIP(k), nil, true)
-	}
+	// for k := range VIRIDIANS {
+	// 	SendMessageToUser(generated.UserControlResponseStatus_TERMINATED, net.ParseIP(k), nil, true)
+	// }
+
+	SEA_CONNECTION.Close()
 }

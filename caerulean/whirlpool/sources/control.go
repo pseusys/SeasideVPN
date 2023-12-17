@@ -10,53 +10,65 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/proto"
 )
 
 type Viridian struct {
-	aead   cipher.AEAD
-	expire *time.Timer
+	aead    cipher.AEAD
+	expire  *time.Timer
+	address net.IP
+	gateway net.IP
 }
 
 var (
-	VIRIDIANS     = make(map[string]Viridian, *max_users)
+	VIRIDIANS     = make(map[uint16]Viridian, *max_users)
 	USER_LIFETIME = time.Minute * time.Duration(*user_ttl)
 )
 
-func deleteViridian(userID string, timeout bool) {
+func deleteViridian(userID uint16, timeout bool) {
 	delete(VIRIDIANS, userID)
 	if timeout {
-		logrus.Infof("User %s deleted by inactivity timeout (%d minutes)", userID, *user_ttl)
+		logrus.Infof("User %d deleted by inactivity timeout (%d minutes)", userID, *user_ttl)
 	} else {
-		logrus.Infof("User %s deleted successfully", userID)
+		logrus.Infof("User %d deleted successfully", userID)
 	}
 }
 
-func connectViridian(userID string, encrypted_token []byte) generated.UserControlResponseStatus {
+func connectViridian(encryptedToken []byte, address []byte, gateway []byte) (generated.UserControlResponseStatus, *uint16) {
+	if encryptedToken == nil {
+		logrus.Warnf("User address is null")
+		return generated.UserControlResponseStatus_ERROR, nil
+	}
+
 	token := &generated.UserToken{}
-	err := UnmarshalDecrypting(encrypted_token, SYMM_NODE_AEAD, token, false)
+	_, err := UnmarshalDecrypting(encryptedToken, SYMM_NODE_AEAD, token, false)
 	if err != nil {
-		logrus.Warnln("Couldn't parse token from user", userID, err)
-		return generated.UserControlResponseStatus_ERROR
+		logrus.Warnln("Couldn't parse token from user", err)
+		return generated.UserControlResponseStatus_ERROR, nil
 	}
 
 	if !token.Privileged && token.Subscription.AsTime().Before(time.Now().UTC()) {
-		logrus.Warnln("User subscription outdated, cannot connect VPN user", userID)
-		return generated.UserControlResponseStatus_OVERTIME
+		logrus.Warnln("User subscription outdated, cannot connect VPN user")
+		return generated.UserControlResponseStatus_OVERTIME, nil
 	} else if !token.Privileged && len(VIRIDIANS) >= *max_users {
-		logrus.Warnln("User number overload, cannot connect VPN user", userID)
-		return generated.UserControlResponseStatus_OVERLOAD
+		logrus.Warnln("User number overload, cannot connect VPN user")
+		return generated.UserControlResponseStatus_OVERLOAD, nil
+	} else if address == nil {
+		logrus.Warnf("User address is null")
+		return generated.UserControlResponseStatus_ERROR, nil
 	} else {
 		// Parse user XChaCha-Poly1305 key
 		aead, err := ParseSymmetricalAlgorithm(token.Session)
 		if err != nil {
-			logrus.Warnln("Couldn't parse encryption algorithm for user", userID)
-			return generated.UserControlResponseStatus_ERROR
+			logrus.Warnln("Couldn't parse encryption algorithm for user")
+			return generated.UserControlResponseStatus_ERROR, nil
 		}
 		// Setup inactivity deletion timer for user
+		userID := uint16(RandomPermute(len(VIRIDIANS)))
 		deletionTimer := time.AfterFunc(USER_LIFETIME, func() { deleteViridian(userID, true) })
-		VIRIDIANS[userID] = Viridian{aead, deletionTimer}
+		VIRIDIANS[userID] = Viridian{aead, deletionTimer, address, gateway}
 		logrus.Infoln("Connected user", userID)
-		return generated.UserControlResponseStatus_SUCCESS
+		return generated.UserControlResponseStatus_SUCCESS, &userID
 	}
 }
 
@@ -98,94 +110,87 @@ func ListenControlPort(ip string, port int) {
 			continue
 		}
 
-		userID := address.IP.String()
-		logrus.Infoln("Received control message from user:", userID)
+		userAddress := address.IP.String()
+		logrus.Infoln("Received control message from user:", userAddress)
 
 		// Resolve received message
 		control := &generated.UserControlMessage{}
-		err = UnmarshalDecrypting(buffer, RSA_NODE_KEY, control, true)
+		userID, err := UnmarshalDecrypting(buffer, RSA_NODE_KEY, control, true)
 		if err != nil {
-			logrus.Warnln("Couldn't parse message from user", userID, err)
-			SendMessageToUser(generated.UserControlResponseStatus_ERROR, address.IP, connection, true)
+			logrus.Warnln("Couldn't parse message from user", userAddress, err)
+			SendMessageToUser(generated.UserControlResponseStatus_ERROR, connection, userID)
 			return
 		}
 
 		// Prepare answer
-		message := generated.UserControlResponseStatus_UNDEFINED
+		message := &generated.WhirlpoolControlMessage{Status: generated.UserControlResponseStatus_UNDEFINED}
 		switch control.Status {
 		// In case of PUBLIC status - register user
 		case generated.UserControlRequestStatus_CONNECTION:
-			logrus.Infoln("Connecting user", userID)
-			message = connectViridian(userID, control.Token)
+			logrus.Infoln("Connecting user", userAddress)
+			payload := control.GetMessage()
+			message.Status, userID = connectViridian(payload.Token, payload.Address, address.IP)
 		// In case of TERMIN status - delete user record
 		case generated.UserControlRequestStatus_DISCONNECTION:
-			logrus.Infoln("Deleting user", userID)
-			deleteViridian(userID, false)
-			message = generated.UserControlResponseStatus_SUCCESS
+			logrus.Infoln("Deleting user", userAddress)
+			deleteViridian(*userID, false)
+			message.Status = generated.UserControlResponseStatus_SUCCESS
 		// Default action - send user undefined status
 		default:
-			logrus.Infof("Unexpected status %v received from user %s", control.Status, userID)
-			message = generated.UserControlResponseStatus_UNDEFINED
+			logrus.Infof("Unexpected status %v received from user %s", control.Status, userAddress)
 		}
 
 		// Send answer back to user
-		logrus.Infoln("Sending result to user", userID)
-		SendMessageToUser(message, address.IP, connection, true)
+		logrus.Infoln("Sending result to user", userAddress)
+		SendMessageToUser(message, connection, userID)
 	}
 }
 
-func SendMessageToUser(message any, address net.IP, connection *net.TCPConn, closeConnection bool) {
-	if connection == nil {
-		closeConnection = true
-
-		remote, err := net.ResolveTCPAddr(TCP, fmt.Sprintf("%s:%d", address.String(), *control))
-		if err != nil {
-			logrus.Errorf("Resolving remote user address error: %v", address.String())
-			return
-		}
-
-		connection, err = net.DialTCP(TCP, nil, remote)
-		if err != nil {
-			logrus.Errorf("Dialing via TCP error to address: %v", address.String())
-			return
-		}
-	}
-
+func SendMessageToUser(message any, connection *net.TCPConn, addressee *uint16) {
+	var err error
 	var payload []byte
 	switch value := message.(type) {
 	case []byte:
 		payload = value
+	case *generated.WhirlpoolControlMessage:
+		payload, err = proto.Marshal(value)
 	case generated.UserControlResponseStatus:
-		payload = []byte{byte(value)}
+		controlMessage := generated.WhirlpoolControlMessage{Status: value}
+		payload, err = proto.Marshal(&controlMessage)
 	default:
-		payload = []byte{byte(generated.UserControlResponseStatus_ERROR)}
+		controlMessage := generated.WhirlpoolControlMessage{Status: generated.UserControlResponseStatus_ERROR}
+		payload, err = proto.Marshal(&controlMessage)
+	}
+	if err != nil {
+		logrus.Errorf("Serializing message error: %v", err)
+		return
 	}
 
-	encoded, err := Obfuscate(payload, nil)
+	encoded, err := Obfuscate(payload, addressee, true)
 	if err != nil {
 		logrus.Errorf("Sending message to user error: %v", err)
 		return
 	}
 
 	var encrypted []byte
-	viridian, exists := VIRIDIANS[address.String()]
-	if !exists {
+	if addressee != nil {
+		viridian, exists := VIRIDIANS[*addressee]
+		if exists {
+			encrypted, err = EncryptSymmetrical(encoded, viridian.aead)
+			if err != nil {
+				logrus.Errorf("Sending message to user error: %v", err)
+				return
+			}
+		}
+	}
+	if encrypted == nil {
 		encrypted = make([]byte, len(encoded))
 		if _, err := rand.Read(encrypted); err != nil {
-			logrus.Errorf("Sending message to user error: %v", err)
-			return
-		}
-	} else {
-		encrypted, err = EncryptSymmetrical(encoded, viridian.aead)
-		if err != nil {
 			logrus.Errorf("Sending message to user error: %v", err)
 			return
 		}
 	}
 
 	connection.Write(encrypted)
-
-	if closeConnection {
-		connection.Close()
-	}
+	connection.Close()
 }

@@ -1,5 +1,5 @@
 from fcntl import ioctl
-from ipaddress import IPv4Address, IPv4Interface, IPv4Network
+from ipaddress import IPv4Address, IPv4Interface
 from os import O_RDWR, getegid, geteuid, open, read, write
 from socket import AF_INET, SOCK_DGRAM, socket
 from struct import pack
@@ -10,6 +10,7 @@ from iptc import Rule, Target, Chain, Table
 from pyroute2 import IPRoute
 
 from .crypto import SymmetricalCipher
+from .obscure import deobfuscate, obfuscate
 from .outputs import logger
 
 _UNIX_TUNSETIFF = 0x400454CA
@@ -49,9 +50,9 @@ def _get_default_interface(seaside_address: str) -> Tuple[IPv4Interface, str]:
         return IPv4Interface(f"{default_ip}/{default_cidr}"), default_iface
 
 
-def _create_caerulean_rule(seaside_address: str, default_interface: str) -> Rule:
+def _create_caerulean_rule(default_ip: IPv4Interface, seaside_address: str, default_interface: str) -> Rule:
     rule = Rule()
-    rule.protocol = "udp"
+    rule.src = str(default_ip.ip)
     rule.out_interface = default_interface
     rule.dst = seaside_address
     rule.target = Target(rule, "ACCEPT")
@@ -74,11 +75,11 @@ class Tunnel:
         self._name = name
         self._buffer = buff
         self._address = str(addr)
-        self._sea_port = sea_port
+        self.sea_port = sea_port
 
         self._tunnel_ip = "192.168.0.65"
         self._tunnel_cdr = 24
-        self._def_ip, def_iface = _get_default_interface(self._address)
+        self._def_iface, def_iface_name = _get_default_interface(self._address)
 
         self._operational = False
         self._cipher = None
@@ -86,8 +87,8 @@ class Tunnel:
         self._descriptor, self._tunnel_dev = _create_tunnel(name)
         logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} created (buffer: {Fore.BLUE}{buff}{Fore.RESET})")
 
-        self._send_to_caerulean_rule = _create_caerulean_rule(self._address, def_iface)
-        self._send_to_internet_rule = _create_internet_rule(self._def_ip, def_iface)
+        self._send_to_caerulean_rule = _create_caerulean_rule(self._def_iface, self._address, def_iface_name)
+        self._send_to_internet_rule = _create_internet_rule(self._def_iface, def_iface_name)
         logger.info(f"Packet capturing rules {Fore.GREEN}created{Fore.RESET}")
 
         self._filter_output_chain = Chain(Table(Table.MANGLE), "OUTPUT")
@@ -99,7 +100,7 @@ class Tunnel:
 
     @property
     def default_ip(self) -> str:
-        return str(self._def_ip.ip)
+        return str(self._def_iface.ip)
 
     def setup(self, cipher: SymmetricalCipher) -> None:
         self._cipher = cipher
@@ -149,18 +150,16 @@ class Tunnel:
             logger.info(f"Tunnel {Fore.GREEN}disabled{Fore.RESET}")
         self._operational = False
 
-    def send_to_caerulean(self) -> None:
-        with socket(AF_INET, SOCK_DGRAM) as gate:
-            gate.bind((self.default_ip, 0))
-            while self._operational:
-                packet = read(self._descriptor, self._buffer)
-                logger.debug(f"Sending {len(packet)} bytes to caerulean {self._address}:{self._sea_port}")
-                gate.sendto(self._cipher.encrypt(packet), (self._address, self._sea_port))
+    def send_to_caerulean(self, gate: socket, gravity: int, user_id: int) -> None:
+        while self._operational:
+            packet = read(self._descriptor, self._buffer)
+            logger.debug(f"Sending {len(packet)} bytes to caerulean {self._address}:{self.sea_port}")
+            payload = obfuscate(gravity, self._cipher.encrypt(packet), user_id, False)
+            gate.sendto(payload, (self._address, self.sea_port))
 
-    def receive_from_caerulean(self) -> None:
-        with socket(AF_INET, SOCK_DGRAM) as gate:
-            gate.bind((self.default_ip, self._sea_port))
-            while self._operational:
-                packet = self._cipher.decrypt(gate.recv(self._buffer))
-                logger.debug(f"Receiving {len(packet)} bytes from caerulean {self._address}:{self._sea_port}")
-                write(self._descriptor, packet)
+    def receive_from_caerulean(self, gate: socket, gravity: int, user_id: int) -> None:
+        while self._operational:
+            packet = gate.recv(self._buffer)
+            payload = self._cipher.decrypt(deobfuscate(gravity, packet, False)[0])
+            logger.debug(f"Receiving {len(payload)} bytes from caerulean {self._address}:{self.sea_port}")
+            write(self._descriptor, payload)

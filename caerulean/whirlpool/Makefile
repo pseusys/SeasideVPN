@@ -2,19 +2,8 @@
 
 EXECUTABLE_NAME = whirlpool.run
 
-dependencies:
-	@
-	protoc-gen-go --version 2>&1 1>/dev/null || {
-		echo "Installing protobuf go generator..."
-		go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-	}
-	go mod verify 2>&1 1>/dev/null || {
-		echo "Installing and verifying module..."
-		go mod tidy
-	}
-.PHONY: dependencies
-
-build: dependencies
+build:
+	go mod tidy
 	protoc -I=../../ --go_out=. ../../vessels/*.proto
 	go build -o build/$(EXECUTABLE_NAME) ./sources
 .PHONY: build
