@@ -46,7 +46,20 @@ enum UserControlResponseStatus {
     TERMINATED = 7;  // Server stopped, all user connections are terminated
 }
 
+
+
 message UserControlMessage {
-    bytes token = 1;
-    UserControlRequestStatus status = 2;
+    message ConnectionMessage {
+        bytes token = 1;
+        bytes address = 2;
+    }
+
+    UserControlRequestStatus status = 1;
+    oneof payload {
+        ConnectionMessage message = 2;
+    }
+}
+
+message WhirlpoolControlMessage {
+    UserControlResponseStatus status = 1;
 }

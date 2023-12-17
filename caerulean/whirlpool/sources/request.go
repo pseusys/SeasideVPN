@@ -12,7 +12,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
-func UnmarshalDecrypting(source any, key any, message proto.Message, decode bool) (err error) {
+func UnmarshalDecrypting(source any, key any, message proto.Message, decode bool) (userID *uint16, err error) {
 	var encryptedBytes []byte
 	switch value := source.(type) {
 	case []byte:
@@ -20,15 +20,15 @@ func UnmarshalDecrypting(source any, key any, message proto.Message, decode bool
 	case *http.Request:
 		encryptedBytes, err = io.ReadAll(value.Body)
 		if err != nil {
-			return JoinError("error reading request bytes", err)
+			return nil, JoinError("error reading request bytes", err)
 		}
 	case *http.Response:
 		encryptedBytes, err = io.ReadAll(value.Body)
 		if err != nil {
-			return JoinError("error reading response bytes", err)
+			return nil, JoinError("error reading response bytes", err)
 		}
 	default:
-		return JoinError("unexpected data source", reflect.TypeOf(source))
+		return nil, JoinError("unexpected data source", reflect.TypeOf(source))
 	}
 
 	var decryptedBytes []byte
@@ -38,18 +38,18 @@ func UnmarshalDecrypting(source any, key any, message proto.Message, decode bool
 	case *rsa.PrivateKey:
 		decryptedBytes, err = DecryptBlockRSA(encryptedBytes, value)
 	default:
-		return JoinError("unexpected cipher type", reflect.TypeOf(key))
+		return nil, JoinError("unexpected cipher type", reflect.TypeOf(key))
 	}
 
 	if err != nil {
-		return JoinError("error decrypting request bytes", err)
+		return nil, JoinError("error decrypting request bytes", err)
 	}
 
 	var decodedBytes []byte
 	if decode {
-		decodedBytes, _, err = Deobfuscate(decryptedBytes)
+		decodedBytes, userID, err = Deobfuscate(decryptedBytes, true)
 		if err != nil {
-			return JoinError("error decoding request bytes", err)
+			return nil, JoinError("error decoding request bytes", err)
 		}
 	} else {
 		decodedBytes = decryptedBytes
@@ -57,10 +57,10 @@ func UnmarshalDecrypting(source any, key any, message proto.Message, decode bool
 
 	err = proto.Unmarshal(decodedBytes, message)
 	if err != nil {
-		return JoinError("error unmarshalling request message", err)
+		return nil, JoinError("error unmarshalling request message", err)
 	}
 
-	return nil
+	return userID, nil
 }
 
 func MarshalEncrypting(key any, message protoreflect.ProtoMessage, encode bool) ([]byte, error) {
@@ -71,7 +71,7 @@ func MarshalEncrypting(key any, message protoreflect.ProtoMessage, encode bool) 
 
 	var encodedBytes []byte
 	if encode {
-		encodedBytes, err = Obfuscate(marshRequest, nil)
+		encodedBytes, err = Obfuscate(marshRequest, nil, true)
 		if err != nil {
 			return nil, JoinError("error encoding message bytes", err)
 		}

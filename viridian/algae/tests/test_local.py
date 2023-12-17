@@ -3,9 +3,12 @@ from os import environ
 from socket import AF_INET, SOCK_DGRAM, socket
 from pickle import loads
 
+import pytest
+
 logger = getLogger(__name__)
 
 
+@pytest.mark.timeout(3.0)
 def test_local_echo(random_message: bytes) -> None:
     logger.info("Testing with local echo server")
     echo_address, echo_port = environ["LOCAL_ECHO"], int(environ["LOCAL_ECHO_PORT"])
@@ -13,7 +16,6 @@ def test_local_echo(random_message: bytes) -> None:
     buffer = int(environ["BUFFER_SIZE"])
 
     with socket(AF_INET, SOCK_DGRAM) as gate:
-        gate.settimeout(3.0)
         gate.bind(("0.0.0.0", 0))
         gate.sendto(random_message, (echo_address, int(echo_port)))
         tcp_echo = loads(gate.recv(buffer))

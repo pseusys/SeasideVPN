@@ -49,7 +49,7 @@ func public(w http.ResponseWriter, _ *http.Request) {
 		return
 	}
 
-	publicEncoded, err := Obfuscate(publicBytes, nil)
+	publicEncoded, err := Obfuscate(publicBytes, nil, true)
 	if err != nil {
 		WriteAndLogError(w, http.StatusBadRequest, "error encoding RSA node key bytes", err)
 		return
@@ -61,7 +61,7 @@ func public(w http.ResponseWriter, _ *http.Request) {
 func auth(w http.ResponseWriter, r *http.Request) {
 	// TODO: check POST request
 	message := &generated.UserDataWhirlpool{}
-	err := UnmarshalDecrypting(r, RSA_NODE_KEY, message, true)
+	_, err := UnmarshalDecrypting(r, RSA_NODE_KEY, message, true)
 	if err != nil {
 		WriteAndLogError(w, http.StatusBadRequest, "error processing auth request", err)
 		return

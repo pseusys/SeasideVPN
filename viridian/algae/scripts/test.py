@@ -35,6 +35,7 @@ def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remot
         docker.compose.kill(signal="SIGINT")
         logger.info(f"{Style.BRIGHT}Testing {profile}: {Fore.GREEN}success{Fore.RESET}!{Style.RESET_ALL}")
         exit_code = 0
+
     except DockerException as exc:
         logger.error(f"Testing {profile}: {Style.BRIGHT}{Fore.RED}failed{Fore.RESET}!{Style.RESET_ALL}")
         logger.error(f"Error message: {exc}")
@@ -46,6 +47,11 @@ def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remot
         _print_container_logs(docker, "whirlpool")
         _print_container_logs(docker, "seaside-echo")
 
+        docker.compose.kill()
+        exit_code = 1
+
+    except KeyboardInterrupt:
+        logger.error(f"Testing {profile}: {Style.BRIGHT}{Fore.YELLOW}interrupted{Fore.RESET}!{Style.RESET_ALL}")
         docker.compose.kill()
         exit_code = 1
 
@@ -63,7 +69,7 @@ def test() -> int:
     docker = DockerClient(compose_files=[docker_path / "compose.default.yml"])
     docker.compose.build(quiet=local)
 
-    result = _test_set(docker_path, "local", local) # TODO: uncomment: + _test_set(docker_path, "remote", local)
+    result = _test_set(docker_path, "local", local) + _test_set(docker_path, "remote", local)
     # result += pytest(["--log-cli-level=DEBUG", _ALGAE_ROOT / "tests" / "test_unit.py"])
 
     docker.compose.rm(stop=True)

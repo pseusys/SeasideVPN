@@ -6,6 +6,13 @@ Small CLI-based client application, written in Python3.
 It can be run on linux (in for- and background), it's highly customizable.
 Created mainly for development and testing purposes.
 
+## Dependencies
+
+1. `python3` (interpreter) version >= 3.10
+  Installation guide can be found [here](https://www.python.org/downloads/).
+2. `protobuf` (compiler) version >= 25.1
+  Installation guide example can be found [here](https://grpc.io/docs/protoc-installation/#install-pre-compiled-binaries-any-os).
+
 ## Configuration
 
 > Required packages: `ip`, `python3`, `poetry` (from pip)

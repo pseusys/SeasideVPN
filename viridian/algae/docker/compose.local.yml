@@ -80,15 +80,19 @@ networks:
     ipam:
       config:
         - subnet: 10.65.0.0/24
+          gateway: 10.65.0.1
   sea-rout-int:
     ipam:
       config:
         - subnet: 10.87.65.0/24
+          gateway: 10.87.65.1
   sea-rout-ext:
     ipam:
       config:
         - subnet: 10.87.42.0/24
+          gateway: 10.87.42.1
   sea-serv-ext:
     ipam:
       config:
         - subnet: 10.42.0.0/24
+          gateway: 10.42.0.1

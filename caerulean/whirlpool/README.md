@@ -12,6 +12,15 @@ Whirlpool sends messages to UDP port 8542, in packets of size 2000, encrypted.
 > TODO: update (and check) ports.
 > WARNING! Any UDP packets arriving to ports 8542 and 8587 will be treated as user packets, i.e. user should never expect to receive any packets from these ports from any server via Seaside VPN!
 
+## Dependencies
+
+1. `go` (compiler) version >= 1.18
+  Installation guide can be found [here](https://go.dev/doc/install).
+2. `protobuf` (compiler) version >= 25.1
+  Installation guide example can be found [here](https://grpc.io/docs/protoc-installation/#install-pre-compiled-binaries-any-os).
+3. `protoc-gen-go` (code generator for golang) version >= 1.25
+  Regularily can be installed with this command: `go install google.golang.org/protobuf/cmd/protoc-gen-go@latest`.
+
 ## Web API
 
 TODO: automate build (installation script?) + actions + provide list of requirements

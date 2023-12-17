@@ -14,7 +14,6 @@ import (
 
 const (
 	MTU           = "1500"
-	MARK          = 87
 	ADDR_INTF_STR = `(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?:\/\d\d) dev (?P<iface>[a-zA-Z0-9_]+).*src (?P<addr>(?:[0-9]{1,3}\.){3}[0-9]{1,3}) .*`
 )
 
@@ -47,7 +46,6 @@ func ConfigureForwarding(externalInterface string, internalInterface string, tun
 	netStr := strconv.Itoa(*network)
 	portStr := strconv.Itoa(*port)
 	ctrlStr := strconv.Itoa(*control)
-	markStr := strconv.Itoa(MARK)
 
 	// Flush iptables rules
 	runCommand("iptables", "-F")
@@ -69,17 +67,6 @@ func ConfigureForwarding(externalInterface string, internalInterface string, tun
 	runCommand("iptables", "-P", "FORWARD", "DROP")
 	// Enable masquerade on all non-claimed output and input from and to eth0
 	runCommand("iptables", "-t", "nat", "-A", "POSTROUTING", "-o", externalInterface, "-j", "MASQUERADE")
-
-	// Set mark 87 to all packets, incoming via eth0 interface
-	runCommand("iptables", "-t", "mangle", "-A", "PREROUTING", "-m", "state", "--state", "ESTABLISHED,RELATED", "-i", externalInterface, "-j", "MARK", "--set-mark", markStr)
-	// Clear routing table number 87
-	runCommand("ip", "route", "flush", "table", markStr)
-	// Setting default route for table 87 through tunnel interface IP
-	runCommand("ip", "route", "add", "table", markStr, "default", "via", tunnelIP.String(), "dev", tunnelInterface)
-	// Forwarding packets marked with 87 with table number 87
-	runCommand("ip", "rule", "add", "fwmark", markStr, "table", markStr)
-	// Flushing routing cache
-	runCommand("ip", "route", "flush", "cache")
 
 	logrus.Infoln("Forwarding configured:", internalInterface, "<->", tunnelInterface, "<->", externalInterface)
 }
