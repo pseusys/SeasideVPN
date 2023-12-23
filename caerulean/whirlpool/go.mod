@@ -9,7 +9,6 @@ require (
 	github.com/songgao/water v0.0.0-20200317203138-2b4b6d7c09d8
 	github.com/zenazn/pkcs7pad v0.0.0-20170308005700-253a5b1f0e03
 	golang.org/x/crypto v0.9.0
-	golang.org/x/net v0.10.0
 	google.golang.org/protobuf v1.31.0
 )
 
