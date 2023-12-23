@@ -11,7 +11,7 @@ RUN go get ./...
 COPY vessels ./vessels
 RUN protoc -I=vessels --go_out=. --experimental_allow_proto3_optional vessels/*.proto
 
-COPY caerulean/whirlpool/sources ./
+COPY caerulean/whirlpool/main ./
 RUN go get main/m/v2
 
 RUN go build -o whirlpool.run
