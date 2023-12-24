@@ -1,7 +1,7 @@
 from fcntl import ioctl
 from ipaddress import IPv4Address, IPv4Interface
 from os import O_RDWR, getegid, geteuid, open, read, write
-from socket import AF_INET, SOCK_DGRAM, socket
+from socket import socket
 from struct import pack
 from typing import Tuple
 
@@ -9,7 +9,7 @@ from colorama import Fore
 from iptc import Rule, Target, Chain, Table
 from pyroute2 import IPRoute
 
-from .crypto import SymmetricalCipher
+from .crypto import MAX_MESSAGE_SIZE, SymmetricalCipher
 from .obscure import deobfuscate, obfuscate
 from .outputs import logger
 
@@ -70,10 +70,9 @@ def _create_internet_rule(default_ip: IPv4Interface, default_interface: str) -> 
 
 
 class Tunnel:
-    def __init__(self, name: str, mtu: int, buff: int, addr: IPv4Address, sea_port: int):
+    def __init__(self, name: str, mtu: int, addr: IPv4Address, sea_port: int):
         self._mtu = mtu
         self._name = name
-        self._buffer = buff
         self._address = str(addr)
         self.sea_port = sea_port
 
@@ -85,7 +84,7 @@ class Tunnel:
         self._cipher = None
 
         self._descriptor, self._tunnel_dev = _create_tunnel(name)
-        logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} created (buffer: {Fore.BLUE}{buff}{Fore.RESET})")
+        logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} created")
 
         self._send_to_caerulean_rule = _create_caerulean_rule(self._def_iface, self._address, def_iface_name)
         self._send_to_internet_rule = _create_internet_rule(self._def_iface, def_iface_name)
@@ -123,9 +122,10 @@ class Tunnel:
         logger.info(f"Packet forwarding with mark {Fore.BLUE}{_SVA_CODE}{Fore.RESET} via table {Fore.BLUE}{_SVA_CODE}{Fore.RESET} configured")
 
         with IPRoute() as ip:
+            logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} is created")
             ip.link("set", index=self._tunnel_dev, mtu=self._mtu)
             logger.info(f"Tunnel MTU set to {Fore.BLUE}{self._mtu}{Fore.RESET}")
-            ip.addr("add", index=self._tunnel_dev, address=self._tunnel_ip, mask=self._tunnel_cdr)
+            ip.addr("replace", index=self._tunnel_dev, address=self._tunnel_ip, mask=self._tunnel_cdr)
             logger.info(f"Tunnel IP address set to {Fore.BLUE}{self._tunnel_ip}{Fore.RESET}")
             ip.link("set", index=self._tunnel_dev, state="up")
             logger.info(f"Tunnel {Fore.GREEN}enabled{Fore.RESET}")
@@ -152,14 +152,14 @@ class Tunnel:
 
     def send_to_caerulean(self, gate: socket, gravity: int, user_id: int) -> None:
         while self._operational:
-            packet = read(self._descriptor, self._buffer)
+            packet = read(self._descriptor, MAX_MESSAGE_SIZE)
             logger.debug(f"Sending {len(packet)} bytes to caerulean {self._address}:{self.sea_port}")
             payload = obfuscate(gravity, self._cipher.encrypt(packet), user_id, False)
             gate.sendto(payload, (self._address, self.sea_port))
 
     def receive_from_caerulean(self, gate: socket, gravity: int, user_id: int) -> None:
         while self._operational:
-            packet = gate.recv(self._buffer)
+            packet = gate.recv(MAX_MESSAGE_SIZE)
             payload = self._cipher.decrypt(deobfuscate(gravity, packet, False)[0])
             logger.debug(f"Receiving {len(payload)} bytes from caerulean {self._address}:{self.sea_port}")
             write(self._descriptor, payload)

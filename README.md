@@ -211,7 +211,7 @@ These are:
   make test
   ```
 
-  for testing all system components, including integration tests.
+  for testing all system components.
 
 - ```bash
   make lint

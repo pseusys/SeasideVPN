@@ -1,4 +1,4 @@
-FROM seaside-whirlpool-default as test
+FROM seaside-whirlpool-default as smoke
 
 ARG NETWORK_GATEWAY
 ENV ARG_NETWORK_GATEWAY $NETWORK_GATEWAY

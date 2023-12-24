@@ -1,4 +1,4 @@
-FROM alpine:3.18 as test
+FROM alpine:3.18 as smoke
 
 RUN apk add --no-cache iptables
 ENTRYPOINT echo 1 > /proc/sys/net/ipv4/ip_forward && \

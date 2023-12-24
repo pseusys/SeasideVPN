@@ -64,7 +64,7 @@ Lint (and reformat) python files:
 sudo poetry run format
 ```
 
-Test (both unit and integration):
+Test (both all types of tests):
 
 ```bash
 sudo poetry run test
@@ -82,3 +82,12 @@ Clean build artifacts:
 sudo poetry run clean
 poetry env remove --all
 ```
+
+## Test sets
+
+Four test sets are included:
+
+1. `unit`: unit tests for `algae` viridian.
+2. `integration`: integration tests for communication between `algae` viridian and `whirlpool` caerulean.
+3. `local`: smoke test for UDP server access in a chaotic network.
+4. `remote`: smoke test for real-world website access.

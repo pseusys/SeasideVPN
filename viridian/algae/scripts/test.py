@@ -21,7 +21,7 @@ def _print_container_logs(docker: DockerClient, container: str, last: int = 100)
         logger.error(f"{Style.BRIGHT}{Fore.RED}No container {container} found!{Style.RESET_ALL}")
 
 
-def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remote"]], local: bool) -> int:
+def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remote"], Literal["integration"], Literal["unit"]], local: bool) -> int:
     logger.info(f"{Style.BRIGHT}{Fore.BLUE}Testing {profile}...{Style.RESET_ALL}")
     docker = DockerClient(compose_files=[docker_path / f"compose.{profile}.yml"])
     before_networks = set([net.name for net in docker.network.list()])
@@ -44,8 +44,9 @@ def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remot
         sleep(1)
 
         _print_container_logs(docker, "algae")
-        _print_container_logs(docker, "whirlpool")
-        _print_container_logs(docker, "seaside-echo")
+        if profile != "unit":
+            _print_container_logs(docker, "whirlpool")
+            _print_container_logs(docker, "seaside-echo")
 
         docker.compose.kill()
         exit_code = 1
@@ -69,8 +70,9 @@ def test() -> int:
     docker = DockerClient(compose_files=[docker_path / "compose.default.yml"])
     docker.compose.build(quiet=local)
 
-    result = _test_set(docker_path, "local", local) + _test_set(docker_path, "remote", local)
-    # result += pytest(["--log-cli-level=DEBUG", _ALGAE_ROOT / "tests" / "test_unit.py"])
+    result = 0
+    for test_set in ("local", "remote", "integration", "unit"):
+        result = result or _test_set(docker_path, test_set, local)
 
     docker.compose.rm(stop=True)
     return result
