@@ -42,7 +42,6 @@ ENV LOG_LEVEL DEBUG
 ENV OWNER_KEY none
 ENV TUNNEL seatun
 ENV CONN_MTU 1500
-ENV CONN_BUFF 2000
 ENV NODE_ADDR 127.0.0.1
 ENV NET_PORT 8587
 ENV SEA_PORT 8542
@@ -50,16 +49,23 @@ ENV CTRL_PORT 8543
 
 EXPOSE $SEA_PORT/udp
 EXPOSE $CTRL_PORT/tcp
-ENTRYPOINT python3 -m sources.main $OWNER_KEY -t $TUNNEL -m $CONN_MTU -b $CONN_BUFF -a $NODE_ADDR -n $NET_PORT -p $SEA_PORT -c $CTRL_PORT
-
-HEALTHCHECK --interval=3s --timeout=1s --retries=300000 --start-period=10s CMD ls /sys/class/net | grep $TUNNEL
+ENTRYPOINT python3 -m sources.main $OWNER_KEY -t $TUNNEL -m $CONN_MTU -a $NODE_ADDR -n $NET_PORT -p $SEA_PORT -c $CTRL_PORT
 
 
-FROM seaside-algae-default as test
+FROM seaside-algae-default as sleeping
+
+RUN apt-get update && apt-get install -y --no-install-recommends iproute2 && rm -rf /var/lib/apt/lists/*
+RUN touch __init__.py sources/__init__.py tests/__init__.py
+ENTRYPOINT sleep infinity
+
+
+FROM seaside-algae-default as smoke
 
 ARG NETWORK_GATEWAY
 ENV ARG_NETWORK_GATEWAY $NETWORK_GATEWAY
 
 RUN apt-get update && apt-get install -y --no-install-recommends iproute2 iputils-ping && rm -rf /var/lib/apt/lists/*
 ENTRYPOINT ip route replace default via $ARG_NETWORK_GATEWAY && \
-    python3 -m sources.main $OWNER_KEY -t $TUNNEL -m $CONN_MTU -b $CONN_BUFF -a $NODE_ADDR -n $NET_PORT -p $SEA_PORT -c $CTRL_PORT || sleep infinity
+    python3 -m sources.main $OWNER_KEY -t $TUNNEL -m $CONN_MTU -a $NODE_ADDR -n $NET_PORT -p $SEA_PORT -c $CTRL_PORT || sleep infinity
+
+HEALTHCHECK --interval=3s --timeout=1s --retries=3 --start-period=10s CMD ls /sys/class/net | grep $TUNNEL

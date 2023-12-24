@@ -1,0 +1,49 @@
+version: "3.3"
+
+services:
+  algae:
+    image: seaside-algae-sleeping
+    privileged: true
+    build:
+      dockerfile: viridian/algae/docker/Dockerfile.algae
+      context: ../../..
+      target: sleeping
+    environment:
+      LOG_LEVEL: DEBUG
+      OWNER_KEY: SuperSafeNodeOwnerKey:142
+      NODE_ADDR: 10.65.0.87
+    networks:
+      sea-client:
+        ipv4_address: 10.65.0.65
+    depends_on:
+      whirlpool:
+        condition: service_healthy
+
+  whirlpool:
+    extends:
+      file: compose.default.yml
+      service: whirlpool
+    environment:
+      LOG_LEVEL: DEBUG
+      OWNER_KEY: SuperSafeNodeOwnerKey:142
+      ADDRESS: 10.65.0.87
+      EXTERNAL: 10.87.0.87
+    networks:
+      sea-client:
+        ipv4_address: 10.65.0.87
+      sea-server:
+        ipv4_address: 10.87.0.87
+
+
+networks:
+  sea-client:
+    internal: true
+    ipam:
+      config:
+        - subnet: 10.65.0.0/24
+          gateway: 10.65.0.1
+  sea-server:
+    ipam:
+      config:
+        - subnet: 10.87.0.0/24
+          gateway: 10.87.0.1

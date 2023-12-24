@@ -118,31 +118,27 @@ func ListenControlPort(ip string, port int) {
 		userID, err := UnmarshalDecrypting(buffer, RSA_NODE_KEY, control, true)
 		if err != nil {
 			logrus.Warnln("Couldn't parse message from user", userAddress, err)
-			SendMessageToUser(generated.UserControlResponseStatus_ERROR, connection, userID)
-			return
+			SendMessageToUser(generated.UserControlResponseStatus_ERROR, connection, nil)
+			continue
 		}
 
-		// Prepare answer
-		message := &generated.WhirlpoolControlMessage{Status: generated.UserControlResponseStatus_UNDEFINED}
 		switch control.Status {
 		// In case of PUBLIC status - register user
 		case generated.UserControlRequestStatus_CONNECTION:
 			logrus.Infoln("Connecting user", userAddress)
 			payload := control.GetMessage()
-			message.Status, userID = connectViridian(payload.Token, payload.Address, address.IP)
+			status, userID := connectViridian(payload.Token, payload.Address, address.IP)
+			SendMessageToUser(status, connection, userID)
 		// In case of TERMIN status - delete user record
 		case generated.UserControlRequestStatus_DISCONNECTION:
 			logrus.Infoln("Deleting user", userAddress)
+			SendMessageToUser(generated.UserControlResponseStatus_SUCCESS, connection, userID)
 			deleteViridian(*userID, false)
-			message.Status = generated.UserControlResponseStatus_SUCCESS
 		// Default action - send user undefined status
 		default:
 			logrus.Infof("Unexpected status %v received from user %s", control.Status, userAddress)
+			SendMessageToUser(generated.UserControlResponseStatus_UNDEFINED, connection, userID)
 		}
-
-		// Send answer back to user
-		logrus.Infoln("Sending result to user", userAddress)
-		SendMessageToUser(message, connection, userID)
 	}
 }
 

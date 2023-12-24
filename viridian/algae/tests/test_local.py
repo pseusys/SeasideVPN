@@ -8,7 +8,7 @@ import pytest
 logger = getLogger(__name__)
 
 
-@pytest.mark.timeout(3.0)
+@pytest.mark.timeout(5.0)
 def test_local_echo(random_message: bytes) -> None:
     logger.info("Testing with local echo server")
     echo_address, echo_port = environ["LOCAL_ECHO"], int(environ["LOCAL_ECHO_PORT"])

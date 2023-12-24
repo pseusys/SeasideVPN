@@ -12,12 +12,12 @@ from .generated import UserDataWhirlpool, UserCertificate, UserControlMessage, U
 
 
 class Controller:
-    def __init__(self, key: str, name: str, mtu: int, buff: int, addr: IPv4Address, sea_port: int, net_port: int, ctrl_port: int):
+    def __init__(self, key: str, name: str, mtu: int, addr: IPv4Address, sea_port: int, net_port: int, ctrl_port: int):
         self._key = key
         self._address = str(addr)
         self._net_port = net_port
         self._ctrl_port = ctrl_port
-        self._interface = Tunnel(name, mtu, buff, addr, sea_port)
+        self._interface = Tunnel(name, mtu, addr, sea_port)
         self._gravity = int(key.split(":")[1])
         self._user_id = 0
 
@@ -34,7 +34,7 @@ class Controller:
             self._receive_token()
             logger.info("Exchanging basic information...")
             self._initialize_control()
-            logger.info("Starting tunnel worker processes...")
+            logger.info("Turning tunnel on...")
             self._turn_tunnel_on()
             logger.info("Starting controller process...")
             self._perform_control()
@@ -62,11 +62,9 @@ class Controller:
         self._interface.setup(self._cipher)
 
     def _initialize_control(self) -> None:
-        caerulean_address = (self._address, self._ctrl_port)
-
         with socket(AF_INET, SOCK_STREAM) as gate:
-            gate.connect(caerulean_address)
-            logger.debug(f"Sending control to caerulean {self._address}:{self._ctrl_port}")
+            gate.connect((self._address, self._ctrl_port))
+            logger.debug(f"Establishing connection to caerulean {self._address}:{self._ctrl_port}")
 
             connection_message = UserControlMessageConnectionMessage(token=self._session_token, address=inet_aton(self._interface.default_ip))
             control_message = UserControlMessage(status=UserControlRequestStatus.CONNECTION, message=connection_message)
@@ -141,21 +139,24 @@ class Controller:
                     self._receive_token()
                     logger.info("Re-initializing control!")
                     self._initialize_control()
+                    logger.info("Turning tunnel back on...")
                     self._turn_tunnel_on()
 
     def interrupt(self) -> None:
-        caerulean_address = (self._address, self._ctrl_port)
-
         with socket(AF_INET, SOCK_STREAM) as gate:
-            gate.connect(caerulean_address)
-            encoded = obfuscate(self._gravity, UserControlRequestStatus.DISCONNECTION, self._user_id)
-            encrypted = self._public_cipher.encrypt(encoded)
-            gate.sendall(encrypted)
+            gate.connect((self._address, self._ctrl_port))
+            logger.debug(f"Interrupting connection to caerulean {self._address}:{self._ctrl_port}")
+
+            control_message = UserControlMessage(status=UserControlRequestStatus.DISCONNECTION)
+            encoded_message = obfuscate(self._gravity, bytes(control_message), self._user_id)
+            encrypted_message = self._public_cipher.encrypt(encoded_message)
+            gate.sendall(encrypted_message)
             gate.shutdown(SHUT_WR)
 
-            packet = gate.recv(MAX_MESSAGE_SIZE)
-            encoded = self._cipher.decrypt(packet)
-            status = deobfuscate_status(self._gravity, encoded)
+            encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
+            encoded_message = self._cipher.decrypt(encrypted_message)
+            answer_message, _ = deobfuscate(self._gravity, encoded_message)
+            status = WhirlpoolControlMessage().parse(answer_message).status
 
             if status == UserControlResponseStatus.SUCCESS:
                 logger.info(f"Disconnected from caerulean {self._address}:{self._ctrl_port} successfully!")

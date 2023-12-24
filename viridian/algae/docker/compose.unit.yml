@@ -1,0 +1,12 @@
+version: "3.3"
+
+services:
+  algae:
+    image: seaside-algae-sleeping
+    privileged: true
+    build:
+      dockerfile: viridian/algae/docker/Dockerfile.algae
+      context: ../../..
+      target: sleeping
+    environment:
+      NODE_ADDR: 10.65.0.65
