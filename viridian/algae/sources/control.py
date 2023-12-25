@@ -15,12 +15,12 @@ from .generated import UserDataWhirlpool, UserCertificate, UserControlMessage, U
 
 
 class Controller:
-    def __init__(self, key: str, name: str, mtu: int, addr: IPv4Address, sea_port: int, net_port: int, ctrl_port: int, hc_min: int, hc_max: int):
+    def __init__(self, key: str, name: str, addr: IPv4Address, sea_port: int, net_port: int, ctrl_port: int, hc_min: int, hc_max: int):
         self._key = key
         self._address = str(addr)
         self._net_port = net_port
         self._ctrl_port = ctrl_port
-        self._interface = Tunnel(name, mtu, addr, sea_port)
+        self._interface = Tunnel(name, addr, sea_port)
         self._gravity = int(key.split(":")[1])
         self._user_id = 0
         self._min_hc_time = hc_min

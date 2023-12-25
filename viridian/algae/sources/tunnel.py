@@ -39,15 +39,15 @@ def _create_tunnel(name: str) -> Tuple[int, str]:
     return descriptor, tunnel_dev
 
 
-def _get_default_interface(seaside_address: str) -> Tuple[IPv4Interface, str]:
+def _get_default_interface(seaside_address: str) -> Tuple[IPv4Interface, str, int]:
     with IPRoute() as ip:
-        caerulean_dev = dict(ip.route("get", dst=seaside_address)[0]["attrs"])["RTA_OIF"]
-        caerulean_iface_opts = ip.get_addr(index=caerulean_dev)[0]
-        default_iface_attrs = dict(caerulean_iface_opts["attrs"])
-        default_iface = default_iface_attrs["IFA_LABEL"]
-        default_ip = default_iface_attrs["IFA_ADDRESS"]
-        default_cidr = caerulean_iface_opts["prefixlen"]
-        return IPv4Interface(f"{default_ip}/{default_cidr}"), default_iface
+        caerulean_dev = ip.route("get", dst=seaside_address)[0].get_attr("RTA_OIF")
+        addr_iface = ip.get_addr(index=caerulean_dev)[0]
+        default_cidr = addr_iface["prefixlen"]
+        default_iface = addr_iface.get_attr("IFA_LABEL")
+        default_ip = addr_iface.get_attr("IFA_ADDRESS")
+        default_mtu = int(ip.get_links(index=caerulean_dev)[0].get_attr("IFLA_MTU"))
+        return IPv4Interface(f"{default_ip}/{default_cidr}"), default_iface, default_mtu
 
 
 def _create_caerulean_rule(default_ip: IPv4Interface, seaside_address: str, default_interface: str) -> Rule:
@@ -70,15 +70,14 @@ def _create_internet_rule(default_ip: IPv4Interface, default_interface: str) -> 
 
 
 class Tunnel:
-    def __init__(self, name: str, mtu: int, addr: IPv4Address, sea_port: int):
-        self._mtu = mtu
+    def __init__(self, name: str, addr: IPv4Address, sea_port: int):
         self._name = name
         self._address = str(addr)
         self.sea_port = sea_port
 
         self._tunnel_ip = "192.168.0.65"
         self._tunnel_cdr = 24
-        self._def_iface, def_iface_name = _get_default_interface(self._address)
+        self._def_iface, def_iface_name, self._mtu = _get_default_interface(self._address)
 
         self._operational = False
         self._cipher = None
@@ -151,13 +150,17 @@ class Tunnel:
         self._operational = False
 
     def send_to_caerulean(self, gate: socket, gravity: int, user_id: int) -> None:
+        if self._cipher is None:
+            raise ValueError("Cipher must be set before launching sender thread!")
         while self._operational:
             packet = read(self._descriptor, MAX_MESSAGE_SIZE)
             logger.debug(f"Sending {len(packet)} bytes to caerulean {self._address}:{self.sea_port}")
             payload = obfuscate(gravity, self._cipher.encrypt(packet), user_id, False)
             gate.sendto(payload, (self._address, self.sea_port))
 
-    def receive_from_caerulean(self, gate: socket, gravity: int, user_id: int) -> None:
+    def receive_from_caerulean(self, gate: socket, gravity: int, _: int) -> None:
+        if self._cipher is None:
+            raise ValueError("Cipher must be set before launching receiver thread!")
         while self._operational:
             packet = gate.recv(MAX_MESSAGE_SIZE)
             payload = self._cipher.decrypt(deobfuscate(gravity, packet, False)[0])
