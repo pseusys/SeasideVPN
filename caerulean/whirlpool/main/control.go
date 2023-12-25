@@ -15,20 +15,24 @@ import (
 
 type Viridian struct {
 	aead    cipher.AEAD
-	expire  *time.Timer
+	reset   *time.Timer
 	address net.IP
 	gateway net.IP
 }
 
+const (
+	USER_WAITING_OVERTIME   = 5
+	FIRST_HEALTHCHECK_DELAY = time.Minute * time.Duration(USER_WAITING_OVERTIME)
+)
+
 var (
-	VIRIDIANS     = make(map[uint16]Viridian, *max_users)
-	USER_LIFETIME = time.Minute * time.Duration(*user_ttl)
+	VIRIDIANS = make(map[uint16]Viridian, *max_users)
 )
 
 func deleteViridian(userID uint16, timeout bool) {
 	delete(VIRIDIANS, userID)
 	if timeout {
-		logrus.Infof("User %d deleted by inactivity timeout (%d minutes)", userID, *user_ttl)
+		logrus.Infof("User %d deleted by inactivity timeout", userID)
 	} else {
 		logrus.Infof("User %d deleted successfully", userID)
 	}
@@ -48,10 +52,10 @@ func connectViridian(encryptedToken []byte, address []byte, gateway []byte) (gen
 	}
 
 	if !token.Privileged && token.Subscription.AsTime().Before(time.Now().UTC()) {
-		logrus.Warnln("User subscription outdated, cannot connect VPN user")
+		logrus.Warnln("User subscription outdated, cannot connect user")
 		return generated.UserControlResponseStatus_OVERTIME, nil
 	} else if !token.Privileged && len(VIRIDIANS) >= *max_users {
-		logrus.Warnln("User number overload, cannot connect VPN user")
+		logrus.Warnln("User number overload, cannot connect user")
 		return generated.UserControlResponseStatus_OVERLOAD, nil
 	} else if address == nil {
 		logrus.Warnf("User address is null")
@@ -65,10 +69,19 @@ func connectViridian(encryptedToken []byte, address []byte, gateway []byte) (gen
 		}
 		// Setup inactivity deletion timer for user
 		userID := uint16(RandomPermute(len(VIRIDIANS)))
-		deletionTimer := time.AfterFunc(USER_LIFETIME, func() { deleteViridian(userID, true) })
+		deletionTimer := time.AfterFunc(FIRST_HEALTHCHECK_DELAY, func() { deleteViridian(userID, true) })
 		VIRIDIANS[userID] = Viridian{aead, deletionTimer, address, gateway}
-		logrus.Infoln("Connected user", userID)
 		return generated.UserControlResponseStatus_SUCCESS, &userID
+	}
+}
+
+func updateUser(userID uint16, nextIn int32) generated.UserControlResponseStatus {
+	viridian, exists := VIRIDIANS[userID]
+	if exists {
+		viridian.reset.Reset(time.Duration(nextIn*USER_WAITING_OVERTIME) * time.Second)
+		return generated.UserControlResponseStatus_HEALTHPONG
+	} else {
+		return generated.UserControlResponseStatus_ERROR
 	}
 }
 
@@ -110,33 +123,40 @@ func ListenControlPort(ip string, port int) {
 			continue
 		}
 
-		userAddress := address.IP.String()
-		logrus.Infoln("Received control message from user:", userAddress)
-
 		// Resolve received message
+		requester := address.IP.String()
 		control := &generated.UserControlMessage{}
 		userID, err := UnmarshalDecrypting(buffer, RSA_NODE_KEY, control, true)
 		if err != nil {
-			logrus.Warnln("Couldn't parse message from user", userAddress, err)
+			logrus.Warnln("Couldn't parse message from IP", requester, err)
 			SendMessageToUser(generated.UserControlResponseStatus_ERROR, connection, nil)
 			continue
+		} else if userID != nil {
+			logrus.Infoln("Received control message from user", *userID)
+		} else {
+			logrus.Infoln("Received cintrol request from IP", requester)
 		}
 
 		switch control.Status {
 		// In case of PUBLIC status - register user
 		case generated.UserControlRequestStatus_CONNECTION:
-			logrus.Infoln("Connecting user", userAddress)
-			payload := control.GetMessage()
+			payload := control.GetConnection()
 			status, userID := connectViridian(payload.Token, payload.Address, address.IP)
+			logrus.Infoln("Connecting new user", *userID)
+			SendMessageToUser(status, connection, userID)
+		// In case of HEALTHPING status - update user deletion timer
+		case generated.UserControlRequestStatus_HEALTHPING:
+			logrus.Infoln("Healthcheck from user", *userID)
+			status := updateUser(*userID, control.GetHealthcheck().NextIn)
 			SendMessageToUser(status, connection, userID)
 		// In case of TERMIN status - delete user record
 		case generated.UserControlRequestStatus_DISCONNECTION:
-			logrus.Infoln("Deleting user", userAddress)
+			logrus.Infoln("Deleting user", *userID)
 			SendMessageToUser(generated.UserControlResponseStatus_SUCCESS, connection, userID)
 			deleteViridian(*userID, false)
 		// Default action - send user undefined status
 		default:
-			logrus.Infof("Unexpected status %v received from user %s", control.Status, userAddress)
+			logrus.Infof("Unexpected status %v received from user %d", control.Status, *userID)
 			SendMessageToUser(generated.UserControlResponseStatus_UNDEFINED, connection, userID)
 		}
 	}

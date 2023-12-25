@@ -1,18 +1,21 @@
 from ipaddress import IPv4Address
 from multiprocessing import Process
 from socket import AF_INET, SHUT_WR, SOCK_DGRAM, SOCK_STREAM, socket, inet_aton
+from time import sleep
+
+from Crypto.Random.random import randint
 
 from .crypto import MAX_MESSAGE_SIZE, RSACipher, SymmetricalCipher
-from .obscure import obfuscate, deobfuscate, deobfuscate_status
+from .obscure import obfuscate, deobfuscate
 from .outputs import logger
 from .requests import get, post
 from .tunnel import Tunnel
 
-from .generated import UserDataWhirlpool, UserCertificate, UserControlMessage, UserControlResponseStatus, UserControlRequestStatus, UserControlMessageConnectionMessage, WhirlpoolControlMessage
+from .generated import UserDataWhirlpool, UserCertificate, UserControlMessage, UserControlResponseStatus, UserControlRequestStatus, UserControlMessageConnectionMessage, UserControlMessageHealthcheckMessage, WhirlpoolControlMessage
 
 
 class Controller:
-    def __init__(self, key: str, name: str, mtu: int, addr: IPv4Address, sea_port: int, net_port: int, ctrl_port: int):
+    def __init__(self, key: str, name: str, mtu: int, addr: IPv4Address, sea_port: int, net_port: int, ctrl_port: int, hc_min: int, hc_max: int):
         self._key = key
         self._address = str(addr)
         self._net_port = net_port
@@ -20,6 +23,11 @@ class Controller:
         self._interface = Tunnel(name, mtu, addr, sea_port)
         self._gravity = int(key.split(":")[1])
         self._user_id = 0
+        self._min_hc_time = hc_min
+        self._max_hc_time = hc_max
+
+        if hc_min < 1:
+            raise ValueError("Minimal healthcheck time can't be less than 1 second!")
 
         self._owner_key: bytes
         self._session_token: bytes
@@ -67,7 +75,7 @@ class Controller:
             logger.debug(f"Establishing connection to caerulean {self._address}:{self._ctrl_port}")
 
             connection_message = UserControlMessageConnectionMessage(token=self._session_token, address=inet_aton(self._interface.default_ip))
-            control_message = UserControlMessage(status=UserControlRequestStatus.CONNECTION, message=connection_message)
+            control_message = UserControlMessage(status=UserControlRequestStatus.CONNECTION, connection=connection_message)
             encoded_message = obfuscate(self._gravity, bytes(control_message))
             encrypted_message = self._public_cipher.encrypt(encoded_message)
             gate.sendall(encrypted_message)
@@ -106,31 +114,31 @@ class Controller:
             self._interface.delete()
 
     def _perform_control(self) -> None:
-        with socket(AF_INET, SOCK_STREAM) as gate:
-            gate.bind((self._interface.default_ip, self._ctrl_port))
-            gate.listen(1)
-
-            while self._interface.operational:
+        logger.debug(f"Performing connection control to caerulean {self._address}:{self._ctrl_port}")
+        while self._interface.operational:
+            with socket(AF_INET, SOCK_STREAM) as gate:
                 try:
-                    connection, _ = gate.accept()
-                    packet = connection.recv(MAX_MESSAGE_SIZE)
-                    encoded = self._cipher.decrypt(packet)
-                    status = deobfuscate_status(self._gravity, encoded)
+                    next_in = randint(self._min_hc_time, self._max_hc_time)
+                    gate.connect((self._address, self._ctrl_port))
 
-                    if status == UserControlResponseStatus.ERROR:
-                        logger.warning("Server reports an error!")
-                        self._clean_tunnel()
-                        raise RuntimeError("Caerulean server reported an error!")
+                    healthcheck_message = UserControlMessageHealthcheckMessage(next_in=next_in)
+                    control_message = UserControlMessage(status=UserControlRequestStatus.HEALTHPING, healthcheck=healthcheck_message)
+                    encoded_message = obfuscate(self._gravity, bytes(control_message), self._user_id)
+                    encrypted_message = self._public_cipher.encrypt(encoded_message)
+                    gate.sendall(encrypted_message)
+                    gate.shutdown(SHUT_WR)
 
-                    elif status == UserControlResponseStatus.UNDEFINED:
-                        logger.error("System enters an undefined state!")
-                        self._clean_tunnel()
-                        raise RuntimeError("Seaside system entered an undefined state!")
+                    encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
+                    encoded_message = self._cipher.decrypt(encrypted_message)
+                    answer_message, _ = deobfuscate(self._gravity, encoded_message)
+                    status = WhirlpoolControlMessage().parse(answer_message).status
 
-                    elif status == UserControlResponseStatus.TERMINATED:
-                        logger.error("Server sent a disconnection request!")
-                        self._clean_tunnel()
-                        raise SystemExit("Requested caerulean is no longer available!")
+                    if status == UserControlResponseStatus.HEALTHPONG:
+                        sleep(next_in)
+                    elif status == UserControlResponseStatus.ERROR:
+                        raise ValueError("Healthping request error!")
+                    else:
+                        raise Exception("Couldn't perform healthcheck!")
 
                 except ValueError:
                     logger.info("Server lost session key!")
@@ -141,6 +149,7 @@ class Controller:
                     self._initialize_control()
                     logger.info("Turning tunnel back on...")
                     self._turn_tunnel_on()
+
 
     def interrupt(self) -> None:
         with socket(AF_INET, SOCK_STREAM) as gate:

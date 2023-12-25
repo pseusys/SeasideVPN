@@ -34,13 +34,12 @@ ENV SURFACE none
 ENV SEA_PORT 8542
 ENV CTRL_PORT 8543
 ENV NET_PORT 8587
-ENV USER_TTL 300
 ENV RSA_LENGTH 512
 
 EXPOSE $SEA_PORT/udp
 EXPOSE $CTRL_PORT/tcp
 EXPOSE $NET_PORT/tcp
-ENTRYPOINT ./whirlpool.run -a $ADDRESS -e $EXTERNAL -s $SURFACE -p $SEA_PORT -c $CTRL_PORT -n $NET_PORT -t $USER_TTL -u $MAX_USERS -o $OWNER_KEY
+ENTRYPOINT ./whirlpool.run -a $ADDRESS -e $EXTERNAL -s $SURFACE -p $SEA_PORT -c $CTRL_PORT -n $NET_PORT -u $MAX_USERS -o $OWNER_KEY
 
 # TODO: after docker engine 25 is out, change to: --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s
 HEALTHCHECK --interval=3s --timeout=1s --retries=3 --start-period=10s CMD wget -qO- http://$ADDRESS:$NET_PORT/public | wc -c | xargs test $RSA_LENGTH -lt

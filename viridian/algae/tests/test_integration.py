@@ -3,6 +3,7 @@ from logging import getLogger
 from os import environ, getenv
 from socket import AF_INET, SHUT_WR, SOCK_STREAM, socket
 from subprocess import check_output
+from time import sleep
 from typing import Generator
 
 import pytest
@@ -10,6 +11,8 @@ from Crypto.Random import get_random_bytes
 from pythonping import ping
 from pythonping.executor import SuccessOn
 
+from ..sources.obscure import deobfuscate, obfuscate
+from ..sources.generated import UserControlMessage, UserControlMessageHealthcheckMessage, UserControlRequestStatus, UserControlResponseStatus, WhirlpoolControlMessage
 from ..sources.control import Controller
 from ..sources.crypto import MAX_MESSAGE_SIZE
 
@@ -25,7 +28,9 @@ def controller() -> Generator[Controller, None, None]:
     sea_port = int(getenv("SEA_PORT", "8542"))
     net_port = int(getenv("NET_PORT", "8587"))
     ctrl_port = int(getenv("CTRL_PORT", "8543"))
-    yield Controller(key, name, mtu, addr, sea_port, net_port, ctrl_port)
+    min_healthcheck = int(getenv("MIN_HEALTHCHECK", "1"))
+    max_healthcheck = int(getenv("MAX_HEALTHCHECK", "5"))
+    yield Controller(key, name, mtu, addr, sea_port, net_port, ctrl_port, min_healthcheck, max_healthcheck)
 
 
 @pytest.mark.dependency()
@@ -87,10 +92,62 @@ def test_send_suspicious_message(controller: Controller):
 
 @pytest.mark.dependency(depends=["test_send_suspicious_message"])
 def test_send_healthcheck_message(controller: Controller):
-    pass
+    logger.info("Testing sending healthcheck to caerulean")
+    for _ in range(3):
+        with socket(AF_INET, SOCK_STREAM) as gate:
+            gate.settimeout(5.0)
+            gate.connect((controller._interface._address, controller._ctrl_port))
+
+            healthcheck_message = UserControlMessageHealthcheckMessage(next_in=controller._min_hc_time)
+            control_message = UserControlMessage(status=UserControlRequestStatus.HEALTHPING, healthcheck=healthcheck_message)
+            encoded_message = obfuscate(controller._gravity, bytes(control_message), controller._user_id)
+            encrypted_message = controller._public_cipher.encrypt(encoded_message)
+            gate.sendall(encrypted_message)
+            gate.shutdown(SHUT_WR)
+            encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
+
+            encoded_message = controller._cipher.decrypt(encrypted_message)
+            answer_message, _ = deobfuscate(controller._gravity, encoded_message)
+            status = WhirlpoolControlMessage().parse(answer_message).status
+            assert status == UserControlResponseStatus.HEALTHPONG
+            sleep(1)
 
 
 @pytest.mark.dependency(depends=["test_send_healthcheck_message"])
+def test_healthcheck_overtime(controller: Controller):
+    logger.info("Testing exceeding healthcheck time with caerulean")
+    with socket(AF_INET, SOCK_STREAM) as gate:
+        gate.settimeout(5.0)
+        gate.connect((controller._interface._address, controller._ctrl_port))
+
+        healthcheck_message = UserControlMessageHealthcheckMessage(next_in=controller._min_hc_time)
+        control_message = UserControlMessage(status=UserControlRequestStatus.HEALTHPING, healthcheck=healthcheck_message)
+        encoded_message = obfuscate(controller._gravity, bytes(control_message), controller._user_id)
+        encrypted_message = controller._public_cipher.encrypt(encoded_message)
+        gate.sendall(encrypted_message)
+        gate.shutdown(SHUT_WR)
+        gate.recv(MAX_MESSAGE_SIZE)
+
+    sleep(controller._min_hc_time * 10)
+    with socket(AF_INET, SOCK_STREAM) as gate:
+        gate.connect((controller._interface._address, controller._ctrl_port))
+
+        healthcheck_message = UserControlMessageHealthcheckMessage(next_in=controller._min_hc_time)
+        control_message = UserControlMessage(status=UserControlRequestStatus.HEALTHPING, healthcheck=healthcheck_message)
+        encoded_message = obfuscate(controller._gravity, bytes(control_message), controller._user_id)
+        encrypted_message = controller._public_cipher.encrypt(encoded_message)
+        gate.sendall(encrypted_message)
+        gate.shutdown(SHUT_WR)
+
+        encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
+        try:
+            controller._cipher.decrypt(encrypted_message)
+            assert False
+        except ValueError:
+            assert True
+
+
+@pytest.mark.dependency(depends=["test_healthcheck_overtime"])
 def test_reconnect(controller: Controller):
     logger.info("Testing reconnecting to caerulean")
     logger.info("Closing connection...")

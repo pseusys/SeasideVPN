@@ -12,11 +12,12 @@ from .outputs import logger
 
 _DEFAULT_NAME = "seatun"
 _DEFAULT_MTU = 1500
-_DEFAULT_BUFFER = 2000
 _DEFAULT_ADDRESS = "127.0.0.1"
 _DEFAULT_NET_PORT = 8587
 _DEFAULT_SEA_PORT = 8542
 _DEFAULT_CONTROL_PORT = 8543
+_DEFAULT_HEALTHCHECK_MIN_TIME = 1
+_DEFAULT_HEALTHCHECK_MAX_TIME = 5
 
 
 parser = ArgumentParser()
@@ -27,6 +28,8 @@ parser.add_argument("-a", "--address", dest="addr", default=_DEFAULT_ADDRESS, ty
 parser.add_argument("-n", "--net-port", dest="net_port", default=_DEFAULT_NET_PORT, type=int, help=f"Caerulean remote network port number (default: {_DEFAULT_NET_PORT})")
 parser.add_argument("-p", "--sea-port", dest="sea_port", default=_DEFAULT_SEA_PORT, type=int, help=f"Caerulean remote port number (default: {_DEFAULT_SEA_PORT})")
 parser.add_argument("-c", "--ctrl-port", dest="ctrl_port", default=_DEFAULT_CONTROL_PORT, type=int, help=f"Caerulean remote control port number (default: {_DEFAULT_CONTROL_PORT})")
+parser.add_argument("-i", "--health-min", dest="hc_min", default=_DEFAULT_HEALTHCHECK_MIN_TIME, type=int, help=f"Minimal healthcheck delay (default: {_DEFAULT_HEALTHCHECK_MIN_TIME}, shouldn't be less than 1)")
+parser.add_argument("-x", "--health-max", dest="hc_max", default=_DEFAULT_HEALTHCHECK_MAX_TIME, type=int, help=f"Maximal healthcheck delay (default: {_DEFAULT_HEALTHCHECK_MAX_TIME})")
 
 controller: Controller
 
