@@ -11,7 +11,6 @@ from .control import Controller
 from .outputs import logger
 
 _DEFAULT_NAME = "seatun"
-_DEFAULT_MTU = 1500
 _DEFAULT_ADDRESS = "127.0.0.1"
 _DEFAULT_NET_PORT = 8587
 _DEFAULT_SEA_PORT = 8542
@@ -23,7 +22,6 @@ _DEFAULT_HEALTHCHECK_MAX_TIME = 5
 parser = ArgumentParser()
 parser.add_argument("key", help=f"Whirlpool node owner key (required!)")
 parser.add_argument("-t", "--tunnel", dest="name", default=_DEFAULT_NAME, help=f"Tunnel interface name (default: {_DEFAULT_NAME})")
-parser.add_argument("-m", "--max-trans-unit", dest="mtu", default=_DEFAULT_MTU, type=int, help=f"Tunnel interface MTU (default: {_DEFAULT_MTU})")
 parser.add_argument("-a", "--address", dest="addr", default=_DEFAULT_ADDRESS, type=IPv4Address, help=f"Caerulean remote IP address (default: {_DEFAULT_ADDRESS})")
 parser.add_argument("-n", "--net-port", dest="net_port", default=_DEFAULT_NET_PORT, type=int, help=f"Caerulean remote network port number (default: {_DEFAULT_NET_PORT})")
 parser.add_argument("-p", "--sea-port", dest="sea_port", default=_DEFAULT_SEA_PORT, type=int, help=f"Caerulean remote port number (default: {_DEFAULT_SEA_PORT})")

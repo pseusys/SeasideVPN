@@ -23,14 +23,13 @@ logger = getLogger(__name__)
 def controller() -> Generator[Controller, None, None]:
     key = environ["OWNER_KEY"]
     name = getenv("IFACE_NAME", "sea-tun")
-    mtu = int(getenv("IFACE_MTU", "1500"))
     addr = IPv4Address(environ["NODE_ADDR"])
     sea_port = int(getenv("SEA_PORT", "8542"))
     net_port = int(getenv("NET_PORT", "8587"))
     ctrl_port = int(getenv("CTRL_PORT", "8543"))
     min_healthcheck = int(getenv("MIN_HEALTHCHECK", "1"))
     max_healthcheck = int(getenv("MAX_HEALTHCHECK", "5"))
-    yield Controller(key, name, mtu, addr, sea_port, net_port, ctrl_port, min_healthcheck, max_healthcheck)
+    yield Controller(key, name, addr, sea_port, net_port, ctrl_port, min_healthcheck, max_healthcheck)
 
 
 @pytest.mark.dependency()
