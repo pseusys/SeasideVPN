@@ -33,7 +33,6 @@ var (
 	port      = flag.Int("p", SEA_PORT, "UDP port for receiving UDP packets")
 	control   = flag.Int("c", CONTROL_PORT, "TCP port for communication with viridian")
 	network   = flag.Int("n", NET_PORT, "Network API port")
-	user_ttl  = flag.Int("t", USER_TTL, "Time system keeps user password for without interaction, in minutes")
 	max_users = flag.Int("u", MAX_USERS, "Maximum number of users, that are able to connect to this whirlpool node")
 	help      = flag.Bool("h", false, "Print this message again and exit")
 )

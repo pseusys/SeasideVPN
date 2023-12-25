@@ -54,9 +54,14 @@ message UserControlMessage {
         bytes address = 2;
     }
 
+    message HealthcheckMessage {
+        int32 nextIn = 1;
+    }
+
     UserControlRequestStatus status = 1;
     oneof payload {
-        ConnectionMessage message = 2;
+        ConnectionMessage connection = 2;
+        HealthcheckMessage healthcheck = 3;
     }
 }
 

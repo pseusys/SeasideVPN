@@ -114,8 +114,6 @@ func ReceivePacketsFromViridian(tunnel *water.Interface, tunnetwork *net.IPNet) 
 }
 
 func decryptPacket(ciphertext []byte, viridian *Viridian) ([]byte, error) {
-	viridian.expire.Reset(USER_LIFETIME)
-
 	plaintext, err := DecryptSymmetrical(ciphertext, viridian.aead)
 	if err != nil {
 		return nil, err
@@ -211,8 +209,6 @@ func SendPacketsToViridian(tunnel *water.Interface, tunnetwork *net.IPNet) {
 }
 
 func encryptPacket(plaintext []byte, viridian *Viridian) ([]byte, error) {
-	viridian.expire.Reset(USER_LIFETIME)
-
 	ciphertext, err := EncryptSymmetrical(plaintext, viridian.aead)
 	if err != nil {
 		return nil, err
