@@ -1,6 +1,6 @@
 test-algae:
 	poetry -C viridian/algae install --without client,devel
-	poetry -C viridian/algae run test
+	poetry -C viridian/algae run test_all
 .PHONY: test-algae
 
 test: test-algae

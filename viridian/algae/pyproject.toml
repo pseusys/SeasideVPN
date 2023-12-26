@@ -49,7 +49,10 @@ betterproto = { version = "^2.0.0b6", extras = ["compiler"] }
 generate = "scripts.process:generate"
 lint = "scripts.codestyle:lint"
 format = "scripts.codestyle:format"
-test = "scripts.test:test"
+test_unit = "scripts.test:test_unit"
+test_integration = "scripts.test:test_integration"
+test_smoke = "scripts.test:test_smoke"
+test_all = "scripts.test:test_all"
 compile = "scripts.process:compile"
 clean = "scripts.process:clean"
 
