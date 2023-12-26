@@ -22,7 +22,15 @@ jobs:
           python-version: "3.10"
 
       - name: Install Dependencies 🔮
-        run: pip3 install poetry
+        run: |
+          pip3 install poetry
+          poetry -C viridian/algae install --without client,devel
 
-      - name: Test Viridian Algae 🧪
-        run: make test-algae
+      - name: Test Viridian Algae (unit) 🧪
+        run: poetry -C viridian/algae run test_unit
+
+      - name: Test Viridian Algae (integration) 📇
+        run: poetry -C viridian/algae run test_integration
+
+      - name: Test Viridian Algae (smoke) 😶‍🌫️
+        run: poetry -C viridian/algae run test_smoke

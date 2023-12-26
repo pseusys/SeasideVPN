@@ -1,8 +1,9 @@
+from contextlib import contextmanager
 from logging import getLogger
 from os import environ
 from pathlib import Path
 from time import sleep
-from typing import Literal, Union
+from typing import Iterator, Literal, Tuple, Union
 
 from colorama import Fore, Style, just_fix_windows_console
 from python_on_whales import DockerClient, DockerException
@@ -11,6 +12,18 @@ from python_on_whales.exceptions import NoSuchContainer
 from scripts._utils import ALGAE_ROOT
 
 logger = getLogger(__name__)
+
+
+@contextmanager
+def docker_test() -> Iterator[Tuple[Path, bool]]:
+    local = "CI" not in environ
+    docker_path = ALGAE_ROOT / "docker"
+    docker = DockerClient(compose_files=[docker_path / "compose.default.yml"])
+    try:
+        docker.compose.build(quiet=local)
+        yield docker_path, local
+    finally:
+        docker.compose.rm(stop=True)
 
 
 def _print_container_logs(docker: DockerClient, container: str, last: int = 100) -> None:
@@ -62,17 +75,28 @@ def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remot
     return exit_code
 
 
-def test() -> int:
+def test_unit() -> int:
     just_fix_windows_console()
-    local = "CI" not in environ
-    docker_path = ALGAE_ROOT / "docker"
+    with docker_test() as (docker_path, local):
+        return _test_set(docker_path, "unit", local)
 
-    docker = DockerClient(compose_files=[docker_path / "compose.default.yml"])
-    docker.compose.build(quiet=local)
 
-    result = 0
-    for test_set in ("local", "remote", "integration", "unit"):
-        result = result or _test_set(docker_path, test_set, local)
+def test_integration() -> int:
+    just_fix_windows_console()
+    with docker_test() as (docker_path, local):
+        return _test_set(docker_path, "integration", local)
 
-    docker.compose.rm(stop=True)
-    return result
+
+def test_smoke() -> int:
+    just_fix_windows_console()
+    with docker_test() as (docker_path, local):
+        return _test_set(docker_path, "local", local) or _test_set(docker_path, "remote", local)
+
+
+def test_all() -> int:
+    just_fix_windows_console()
+    with docker_test() as (docker_path, local):
+        result = 0
+        for test_set in ("unit", "integration", "local", "remote"):
+            result = result or _test_set(docker_path, test_set, local)
+        return result
