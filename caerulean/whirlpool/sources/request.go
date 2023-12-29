@@ -4,6 +4,8 @@ import (
 	"crypto/cipher"
 	"crypto/rsa"
 	"io"
+	"main/crypto"
+	"main/utils"
 	"net/http"
 	"reflect"
 
@@ -20,36 +22,36 @@ func UnmarshalDecrypting(source any, key any, message proto.Message, decode bool
 	case *http.Request:
 		encryptedBytes, err = io.ReadAll(value.Body)
 		if err != nil {
-			return nil, JoinError("error reading request bytes", err)
+			return nil, utils.JoinError("error reading request bytes", err)
 		}
 	case *http.Response:
 		encryptedBytes, err = io.ReadAll(value.Body)
 		if err != nil {
-			return nil, JoinError("error reading response bytes", err)
+			return nil, utils.JoinError("error reading response bytes", err)
 		}
 	default:
-		return nil, JoinError("unexpected data source", reflect.TypeOf(source))
+		return nil, utils.JoinError("unexpected data source", reflect.TypeOf(source))
 	}
 
 	var decryptedBytes []byte
 	switch value := key.(type) {
 	case cipher.AEAD:
-		decryptedBytes, err = DecryptSymmetrical(encryptedBytes, value)
+		decryptedBytes, err = crypto.DecryptSymmetrical(encryptedBytes, value)
 	case *rsa.PrivateKey:
-		decryptedBytes, err = DecryptBlockRSA(encryptedBytes, value)
+		decryptedBytes, err = crypto.DecryptBlockRSA(encryptedBytes, value)
 	default:
-		return nil, JoinError("unexpected cipher type", reflect.TypeOf(key))
+		return nil, utils.JoinError("unexpected cipher type", reflect.TypeOf(key))
 	}
 
 	if err != nil {
-		return nil, JoinError("error decrypting request bytes", err)
+		return nil, utils.JoinError("error decrypting request bytes", err)
 	}
 
 	var decodedBytes []byte
 	if decode {
-		decodedBytes, userID, err = Deobfuscate(decryptedBytes, true)
+		decodedBytes, userID, err = crypto.Deobfuscate(decryptedBytes, true)
 		if err != nil {
-			return nil, JoinError("error decoding request bytes", err)
+			return nil, utils.JoinError("error decoding request bytes", err)
 		}
 	} else {
 		decodedBytes = decryptedBytes
@@ -57,7 +59,7 @@ func UnmarshalDecrypting(source any, key any, message proto.Message, decode bool
 
 	err = proto.Unmarshal(decodedBytes, message)
 	if err != nil {
-		return nil, JoinError("error unmarshalling request message", err)
+		return nil, utils.JoinError("error unmarshalling request message", err)
 	}
 
 	return userID, nil
@@ -66,14 +68,14 @@ func UnmarshalDecrypting(source any, key any, message proto.Message, decode bool
 func MarshalEncrypting(key any, message protoreflect.ProtoMessage, encode bool) ([]byte, error) {
 	marshRequest, err := proto.Marshal(message)
 	if err != nil {
-		return nil, JoinError("error marshalling message", err)
+		return nil, utils.JoinError("error marshalling message", err)
 	}
 
 	var encodedBytes []byte
 	if encode {
-		encodedBytes, err = Obfuscate(marshRequest, nil, true)
+		encodedBytes, err = crypto.Obfuscate(marshRequest, nil, true)
 		if err != nil {
-			return nil, JoinError("error encoding message bytes", err)
+			return nil, utils.JoinError("error encoding message bytes", err)
 		}
 	} else {
 		encodedBytes = marshRequest
@@ -82,15 +84,15 @@ func MarshalEncrypting(key any, message protoreflect.ProtoMessage, encode bool) 
 	var encryptedRequest []byte
 	switch value := key.(type) {
 	case cipher.AEAD:
-		encryptedRequest, err = EncryptSymmetrical(encodedBytes, value)
+		encryptedRequest, err = crypto.EncryptSymmetrical(encodedBytes, value)
 	case *rsa.PublicKey:
-		encryptedRequest, err = EncryptRSA(encodedBytes, value)
+		encryptedRequest, err = crypto.EncryptRSA(encodedBytes, value)
 	default:
-		return nil, JoinError("unexpected cipher type", reflect.TypeOf(key))
+		return nil, utils.JoinError("unexpected cipher type", reflect.TypeOf(key))
 	}
 
 	if err != nil {
-		return nil, JoinError("error encrypting message bytes", err)
+		return nil, utils.JoinError("error encrypting message bytes", err)
 	}
 
 	return encryptedRequest, nil
@@ -101,7 +103,7 @@ func WriteAndLogError(w http.ResponseWriter, code int, message string, err error
 	w.WriteHeader(code)
 	if err != nil {
 		logrus.Errorln(message, err)
-		w.Write([]byte(JoinError(message, err).Error()))
+		w.Write([]byte(utils.JoinError(message, err).Error()))
 	} else {
 		logrus.Errorln(message)
 		w.Write([]byte(message))

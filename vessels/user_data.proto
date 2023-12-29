@@ -42,8 +42,8 @@ enum UserControlResponseStatus {
     ERROR = 2;  // Operation error, sent if any operation failed on server side
     OVERLOAD = 3;  // Too many users connected to caerulean, can't accept more connections
     OVERTIME = 4;  // User subscription outdated, user will be disconnected
-    HEALTHPONG = 6;  // Response to obfuscation PING request
-    TERMINATED = 7;  // Server stopped, all user connections are terminated
+    HEALTHPONG = 5;  // Response to obfuscation PING request
+    TERMINATED = 6;  // Server stopped, all user connections are terminated
 }
 
 

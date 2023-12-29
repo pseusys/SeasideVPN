@@ -269,7 +269,7 @@ Connection can be done via network surface or directly to a node (http://[NODE_I
 
 ### Considerations
 
-1. Use a library for `iptables` management in `caerulean/whirlpool` - if some other types of operations (not adding) are required; same about `ip route` and regex in `main/console.go`.
+1. Use a library for `iptables` management in `caerulean/whirlpool` - if some other types of operations (not adding) are required; same about `ip route` and regex in `whirlpool/console.go`.
    If so, consider also environment restoration in the end of main in `main.go`.
 
 ### Current goals
