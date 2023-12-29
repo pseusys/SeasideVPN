@@ -1,15 +1,17 @@
-package main
+package crypto
 
 import (
 	"crypto/rand"
 	"encoding/binary"
 	"errors"
+	"main/utils"
 )
 
 var GRAVITY byte
 
+// TODO: clean
 func Obfuscate(data []byte, userID *uint16, addTail bool) ([]byte, error) {
-	proposedTailLength := (RandInt() % 256) >> 1
+	proposedTailLength := (utils.RandInt() % 256) >> 1
 	actualTailLength := 0
 	if addTail {
 		actualTailLength = proposedTailLength
@@ -53,8 +55,4 @@ func Deobfuscate(data []byte, addTail bool) ([]byte, *uint16, error) {
 	} else {
 		return data[1:payload_end], nil, nil
 	}
-}
-
-func RandomPermute(number int) int {
-	return number + 5
 }

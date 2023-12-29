@@ -1,20 +1,21 @@
-FROM golang:1.19-alpine3.17 as builder
+FROM golang:1.20-alpine3.17 as builder
 
 WORKDIR /seaside/caerulean
 
 RUN apk add --no-cache protobuf protobuf-dev
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 
-COPY caerulean/whirlpool/go.* ./
-RUN go get ./...
-
 COPY vessels ./vessels
 RUN protoc -I=vessels --go_out=. --experimental_allow_proto3_optional vessels/*.proto
 
-COPY caerulean/whirlpool/main ./
-RUN go get main/m/v2
+COPY caerulean/whirlpool/go.mod ./
+COPY caerulean/whirlpool/sources ./sources
+COPY caerulean/whirlpool/crypto ./crypto
+COPY caerulean/whirlpool/users ./users
+COPY caerulean/whirlpool/utils ./utils
+RUN go get ./... && go mod tidy
 
-RUN go build -o whirlpool.run
+RUN go build -o whirlpool.run ./sources
 
 
 FROM alpine:3.17 as default
@@ -34,12 +35,13 @@ ENV SURFACE none
 ENV SEA_PORT 8542
 ENV CTRL_PORT 8543
 ENV NET_PORT 8587
-ENV RSA_LENGTH 512
+ENV MAX_USERS 10
+ENV MAX_ADMINS 5
 
 EXPOSE $SEA_PORT/udp
 EXPOSE $CTRL_PORT/tcp
 EXPOSE $NET_PORT/tcp
-ENTRYPOINT ./whirlpool.run -a $ADDRESS -e $EXTERNAL -s $SURFACE -p $SEA_PORT -c $CTRL_PORT -n $NET_PORT -u $MAX_USERS -o $OWNER_KEY
+ENTRYPOINT ./whirlpool.run -a $ADDRESS -e $EXTERNAL -s $SURFACE -p $SEA_PORT -c $CTRL_PORT -n $NET_PORT -o $OWNER_KEY
 
 # TODO: after docker engine 25 is out, change to: --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s
-HEALTHCHECK --interval=3s --timeout=1s --retries=3 --start-period=10s CMD wget -qO- http://$ADDRESS:$NET_PORT/public | wc -c | xargs test $RSA_LENGTH -lt
+HEALTHCHECK --interval=3s --timeout=1s --retries=3 --start-period=10s CMD wget -qO- http://$ADDRESS:$NET_PORT/public | wc -c | xargs test 512 -lt

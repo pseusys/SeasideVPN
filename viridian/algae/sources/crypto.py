@@ -10,9 +10,7 @@ MAX_MESSAGE_SIZE = 65535
 
 
 class RSACipher:
-    _RSA_KEY_SIZE = 550
-
-    _RSA_BLOCK_DATA_SIZE = 128
+    _RSA_BLOCK_DATA_SIZE = 223
     _RSA_BLOCK_HASH_SIZE = 32
 
     def __init__(self, public_key: bytes):

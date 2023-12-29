@@ -3,6 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
+	"main/crypto"
+	"main/users"
+	"main/utils"
 	"net"
 	"os"
 	"os/signal"
@@ -16,14 +19,13 @@ import (
 
 const (
 	NONE_ARG     = "none"
-	TUNNEL_IP    = "192.168.0.87/16"
 	UDP          = "udp4"
 	TCP          = "tcp4"
+	TUNNEL_IP    = "192.168.0.87/16"
 	SEA_PORT     = 8542
 	CONTROL_PORT = 8543
 	NET_PORT     = 8587
 	USER_TTL     = 300
-	MAX_USERS    = 16
 )
 
 var (
@@ -33,7 +35,6 @@ var (
 	port      = flag.Int("p", SEA_PORT, "UDP port for receiving UDP packets")
 	control   = flag.Int("c", CONTROL_PORT, "TCP port for communication with viridian")
 	network   = flag.Int("n", NET_PORT, "Network API port")
-	max_users = flag.Int("u", MAX_USERS, "Maximum number of users, that are able to connect to this whirlpool node")
 	help      = flag.Bool("h", false, "Print this message again and exit")
 )
 
@@ -43,11 +44,15 @@ func init() {
 
 func init() {
 	default_level := "INFO"
-	level, err := logrus.ParseLevel(getEnv("LOG_LEVEL", &default_level))
+	level, err := logrus.ParseLevel(utils.GetEnv("LOG_LEVEL", &default_level))
 	if err != nil {
 		logrus.Fatalln("Couldn't parse log level environmental variable!")
 	}
 	logrus.SetLevel(level)
+
+	max_users := uint16(utils.GetIntEnv("MAX_USERS", nil))
+	max_admins := uint16(utils.GetIntEnv("MAX_ADMINS", nil))
+	users.InitializeViridians(max_users, max_admins)
 }
 
 func main() {
@@ -72,7 +77,7 @@ func main() {
 	if err != nil {
 		logrus.Fatalln("Couldn't parse GRAVITY:", gravity_value)
 	}
-	GRAVITY = byte(gravity)
+	crypto.GRAVITY = byte(gravity)
 
 	// Create and get IP for tunnel interface
 	tunnelAddress, tunnelNetwork, err := net.ParseCIDR(TUNNEL_IP)

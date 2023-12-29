@@ -5,7 +5,7 @@ EXECUTABLE_NAME = whirlpool.run
 build:
 	go mod tidy
 	protoc -I=../../ --go_out=. ../../vessels/*.proto
-	go build -o build/$(EXECUTABLE_NAME) ./main
+	go build -o build/$(EXECUTABLE_NAME) ./sources
 .PHONY: build
 
 save:
@@ -22,7 +22,7 @@ restore:
 
 lint:
 	golint .
-	go fmt ./main
+	go fmt ./sources
 .PHONY: lint
 
 clean:
