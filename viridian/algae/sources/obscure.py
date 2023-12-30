@@ -1,13 +1,10 @@
-from typing import Literal, Optional, Tuple, Union
+from typing import Optional, Tuple, Union
 
 from Crypto.Random import get_random_bytes
 from Crypto.Random.random import randint
 
+from .utils import xor_bytes
 from .generated import UserControlRequestStatus, UserControlResponseStatus
-
-
-def _xor_bytes(bytes_array: int, xor: int, count: int, order: Literal["little", "big"]):
-    return bytes([b ^ xor for b in bytes_array.to_bytes(count, order)])
 
 
 def obfuscate(gravity: int, encrypted_packet: Union[bytes, UserControlRequestStatus], user_token: Optional[int] = None, add_tail: bool = True) -> bytes:
@@ -20,7 +17,7 @@ def obfuscate(gravity: int, encrypted_packet: Union[bytes, UserControlRequestSta
         return base_byte.to_bytes(1, "big") + encrypted_packet + tail
     else:
         base_byte = ((tail_length << 1) + 1) ^ gravity
-        user_sign = _xor_bytes(user_token, gravity, 2, "big")
+        user_sign = xor_bytes(user_token, gravity, 2, "big")
         return base_byte.to_bytes(1, "big") + user_sign + encrypted_packet + tail
 
 

@@ -1,43 +1,64 @@
 from __future__ import annotations
 from Crypto.Cipher import PKCS1_OAEP, ChaCha20_Poly1305
-from Crypto.Hash import SHA256
+from Crypto.Hash import SHA256, Poly1305
 from Crypto.PublicKey import RSA
 from Crypto.Random import get_random_bytes
-from Crypto.Util.Padding import pad
+
+from .utils import xor_arrays
 
 ENCODING_MAX_SIZE = 8192
 MAX_MESSAGE_SIZE = 65535
 
 
 class RSACipher:
-    _RSA_BLOCK_DATA_SIZE = 223
-    _RSA_BLOCK_HASH_SIZE = 32
-
     def __init__(self, public_key: bytes):
         recipient_key = RSA.import_key(public_key)
         self._cipher = PKCS1_OAEP.new(recipient_key, SHA256)
+        self._block_hash_size = SHA256.digest_size
+        self._key_byte_length = recipient_key.size_in_bytes()
+        self._block_data_size = self._key_byte_length - 2 * self._block_hash_size - 2
 
-    def encrypt(self, data: bytes) -> bytes:
-        data_container = bytearray()
-        initial_vector = SHA256.new(data).digest()
-        data = pad(data, self._RSA_BLOCK_DATA_SIZE)
+    def encrypt(self, plaintext: bytes) -> bytes:
+        ciphertext = bytes()
+        prev_cipher_text = bytes([0] * self._block_data_size)
+        plaintext = SHA256.new(plaintext).digest() + plaintext
 
-        for chunk in range(0, len(data), self._RSA_BLOCK_DATA_SIZE):
-            part = data[chunk:chunk+self._RSA_BLOCK_DATA_SIZE]
-            block = self._cipher.encrypt(b"".join([initial_vector, part]))
-            initial_vector = SHA256.new(block).digest()
-            data_container.extend(block)
+        while len(plaintext) > 0:
+            block_size = min(len(plaintext), self._block_data_size)
+            block, rest = plaintext[:block_size], plaintext[block_size:]
+            encrypted = self._cipher.encrypt(xor_arrays(block, prev_cipher_text))
+            ciphertext += encrypted
+            prev_cipher_text = encrypted
+            plaintext = rest
 
-        return bytes(data_container)
+        return ciphertext
+    
+    def decrypt(self, ciphertext: bytes) -> bytes:
+        plaintext = bytes()
+        prev_cipher_text = bytes([0] * self._block_data_size)
+
+        while len(ciphertext) > 0:
+            block_size = min(len(ciphertext), self._key_byte_length)
+            block, rest = plaintext[:block_size], plaintext[block_size:]
+            decrypted = xor_arrays(self._cipher.decrypt(block), prev_cipher_text)
+            plaintext += decrypted
+            prev_cipher_text = block
+            ciphertext = rest
+
+        initial_vector, plaintext = plaintext[:self._block_hash_size], plaintext[self._block_hash_size:]
+        if initial_vector != SHA256.new(plaintext).digest():
+            raise RuntimeError("plaintext damaged or changed")
+
+        return plaintext
 
 
 class SymmetricalCipher:
-    _CHACHA_KEY_LENGTH = 32
+    # A safer version of ChaCha cipher is used (XChaCha20) with extended `nonce`, 24 bytes long
     _CHACHA_NONCE_LENGTH = 24
-    _CHACHA_TAG_LENGTH = 16
 
     def __init__(self):
-        self.key = get_random_bytes(self._CHACHA_KEY_LENGTH)
+        self.key = get_random_bytes(ChaCha20_Poly1305.key_size)
+        self._tag_length = Poly1305.Poly1305_MAC.digest_size
 
     def encrypt(self, data: bytes) -> bytes:
         nonce = get_random_bytes(self._CHACHA_NONCE_LENGTH)
@@ -48,5 +69,5 @@ class SymmetricalCipher:
     def decrypt(self, data: bytes) -> bytes:
         nonce, ciphertext = data[:self._CHACHA_NONCE_LENGTH], data[self._CHACHA_NONCE_LENGTH:]
         cipher = ChaCha20_Poly1305.new(key=self.key, nonce=nonce)
-        encryption, tag = ciphertext[:-self._CHACHA_TAG_LENGTH], ciphertext[-self._CHACHA_TAG_LENGTH:]
+        encryption, tag = ciphertext[:-self._tag_length], ciphertext[-self._tag_length:]
         return cipher.decrypt_and_verify(encryption, tag)
