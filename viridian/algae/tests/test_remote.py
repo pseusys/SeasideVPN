@@ -54,7 +54,7 @@ def test_tcp_protocol(random_message: bytes) -> None:
         assert random_message == tcp_echo
 
 
-@pytest.mark.timeout(5.0)
+@pytest.mark.timeout(7.0)
 def test_ftp_protocol() -> None:
     address = "https://unsplash.com/photos/w7shif_h8hU/download?ixid=M3wxMjA3fDB8MXxhbGx8fHx8fHx8fHwxNjg0NTM0NzM3fA&force=true&w=1920"
     logger.info("Testing with FTP protocol")

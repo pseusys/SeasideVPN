@@ -38,7 +38,7 @@ func UnmarshalDecrypting(source any, key any, message proto.Message, decode bool
 	case cipher.AEAD:
 		decryptedBytes, err = crypto.DecryptSymmetrical(encryptedBytes, value)
 	case *rsa.PrivateKey:
-		decryptedBytes, err = crypto.DecryptBlockRSA(encryptedBytes, value)
+		decryptedBytes, err = crypto.DecryptRSA(encryptedBytes, value)
 	default:
 		return nil, utils.JoinError("unexpected cipher type", reflect.TypeOf(key))
 	}
