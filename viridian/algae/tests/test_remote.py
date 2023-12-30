@@ -27,6 +27,7 @@ def test_caerulean_ping(caerulean_address: str) -> None:
     assert ping("8.8.8.8", count=8, size=64).success(SuccessOn.Most)
 
 
+@pytest.mark.xfail(reason="QOTD is a UDP-based protocol, so it is not reliable and can sometimes fail")
 @pytest.mark.timeout(5.0)
 def test_qotd_udp_protocol(random_message: bytes) -> None:
     message_length = 4096

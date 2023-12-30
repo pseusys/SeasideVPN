@@ -16,12 +16,12 @@ logger = getLogger(__name__)
 
 @contextmanager
 def docker_test() -> Iterator[Tuple[Path, bool]]:
-    local = "CI" not in environ
+    hosted = "CI" in environ
     docker_path = ALGAE_ROOT / "docker"
     docker = DockerClient(compose_files=[docker_path / "compose.default.yml"])
     try:
-        docker.compose.build(quiet=local)
-        yield docker_path, local
+        docker.compose.build(quiet=hosted)
+        yield docker_path, hosted
     finally:
         docker.compose.rm(stop=True)
 
@@ -34,16 +34,16 @@ def _print_container_logs(docker: DockerClient, container: str, last: int = 100)
         logger.error(f"{Style.BRIGHT}{Fore.RED}No container {container} found!{Style.RESET_ALL}")
 
 
-def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remote"], Literal["integration"], Literal["unit"]], local: bool) -> int:
+def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remote"], Literal["integration"], Literal["unit"]], hosted: bool) -> int:
     logger.info(f"{Style.BRIGHT}{Fore.BLUE}Testing {profile}...{Style.RESET_ALL}")
     docker = DockerClient(compose_files=[docker_path / f"compose.{profile}.yml"])
     before_networks = set([net.name for net in docker.network.list()])
 
     try:
-        docker.compose.up(wait=True, build=True, detach=True, quiet=local)
+        docker.compose.up(wait=True, build=True, detach=True, quiet=hosted)
 
         test_command = ["pytest", "--log-cli-level=DEBUG", f"tests/test_{profile}.py"]
-        docker.compose.execute("algae", test_command, envs=dict() if local else {"CI": environ["CI"]})
+        docker.compose.execute("algae", test_command, envs=dict() if not hosted else {"CI": environ["CI"]})
 
         docker.compose.kill(signal="SIGINT")
         logger.info(f"{Style.BRIGHT}Testing {profile}: {Fore.GREEN}success{Fore.RESET}!{Style.RESET_ALL}")
@@ -77,26 +77,26 @@ def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remot
 
 def test_unit() -> int:
     just_fix_windows_console()
-    with docker_test() as (docker_path, local):
-        return _test_set(docker_path, "unit", local)
+    with docker_test() as (docker_path, hosted):
+        return _test_set(docker_path, "unit", hosted)
 
 
 def test_integration() -> int:
     just_fix_windows_console()
-    with docker_test() as (docker_path, local):
-        return _test_set(docker_path, "integration", local)
+    with docker_test() as (docker_path, hosted):
+        return _test_set(docker_path, "integration", hosted)
 
 
 def test_smoke() -> int:
     just_fix_windows_console()
-    with docker_test() as (docker_path, local):
-        return _test_set(docker_path, "local", local) or _test_set(docker_path, "remote", local)
+    with docker_test() as (docker_path, hosted):
+        return _test_set(docker_path, "local", hosted) or _test_set(docker_path, "remote", hosted)
 
 
 def test_all() -> int:
     just_fix_windows_console()
-    with docker_test() as (docker_path, local):
+    with docker_test() as (docker_path, hosted):
         result = 0
         for test_set in ("unit", "integration", "local", "remote"):
-            result = result or _test_set(docker_path, test_set, local)
+            result = result or _test_set(docker_path, test_set, hosted)
         return result
