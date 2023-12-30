@@ -51,16 +51,11 @@ func ParsePublicKey(rawKey []byte) (*rsa.PublicKey, error) {
 
 func EncryptRSA(plaintext []byte, publicKey *rsa.PublicKey) ([]byte, error) {
 	prevCipherText := make([]byte, RSA_BLOCK_DATA_SIZE)
-	encrypted := bytes.NewBuffer(make([]byte, 0, len(plaintext)+RSA_BLOCK_HASH_SIZE))
+	encrypted := bytes.NewBuffer(make([]byte, 0, len(plaintext)))
 
-	hash := sha256.New()
-	hash.Write(plaintext)
-	hsum := hash.Sum(nil)
-	encryptData := append(hsum, plaintext...)
-
-	for len(encryptData) > 0 {
-		blockSize := utils.Min(len(encryptData), RSA_BLOCK_DATA_SIZE)
-		block, rest := encryptData[:blockSize], encryptData[blockSize:]
+	for len(plaintext) > 0 {
+		blockSize := utils.Min(len(plaintext), RSA_BLOCK_DATA_SIZE)
+		block, rest := plaintext[:blockSize], plaintext[blockSize:]
 
 		xorResult := utils.Xor(block, prevCipherText)
 		ciphertext, err := rsa.EncryptOAEP(sha256.New(), rand.Reader, publicKey, xorResult, nil)
@@ -70,7 +65,7 @@ func EncryptRSA(plaintext []byte, publicKey *rsa.PublicKey) ([]byte, error) {
 
 		encrypted.Write(ciphertext)
 		prevCipherText = ciphertext
-		encryptData = rest
+		plaintext = rest
 	}
 
 	return encrypted.Bytes(), nil
@@ -95,15 +90,5 @@ func DecryptRSA(ciphertext []byte, privateKey *rsa.PrivateKey) ([]byte, error) {
 		ciphertext = rest
 	}
 
-	decryptedData := decrypted.Bytes()
-	initialVector, plaintext := decryptedData[:RSA_BLOCK_HASH_SIZE], decryptedData[RSA_BLOCK_HASH_SIZE:]
-	hash := sha256.New()
-	hash.Write(plaintext)
-	hsum := hash.Sum(nil)
-
-	if !bytes.Equal(initialVector, hsum) {
-		return nil, errors.New("plaintext damaged or changed")
-	}
-
-	return plaintext, nil
+	return decrypted.Bytes(), nil
 }

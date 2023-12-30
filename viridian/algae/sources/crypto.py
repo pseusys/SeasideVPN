@@ -21,7 +21,6 @@ class RSACipher:
     def encrypt(self, plaintext: bytes) -> bytes:
         ciphertext = bytes()
         prev_cipher_text = bytes([0] * self._block_data_size)
-        plaintext = SHA256.new(plaintext).digest() + plaintext
 
         while len(plaintext) > 0:
             block_size = min(len(plaintext), self._block_data_size)
@@ -44,10 +43,6 @@ class RSACipher:
             plaintext += decrypted
             prev_cipher_text = block
             ciphertext = rest
-
-        initial_vector, plaintext = plaintext[:self._block_hash_size], plaintext[self._block_hash_size:]
-        if initial_vector != SHA256.new(plaintext).digest():
-            raise RuntimeError("plaintext damaged or changed")
 
         return plaintext
 
