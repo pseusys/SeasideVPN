@@ -25,9 +25,9 @@ var (
 )
 
 func init() {
-	buff, err := strconv.Atoi(MTU)
+	buff, err := strconv.Atoi("1500")
 	if err != nil {
-		logrus.Fatalln("Couldn't parse MTU:", MTU)
+		logrus.Fatalln("Couldn't parse MTU:", "1500")
 	}
 	IOBUFFERSIZE = buff + BUFFER_OVERHEAD
 }
@@ -131,10 +131,9 @@ func SendPacketsToViridian(tunnel *water.Interface, tunnetwork *net.IPNet) {
 			logrus.Errorf("Reading from tunnel error (%d bytes read): %v", r, err)
 			continue
 		}
-		raw := buffer[:r]
 
 		// Decode all packet headers
-		packet := gopacket.NewPacket(raw, layers.LayerTypeIPv4, gopacket.NoCopy)
+		packet := gopacket.NewPacket(buffer[:r], layers.LayerTypeIPv4, gopacket.NoCopy)
 		if err := packet.ErrorLayer(); err != nil {
 			logrus.Errorln("Error decoding some part of the packet:", err)
 		}

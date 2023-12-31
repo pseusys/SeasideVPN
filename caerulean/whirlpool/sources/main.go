@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"main/crypto"
+	"main/tunnel"
 	"main/users"
 	"main/utils"
 	"net"
@@ -14,7 +15,6 @@ import (
 	"syscall"
 
 	"github.com/sirupsen/logrus"
-	"github.com/songgao/water"
 )
 
 const (
@@ -40,9 +40,7 @@ var (
 
 func init() {
 	flag.StringVar(&NODE_OWNER_KEY, "o", NONE_ARG, "Node owner key string (required)")
-}
 
-func init() {
 	default_level := "INFO"
 	level, err := logrus.ParseLevel(utils.GetEnv("LOG_LEVEL", &default_level))
 	if err != nil {
@@ -80,31 +78,11 @@ func main() {
 	crypto.GRAVITY = byte(gravity)
 
 	// Create and get IP for tunnel interface
-	tunnelAddress, tunnelNetwork, err := net.ParseCIDR(TUNNEL_IP)
+	tunnelConfig := tunnel.Preserve()
+	err = tunnelConfig.Open(TUNNEL_IP, *iIP, *eIP, *port, *network, *control)
 	if err != nil {
-		logrus.Fatalf("Couldn't parse tunnel network address (%s): %v", TUNNEL_IP, err)
+		logrus.Fatalf("Error establishing network connections: %v", err)
 	}
-
-	tunnel, err := water.New(water.Config{DeviceType: water.TUN})
-	if err != nil {
-		logrus.Fatalln("Unable to allocate TUN interface:", err)
-	}
-
-	// Find interface names for give IP addresses
-	internalInterface, err := FindAddress(*iIP)
-	if err != nil {
-		logrus.Fatalf("Couldn't find any interface for IP %s: %v", *iIP, err)
-	}
-
-	externalInterface, err := FindAddress(*eIP)
-	if err != nil {
-		logrus.Fatalf("Couldn't find any interface for IP %s: %v", *eIP, err)
-	}
-
-	// Create and configure tunnel interface
-	iname := tunnel.Name()
-	AllocateInterface(iname, &tunnelAddress, tunnelNetwork)
-	ConfigureForwarding(externalInterface, internalInterface, iname, &tunnelAddress)
 
 	// Resolve UDP address to send to
 	gateway, err := net.ResolveUDPAddr(UDP, fmt.Sprintf("%s:%d", *iIP, *port))
@@ -120,8 +98,8 @@ func main() {
 
 	// Start goroutines for packet forwarding
 	go ListenControlPort(*iIP, *control)
-	go ReceivePacketsFromViridian(tunnel, tunnelNetwork)
-	go SendPacketsToViridian(tunnel, tunnelNetwork)
+	go ReceivePacketsFromViridian(tunnelConfig.Tunnel, tunnelConfig.Network)
+	go SendPacketsToViridian(tunnelConfig.Tunnel, tunnelConfig.Network)
 
 	// Start web API, connect to surface if available
 	go InitNetAPI(*network)
@@ -133,9 +111,8 @@ func main() {
 	<-exitSignal
 
 	// Send disconnection status to all connected users
-	// for k := range VIRIDIANS {
-	// 	SendMessageToUser(generated.UserControlResponseStatus_TERMINATED, net.ParseIP(k), nil, true)
-	// }
+	// TODO
 
 	SEA_CONNECTION.Close()
+	tunnelConfig.Close()
 }
