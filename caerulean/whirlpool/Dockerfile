@@ -10,6 +10,7 @@ RUN protoc -I=vessels --go_out=. --experimental_allow_proto3_optional vessels/*.
 
 COPY caerulean/whirlpool/go.mod ./
 COPY caerulean/whirlpool/sources ./sources
+COPY caerulean/whirlpool/tunnel ./tunnel
 COPY caerulean/whirlpool/crypto ./crypto
 COPY caerulean/whirlpool/users ./users
 COPY caerulean/whirlpool/utils ./utils
