@@ -8,17 +8,9 @@ build:
 	go build -o build/$(EXECUTABLE_NAME) ./sources
 .PHONY: build
 
-save:
-	iptables-save > ~/sysconfig.txt
-.PHONY: save
-
-run: build save
+run: build
 	sudo build/$(EXECUTABLE_NAME) -ip 127.0.0.1
 .PHONY: run
-
-restore:
-	iptables-restore < ~/sysconfig.txt
-.PHONY: restore
 
 lint:
 	golint .

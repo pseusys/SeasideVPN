@@ -2,10 +2,20 @@ package tunnel
 
 import (
 	"fmt"
+	"os/exec"
 	"strconv"
 
 	"github.com/sirupsen/logrus"
 )
+
+func storeForwarding(conf *TunnelConfig) {
+	command := exec.Command("iptables-save")
+	command.Stdout = &conf.buffer
+	err := command.Run()
+	if err != nil {
+		logrus.Errorf("Command %s error: %v", command, err)
+	}
+}
 
 func openForwarding(intIP, extIP, tunIface string, seaPort, netPort, ctrlPort int) error {
 	netStr := strconv.Itoa(netPort)
@@ -47,6 +57,11 @@ func openForwarding(intIP, extIP, tunIface string, seaPort, netPort, ctrlPort in
 	return nil
 }
 
-func closeForwarding() {
-
+func closeForwarding(conf *TunnelConfig) {
+	command := exec.Command("iptables-restore", "--counters")
+	command.Stdin = &conf.buffer
+	err := command.Run()
+	if err != nil {
+		logrus.Errorf("Command %s error: %v", command, err)
+	}
 }
