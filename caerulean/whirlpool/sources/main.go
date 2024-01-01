@@ -110,9 +110,8 @@ func main() {
 	signal.Notify(exitSignal, syscall.SIGINT, syscall.SIGTERM)
 	<-exitSignal
 
-	// Send disconnection status to all connected users
-	// TODO
-
+	// TODO: terminate goroutines
+	// TODO: defer delete all users
 	SEA_CONNECTION.Close()
 	tunnelConfig.Close()
 }

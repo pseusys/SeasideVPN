@@ -21,7 +21,11 @@ type TunnelConfig struct {
 }
 
 func Preserve() *TunnelConfig {
-	return &TunnelConfig{}
+	config := TunnelConfig{}
+	config.mutex.Lock()
+	storeForwarding(&config)
+	config.mutex.Unlock()
+	return &config
 }
 
 func (conf *TunnelConfig) Open(tunIP, intIP, extIP string, seaPort, netPort, ctrlPort int) (err error) {
@@ -53,7 +57,7 @@ func (conf *TunnelConfig) Open(tunIP, intIP, extIP string, seaPort, netPort, ctr
 
 func (conf *TunnelConfig) Close() {
 	conf.mutex.Lock()
-	closeForwarding()
+	closeForwarding(conf)
 	closeInterface(conf)
 	conf.Tunnel.Close()
 	conf.mutex.Unlock()
