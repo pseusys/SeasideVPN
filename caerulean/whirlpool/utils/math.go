@@ -1,29 +1,5 @@
 package utils
 
-func ModInverse(a, m uint16) uint16 {
-	g := a
-	x := uint16(0)
-	y := uint16(1)
-	u := uint16(1)
-	v := uint16(0)
-
-	for g != 0 {
-		q := m / g
-		t := g
-		g = m % g
-		m = t
-		t = x
-		x = u - q*x
-		u = t
-		t = y
-		y = v - q*y
-		v = t
-	}
-
-	result := u + m
-	return result
-}
-
 func Min(a, b int) int {
 	if a < b {
 		return a
@@ -38,4 +14,13 @@ func Xor(a, b []byte) []byte {
 		result[i] = a[i] ^ b[i]
 	}
 	return result
+}
+
+func CountSetBits(num uint64) int {
+	count := 0
+	for num > 0 {
+		count += int(num & 1)
+		num >>= 1
+	}
+	return count
 }

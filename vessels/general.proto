@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+option go_package = "/generated";
+
+
+
+message RawKeyExchange {
+    bytes tempKey = 1;
+}

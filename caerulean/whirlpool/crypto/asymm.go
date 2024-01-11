@@ -49,7 +49,11 @@ func ParsePublicKey(rawKey []byte) (*rsa.PublicKey, error) {
 	return rsaPublicKey, nil
 }
 
-func EncryptRSA(plaintext []byte, publicKey *rsa.PublicKey) ([]byte, error) {
+func EncodeRSA(plaintext []byte, signature []byte, publicKey *rsa.PublicKey) ([]byte, error) {
+	if signature == nil {
+		signature = make([]byte, 0)
+	}
+
 	prevCipherText := make([]byte, RSA_BLOCK_DATA_SIZE)
 	encrypted := bytes.NewBuffer(make([]byte, 0, len(plaintext)))
 
@@ -68,10 +72,14 @@ func EncryptRSA(plaintext []byte, publicKey *rsa.PublicKey) ([]byte, error) {
 		plaintext = rest
 	}
 
-	return encrypted.Bytes(), nil
+	return append(signature, encrypted.Bytes()...), nil
 }
 
-func DecryptRSA(ciphertext []byte, privateKey *rsa.PrivateKey) ([]byte, error) {
+func DecodeRSA(ciphertext []byte, signed bool, privateKey *rsa.PrivateKey) ([]byte, error) {
+	if signed {
+		ciphertext = ciphertext[SIGNATURE_LENGTH:]
+	}
+
 	prevCipherText := make([]byte, RSA_BLOCK_DATA_SIZE)
 	decrypted := bytes.NewBuffer(make([]byte, 0, len(ciphertext)))
 

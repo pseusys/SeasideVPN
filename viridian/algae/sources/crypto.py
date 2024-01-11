@@ -1,4 +1,6 @@
 from __future__ import annotations
+from abc import ABCMeta, abstractmethod
+from typing import Optional
 from Crypto.Cipher import PKCS1_OAEP, ChaCha20_Poly1305
 from Crypto.Hash import SHA256, Poly1305
 from Crypto.PublicKey import RSA
@@ -9,8 +11,20 @@ from .utils import xor_arrays
 ENCODING_MAX_SIZE = 8192
 MAX_MESSAGE_SIZE = 65535
 
+_SIGNATURE_LENGTH = 16
 
-class RSACipher:
+
+class Encoder(metaclass=ABCMeta):
+    @abstractmethod
+    def encode(self, plaintext: bytes, signature: bytes) -> bytes:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def decode(self, ciphertext: bytes, signed: bool) -> bytes:
+        raise NotImplementedError()
+
+
+class RSACipher(Encoder):
     def __init__(self, public_key: bytes):
         recipient_key = RSA.import_key(public_key)
         self._cipher = PKCS1_OAEP.new(recipient_key, SHA256)
@@ -18,7 +32,7 @@ class RSACipher:
         self._key_byte_length = recipient_key.size_in_bytes()
         self._block_data_size = self._key_byte_length - 2 * self._block_hash_size - 2
 
-    def encrypt(self, plaintext: bytes) -> bytes:
+    def encode(self, plaintext: bytes, signature: Optional[bytes] = None) -> bytes:
         ciphertext = bytes()
         prev_cipher_text = bytes([0] * self._block_data_size)
 
@@ -30,12 +44,15 @@ class RSACipher:
             prev_cipher_text = encrypted
             plaintext = rest
 
-        return ciphertext
+        signature = bytes() if signature is None else signature
+        return signature + ciphertext
     
-    def decrypt(self, ciphertext: bytes) -> bytes:
+    def decode(self, ciphertext: bytes, signed: bool) -> bytes:
         plaintext = bytes()
         prev_cipher_text = bytes([0] * self._block_data_size)
 
+        if signed:
+            ciphertext = ciphertext[_SIGNATURE_LENGTH:]
         while len(ciphertext) > 0:
             block_size = min(len(ciphertext), self._key_byte_length)
             block, rest = plaintext[:block_size], plaintext[block_size:]
@@ -47,7 +64,7 @@ class RSACipher:
         return plaintext
 
 
-class SymmetricalCipher:
+class SymmetricalCipher(Encoder):
     # A safer version of ChaCha cipher is used (XChaCha20) with extended `nonce`, 24 bytes long
     _CHACHA_NONCE_LENGTH = 24
 
@@ -55,14 +72,15 @@ class SymmetricalCipher:
         self.key = get_random_bytes(ChaCha20_Poly1305.key_size)
         self._tag_length = Poly1305.Poly1305_MAC.digest_size
 
-    def encrypt(self, data: bytes) -> bytes:
-        nonce = get_random_bytes(self._CHACHA_NONCE_LENGTH)
+    def encode(self, plaintext: bytes, signature: Optional[bytes] = None) -> bytes:
+        signature = bytes() if signature is None else signature
+        nonce = signature + get_random_bytes(self._CHACHA_NONCE_LENGTH - len(signature))
         cipher = ChaCha20_Poly1305.new(key=self.key, nonce=nonce)
-        encryption, tag = cipher.encrypt_and_digest(data)
+        encryption, tag = cipher.encrypt_and_digest(plaintext)
         return nonce + encryption + tag
 
-    def decrypt(self, data: bytes) -> bytes:
-        nonce, ciphertext = data[:self._CHACHA_NONCE_LENGTH], data[self._CHACHA_NONCE_LENGTH:]
+    def decode(self, ciphertext: bytes, _: bool) -> bytes:
+        nonce, ciphertext = ciphertext[:self._CHACHA_NONCE_LENGTH], ciphertext[self._CHACHA_NONCE_LENGTH:]
         cipher = ChaCha20_Poly1305.new(key=self.key, nonce=nonce)
         encryption, tag = ciphertext[:-self._tag_length], ciphertext[-self._tag_length:]
         return cipher.decrypt_and_verify(encryption, tag)

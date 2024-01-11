@@ -1,39 +1,51 @@
 package utils
 
 import (
-	"fmt"
-	"math"
+	"crypto/rand"
+	"encoding/binary"
+	"math/big"
+
+	"github.com/sirupsen/logrus"
 )
 
-const LARGEST_PRIME_UINT16 = 65525
+const LARGEST_PRIME_UINT64 = uint64((1 << 64) - 59)
 
 var (
-	MULTIPLIER   uint16
-	MULTIPLIER_1 uint16
-	ADDITION     uint16
+	MULTIPLIER   uint64
+	MULTIPLIER_1 uint64
 )
 
 func init() {
-	MULTIPLIER = uint16(RandInt() % math.MaxInt16)
-	MULTIPLIER_1 = ModInverse(MULTIPLIER, LARGEST_PRIME_UINT16)
-	ADDITION = uint16(RandInt() % math.MaxInt16)
+	if binary.Read(rand.Reader, binary.BigEndian, &MULTIPLIER) != nil {
+		logrus.Fatal("error reading random 64bit integer")
+	}
+	MULTIPLIER %= LARGEST_PRIME_UINT64
+
+	bigA := new(big.Int).SetUint64(MULTIPLIER)
+	bigM := new(big.Int).SetUint64(LARGEST_PRIME_UINT64)
+	MULTIPLIER_1 = new(big.Int).ModInverse(bigA, bigM).Uint64()
 }
 
-func RandomPermute(number uint16) (uint16, error) {
-	if number >= math.MaxInt16-3 {
-		return 0, fmt.Errorf("number out of range: %d", number)
-	}
-	if number >= LARGEST_PRIME_UINT16 {
-		return number + 2, nil
+func RandomPermute(addition, number uint64) uint64 {
+	if number >= LARGEST_PRIME_UINT64 {
+		return number
 	} else {
-		return ((number*MULTIPLIER + ADDITION) % LARGEST_PRIME_UINT16) + 2, nil
+		bigN := new(big.Int).SetUint64(number)
+		bigM := new(big.Int).SetUint64(MULTIPLIER)
+		bigA := new(big.Int).SetUint64(addition)
+		bigP := new(big.Int).SetUint64(LARGEST_PRIME_UINT64)
+		return new(big.Int).Mod(new(big.Int).Add(new(big.Int).Mul(bigN, bigM), bigA), bigP).Uint64()
 	}
 }
 
-func RandomUnpermute(number uint16) uint16 {
-	if number >= LARGEST_PRIME_UINT16+2 {
-		return number - 2
+func RandomUnpermute(addition, number uint64) uint64 {
+	if number >= LARGEST_PRIME_UINT64 {
+		return number
 	} else {
-		return ((MULTIPLIER_1 * (number - 2 - ADDITION)) % LARGEST_PRIME_UINT16)
+		bigN := new(big.Int).SetUint64(number)
+		bigM := new(big.Int).SetUint64(MULTIPLIER_1)
+		bigA := new(big.Int).SetUint64(addition)
+		bigP := new(big.Int).SetUint64(LARGEST_PRIME_UINT64)
+		return new(big.Int).Mod(new(big.Int).Mul(bigM, new(big.Int).Sub(bigN, bigA)), bigP).Uint64()
 	}
 }

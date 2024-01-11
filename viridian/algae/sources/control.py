@@ -1,3 +1,4 @@
+from ctypes import c_uint64
 from ipaddress import IPv4Address
 from multiprocessing import Process
 from socket import AF_INET, SHUT_WR, SOCK_DGRAM, SOCK_STREAM, socket, inet_aton
@@ -6,12 +7,12 @@ from time import sleep
 from Crypto.Random.random import randint
 
 from .crypto import MAX_MESSAGE_SIZE, RSACipher, SymmetricalCipher
-from .obscure import obfuscate, deobfuscate
+from .obscure import Obfuscator
 from .outputs import logger
 from .requests import get, post
 from .tunnel import Tunnel
 
-from .generated import UserDataWhirlpool, UserCertificate, UserControlMessage, UserControlResponseStatus, UserControlRequestStatus, UserControlMessageConnectionMessage, UserControlMessageHealthcheckMessage, WhirlpoolControlMessage
+from .generated import UserDataWhirlpool, UserCertificate, UserControlMessage, UserControlResponseStatus, UserControlRequestStatus, UserControlMessageConnectionMessage, UserControlMessageHealthcheckMessage, WhirlpoolControlMessage, RawKeyExchange
 
 
 class Controller:
@@ -21,7 +22,6 @@ class Controller:
         self._net_port = net_port
         self._ctrl_port = ctrl_port
         self._interface = Tunnel(name, addr, sea_port)
-        self._gravity = int(key.split(":")[1])
         self._user_id = 0
         self._min_hc_time = hc_min
         self._max_hc_time = hc_max
@@ -35,6 +35,7 @@ class Controller:
         self._receiver_process: Process
         self._sender_process: Process
         self._gate_port: socket
+        self._obfuscator: Obfuscator
 
     def start(self) -> None:
         try:
@@ -52,19 +53,18 @@ class Controller:
     def _receive_token(self) -> None:
         logger.debug("Requesting whirlpool public key...")
         with get(f"http://{self._address}:{self._net_port}/public") as response:
-            self._public_cipher = RSACipher(deobfuscate(self._gravity, response.read())[0])
+            self._public_cipher = RSACipher(response.read())
 
         self._cipher = SymmetricalCipher()
         logger.debug(f"Symmetric session cipher initialized: {self._cipher.key}")
         user_data = UserDataWhirlpool(uid="some_cool_uid", session=self._cipher.key, owner_key=self._key)
-        user_encoded = obfuscate(self._gravity, bytes(user_data))
-        user_encrypted = self._public_cipher.encrypt(user_encoded)
-        logger.debug("Requesting whirlpool token...")
+        user_encrypted = self._public_cipher.encode(bytes(user_data))
 
+        logger.debug("Requesting whirlpool token...")
         with post(f"http://{self._address}:{self._net_port}/auth", user_encrypted) as response:
-            obfuscated = deobfuscate(self._gravity, self._cipher.decrypt(response.read()))
-            certificate = UserCertificate().parse(obfuscated[0])
+            certificate = UserCertificate().parse(self._cipher.decode(response.read(), False))
             self._session_token = certificate.token  # TODO: extract sea and control ports
+            self._obfuscator = Obfuscator(c_uint64(certificate.multiplier), c_uint64(certificate.user_zero))
 
         logger.debug(f"Symmetric session token received: {self._session_token}")
         self._interface.setup(self._cipher)
@@ -76,14 +76,12 @@ class Controller:
 
             connection_message = UserControlMessageConnectionMessage(token=self._session_token, address=inet_aton(self._interface.default_ip))
             control_message = UserControlMessage(status=UserControlRequestStatus.CONNECTION, connection=connection_message)
-            encoded_message = obfuscate(self._gravity, bytes(control_message))
-            encrypted_message = self._public_cipher.encrypt(encoded_message)
+            encrypted_message = self._obfuscator.encrypt(bytes(control_message), self._public_cipher, None, True)
             gate.sendall(encrypted_message)
             gate.shutdown(SHUT_WR)
 
             encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
-            encoded_message = self._cipher.decrypt(encrypted_message)
-            answer_message, self._user_id = deobfuscate(self._gravity, encoded_message)
+            self._user_id, answer_message = self._obfuscator.decrypt(encrypted_message, self._cipher, True)
             status = WhirlpoolControlMessage().parse(answer_message).status
 
             if status == UserControlResponseStatus.SUCCESS:
@@ -95,8 +93,8 @@ class Controller:
         self._interface.up()
         self._gate_socket = socket(AF_INET, SOCK_DGRAM)
         self._gate_socket.bind((self._interface.default_ip, self._interface.sea_port))
-        self._receiver_process = Process(target=self._interface.receive_from_caerulean, name="receiver", args=[self._gate_socket, self._gravity, self._user_id], daemon=True)
-        self._sender_process = Process(target=self._interface.send_to_caerulean, name="sender", args=[self._gate_socket, self._gravity, self._user_id], daemon=True)
+        self._receiver_process = Process(target=self._interface.receive_from_caerulean, name="receiver", args=[self._gate_socket, self._obfuscator, self._user_id], daemon=True)
+        self._sender_process = Process(target=self._interface.send_to_caerulean, name="sender", args=[self._gate_socket, self._obfuscator, self._user_id], daemon=True)
         self._receiver_process.start()
         self._sender_process.start()
 
@@ -123,14 +121,12 @@ class Controller:
 
                     healthcheck_message = UserControlMessageHealthcheckMessage(next_in=next_in)
                     control_message = UserControlMessage(status=UserControlRequestStatus.HEALTHPING, healthcheck=healthcheck_message)
-                    encoded_message = obfuscate(self._gravity, bytes(control_message), self._user_id)
-                    encrypted_message = self._public_cipher.encrypt(encoded_message)
+                    encrypted_message = self._obfuscator.encrypt(bytes(control_message), self._public_cipher, self._user_id, True)
                     gate.sendall(encrypted_message)
                     gate.shutdown(SHUT_WR)
 
                     encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
-                    encoded_message = self._cipher.decrypt(encrypted_message)
-                    answer_message, _ = deobfuscate(self._gravity, encoded_message)
+                    _, answer_message = self._obfuscator.decrypt(encrypted_message, self._cipher, True)
                     status = WhirlpoolControlMessage().parse(answer_message).status
 
                     if status == UserControlResponseStatus.HEALTHPONG:
@@ -157,14 +153,12 @@ class Controller:
             logger.debug(f"Interrupting connection to caerulean {self._address}:{self._ctrl_port}")
 
             control_message = UserControlMessage(status=UserControlRequestStatus.DISCONNECTION)
-            encoded_message = obfuscate(self._gravity, bytes(control_message), self._user_id)
-            encrypted_message = self._public_cipher.encrypt(encoded_message)
+            encrypted_message = self._obfuscator.encrypt(bytes(control_message), self._public_cipher, self._user_id, True)
             gate.sendall(encrypted_message)
             gate.shutdown(SHUT_WR)
 
             encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
-            encoded_message = self._cipher.decrypt(encrypted_message)
-            answer_message, _ = deobfuscate(self._gravity, encoded_message)
+            _, answer_message = self._obfuscator.decrypt(encrypted_message, self._cipher, True)
             status = WhirlpoolControlMessage().parse(answer_message).status
 
             if status == UserControlResponseStatus.SUCCESS:

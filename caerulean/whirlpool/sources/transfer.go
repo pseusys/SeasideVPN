@@ -54,7 +54,7 @@ func ReceivePacketsFromViridian(tunnel *water.Interface, tunnetwork *net.IPNet) 
 		}
 
 		// Deobfuscate packet
-		data, userID, err := crypto.Deobfuscate(buffer[:r], false)
+		userID, err := crypto.UnsubscribeMessage(buffer[:r])
 		if err != nil {
 			logrus.Errorln("Deobfuscating packet error:", err)
 			// SendMessageToUser(generated.UserControlResponseStatus_ERROR, address.IP, nil, true)
@@ -72,7 +72,7 @@ func ReceivePacketsFromViridian(tunnel *water.Interface, tunnetwork *net.IPNet) 
 		}
 
 		// Decrypt packet
-		raw, err := crypto.DecryptSymmetrical(data, viridian.Aead)
+		raw, err := crypto.DecodeSymmetrical(buffer[:r], true, viridian.Aead)
 		if err != nil {
 			logrus.Errorln("Decrypting packet error:", err)
 			// SendMessageToUser(generated.UserControlResponseStatus_ERROR, address.IP, nil, true)
@@ -175,23 +175,15 @@ func SendPacketsToViridian(tunnel *water.Interface, tunnetwork *net.IPNet) {
 		}
 
 		// Encrypt packet
-		encrypted, err := crypto.EncryptSymmetrical(serialBuffer.Bytes(), viridian.Aead)
+		encrypted, err := crypto.EncryptSymmetrical(serialBuffer.Bytes(), viridian.Aead, &viridianID, false)
 		if err != nil {
 			logrus.Errorln("Encrypting packet error:", err)
 			// SendMessageToUser(generated.UserControlResponseStatus_ERROR, gateway.IP, nil, true)
 			continue
 		}
 
-		// Deobfuscate packet
-		data, err := crypto.Obfuscate(encrypted, &viridianID, false)
-		if err != nil {
-			logrus.Errorln("Obfuscating packet error:", err)
-			// SendMessageToUser(generated.UserControlResponseStatus_ERROR, address.IP, nil, true)
-			continue
-		}
-
 		// Send packet to viridian
-		s, err := SEA_CONNECTION.WriteToUDP(data, gateway)
+		s, err := SEA_CONNECTION.WriteToUDP(encrypted, gateway)
 		if err != nil || s == 0 {
 			logrus.Errorf("Writing to viridian error (%d bytes written): %v", s, err)
 			// SendMessageToUser(generated.UserControlResponseStatus_ERROR, gateway.IP, nil, true)

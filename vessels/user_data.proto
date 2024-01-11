@@ -1,34 +1,8 @@
 syntax = "proto3";
 
-import "google/protobuf/timestamp.proto";
-
 option go_package = "/generated";
 
 
-
-message UserDataWhirlpool {
-    string uid = 1;
-    bytes session = 2;
-    string ownerKey = 3;
-}
-
-// TODO: user data surface
-
-message UserCertificate {
-    bytes token = 1;
-    int32 gravity = 2;
-    int32 seaPort = 3;
-    int32 controlPort = 4;
-}
-
-
-
-message UserToken {
-    string uid = 1;
-    bytes session = 2;
-    bool privileged = 3;
-    optional google.protobuf.Timestamp subscription = 4;
-}
 
 enum UserControlRequestStatus {
     CONNECTION = 0;  // User to server connection request

@@ -1,37 +1,52 @@
-from typing import Optional, Tuple, Union
+from ctypes import c_uint64
+from typing import Optional, Tuple
 
 from Crypto.Random import get_random_bytes
 from Crypto.Random.random import randint
 
-from .utils import xor_bytes
-from .generated import UserControlRequestStatus, UserControlResponseStatus
+from .utils import LARGEST_PRIME_UINT64, random_unpermute, random_permute
+from .crypto import Encoder
+
+_MAX_TAIL_BYTES = 64
 
 
-def obfuscate(gravity: int, encrypted_packet: Union[bytes, UserControlRequestStatus], user_token: Optional[int] = None, add_tail: bool = True) -> bytes:
-    if isinstance(encrypted_packet, int):
-        encrypted_packet = encrypted_packet.to_bytes(1, "big")
-    tail_length = (randint(0, 255) >> 1)
-    tail = get_random_bytes(tail_length) if add_tail else bytes()
-    if user_token is None:
-        base_byte = (tail_length << 1) ^ gravity
-        return base_byte.to_bytes(1, "big") + encrypted_packet + tail
-    else:
-        base_byte = ((tail_length << 1) + 1) ^ gravity
-        user_sign = xor_bytes(user_token, gravity, 2, "big")
-        return base_byte.to_bytes(1, "big") + user_sign + encrypted_packet + tail
+class Obfuscator:
+    def __init__(self, multiplier: c_uint64, zero_user: c_uint64) -> None:
+        self._multiplier = multiplier.value
+        self._multiplier_1 = pow(multiplier.value, -1, LARGEST_PRIME_UINT64)
+        self._zero_user_id = zero_user.value
 
+    def subscribe(self, user_id: Optional[int]) -> bytes:
+        addition = randint(0, (1 << 64) - 1)
+        user_id = 0 if user_id is None else user_id
+        base_id = (self._zero_user_id + user_id) % LARGEST_PRIME_UINT64
+        identity = random_permute(self._multiplier, addition, base_id)
+        return addition.to_bytes(8, "big") + identity.to_bytes(8, "big")
+    
+    def unsubscribe(self, message: bytes) -> Optional[int]:
+        addition = int.from_bytes(message[:8], "big")
+        identity = int.from_bytes(message[8:16], "big")
+        base_id = random_unpermute(self._multiplier_1, addition, identity)
+        user_id = (base_id - self._zero_user_id + LARGEST_PRIME_UINT64) % LARGEST_PRIME_UINT64
+        return None if user_id == 0 else user_id
 
-def deobfuscate(gravity: int, obfuscated_packet: bytes, add_tail: bool = True) -> Tuple[bytes, Optional[int]]:
-    signature = obfuscated_packet[0] ^ gravity
-    payload_end = (len(obfuscated_packet) - int(signature // 2)) if add_tail else len(obfuscated_packet)
-    if signature % 2 == 1:
-        uh = obfuscated_packet[1] ^ gravity
-        ul = obfuscated_packet[2] ^ gravity
-        user_id = int.from_bytes([uh, ul], "big")
-        return obfuscated_packet[3:payload_end], user_id
-    else:
-        return obfuscated_packet[1:payload_end], None
+    def _get_tail_length(self, message: bytes) -> int:
+        addition = int.from_bytes(message[:8], "big")
+        return c_uint64(self._zero_user_id ^ addition).value.bit_count() % _MAX_TAIL_BYTES
 
+    def _entail_message(self, message: bytes) -> bytes:
+        return message + get_random_bytes(self._get_tail_length(message))
 
-def deobfuscate_status(gravity: int, obfuscated_packet: bytes) -> UserControlResponseStatus:
-    return UserControlResponseStatus(deobfuscate(gravity, obfuscated_packet)[0][0])
+    def _detail_message(self, message: bytes) -> bytes:
+        return message[:-self._get_tail_length(message)]
+
+    def encrypt(self, message: bytes, encoder: Optional[Encoder], user_id: Optional[int], add_tail: bool) -> bytes:
+        signature = self.subscribe(user_id) 
+        ciphertext = signature + message if encoder is None else encoder.encode(message, signature)
+        return self._entail_message(ciphertext) if add_tail else ciphertext
+
+    def decrypt(self, message: bytes, encoder: Optional[Encoder], expect_tail: bool) -> Tuple[Optional[int], bytes]:
+        user_id = self.unsubscribe(message)
+        ciphertext = self._detail_message(message) if expect_tail else message
+        plaintext = ciphertext[16:] if encoder is None else encoder.decode(ciphertext, True)
+        return user_id, plaintext

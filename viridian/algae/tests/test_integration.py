@@ -9,7 +9,6 @@ from typing import Generator
 import pytest
 from Crypto.Random import get_random_bytes
 
-from ..sources.obscure import deobfuscate, obfuscate
 from ..sources.generated import UserControlMessage, UserControlMessageHealthcheckMessage, UserControlRequestStatus, UserControlResponseStatus, WhirlpoolControlMessage
 from ..sources.control import Controller
 from ..sources.crypto import MAX_MESSAGE_SIZE
@@ -67,7 +66,7 @@ def test_initialize_control(controller: Controller):
     logger.info("Testing initializing control sequence")
     controller._initialize_control()
     assert isinstance(controller._user_id, int)
-    assert controller._user_id >= 0 and controller._user_id <= MAX_MESSAGE_SIZE
+    assert controller._user_id >= 1 and controller._user_id <= MAX_MESSAGE_SIZE
 
 
 @pytest.mark.dependency(depends=["test_initialize_control"])
@@ -94,7 +93,7 @@ def test_send_suspicious_message(controller: Controller):
         gate.shutdown(SHUT_WR)
         encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
         try:
-            controller._cipher.decrypt(encrypted_message)
+            controller._obfuscator.decrypt(encrypted_message, controller._cipher, True)
             assert False
         except ValueError:
             assert True
@@ -110,14 +109,12 @@ def test_send_healthcheck_message(controller: Controller):
 
             healthcheck_message = UserControlMessageHealthcheckMessage(next_in=controller._min_hc_time)
             control_message = UserControlMessage(status=UserControlRequestStatus.HEALTHPING, healthcheck=healthcheck_message)
-            encoded_message = obfuscate(controller._gravity, bytes(control_message), controller._user_id)
-            encrypted_message = controller._public_cipher.encrypt(encoded_message)
+            encrypted_message = controller._obfuscator.encrypt(bytes(control_message), controller._public_cipher, controller._user_id, True)
             gate.sendall(encrypted_message)
             gate.shutdown(SHUT_WR)
             encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
 
-            encoded_message = controller._cipher.decrypt(encrypted_message)
-            answer_message, _ = deobfuscate(controller._gravity, encoded_message)
+            _, answer_message = controller._obfuscator.decrypt(encrypted_message, controller._cipher, True)
             status = WhirlpoolControlMessage().parse(answer_message).status
             assert status == UserControlResponseStatus.HEALTHPONG
             sleep(1)
@@ -132,8 +129,7 @@ def test_healthcheck_overtime(controller: Controller):
 
         healthcheck_message = UserControlMessageHealthcheckMessage(next_in=controller._min_hc_time)
         control_message = UserControlMessage(status=UserControlRequestStatus.HEALTHPING, healthcheck=healthcheck_message)
-        encoded_message = obfuscate(controller._gravity, bytes(control_message), controller._user_id)
-        encrypted_message = controller._public_cipher.encrypt(encoded_message)
+        encrypted_message = controller._obfuscator.encrypt(bytes(control_message), controller._public_cipher, controller._user_id, True)
         gate.sendall(encrypted_message)
         gate.shutdown(SHUT_WR)
         gate.recv(MAX_MESSAGE_SIZE)
@@ -144,14 +140,13 @@ def test_healthcheck_overtime(controller: Controller):
 
         healthcheck_message = UserControlMessageHealthcheckMessage(next_in=controller._min_hc_time)
         control_message = UserControlMessage(status=UserControlRequestStatus.HEALTHPING, healthcheck=healthcheck_message)
-        encoded_message = obfuscate(controller._gravity, bytes(control_message), controller._user_id)
-        encrypted_message = controller._public_cipher.encrypt(encoded_message)
+        encrypted_message = controller._obfuscator.encrypt(bytes(control_message), controller._public_cipher, controller._user_id, True)
         gate.sendall(encrypted_message)
         gate.shutdown(SHUT_WR)
 
         encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
         try:
-            controller._cipher.decrypt(encrypted_message)
+            controller._obfuscator.decrypt(encrypted_message, controller._cipher, True)
             assert False
         except ValueError:
             assert True

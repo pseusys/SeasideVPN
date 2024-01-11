@@ -2,10 +2,13 @@ package users
 
 import (
 	"crypto/cipher"
+	"crypto/rand"
+	"encoding/binary"
 	"errors"
 	"main/crypto"
 	"main/generated"
 	"main/utils"
+	"math"
 	"net"
 	"time"
 
@@ -25,18 +28,31 @@ const (
 )
 
 var (
-	VIRIDIANS  []*Viridian
-	ITERATOR   uint16
-	MAX_USERS  uint16
-	MAX_ADMINS uint16
-	MAX_TOTAL  uint16
+	VIRIDIANS     []*Viridian
+	ITERATOR      uint16
+	MAX_USERS     uint16
+	MAX_ADMINS    uint16
+	MAX_TOTAL     uint16
+	VIRIDIAN_ZERO uint64
 )
+
+func init() {
+	if binary.Read(rand.Reader, binary.BigEndian, &VIRIDIAN_ZERO) != nil {
+		logrus.Fatal("error reading random 64bit integer")
+	}
+
+	VIRIDIAN_ZERO = VIRIDIAN_ZERO % utils.LARGEST_PRIME_UINT64
+}
 
 func InitializeViridians(maxUsers uint16, maxAdmins uint16) {
 	ITERATOR = 0
 	MAX_USERS = maxUsers
 	MAX_ADMINS = maxAdmins
 	MAX_TOTAL = maxUsers + maxAdmins
+
+	if MAX_TOTAL > math.MaxInt16-3 {
+		logrus.Fatalf("error initializing viridian array: too many users requested %d", MAX_TOTAL)
+	}
 	VIRIDIANS = make([]*Viridian, MAX_TOTAL)
 }
 
@@ -65,11 +81,7 @@ func AddViridian(token *generated.UserToken, address net.IP, gateway net.IP) (*u
 		return nil, generated.UserControlResponseStatus_OVERLOAD, errors.New("error searching place for a new user")
 	}
 
-	userID, err := utils.RandomPermute(ITERATOR)
-	if err != nil {
-		return nil, generated.UserControlResponseStatus_ERROR, utils.JoinError("user indexing error", err)
-	}
-
+	userID := ITERATOR + 2
 	deletionTimer := time.AfterFunc(FIRST_HEALTHCHECK_DELAY, func() { DeleteViridian(userID, true) })
 	VIRIDIANS[ITERATOR] = &Viridian{aead, deletionTimer, address, gateway}
 	logrus.Infof("User %d (uid: %s, privileged: %t) created", userID, token.Uid, token.Privileged)
@@ -77,11 +89,11 @@ func AddViridian(token *generated.UserToken, address net.IP, gateway net.IP) (*u
 }
 
 func GetViridian(userID uint16) *Viridian {
-	return VIRIDIANS[utils.RandomUnpermute(userID)]
+	return VIRIDIANS[userID-2]
 }
 
 func DeleteViridian(userID uint16, timeout bool) {
-	VIRIDIANS[utils.RandomUnpermute(userID)] = nil
+	VIRIDIANS[userID-2] = nil
 	if timeout {
 		logrus.Infof("User %d deleted by unhealthy timeout", userID)
 	} else {
@@ -90,7 +102,7 @@ func DeleteViridian(userID uint16, timeout bool) {
 }
 
 func UpdateViridian(userID uint16, nextIn int32) (generated.UserControlResponseStatus, error) {
-	viridian := VIRIDIANS[utils.RandomUnpermute(userID)]
+	viridian := VIRIDIANS[userID-2]
 	if viridian != nil {
 		viridian.reset.Reset(time.Duration(nextIn*USER_WAITING_OVERTIME) * time.Second)
 		return generated.UserControlResponseStatus_HEALTHPONG, nil
