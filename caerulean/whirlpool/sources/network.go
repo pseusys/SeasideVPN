@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"fmt"
+	"io"
 	"main/crypto"
 	"main/generated"
 	"main/utils"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/chacha20poly1305"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -25,7 +27,7 @@ var (
 	AUTORESEED_TIMER *time.Ticker
 )
 
-func public(w http.ResponseWriter, _ *http.Request) {
+func public(w http.ResponseWriter, r *http.Request) {
 	// TODO: check GET request
 	publicBytes, err := x509.MarshalPKIXPublicKey(&(crypto.RSA_NODE_KEY.PublicKey))
 	if err != nil {
@@ -33,21 +35,27 @@ func public(w http.ResponseWriter, _ *http.Request) {
 		return
 	}
 
-	publicEncoded, err := crypto.Obfuscate(publicBytes, nil, true)
-	if err != nil {
-		WriteAndLogError(w, http.StatusBadRequest, "error encoding RSA node key bytes", err)
-		return
-	}
-
-	WriteRawData(w, http.StatusOK, publicEncoded)
+	WriteRawData(w, http.StatusOK, publicBytes)
 }
 
 func auth(w http.ResponseWriter, r *http.Request) {
 	// TODO: check POST request
-	message := &generated.UserDataWhirlpool{}
-	_, err := UnmarshalDecrypting(r, crypto.RSA_NODE_KEY, message, true)
+	ciphertext, err := io.ReadAll(r.Body)
 	if err != nil {
-		WriteAndLogError(w, http.StatusBadRequest, "error processing auth request", err)
+		WriteAndLogError(w, http.StatusBadRequest, "error reading request bytes", err)
+		return
+	}
+
+	plaintext, err := crypto.DecodeRSA(ciphertext, false, crypto.RSA_NODE_KEY)
+	if err != nil {
+		WriteAndLogError(w, http.StatusBadRequest, "error decoding temp key", err)
+		return
+	}
+
+	message := &generated.UserDataWhirlpool{}
+	err = proto.Unmarshal(plaintext, message)
+	if err != nil {
+		WriteAndLogError(w, http.StatusBadRequest, "error unmarshalling message", err)
 		return
 	}
 
@@ -67,21 +75,34 @@ func auth(w http.ResponseWriter, r *http.Request) {
 		Session:    message.Session,
 		Privileged: true,
 	}
-	tokenData, err := MarshalEncrypting(crypto.SYMM_NODE_AEAD, token, false)
+	marshToken, err := proto.Marshal(token)
 	if err != nil {
-		WriteAndLogError(w, http.StatusInternalServerError, "error processing admin token", err)
+		WriteAndLogError(w, http.StatusBadRequest, "error marshalling token", err)
+		return
+	}
+
+	tokenData, err := crypto.EncodeSymmetrical(marshToken, nil, crypto.SYMM_NODE_AEAD)
+	if err != nil {
+		WriteAndLogError(w, http.StatusBadRequest, "error encrypting token", err)
 		return
 	}
 
 	response := &generated.UserCertificate{
 		Token:       tokenData,
-		Gravity:     int32(crypto.GRAVITY),
+		UserZero:    int64(crypto.ZERO_USER_ID),
+		Multiplier:  int64(utils.MULTIPLIER),
 		SeaPort:     int32(*port),
 		ControlPort: int32(*control),
 	}
-	responseData, err := MarshalEncrypting(sessionAEAD, response, true)
+	marshResponse, err := proto.Marshal(response)
 	if err != nil {
-		WriteAndLogError(w, http.StatusInternalServerError, "error processing admin response", err)
+		WriteAndLogError(w, http.StatusBadRequest, "error marshalling response", err)
+		return
+	}
+
+	responseData, err := crypto.EncodeSymmetrical(marshResponse, nil, sessionAEAD)
+	if err != nil {
+		WriteAndLogError(w, http.StatusBadRequest, "error encrypting response", err)
 		return
 	}
 

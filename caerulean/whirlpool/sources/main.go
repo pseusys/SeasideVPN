@@ -3,15 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
-	"main/crypto"
 	"main/tunnel"
 	"main/users"
 	"main/utils"
 	"net"
 	"os"
 	"os/signal"
-	"strconv"
-	"strings"
 	"syscall"
 
 	"github.com/sirupsen/logrus"
@@ -69,17 +66,9 @@ func main() {
 		*eIP = *iIP
 	}
 
-	// Parse node owner key and GRAVITY byte
-	gravity_value := strings.Split(NODE_OWNER_KEY, ":")[1]
-	gravity, err := strconv.Atoi(gravity_value)
-	if err != nil {
-		logrus.Fatalln("Couldn't parse GRAVITY:", gravity_value)
-	}
-	crypto.GRAVITY = byte(gravity)
-
 	// Create and get IP for tunnel interface
 	tunnelConfig := tunnel.Preserve()
-	err = tunnelConfig.Open(TUNNEL_IP, *iIP, *eIP, *port, *network, *control)
+	err := tunnelConfig.Open(TUNNEL_IP, *iIP, *eIP, *port, *network, *control)
 	if err != nil {
 		logrus.Fatalf("Error establishing network connections: %v", err)
 	}

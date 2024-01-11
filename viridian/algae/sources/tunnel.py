@@ -10,7 +10,7 @@ from iptc import Rule, Target, Chain, Table
 from pyroute2 import IPRoute
 
 from .crypto import MAX_MESSAGE_SIZE, SymmetricalCipher
-from .obscure import deobfuscate, obfuscate
+from .obscure import Obfuscator
 from .outputs import logger
 
 _UNIX_TUNSETIFF = 0x400454CA
@@ -149,20 +149,20 @@ class Tunnel:
             logger.info(f"Tunnel {Fore.GREEN}disabled{Fore.RESET}")
         self._operational = False
 
-    def send_to_caerulean(self, gate: socket, gravity: int, user_id: int) -> None:
+    def send_to_caerulean(self, gate: socket, obfuscator: Obfuscator, user_id: int) -> None:
         if self._cipher is None:
             raise ValueError("Cipher must be set before launching sender thread!")
         while self._operational:
             packet = read(self._descriptor, MAX_MESSAGE_SIZE)
             logger.debug(f"Sending {len(packet)} bytes to caerulean {self._address}:{self.sea_port}")
-            payload = obfuscate(gravity, self._cipher.encrypt(packet), user_id, False)
+            payload = obfuscator.encrypt(packet, self._cipher, user_id, False)
             gate.sendto(payload, (self._address, self.sea_port))
 
-    def receive_from_caerulean(self, gate: socket, gravity: int, _: int) -> None:
+    def receive_from_caerulean(self, gate: socket, obfuscator: Obfuscator, _: int) -> None:
         if self._cipher is None:
             raise ValueError("Cipher must be set before launching receiver thread!")
         while self._operational:
             packet = gate.recv(MAX_MESSAGE_SIZE)
-            payload = self._cipher.decrypt(deobfuscate(gravity, packet, False)[0])
+            payload = obfuscator.decrypt(packet, self._cipher, False)[1]
             logger.debug(f"Receiving {len(payload)} bytes from caerulean {self._address}:{self.sea_port}")
             write(self._descriptor, payload)

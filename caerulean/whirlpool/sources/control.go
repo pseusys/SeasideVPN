@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/proto"
 )
 
 func connectViridian(encryptedToken []byte, address []byte, gateway []byte) (generated.UserControlResponseStatus, *uint16) {
@@ -18,10 +19,16 @@ func connectViridian(encryptedToken []byte, address []byte, gateway []byte) (gen
 		return generated.UserControlResponseStatus_ERROR, nil
 	}
 
-	token := &generated.UserToken{}
-	_, err := UnmarshalDecrypting(encryptedToken, crypto.SYMM_NODE_AEAD, token, false)
+	plaintext, err := crypto.DecodeSymmetrical(encryptedToken, false, crypto.SYMM_NODE_AEAD)
 	if err != nil {
-		logrus.Warnln("Couldn't parse token from user", err)
+		logrus.Warnln("Couldn't decrypt token from user", err)
+		return generated.UserControlResponseStatus_ERROR, nil
+	}
+
+	token := &generated.UserToken{}
+	err = proto.Unmarshal(plaintext, token)
+	if err != nil {
+		logrus.Warnln("Couldn't unmarshall token from user", err)
 		return generated.UserControlResponseStatus_ERROR, nil
 	}
 
@@ -78,31 +85,41 @@ func ListenControlPort(ip string, port int) {
 			continue
 		}
 
-		// Resolve received message
+		// Decrypt received message
 		requester := address.IP.String()
-		control := &generated.UserControlMessage{}
-		userID, err := UnmarshalDecrypting(buffer, crypto.RSA_NODE_KEY, control, true)
+		plaintext, userID, err := crypto.DecryptRSA(buffer, crypto.RSA_NODE_KEY, true)
 		if err != nil {
-			logrus.Warnln("Couldn't parse message from IP", requester, err)
+			logrus.Warnln("Couldn't decrypt message from IP", requester, err)
 			users.SendMessageToUser(generated.UserControlResponseStatus_ERROR, connection, nil)
 			continue
-		} else if userID != nil {
-			logrus.Infoln("Received control message from user", *userID)
-		} else {
-			logrus.Infoln("Received cintrol request from IP", requester)
 		}
 
-		switch control.Status {
+		// Unmarshall received message
+		message := &generated.UserControlMessage{}
+		err = proto.Unmarshal(plaintext, message)
+		if err != nil {
+			logrus.Warnln("Couldn't unmarshall request from IP", requester, err)
+			users.SendMessageToUser(generated.UserControlResponseStatus_ERROR, connection, nil)
+			continue
+		}
+
+		if userID != nil {
+			logrus.Infoln("Received control message from user", *userID)
+		} else {
+			logrus.Infoln("Received control request from IP", requester)
+		}
+
+		switch message.Status {
 		// In case of PUBLIC status - register user
 		case generated.UserControlRequestStatus_CONNECTION:
-			payload := control.GetConnection()
+			payload := message.GetConnection()
 			status, userID := connectViridian(payload.Token, payload.Address, address.IP)
 			logrus.Infoln("Connecting new user", *userID)
 			users.SendMessageToUser(status, connection, userID)
 		// In case of HEALTHPING status - update user deletion timer
 		case generated.UserControlRequestStatus_HEALTHPING:
 			logrus.Infoln("Healthcheck from user", *userID)
-			status, err := users.UpdateViridian(*userID, control.GetHealthcheck().NextIn)
+			status, err := users.UpdateViridian(*userID, message.GetHealthcheck().NextIn)
 			if err != nil {
 				logrus.Warnln("Healthping error", err)
 			}
@@ -114,7 +131,7 @@ func ListenControlPort(ip string, port int) {
 			users.DeleteViridian(*userID, false)
 		// Default action - send user undefined status
 		default:
-			logrus.Infof("Unexpected status %v received from user %d", control.Status, *userID)
+			logrus.Infof("Unexpected status %v received from user %d", message.Status, *userID)
 			users.SendMessageToUser(generated.UserControlResponseStatus_UNDEFINED, connection, userID)
 		}
 	}

@@ -10,7 +10,7 @@ services:
       target: sleeping
     environment:
       LOG_LEVEL: DEBUG
-      OWNER_KEY: SuperSafeNodeOwnerKey:142
+      OWNER_KEY: SuperSafeNodeOwnerKey
       NODE_ADDR: 10.65.0.87
     networks:
       sea-client:
@@ -25,7 +25,7 @@ services:
       service: whirlpool
     environment:
       LOG_LEVEL: DEBUG
-      OWNER_KEY: SuperSafeNodeOwnerKey:142
+      OWNER_KEY: SuperSafeNodeOwnerKey
       ADDRESS: 10.65.0.87
       EXTERNAL: 10.87.0.87
     networks:

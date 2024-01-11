@@ -3,7 +3,7 @@ package crypto
 import (
 	"crypto/cipher"
 	"crypto/rand"
-	"errors"
+	"fmt"
 	"main/utils"
 
 	"golang.org/x/crypto/chacha20poly1305"
@@ -37,18 +37,28 @@ func ParseSymmetricalAlgorithm(key []byte) (cipher.AEAD, error) {
 	return aead, nil
 }
 
-func EncryptSymmetrical(plaintext []byte, aead cipher.AEAD) ([]byte, error) {
+func EncodeSymmetrical(plaintext []byte, signature []byte, aead cipher.AEAD) ([]byte, error) {
+	if signature == nil {
+		signature = make([]byte, 0)
+	}
+
+	if len(signature) > aead.NonceSize() {
+		return nil, fmt.Errorf("signature length %d should be less than nonce length %d", len(signature), aead.NonceSize())
+	}
+
 	nonce := make([]byte, aead.NonceSize(), aead.NonceSize()+len(plaintext)+aead.Overhead())
-	if _, err := rand.Read(nonce); err != nil {
+	if _, err := rand.Read(nonce[len(signature):aead.NonceSize()]); err != nil {
 		return nil, utils.JoinError("symmetrical encryption error", err)
 	}
 
-	return aead.Seal(nonce, nonce, plaintext, nil), nil
+	copy(nonce[:len(signature)], signature)
+	encrypted := aead.Seal(nil, nonce, plaintext, nil)
+	return append(nonce, encrypted...), nil
 }
 
-func DecryptSymmetrical(ciphertext []byte, aead cipher.AEAD) ([]byte, error) {
-	if len(ciphertext) < aead.NonceSize() {
-		return nil, errors.New("ciphertext too short")
+func DecodeSymmetrical(ciphertext []byte, signed bool, aead cipher.AEAD) ([]byte, error) {
+	if len(ciphertext) < aead.NonceSize()+aead.Overhead() {
+		return nil, fmt.Errorf("ciphertext length %d too short (less than nonce length %d + overhead %d)", len(ciphertext), aead.NonceSize(), aead.Overhead())
 	}
 
 	nonce, ciphertext := ciphertext[:aead.NonceSize()], ciphertext[aead.NonceSize():]

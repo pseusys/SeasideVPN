@@ -9,8 +9,7 @@ import (
 const LETTER_BYTES = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
 
 func RandInt() (v int) {
-	err := binary.Read(crand.Reader, binary.BigEndian, &v)
-	if err != nil {
+	if binary.Read(crand.Reader, binary.BigEndian, &v) != nil {
 		v = rand.Int()
 	}
 	if v < 0 {
