@@ -18,7 +18,7 @@ const (
 	NONE_ARG     = "none"
 	UDP          = "udp4"
 	TCP          = "tcp4"
-	TUNNEL_IP    = "192.168.0.87/16"
+	TUNNEL_IP    = "10.0.0.87/24"
 	SEA_PORT     = 8542
 	CONTROL_PORT = 8543
 	NET_PORT     = 8587
