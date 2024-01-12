@@ -1,0 +1,24 @@
+# Caerulean
+
+## Whirlpool
+
+caerulean/whirlpool/build
+caerulean/whirlpool/tests
+caerulean/whirlpool/Dockerfile
+caerulean/whirlpool/Makefile
+caerulean/whirlpool/README.md
+
+
+# Viridian
+
+## Algae
+
+viridian/algae/**/__pycache__
+viridian/algae/**/.pytest_cache
+viridian/algae/build
+viridian/algae/dist
+viridian/algae/docker/compose.*.yml
+viridian/algae/docker/Dockerfile.*
+viridian/algae/algae.run.spec
+viridian/algae/poetry.lock
+viridian/algae/README.md
