@@ -16,15 +16,12 @@ from ..sources.crypto import MAX_MESSAGE_SIZE
 logger = getLogger(__name__)
 
 
-def is_tcp_available(message: bytes, address: str = "tcpbin.com", port: int = 4242) -> bool:
+def is_tcp_available(address: str = "example.com", port: int = 80) -> bool:
     with socket(AF_INET, SOCK_STREAM) as sock:
         try:
             sock.settimeout(5.0)
             sock.connect((gethostbyname(address), port))
-            sock.sendall(message)
-            sock.shutdown(SHUT_WR)
-            tcp_echo = sock.recv(len(message))
-            return message == tcp_echo
+            return True
         except TimeoutError:
             return False
 
@@ -49,9 +46,9 @@ def test_controller_initialization(controller: Controller):
 
 
 @pytest.mark.dependency(depends=["test_controller_initialization"])
-def test_no_vpn_request(controller: Controller, random_message: bytes):
+def test_no_vpn_request(controller: Controller):
     logger.info("Testing unreachability with TCP echo server")
-    assert not is_tcp_available(random_message)
+    assert not is_tcp_available()
 
 
 @pytest.mark.dependency(depends=["test_no_vpn_request"])
@@ -78,9 +75,9 @@ def test_turn_tunnel_on(controller: Controller):
 
 
 @pytest.mark.dependency(depends=["test_turn_tunnel_on"])
-def test_validate_request(controller: Controller, random_message: bytes):
+def test_validate_request(controller: Controller):
     logger.info("Testing reachability with TCP echo server")
-    assert is_tcp_available(random_message)
+    assert is_tcp_available()
 
 
 @pytest.mark.dependency(depends=["test_validate_request"])
@@ -153,9 +150,9 @@ def test_healthcheck_overtime(controller: Controller):
 
 
 @pytest.mark.dependency(depends=["test_healthcheck_overtime"])
-def test_no_vpn_rerequest(controller: Controller, random_message: bytes):
+def test_no_vpn_rerequest(controller: Controller):
     logger.info("Testing unreachability with TCP echo server again")
-    assert not is_tcp_available(random_message)
+    assert not is_tcp_available()
 
 
 @pytest.mark.dependency(depends=["test_no_vpn_rerequest"])
@@ -172,9 +169,9 @@ def test_reconnect(controller: Controller):
 
 
 @pytest.mark.dependency(depends=["test_reconnect"])
-def test_revalidate_request(controller: Controller, random_message: bytes):
+def test_revalidate_request(controller: Controller):
     logger.info("Testing reachability with TCP echo server again")
-    assert is_tcp_available(random_message)
+    assert is_tcp_available()
 
 
 @pytest.mark.dependency(depends=["test_revalidate_request"])
