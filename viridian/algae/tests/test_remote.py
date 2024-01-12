@@ -44,10 +44,12 @@ def test_qotd_udp_protocol(random_message: bytes) -> None:
             logger.info(f"Non-ascii quote received: {quote}")
 
 
+@pytest.mark.xfail(reason="Server 'tcpbin.com' is private, it is not always reliable and sometimes is down")
 @pytest.mark.timeout(5.0)
 def test_tcp_protocol(random_message: bytes) -> None:
     logger.info(f"Testing for TCP protocol, packets size: {len(random_message)}")
     with socket(AF_INET, SOCK_STREAM) as sock:
+        # Sometimes the server is down :(
         sock.connect((gethostbyname("tcpbin.com"), 4242))
         sock.sendall(random_message)
         sock.shutdown(SHUT_WR)
