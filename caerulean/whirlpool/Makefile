@@ -12,12 +12,12 @@ run: build
 	sudo build/$(EXECUTABLE_NAME) -ip 127.0.0.1
 .PHONY: run
 
-lint:
+lint: build
 	golint .
 	go fmt ./sources
 .PHONY: lint
 
-test:
+test: build
 	go test ./tests
 .PHONY: test
 
