@@ -1,9 +1,13 @@
+test-whirlpool:
+	make -C caerulean/whirlpool -s test
+.PHONY: test-whirlpool
+
 test-algae:
 	poetry -C viridian/algae install --without client,devel
 	poetry -C viridian/algae run test_all
 .PHONY: test-algae
 
-test: test-algae
+test: test-whirlpool test-algae
 .PHONY: test
 
 

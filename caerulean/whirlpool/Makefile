@@ -17,6 +17,10 @@ lint:
 	go fmt ./sources
 .PHONY: lint
 
+test:
+	go test ./tests
+.PHONY: test
+
 clean:
 	rm -rf build
 	rm -f go.sum

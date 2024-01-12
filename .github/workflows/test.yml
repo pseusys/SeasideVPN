@@ -9,7 +9,7 @@ concurrency:
 
 jobs:
   viridian-algae-test:
-    name: Test Viridian Algae Client
+    name: Test Viridian Algae
     runs-on: ubuntu-latest
 
     steps:
@@ -34,3 +34,25 @@ jobs:
 
       - name: Test Viridian Algae (smoke) 😶‍🌫️
         run: poetry -C viridian/algae run test_smoke
+
+  caerulean-whirlpool-test:
+    name: Test Caerulean Whirlpool
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v3
+
+      - name: Setup Go 1.20 🦫
+        uses: actions/setup-go@v4
+        with:
+          go-version: "^1.20.4"
+
+      - name: Install Dependencies 🔮
+        run: |
+          sudo apt-get install -y protobuf-compiler
+          go install golang.org/x/lint/golint@latest
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+
+      - name: Test Caerulean Whirlpool 🧪
+        run: make -C caerulean/whirlpool -s test
