@@ -6,7 +6,7 @@ ENV PYTHONUNBUFFERED 1
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV DEBIAN_FRONTEND noninteractive
 
-ENV PROTOC_VERSION 25.1
+ENV PROTOC_VERSION 24.4
 ENV PROTOC_ZIP protoc-$PROTOC_VERSION-linux-x86_64.zip
 
 RUN apt-get update && apt-get install -y --no-install-recommends python3-pip wget unzip && rm -rf /var/lib/apt/lists/*

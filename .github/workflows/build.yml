@@ -21,10 +21,10 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Install Protoc 🏞️
+      - name: Install Protoc 💾
         uses: arduino/setup-protoc@v2
         with:
-          version: "25.1"
+          version: "24.4"
 
       - name: Install Dependencies 🔮
         run: |

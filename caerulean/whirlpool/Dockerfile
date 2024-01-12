@@ -2,14 +2,14 @@ FROM golang:1.20-alpine3.17 as builder
 
 WORKDIR /seaside/caerulean
 
-RUN apk add --no-cache protobuf protobuf-dev
+RUN apk add --no-cache protobuf>=24.4 protobuf-dev>=24.4
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 
 COPY caerulean/whirlpool/go.mod ./
 RUN go get ./...
 
 COPY vessels ./vessels
-RUN protoc -I=vessels --go_out=. --experimental_allow_proto3_optional vessels/*.proto
+RUN protoc -I=vessels --go_out=. vessels/*.proto
 
 COPY caerulean/whirlpool ./
 RUN go mod tidy

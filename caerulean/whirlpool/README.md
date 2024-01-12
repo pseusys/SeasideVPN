@@ -16,7 +16,7 @@ Whirlpool sends messages to UDP port 8542, in packets of size 2000, encrypted.
 
 1. `go` (compiler) version >= 1.18
   Installation guide can be found [here](https://go.dev/doc/install).
-2. `protobuf` (compiler) version >= 25.1
+2. `protobuf` (compiler) version >= 24.4
   Installation guide example can be found [here](https://grpc.io/docs/protoc-installation/#install-pre-compiled-binaries-any-os).
 3. `protoc-gen-go` (code generator for golang) version >= 1.25
   Regularily can be installed with this command: `go install google.golang.org/protobuf/cmd/protoc-gen-go@latest`.
