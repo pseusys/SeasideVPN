@@ -38,10 +38,7 @@ def test_qotd_udp_protocol(random_message: bytes) -> None:
             sock.sendto(random_message, (gethostbyname("djxmmx.net"), 17))
             sleep(0.5)
         quote = sock.recv(message_length)
-        try:
-            logger.info(f"Quote received: {quote.decode(encoding='ascii')}")
-        except UnicodeDecodeError:
-            logger.info(f"Non-ascii quote received: {quote}")
+        logger.info(f"Quote received: {quote.decode(encoding='utf-8')}")
 
 
 @pytest.mark.xfail(reason="Server 'tcpbin.com' is private, it is not always reliable and sometimes is down")
