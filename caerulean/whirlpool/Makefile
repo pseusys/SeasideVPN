@@ -18,7 +18,11 @@ lint: build
 .PHONY: lint
 
 test: build
+ifndef CI
+	go test -v ./tests
+else
 	go test ./tests
+endif
 .PHONY: test
 
 clean:

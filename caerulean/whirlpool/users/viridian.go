@@ -2,8 +2,6 @@ package users
 
 import (
 	"crypto/cipher"
-	"crypto/rand"
-	"encoding/binary"
 	"errors"
 	"main/crypto"
 	"main/generated"
@@ -28,21 +26,12 @@ const (
 )
 
 var (
-	VIRIDIANS     []*Viridian
-	ITERATOR      uint16
-	MAX_USERS     uint16
-	MAX_ADMINS    uint16
-	MAX_TOTAL     uint16
-	VIRIDIAN_ZERO uint64
+	VIRIDIANS  []*Viridian
+	ITERATOR   uint16
+	MAX_USERS  uint16
+	MAX_ADMINS uint16
+	MAX_TOTAL  uint16
 )
-
-func init() {
-	if binary.Read(rand.Reader, binary.BigEndian, &VIRIDIAN_ZERO) != nil {
-		logrus.Fatal("error reading random 64bit integer")
-	}
-
-	VIRIDIAN_ZERO = VIRIDIAN_ZERO % utils.LARGEST_PRIME_UINT64
-}
 
 func InitializeViridians(maxUsers uint16, maxAdmins uint16) {
 	ITERATOR = 0
@@ -50,7 +39,7 @@ func InitializeViridians(maxUsers uint16, maxAdmins uint16) {
 	MAX_ADMINS = maxAdmins
 	MAX_TOTAL = maxUsers + maxAdmins
 
-	if MAX_TOTAL > math.MaxInt16-3 {
+	if MAX_TOTAL > math.MaxUint16-3 {
 		logrus.Fatalf("error initializing viridian array: too many users requested %d", MAX_TOTAL)
 	}
 	VIRIDIANS = make([]*Viridian, MAX_TOTAL)

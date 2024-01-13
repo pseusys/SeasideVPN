@@ -90,7 +90,7 @@ func auth(w http.ResponseWriter, r *http.Request) {
 	response := &generated.UserCertificate{
 		Token:       tokenData,
 		UserZero:    int64(crypto.ZERO_USER_ID),
-		Multiplier:  int64(utils.MULTIPLIER),
+		Multiplier:  int64(crypto.MULTIPLIER),
 		SeaPort:     int32(*port),
 		ControlPort: int32(*control),
 	}
