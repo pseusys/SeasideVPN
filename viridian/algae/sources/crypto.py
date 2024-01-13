@@ -6,12 +6,14 @@ from Crypto.Hash import SHA256, Poly1305
 from Crypto.PublicKey import RSA
 from Crypto.Random import get_random_bytes
 
-from .utils import xor_arrays
-
 ENCODING_MAX_SIZE = 8192
 MAX_MESSAGE_SIZE = 65535
 
 _SIGNATURE_LENGTH = 16
+
+
+def _xor_arrays(a1: bytes, a2: bytes) -> bytes:
+    return bytes([a ^ b for a, b in zip(a1, a2)])
 
 
 class Encoder(metaclass=ABCMeta):
@@ -39,7 +41,7 @@ class RSACipher(Encoder):
         while len(plaintext) > 0:
             block_size = min(len(plaintext), self._block_data_size)
             block, rest = plaintext[:block_size], plaintext[block_size:]
-            encrypted = self._cipher.encrypt(xor_arrays(block, prev_cipher_text))
+            encrypted = self._cipher.encrypt(_xor_arrays(block, prev_cipher_text))
             ciphertext += encrypted
             prev_cipher_text = encrypted
             plaintext = rest
@@ -56,7 +58,7 @@ class RSACipher(Encoder):
         while len(ciphertext) > 0:
             block_size = min(len(ciphertext), self._key_byte_length)
             block, rest = plaintext[:block_size], plaintext[block_size:]
-            decrypted = xor_arrays(self._cipher.decrypt(block), prev_cipher_text)
+            decrypted = _xor_arrays(self._cipher.decrypt(block), prev_cipher_text)
             plaintext += decrypted
             prev_cipher_text = block
             ciphertext = rest
