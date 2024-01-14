@@ -146,7 +146,45 @@ bit\_count(zero\_user\_id \oplus addition) \bmod 64
 
 ### Viridian to whirlpool connection
 
-TODO: diagram.
+```mermaid
+sequenceDiagram
+  participant S as Surface
+  actor V as Viridian
+  participant W as Whirlpool
+
+  alt Viridian is whirlpool admin
+    V ->> W: UserDataWhirlpool (unsig, untail)
+    W ->> V: UserCertificate (unsig, untail)
+  else Viridian is whirlpool user
+    V ->> S: UserDataSurface (unsig, untail)
+    S ->> V: UserCertificate (unsig, untail)
+  end
+
+  V ->> W: UserControlMessage+ConnectionMessage (unsig, tail)
+  W ->> V: WhirlpoolControlMessage (sig, tail)
+
+  par On "control" port
+    loop With random time intervals
+      V ->> W: UserControlMessage+HealthcheckMessage (sig, tail)
+      W ->> V: WhirlpoolControlMessage (sig, tail)
+    end
+  and On "seaside" port
+    loop On every user packet
+      V ->> W: [Encrypted packet (request)] (sig, tail)
+      W ->> V: [Encrypted packet (response)] (sig, untail)
+    end
+  end
+
+  opt Connection interrupted gracefully
+    V ->> W: UserControlMessage (sig, tail)
+    W ->> V: WhirlpoolControlMessage (sig, tail)
+  end
+```
+
+On this diagram, a typical correct VPN connection is shown.
+For every message, `sig`/`unsig` means that the message is expected to be `signed`/`unsigned` and `tail`/`untail` means that the message is expected to be `tailed`/`untailed`.
+All the messages are expected to be exchanged on `control` port (unless specified).
+Message names reflect corresponding `protobuf` object names (see [message descriptions](./vessels/)).
 
 > **NB!** Although the protocol is stateful, the current stateis not really important:
 > viridian can re-connect to caerulean _any_ time it wants!
