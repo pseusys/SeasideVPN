@@ -9,8 +9,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const MIN_MESSAGE_LENGTH = 48
-
 // TODO: clean + other use cases
 func SendMessageToUser(message any, connection *net.TCPConn, addressee *uint16) {
 	var err error

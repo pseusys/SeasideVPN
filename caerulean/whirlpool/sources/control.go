@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"main/crypto"
@@ -44,6 +45,8 @@ func connectViridian(encryptedToken, address, gateway []byte) (generated.UserCon
 }
 
 func ListenControlPort(ip string, port int) {
+	var buffer bytes.Buffer
+
 	// Open viridian control TCP connection
 	network := fmt.Sprintf("%s:%d", ip, port)
 
@@ -61,6 +64,9 @@ func ListenControlPort(ip string, port int) {
 	defer listener.Close()
 
 	for {
+		// Clear the buffer
+		buffer.Reset()
+
 		// Accept the incoming TCP connection
 		connection, err := listener.AcceptTCP()
 		if err != nil {
@@ -68,9 +74,9 @@ func ListenControlPort(ip string, port int) {
 		}
 
 		// Read CTRLBUFFERSIZE of data from viridian
-		buffer, err := io.ReadAll(connection)
+		r, err := io.Copy(&buffer, connection)
 		if err != nil {
-			logrus.Errorf("Reading control error: %v", err)
+			logrus.Errorf("Reading control error (%d bytes read): %v", r, err)
 			continue
 		}
 
@@ -83,7 +89,7 @@ func ListenControlPort(ip string, port int) {
 
 		// Decrypt received message
 		requester := address.IP.String()
-		plaintext, userID, err := crypto.Decrypt(buffer, crypto.PUBLIC_NODE_AEAD, true)
+		plaintext, userID, err := crypto.Decrypt(buffer.Bytes(), crypto.PUBLIC_NODE_AEAD, true)
 		if err != nil {
 			logrus.Warnln("Couldn't decrypt message from IP", requester, err)
 			users.SendMessageToUser(generated.UserControlResponseStatus_ERROR, connection, nil)
