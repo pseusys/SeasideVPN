@@ -1,10 +1,8 @@
 package users
 
 import (
-	"crypto/rand"
 	"main/crypto"
 	"main/generated"
-	"main/utils"
 	"net"
 
 	"github.com/sirupsen/logrus"
@@ -34,24 +32,10 @@ func SendMessageToUser(message any, connection *net.TCPConn, addressee *uint16) 
 		return
 	}
 
-	var encrypted []byte
-	if addressee != nil {
-		viridian := GetViridian(*addressee)
-		if viridian != nil {
-			encrypted, err = crypto.Encrypt(payload, viridian.Aead, addressee, true)
-			if err != nil {
-				logrus.Errorf("Sending message to user error: %v", err)
-				return
-			}
-		}
-	}
-	if encrypted == nil {
-		randomLength := MIN_MESSAGE_LENGTH + len(payload) + (utils.RandInt() % crypto.MAX_TAIL_BYTES)
-		encrypted = make([]byte, randomLength)
-		if _, err := rand.Read(encrypted); err != nil {
-			logrus.Errorf("Sending message to user error: %v", err)
-			return
-		}
+	encrypted, err := crypto.Encrypt(payload, crypto.PUBLIC_NODE_AEAD, addressee, true)
+	if err != nil {
+		logrus.Errorf("Sending message to user error: %v", err)
+		return
 	}
 
 	connection.Write(encrypted)

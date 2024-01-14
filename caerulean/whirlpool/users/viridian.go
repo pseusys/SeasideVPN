@@ -3,6 +3,7 @@ package users
 import (
 	"crypto/cipher"
 	"errors"
+	"fmt"
 	"main/crypto"
 	"main/generated"
 	"main/utils"
@@ -51,10 +52,10 @@ func isViridianOvertime(viridian *Viridian) bool {
 	return !viridian.admin && viridian.timeout.Before(time.Now().UTC())
 }
 
-func AddViridian(token *generated.UserToken, address net.IP, gateway net.IP) (*uint16, generated.UserControlResponseStatus, error) {
+func AddViridian(token *generated.UserToken, address, gateway net.IP) (*uint16, generated.UserControlResponseStatus, error) {
 	aead, err := crypto.ParseCipher(token.Session)
 	if err != nil {
-		return nil, generated.UserControlResponseStatus_ERROR, utils.JoinError("error parsing encryption algorithm for user", err)
+		return nil, generated.UserControlResponseStatus_ERROR, fmt.Errorf("error parsing encryption algorithm for user: %v", err)
 	}
 
 	var limit uint16

@@ -34,12 +34,12 @@ func init() {
 func GenerateCipher() (cipher.AEAD, []byte, error) {
 	key := make([]byte, chacha20poly1305.KeySize)
 	if _, err := rand.Read(key); err != nil {
-		return nil, nil, utils.JoinError("symmetrical key reading error", err)
+		return nil, nil, fmt.Errorf("symmetrical key reading error: %v", err)
 	}
 
 	aead, err := chacha20poly1305.NewX(key)
 	if err != nil {
-		return nil, nil, utils.JoinError("symmetrical key creation error", err)
+		return nil, nil, fmt.Errorf("symmetrical key creation error: %v", err)
 	}
 
 	return aead, key, nil
@@ -48,13 +48,13 @@ func GenerateCipher() (cipher.AEAD, []byte, error) {
 func ParseCipher(key []byte) (cipher.AEAD, error) {
 	aead, err := chacha20poly1305.NewX(key)
 	if err != nil {
-		return nil, utils.JoinError("symmetrical key parsing error", err)
+		return nil, fmt.Errorf("symmetrical key parsing error: %v", err)
 	}
 
 	return aead, nil
 }
 
-func Encode(plaintext []byte, signature []byte, aead cipher.AEAD) ([]byte, error) {
+func Encode(plaintext, signature []byte, aead cipher.AEAD) ([]byte, error) {
 	if signature == nil {
 		signature = make([]byte, 0)
 	}
@@ -65,7 +65,7 @@ func Encode(plaintext []byte, signature []byte, aead cipher.AEAD) ([]byte, error
 
 	nonce := make([]byte, aead.NonceSize(), aead.NonceSize()+len(plaintext)+aead.Overhead())
 	if _, err := rand.Read(nonce[len(signature):aead.NonceSize()]); err != nil {
-		return nil, utils.JoinError("symmetrical encryption error", err)
+		return nil, fmt.Errorf("symmetrical encryption error: %v", err)
 	}
 
 	copy(nonce[:len(signature)], signature)
@@ -81,7 +81,7 @@ func Decode(ciphertext []byte, signed bool, aead cipher.AEAD) ([]byte, error) {
 	nonce, ciphertext := ciphertext[:aead.NonceSize()], ciphertext[aead.NonceSize():]
 	result, err := aead.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
-		return nil, utils.JoinError("symmetrical decryption error", err)
+		return nil, fmt.Errorf("symmetrical decryption error: %v", err)
 	}
 
 	return result, nil

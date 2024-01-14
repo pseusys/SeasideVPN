@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"golang.org/x/crypto/chacha20poly1305"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -28,35 +27,35 @@ func init() {
 	NODE_OWNER_KEY = utils.GetEnv("OWNER_KEY", nil)
 }
 
+func writeRawData(w http.ResponseWriter, data []byte, code int) {
+	w.Header().Add("Content-Type", "application/octet-stream")
+	w.WriteHeader(code)
+	w.Write(data)
+}
+
 func auth(w http.ResponseWriter, r *http.Request) {
 	// TODO: check POST request
 	ciphertext, err := io.ReadAll(r.Body)
 	if err != nil {
-		WriteAndLogError(w, http.StatusBadRequest, "error reading request bytes", err)
+		http.Error(w, fmt.Sprintf("error reading request bytes: %v", err), http.StatusBadRequest)
 		return
 	}
 
 	plaintext, err := crypto.Decode(ciphertext, false, crypto.PUBLIC_NODE_AEAD)
 	if err != nil {
-		WriteAndLogError(w, http.StatusBadRequest, "error decoding temp key", err)
+		http.Error(w, fmt.Sprintf("error decoding temp key: %v", err), http.StatusBadRequest)
 		return
 	}
 
 	message := &generated.UserDataWhirlpool{}
 	err = proto.Unmarshal(plaintext, message)
 	if err != nil {
-		WriteAndLogError(w, http.StatusBadRequest, "error unmarshalling message", err)
-		return
-	}
-
-	sessionAEAD, err := chacha20poly1305.NewX(message.Session)
-	if err != nil {
-		WriteAndLogError(w, http.StatusBadRequest, "error creating session cipher", err)
+		http.Error(w, fmt.Sprintf("error unmarshalling message: %v", err), http.StatusBadRequest)
 		return
 	}
 
 	if message.OwnerKey != NODE_OWNER_KEY {
-		WriteAndLogError(w, http.StatusBadRequest, "wrong owner key", nil)
+		http.Error(w, "wrong owner key", http.StatusBadRequest)
 		return
 	}
 
@@ -67,13 +66,13 @@ func auth(w http.ResponseWriter, r *http.Request) {
 	}
 	marshToken, err := proto.Marshal(token)
 	if err != nil {
-		WriteAndLogError(w, http.StatusBadRequest, "error marshalling token", err)
+		http.Error(w, fmt.Sprintf("error marshalling token: %v", err), http.StatusBadRequest)
 		return
 	}
 
 	tokenData, err := crypto.Encode(marshToken, nil, crypto.PRIVATE_NODE_AEAD)
 	if err != nil {
-		WriteAndLogError(w, http.StatusBadRequest, "error encrypting token", err)
+		http.Error(w, fmt.Sprintf("error encrypting token: %v", err), http.StatusBadRequest)
 		return
 	}
 
@@ -86,17 +85,17 @@ func auth(w http.ResponseWriter, r *http.Request) {
 	}
 	marshResponse, err := proto.Marshal(response)
 	if err != nil {
-		WriteAndLogError(w, http.StatusBadRequest, "error marshalling response", err)
+		http.Error(w, fmt.Sprintf("error marshalling response: %v", err), http.StatusBadRequest)
 		return
 	}
 
-	responseData, err := crypto.Encode(marshResponse, nil, sessionAEAD)
+	responseData, err := crypto.Encode(marshResponse, nil, crypto.PUBLIC_NODE_AEAD)
 	if err != nil {
-		WriteAndLogError(w, http.StatusBadRequest, "error encrypting response", err)
+		http.Error(w, fmt.Sprintf("error encrypting response: %v", err), http.StatusBadRequest)
 		return
 	}
 
-	WriteRawData(w, http.StatusOK, responseData)
+	writeRawData(w, responseData, http.StatusOK)
 }
 
 func InitNetAPI(port int) {

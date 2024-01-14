@@ -12,7 +12,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func connectViridian(encryptedToken []byte, address []byte, gateway []byte) (generated.UserControlResponseStatus, *uint16) {
+func connectViridian(encryptedToken, address, gateway []byte) (generated.UserControlResponseStatus, *uint16) {
 	if encryptedToken == nil {
 		logrus.Warnf("User address is null")
 		return generated.UserControlResponseStatus_ERROR, nil
