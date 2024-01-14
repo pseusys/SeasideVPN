@@ -269,20 +269,16 @@ These are:
 2. Write documentation for both `caerulean/whirlpool` and `viridian/algae`.
 3. Remove all `(planned)` marks from READMEs.
 4. Add shell build, generation, etc. script for easy `caerulean/whirlpool` deployment (with and without container).
-5. Add clean make rule to clean docker images + networks.
-6. Add image build target to whirlpool make.
-7. Set GET and POST checks in GO.
-8. Whirlpool: -m limit tcp packet number (user number \* tcp method number \* tcp connection packets)
-9. Add "stress" profile with pumba on internal router for enhanced testing, use tcp echo server (can be found on dockerhub) (4 containrrs, no ext router).
-10. Add "load" profile for direct access (3 containers) and multiple clients and performance analysis for whirlpool.
-11. Warning if packet is too large
-12. Write script for downloading/running/configuring server
-13. Control healthcheck times by cosine function, increase max delay to smth like 360 seconds, add random response delay
-14. Addresses for VPN connection: black and white list (limit addresses to use VPN with) <- add traffic analysis tool to client
-15. Advice on traffic distribution (proxy nodes), all routes and ports masking, on caerulean side: switch to 172.x.x.x tunnel IP, 1st X will be the number of PROXY the packet has been received from
-16. Protocol disguise: QOTD or any raw socket or data stream
-17. Add RTP protocol disguise option (to obfuscation, sent by client)
-18. Create general functions for decryption+unmarshalling and encryption+marshalling for network.go ONLY
-19. TEST LOCAL and GLOBAL python and go
-20. Rewrite pythoon with async/await.
-21. Poetry local launch target
+5. Set GET and POST checks in GO.
+6. Whirlpool: -m limit tcp packet number (user number \* tcp method number \* tcp connection packets)
+7. Add "stress" profile with pumba on internal router for enhanced testing, use tcp echo server (can be found on dockerhub) (4 containrrs, no ext router).
+8. Add "load" profile for direct access (3 containers) and multiple clients and performance analysis for whirlpool.
+9. Warning if packet is too large
+10. Write script for downloading/running/configuring server
+11. Control healthcheck times by cosine function, increase max delay to smth like 360 seconds, add random response delay
+12. Addresses for VPN connection: black and white list (limit addresses to use VPN with) <- add traffic analysis tool to client
+13. Advice on traffic distribution (proxy nodes), all routes and ports masking, on caerulean side: switch to 172.x.x.x tunnel IP, 1st X will be the number of PROXY the packet has been received from
+14. Protocol disguise: QOTD or any raw socket or data stream
+15. Add RTP protocol disguise option (to obfuscation, sent by client)
+16. Create general functions for decryption+unmarshalling and encryption+marshalling for network.go ONLY
+17. Rewrite pythoon with async/await
