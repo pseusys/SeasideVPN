@@ -11,6 +11,10 @@ build:
 	go build -o build/$(EXECUTABLE_NAME) ./sources
 .PHONY: build
 
+build-docker:
+	docker build -f Dockerfile -t "seaside-whirlpool-latest" ../..
+.PHONY: build
+
 run: build
 	sudo build/$(EXECUTABLE_NAME) -ip 127.0.0.1
 .PHONY: run
@@ -32,4 +36,5 @@ clean:
 	rm -rf build
 	rm -f go.sum
 	rm -f ~/sysconfig.txt
+	docker rmi "seaside-whirlpool-latest"
 .PHONY: clean

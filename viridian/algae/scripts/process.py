@@ -5,7 +5,10 @@ from subprocess import run
 from sys import argv
 
 from PyInstaller.__main__ import run as install
+from python_on_whales import DockerClient
+from python_on_whales.utils import run as docker_run
 
+from sources.main import main
 from scripts._utils import ALGAE_ROOT
 
 _EXECUTABLE_NAME = "algae.run"
@@ -24,6 +27,10 @@ def compile() -> None:
     install(["-F", "-c", "-y", "-n", executable_name, str(ALGAE_ROOT / "sources" / "main.py")])
 
 
+def execute() -> None:
+    main(argv[1:])
+
+
 def clean() -> None:
     rmtree("build", ignore_errors=True)
     rmtree("dist", ignore_errors=True)
@@ -32,5 +39,11 @@ def clean() -> None:
         rmtree(path, ignore_errors=True)
     for path in glob("*.spec"):
         rmtree(path, ignore_errors=True)
+
     Path(f"{_EXECUTABLE_NAME}.spec").unlink(missing_ok=True)
     Path("poetry.lock").unlink(missing_ok=True)
+
+    docker = DockerClient()
+    docker.container.remove(["seaside-algae", "seaside-whirlpool", "seaside-echo", "seaside-internal-router", "seaside-external-router"], True, True)
+    docker.image.remove(["seaside-algae-smoke", "seaside-whirlpool-smoke", "seaside-echo-smoke", "seaside-router-smoke", "seaside-algae-default", "seaside-whirlpool-default", "seaside-echo-default", "seaside-algae-sleeping"], True, True)
+    docker_run(docker.docker_cmd + ["network", "remove", "--force"] + ["sea-client", "sea-router", "sea-server", "sea-cli-int", "sea-rout-int", "sea-rout-ext", "sea-serv-ext"])

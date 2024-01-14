@@ -54,6 +54,7 @@ test_integration = "scripts.test:test_integration"
 test_smoke = "scripts.test:test_smoke"
 test_all = "scripts.test:test_all"
 compile = "scripts.process:compile"
+execute = "scripts.process:execute"
 clean = "scripts.process:clean"
 
 
