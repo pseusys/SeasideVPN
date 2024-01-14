@@ -276,14 +276,13 @@ These are:
 9. Add "stress" profile with pumba on internal router for enhanced testing, use tcp echo server (can be found on dockerhub) (4 containrrs, no ext router).
 10. Add "load" profile for direct access (3 containers) and multiple clients and performance analysis for whirlpool.
 11. Warning if packet is too large
-12. Port numbers exchange (users to server, server to users)
-13. Write script for downloading/running/configuring server
-14. Control healthcheck times by cosine function, increase max delay to smth like 360 seconds, add random response delay
-15. Addresses for VPN connection: black and white list (limit addresses to use VPN with) <- add traffic analysis tool to client
-16. Advice on traffic distribution (proxy nodes), all routes and ports masking, on caerulean side: switch to 10.x.x.x tunnel IP, 1st X will be the number of PROXY the packet has been received from
-17. Protocol disguise: QOTD or any raw socket or data stream
-18. Add RTP protocol disguise option (to obfuscation, sent by client)
-19. Create general functions for decryption+unmarshalling and encryption+marshalling for network.go ONLY
-20. TEST LOCAL and GLOBAL python and go
-21. Rewrite pythoon with async/await.
-22. Poetry local launch target
+12. Write script for downloading/running/configuring server
+13. Control healthcheck times by cosine function, increase max delay to smth like 360 seconds, add random response delay
+14. Addresses for VPN connection: black and white list (limit addresses to use VPN with) <- add traffic analysis tool to client
+15. Advice on traffic distribution (proxy nodes), all routes and ports masking, on caerulean side: switch to 172.x.x.x tunnel IP, 1st X will be the number of PROXY the packet has been received from
+16. Protocol disguise: QOTD or any raw socket or data stream
+17. Add RTP protocol disguise option (to obfuscation, sent by client)
+18. Create general functions for decryption+unmarshalling and encryption+marshalling for network.go ONLY
+19. TEST LOCAL and GLOBAL python and go
+20. Rewrite pythoon with async/await.
+21. Poetry local launch target

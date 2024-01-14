@@ -11,7 +11,7 @@ from .outputs import logger
 from .requests import post
 from .tunnel import Tunnel
 
-from .generated import UserDataWhirlpool, UserCertificate, UserControlMessage, UserControlResponseStatus, UserControlRequestStatus, UserControlMessageConnectionMessage, UserControlMessageHealthcheckMessage, WhirlpoolControlMessage, WhirlpoolConnectionCertificate, WhirlpoolNauticalChart
+from .generated import UserDataWhirlpool, UserCertificate, UserControlMessage, UserControlResponseStatus, UserControlRequestStatus, UserControlMessageConnectionMessage, UserControlMessageHealthcheckMessage, WhirlpoolControlMessage, WhirlpoolNauticalChart
 
 
 class Controller:
@@ -26,6 +26,9 @@ class Controller:
         self._max_hc_time = hc_max
         self._public_cipher = Cipher(bytes.fromhex(public_key))
 
+        self._gate_socket = socket(AF_INET, SOCK_DGRAM)
+        self._gate_socket.bind((self._interface.default_ip, 0))
+
         if hc_min < 1:
             raise ValueError("Minimal healthcheck time can't be less than 1 second!")
 
@@ -35,7 +38,6 @@ class Controller:
         self._session_token: bytes
         self._receiver_process: Process
         self._sender_process: Process
-        self._gate_port: socket
         self._obfuscator: Obfuscator
 
     def start(self) -> None:
@@ -79,7 +81,7 @@ class Controller:
             gate.connect((self._address, self._ctrl_port))
             logger.debug(f"Establishing connection to caerulean {self._address}:{self._ctrl_port}")
 
-            connection_message = UserControlMessageConnectionMessage(token=self._session_token, address=inet_aton(self._interface.default_ip))
+            connection_message = UserControlMessageConnectionMessage(token=self._session_token, address=inet_aton(self._interface.default_ip), port=self._gate_socket.getsockname()[1])
             control_message = UserControlMessage(status=UserControlRequestStatus.CONNECTION, connection=connection_message)
             encrypted_message = self._obfuscator.encrypt(bytes(control_message), self._public_cipher, None, True)
             gate.sendall(encrypted_message)
@@ -96,8 +98,6 @@ class Controller:
 
     def _turn_tunnel_on(self) -> None:
         self._interface.up()
-        self._gate_socket = socket(AF_INET, SOCK_DGRAM)
-        self._gate_socket.bind((self._interface.default_ip, self._sea_port))
         self._receiver_process = Process(target=self._interface.receive_from_caerulean, name="receiver", args=[self._gate_socket, self._sea_port, self._obfuscator, self._user_id], daemon=True)
         self._sender_process = Process(target=self._interface.send_to_caerulean, name="sender", args=[self._gate_socket, self._sea_port, self._obfuscator, self._user_id], daemon=True)
         self._receiver_process.start()
@@ -106,7 +106,6 @@ class Controller:
     def _turn_tunnel_off(self) -> None:
         self._receiver_process.terminate()
         self._sender_process.terminate()
-        self._gate_socket.close()
         self._interface.down()
 
     def _clean_tunnel(self) -> None:
@@ -115,6 +114,8 @@ class Controller:
             self._turn_tunnel_off()
             logger.warning("Gracefully stopping algae client...")
             self._interface.delete()
+            logger.warning("Closing seaside port...")
+            self._gate_socket.close()
 
     def _perform_control(self) -> None:
         logger.debug(f"Performing connection control to caerulean {self._address}:{self._ctrl_port}")

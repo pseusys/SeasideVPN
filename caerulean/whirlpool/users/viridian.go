@@ -21,6 +21,7 @@ type Viridian struct {
 	timeout time.Time
 	Address net.IP
 	Gateway net.IP
+	Port    uint32
 }
 
 const (
@@ -52,7 +53,7 @@ func isViridianOvertime(viridian *Viridian) bool {
 	return !viridian.admin && viridian.timeout.Before(time.Now().UTC())
 }
 
-func AddViridian(token *generated.UserToken, address, gateway net.IP) (*uint16, generated.UserControlResponseStatus, error) {
+func AddViridian(token *generated.UserToken, address, gateway net.IP, port uint32) (*uint16, generated.UserControlResponseStatus, error) {
 	aead, err := crypto.ParseCipher(token.Session)
 	if err != nil {
 		return nil, generated.UserControlResponseStatus_ERROR, fmt.Errorf("error parsing encryption algorithm for user: %v", err)
@@ -79,7 +80,7 @@ func AddViridian(token *generated.UserToken, address, gateway net.IP) (*uint16, 
 
 	userID := ITERATOR + 2
 	deletionTimer := time.AfterFunc(FIRST_HEALTHCHECK_DELAY, func() { DeleteViridian(userID, true) })
-	viridian := &Viridian{aead, deletionTimer, token.Privileged, token.Subscription.AsTime(), address, gateway}
+	viridian := &Viridian{aead, deletionTimer, token.Privileged, token.Subscription.AsTime(), address, gateway, port}
 
 	if isViridianOvertime(viridian) {
 		return nil, generated.UserControlResponseStatus_OVERTIME, errors.New("viridian subscription outdated")
