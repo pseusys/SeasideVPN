@@ -6,18 +6,17 @@ from time import sleep
 
 from Crypto.Random.random import randint
 
-from .crypto import MAX_MESSAGE_SIZE, RSACipher, SymmetricalCipher
-from .obscure import Obfuscator
+from .crypto import MAX_MESSAGE_SIZE, Cipher, Obfuscator
 from .outputs import logger
-from .requests import get, post
+from .requests import post
 from .tunnel import Tunnel
 
 from .generated import UserDataWhirlpool, UserCertificate, UserControlMessage, UserControlResponseStatus, UserControlRequestStatus, UserControlMessageConnectionMessage, UserControlMessageHealthcheckMessage, WhirlpoolControlMessage, RawKeyExchange
 
 
 class Controller:
-    def __init__(self, key: str, name: str, addr: IPv4Address, sea_port: int, net_port: int, ctrl_port: int, hc_min: int, hc_max: int):
-        self._key = key
+    def __init__(self, public_key: str, owner_key: str, name: str, addr: IPv4Address, sea_port: int, net_port: int, ctrl_port: int, hc_min: int, hc_max: int):
+        self._owner_key = owner_key
         self._address = str(addr)
         self._net_port = net_port
         self._ctrl_port = ctrl_port
@@ -25,13 +24,12 @@ class Controller:
         self._user_id = 0
         self._min_hc_time = hc_min
         self._max_hc_time = hc_max
+        self._public_cipher = Cipher(bytes.fromhex(public_key))
 
         if hc_min < 1:
             raise ValueError("Minimal healthcheck time can't be less than 1 second!")
 
-        self._owner_key: bytes
         self._session_token: bytes
-        self._public_cipher: RSACipher
         self._receiver_process: Process
         self._sender_process: Process
         self._gate_port: socket
@@ -51,13 +49,9 @@ class Controller:
             self._clean_tunnel()
 
     def _receive_token(self) -> None:
-        logger.debug("Requesting whirlpool public key...")
-        with get(f"http://{self._address}:{self._net_port}/public") as response:
-            self._public_cipher = RSACipher(response.read())
-
-        self._cipher = SymmetricalCipher()
+        self._cipher = Cipher()
         logger.debug(f"Symmetric session cipher initialized: {self._cipher.key}")
-        user_data = UserDataWhirlpool(uid="some_cool_uid", session=self._cipher.key, owner_key=self._key)
+        user_data = UserDataWhirlpool(uid="some_cool_uid", session=self._cipher.key, owner_key=self._owner_key)
         user_encrypted = self._public_cipher.encode(bytes(user_data))
 
         logger.debug("Requesting whirlpool token...")

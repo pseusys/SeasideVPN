@@ -16,6 +16,8 @@ import (
 type Viridian struct {
 	Aead    cipher.AEAD
 	reset   *time.Timer
+	admin   bool
+	timeout time.Time
 	Address net.IP
 	Gateway net.IP
 }
@@ -33,11 +35,11 @@ var (
 	MAX_TOTAL  uint16
 )
 
-func InitializeViridians(maxUsers uint16, maxAdmins uint16) {
+func init() {
 	ITERATOR = 0
-	MAX_USERS = maxUsers
-	MAX_ADMINS = maxAdmins
-	MAX_TOTAL = maxUsers + maxAdmins
+	MAX_USERS = uint16(utils.GetIntEnv("MAX_USERS", nil))
+	MAX_ADMINS = uint16(utils.GetIntEnv("MAX_ADMINS", nil))
+	MAX_TOTAL = MAX_USERS + MAX_ADMINS
 
 	if MAX_TOTAL > math.MaxUint16-3 {
 		logrus.Fatalf("error initializing viridian array: too many users requested %d", MAX_TOTAL)
@@ -45,8 +47,12 @@ func InitializeViridians(maxUsers uint16, maxAdmins uint16) {
 	VIRIDIANS = make([]*Viridian, MAX_TOTAL)
 }
 
+func isViridianOvertime(viridian *Viridian) bool {
+	return !viridian.admin && viridian.timeout.Before(time.Now().UTC())
+}
+
 func AddViridian(token *generated.UserToken, address net.IP, gateway net.IP) (*uint16, generated.UserControlResponseStatus, error) {
-	aead, err := crypto.ParseSymmetricalAlgorithm(token.Session)
+	aead, err := crypto.ParseCipher(token.Session)
 	if err != nil {
 		return nil, generated.UserControlResponseStatus_ERROR, utils.JoinError("error parsing encryption algorithm for user", err)
 	}
@@ -72,9 +78,15 @@ func AddViridian(token *generated.UserToken, address net.IP, gateway net.IP) (*u
 
 	userID := ITERATOR + 2
 	deletionTimer := time.AfterFunc(FIRST_HEALTHCHECK_DELAY, func() { DeleteViridian(userID, true) })
-	VIRIDIANS[ITERATOR] = &Viridian{aead, deletionTimer, address, gateway}
-	logrus.Infof("User %d (uid: %s, privileged: %t) created", userID, token.Uid, token.Privileged)
-	return &userID, generated.UserControlResponseStatus_SUCCESS, nil
+	viridian := &Viridian{aead, deletionTimer, token.Privileged, token.Subscription.AsTime(), address, gateway}
+
+	if isViridianOvertime(viridian) {
+		return nil, generated.UserControlResponseStatus_OVERTIME, errors.New("viridian subscription outdated")
+	} else {
+		VIRIDIANS[ITERATOR] = viridian
+		logrus.Infof("User %d (uid: %s, privileged: %t) created", userID, token.Uid, token.Privileged)
+		return &userID, generated.UserControlResponseStatus_SUCCESS, nil
+	}
 }
 
 func GetViridian(userID uint16) *Viridian {
@@ -93,8 +105,13 @@ func DeleteViridian(userID uint16, timeout bool) {
 func UpdateViridian(userID uint16, nextIn int32) (generated.UserControlResponseStatus, error) {
 	viridian := VIRIDIANS[userID-2]
 	if viridian != nil {
-		viridian.reset.Reset(time.Duration(nextIn*USER_WAITING_OVERTIME) * time.Second)
-		return generated.UserControlResponseStatus_HEALTHPONG, nil
+		if isViridianOvertime(viridian) {
+			DeleteViridian(userID, false)
+			return generated.UserControlResponseStatus_OVERTIME, errors.New("viridian subscription outdated")
+		} else {
+			viridian.reset.Reset(time.Duration(nextIn*USER_WAITING_OVERTIME) * time.Second)
+			return generated.UserControlResponseStatus_HEALTHPONG, nil
+		}
 	} else {
 		return generated.UserControlResponseStatus_ERROR, errors.New("requested viridian doesn't exist")
 	}

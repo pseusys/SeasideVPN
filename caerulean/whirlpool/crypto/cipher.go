@@ -3,18 +3,35 @@ package crypto
 import (
 	"crypto/cipher"
 	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"main/utils"
 
+	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/chacha20poly1305"
 )
 
 var (
-	SYMM_NODE_KEY  []byte
-	SYMM_NODE_AEAD cipher.AEAD
+	PRIVATE_NODE_KEY  []byte
+	PRIVATE_NODE_AEAD cipher.AEAD
+	PUBLIC_NODE_AEAD  cipher.AEAD
 )
 
-func GenerateSymmetricalAlgorithm() (cipher.AEAD, []byte, error) {
+func init() {
+	publicKeyHex := utils.GetEnv("PUBLIC_KEY", nil)
+
+	publicKeyBytes, err := hex.DecodeString(publicKeyHex)
+	if err != nil {
+		logrus.Fatalf("error parsing public key bytes: %v (%s)", err, publicKeyHex)
+	}
+
+	PUBLIC_NODE_AEAD, err = ParseCipher(publicKeyBytes)
+	if err != nil {
+		logrus.Fatalf("error parsing public aead: %v (%s)", err, publicKeyHex)
+	}
+}
+
+func GenerateCipher() (cipher.AEAD, []byte, error) {
 	key := make([]byte, chacha20poly1305.KeySize)
 	if _, err := rand.Read(key); err != nil {
 		return nil, nil, utils.JoinError("symmetrical key reading error", err)
@@ -28,7 +45,7 @@ func GenerateSymmetricalAlgorithm() (cipher.AEAD, []byte, error) {
 	return aead, key, nil
 }
 
-func ParseSymmetricalAlgorithm(key []byte) (cipher.AEAD, error) {
+func ParseCipher(key []byte) (cipher.AEAD, error) {
 	aead, err := chacha20poly1305.NewX(key)
 	if err != nil {
 		return nil, utils.JoinError("symmetrical key parsing error", err)
@@ -37,7 +54,7 @@ func ParseSymmetricalAlgorithm(key []byte) (cipher.AEAD, error) {
 	return aead, nil
 }
 
-func EncodeSymmetrical(plaintext []byte, signature []byte, aead cipher.AEAD) ([]byte, error) {
+func Encode(plaintext []byte, signature []byte, aead cipher.AEAD) ([]byte, error) {
 	if signature == nil {
 		signature = make([]byte, 0)
 	}
@@ -56,7 +73,7 @@ func EncodeSymmetrical(plaintext []byte, signature []byte, aead cipher.AEAD) ([]
 	return append(nonce, encrypted...), nil
 }
 
-func DecodeSymmetrical(ciphertext []byte, signed bool, aead cipher.AEAD) ([]byte, error) {
+func Decode(ciphertext []byte, signed bool, aead cipher.AEAD) ([]byte, error) {
 	if len(ciphertext) < aead.NonceSize()+aead.Overhead() {
 		return nil, fmt.Errorf("ciphertext length %d too short (less than nonce length %d + overhead %d)", len(ciphertext), aead.NonceSize(), aead.Overhead())
 	}

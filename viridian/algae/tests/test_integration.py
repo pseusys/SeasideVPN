@@ -28,7 +28,8 @@ def is_tcp_available(address: str = "example.com", port: int = 80) -> bool:
 
 @pytest.fixture(scope="session")
 def controller() -> Generator[Controller, None, None]:
-    key = environ["OWNER_KEY"]
+    owner_key = environ["OWNER_KEY"]
+    public_key = environ["PUBLIC_KEY"]
     name = getenv("IFACE_NAME", "sea-tun")
     addr = IPv4Address(environ["NODE_ADDR"])
     sea_port = int(getenv("SEA_PORT", "8542"))
@@ -36,7 +37,7 @@ def controller() -> Generator[Controller, None, None]:
     ctrl_port = int(getenv("CTRL_PORT", "8543"))
     min_healthcheck = int(getenv("MIN_HEALTHCHECK", "1"))
     max_healthcheck = int(getenv("MAX_HEALTHCHECK", "5"))
-    yield Controller(key, name, addr, sea_port, net_port, ctrl_port, min_healthcheck, max_healthcheck)
+    yield Controller(public_key, owner_key, name, addr, sea_port, net_port, ctrl_port, min_healthcheck, max_healthcheck)
 
 
 @pytest.mark.dependency()

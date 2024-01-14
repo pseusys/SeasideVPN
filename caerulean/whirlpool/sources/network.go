@@ -1,8 +1,6 @@
 package main
 
 import (
-	"crypto/rand"
-	"crypto/x509"
 	"fmt"
 	"io"
 	"main/crypto"
@@ -18,7 +16,6 @@ import (
 
 const (
 	NODE_NAME        = "Node name TODO: pass through env"
-	OWNER_KEY_LENGTH = 32
 	AUTORESEED_DELAY = time.Hour * time.Duration(24)
 )
 
@@ -27,15 +24,8 @@ var (
 	AUTORESEED_TIMER *time.Ticker
 )
 
-func public(w http.ResponseWriter, r *http.Request) {
-	// TODO: check GET request
-	publicBytes, err := x509.MarshalPKIXPublicKey(&(crypto.RSA_NODE_KEY.PublicKey))
-	if err != nil {
-		WriteAndLogError(w, http.StatusBadRequest, "error loading RSA node key bytes", err)
-		return
-	}
-
-	WriteRawData(w, http.StatusOK, publicBytes)
+func init() {
+	NODE_OWNER_KEY = utils.GetEnv("OWNER_KEY", nil)
 }
 
 func auth(w http.ResponseWriter, r *http.Request) {
@@ -46,7 +36,7 @@ func auth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	plaintext, err := crypto.DecodeRSA(ciphertext, false, crypto.RSA_NODE_KEY)
+	plaintext, err := crypto.Decode(ciphertext, false, crypto.PUBLIC_NODE_AEAD)
 	if err != nil {
 		WriteAndLogError(w, http.StatusBadRequest, "error decoding temp key", err)
 		return
@@ -81,7 +71,7 @@ func auth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tokenData, err := crypto.EncodeSymmetrical(marshToken, nil, crypto.SYMM_NODE_AEAD)
+	tokenData, err := crypto.Encode(marshToken, nil, crypto.PRIVATE_NODE_AEAD)
 	if err != nil {
 		WriteAndLogError(w, http.StatusBadRequest, "error encrypting token", err)
 		return
@@ -100,7 +90,7 @@ func auth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	responseData, err := crypto.EncodeSymmetrical(marshResponse, nil, sessionAEAD)
+	responseData, err := crypto.Encode(marshResponse, nil, sessionAEAD)
 	if err != nil {
 		WriteAndLogError(w, http.StatusBadRequest, "error encrypting response", err)
 		return
@@ -116,7 +106,6 @@ func InitNetAPI(port int) {
 		logrus.Infoln("Node API setup, node owner key:", NODE_OWNER_KEY)
 	}
 
-	http.HandleFunc("/public", public)
 	// TODO: distribute stats: http.HandleFunc("/stats", stats)
 	http.HandleFunc("/auth", auth)
 	// TODO: connect to network: http.HandleFunc("/connect", connect)
@@ -126,30 +115,12 @@ func InitNetAPI(port int) {
 	logrus.Fatalf("Net server error: %s", http.ListenAndServe(network, nil))
 }
 
-func reseed(surface string) error {
-	newNodeKey := make([]byte, chacha20poly1305.KeySize)
-	if _, err := rand.Read(newNodeKey); err != nil {
-		return utils.JoinError("error creating new node symmetric key", err)
-	}
-	newNodeAead, err := chacha20poly1305.NewX(newNodeKey)
+func ExchangeNodeKey() {
+	var err error
+	crypto.PRIVATE_NODE_AEAD, crypto.PRIVATE_NODE_KEY, err = crypto.GenerateCipher()
 	if err != nil {
-		return utils.JoinError("error creating new node symmetric cipher", err)
+		logrus.Fatalf("error private node cipher generating: %v", err)
 	}
 
-	crypto.SYMM_NODE_KEY = newNodeKey
-	crypto.SYMM_NODE_AEAD = newNodeAead
-	logrus.Infof("Symmetric node key seeded, value: 0x%x", crypto.SYMM_NODE_KEY)
-	return nil
-}
-
-func RetrieveNodeKey() {
-	err := reseed(*surfaceIP)
-	if err != nil {
-		logrus.Fatalln("error initial cipher seeding", err)
-	}
-
-	AUTORESEED_TIMER := time.NewTicker(AUTORESEED_DELAY)
-	for range AUTORESEED_TIMER.C {
-		reseed(*surfaceIP)
-	}
+	// TODO: send public and private keys to surface
 }

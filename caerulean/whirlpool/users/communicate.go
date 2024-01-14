@@ -38,7 +38,7 @@ func SendMessageToUser(message any, connection *net.TCPConn, addressee *uint16) 
 	if addressee != nil {
 		viridian := GetViridian(*addressee)
 		if viridian != nil {
-			encrypted, err = crypto.EncryptSymmetrical(payload, viridian.Aead, addressee, true)
+			encrypted, err = crypto.Encrypt(payload, viridian.Aead, addressee, true)
 			if err != nil {
 				logrus.Errorf("Sending message to user error: %v", err)
 				return

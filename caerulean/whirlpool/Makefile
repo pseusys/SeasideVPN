@@ -1,4 +1,7 @@
 .ONESHELL:
+.EXPORT_ALL_VARIABLES:
+
+include example.conf.env
 
 EXECUTABLE_NAME = whirlpool.run
 

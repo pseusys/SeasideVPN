@@ -7,7 +7,6 @@ import (
 	"main/generated"
 	"main/users"
 	"net"
-	"time"
 
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
@@ -19,7 +18,7 @@ func connectViridian(encryptedToken []byte, address []byte, gateway []byte) (gen
 		return generated.UserControlResponseStatus_ERROR, nil
 	}
 
-	plaintext, err := crypto.DecodeSymmetrical(encryptedToken, false, crypto.SYMM_NODE_AEAD)
+	plaintext, err := crypto.Decode(encryptedToken, false, crypto.PRIVATE_NODE_AEAD)
 	if err != nil {
 		logrus.Warnln("Couldn't decrypt token from user", err)
 		return generated.UserControlResponseStatus_ERROR, nil
@@ -32,10 +31,7 @@ func connectViridian(encryptedToken []byte, address []byte, gateway []byte) (gen
 		return generated.UserControlResponseStatus_ERROR, nil
 	}
 
-	if !token.Privileged && token.Subscription.AsTime().Before(time.Now().UTC()) {
-		logrus.Warnln("User subscription outdated, cannot connect user")
-		return generated.UserControlResponseStatus_OVERTIME, nil
-	} else if address == nil {
+	if address == nil {
 		logrus.Warnf("User address is null")
 		return generated.UserControlResponseStatus_ERROR, nil
 	} else {
@@ -87,7 +83,7 @@ func ListenControlPort(ip string, port int) {
 
 		// Decrypt received message
 		requester := address.IP.String()
-		plaintext, userID, err := crypto.DecryptRSA(buffer, crypto.RSA_NODE_KEY, true)
+		plaintext, userID, err := crypto.Decrypt(buffer, crypto.PUBLIC_NODE_AEAD, true)
 		if err != nil {
 			logrus.Warnln("Couldn't decrypt message from IP", requester, err)
 			users.SendMessageToUser(generated.UserControlResponseStatus_ERROR, connection, nil)
