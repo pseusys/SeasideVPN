@@ -7,21 +7,12 @@ import (
 	"main/generated"
 	"main/utils"
 	"net/http"
-	"time"
 
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 )
 
-const (
-	NODE_NAME        = "Node name TODO: pass through env"
-	AUTORESEED_DELAY = time.Hour * time.Duration(24)
-)
-
-var (
-	NODE_OWNER_KEY   string
-	AUTORESEED_TIMER *time.Ticker
-)
+var NODE_OWNER_KEY string
 
 func init() {
 	NODE_OWNER_KEY = utils.GetEnv("OWNER_KEY", nil)

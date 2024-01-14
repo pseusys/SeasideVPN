@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"main/crypto"
 	"main/users"
+	"math"
 	"net"
-	"strconv"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -14,30 +14,14 @@ import (
 	"github.com/songgao/water"
 )
 
-const (
-	BUFFER_OVERHEAD = 500
-	HeaderLen       = 20
-)
-
-var (
-	IOBUFFERSIZE   int // TODO: examine size of math.MaxUint16
-	SEA_CONNECTION *net.UDPConn
-)
-
-func init() {
-	buff, err := strconv.Atoi("1500")
-	if err != nil {
-		logrus.Fatalln("Couldn't parse MTU:", "1500")
-	}
-	IOBUFFERSIZE = buff + BUFFER_OVERHEAD
-}
+var SEA_CONNECTION *net.UDPConn
 
 type NetSettableLayerType interface {
 	SetNetworkLayerForChecksum(gopacket.NetworkLayer) error
 }
 
 func ReceivePacketsFromViridian(tunnel *water.Interface, tunnetwork *net.IPNet) {
-	buffer := make([]byte, IOBUFFERSIZE)
+	buffer := make([]byte, math.MaxUint16)
 
 	// Create objects for packet decoding
 	serialBuffer := gopacket.NewSerializeBuffer()
@@ -47,7 +31,7 @@ func ReceivePacketsFromViridian(tunnel *water.Interface, tunnetwork *net.IPNet) 
 		serialBuffer.Clear()
 
 		// Read IOBUFFERSIZE of data
-		r, address, err := SEA_CONNECTION.ReadFromUDP(buffer)
+		r, _, err := SEA_CONNECTION.ReadFromUDP(buffer)
 		if err != nil || r == 0 {
 			logrus.Errorf("Reading from viridian error (%d bytes read): %v", r, err)
 			continue
@@ -87,7 +71,7 @@ func ReceivePacketsFromViridian(tunnel *water.Interface, tunnetwork *net.IPNet) 
 
 		// Get IP layer header and change source IP
 		netLayer, _ := packet.Layer(layers.LayerTypeIPv4).(*layers.IPv4)
-		logrus.Infof("Received %d bytes from viridian %v (src: %v, dst: %v)", netLayer.Length, address, netLayer.SrcIP, netLayer.DstIP)
+		logrus.Infof("Received %d bytes from viridian %d (src: %v, dst: %v)", netLayer.Length, *userID, netLayer.SrcIP, netLayer.DstIP)
 		netLayer.SrcIP = net.IPv4(tunnetwork.IP[0], tunnetwork.IP[1], viridianID[0], viridianID[1])
 
 		// Set this network layer to all the layers that require a network layer
@@ -116,7 +100,7 @@ func ReceivePacketsFromViridian(tunnel *water.Interface, tunnetwork *net.IPNet) 
 }
 
 func SendPacketsToViridian(tunnel *water.Interface, tunnetwork *net.IPNet) {
-	buffer := make([]byte, IOBUFFERSIZE)
+	buffer := make([]byte, math.MaxUint16)
 
 	// Create objects for packet decoding
 	serialBuffer := gopacket.NewSerializeBuffer()
@@ -125,7 +109,7 @@ func SendPacketsToViridian(tunnel *water.Interface, tunnetwork *net.IPNet) {
 		// Clear the serialization buffer
 		serialBuffer.Clear()
 
-		// Read IOBUFFERSIZE of data from tunnel
+		// Read data from tunnel
 		r, err := tunnel.Read(buffer)
 		if r == 0 && err != nil {
 			logrus.Errorf("Reading from tunnel error (%d bytes read): %v", r, err)
