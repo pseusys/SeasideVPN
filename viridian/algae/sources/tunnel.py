@@ -9,8 +9,7 @@ from colorama import Fore
 from iptc import Rule, Target, Chain, Table
 from pyroute2 import IPRoute
 
-from .crypto import MAX_MESSAGE_SIZE, SymmetricalCipher
-from .obscure import Obfuscator
+from .crypto import MAX_MESSAGE_SIZE, Cipher, Obfuscator
 from .outputs import logger
 
 _UNIX_TUNSETIFF = 0x400454CA
@@ -100,7 +99,7 @@ class Tunnel:
     def default_ip(self) -> str:
         return str(self._def_iface.ip)
 
-    def setup(self, cipher: SymmetricalCipher) -> None:
+    def setup(self, cipher: Cipher) -> None:
         self._cipher = cipher
 
     def delete(self) -> None:

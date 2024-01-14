@@ -72,7 +72,7 @@ func ReceivePacketsFromViridian(tunnel *water.Interface, tunnetwork *net.IPNet) 
 		}
 
 		// Decrypt packet
-		raw, err := crypto.DecodeSymmetrical(buffer[:r], true, viridian.Aead)
+		raw, err := crypto.Decode(buffer[:r], true, viridian.Aead)
 		if err != nil {
 			logrus.Errorln("Decrypting packet error:", err)
 			// SendMessageToUser(generated.UserControlResponseStatus_ERROR, address.IP, nil, true)
@@ -175,7 +175,7 @@ func SendPacketsToViridian(tunnel *water.Interface, tunnetwork *net.IPNet) {
 		}
 
 		// Encrypt packet
-		encrypted, err := crypto.EncryptSymmetrical(serialBuffer.Bytes(), viridian.Aead, &viridianID, false)
+		encrypted, err := crypto.Encrypt(serialBuffer.Bytes(), viridian.Aead, &viridianID, false)
 		if err != nil {
 			logrus.Errorln("Encrypting packet error:", err)
 			// SendMessageToUser(generated.UserControlResponseStatus_ERROR, gateway.IP, nil, true)

@@ -40,6 +40,7 @@ COPY viridian/algae/tests/*.py ./tests/
 ENV LOG_LEVEL DEBUG
 
 ENV OWNER_KEY none
+ENV PUBLIC_KEY none
 ENV TUNNEL seatun
 ENV NODE_ADDR 127.0.0.1
 ENV NET_PORT 8587
@@ -50,7 +51,7 @@ ENV MAX_HC_TIME 5
 
 EXPOSE $SEA_PORT/udp
 EXPOSE $CTRL_PORT/tcp
-ENTRYPOINT python3 -m sources.main $OWNER_KEY -t $TUNNEL -a $NODE_ADDR -n $NET_PORT -p $SEA_PORT -c $CTRL_PORT -i $MIN_HC_TIME -x $MAX_HC_TIME
+ENTRYPOINT python3 -m sources.main $PUBLIC_KEY $OWNER_KEY -t $TUNNEL -a $NODE_ADDR -n $NET_PORT -p $SEA_PORT -c $CTRL_PORT -i $MIN_HC_TIME -x $MAX_HC_TIME
 
 
 FROM seaside-algae-default as sleeping
@@ -67,6 +68,6 @@ ENV ARG_NETWORK_GATEWAY $NETWORK_GATEWAY
 
 RUN apt-get update && apt-get install -y --no-install-recommends iproute2 iputils-ping && rm -rf /var/lib/apt/lists/*
 ENTRYPOINT ip route replace default via $ARG_NETWORK_GATEWAY && \
-    python3 -m sources.main $OWNER_KEY -t $TUNNEL -a $NODE_ADDR -n $NET_PORT -p $SEA_PORT -c $CTRL_PORT -i $MIN_HC_TIME -x $MAX_HC_TIME
+    python3 -m sources.main $PUBLIC_KEY $OWNER_KEY -t $TUNNEL -a $NODE_ADDR -n $NET_PORT -p $SEA_PORT -c $CTRL_PORT -i $MIN_HC_TIME -x $MAX_HC_TIME
 
 HEALTHCHECK --interval=3s --timeout=1s --retries=3 --start-period=10s CMD ls /sys/class/net | grep $TUNNEL

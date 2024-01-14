@@ -10,11 +10,11 @@ My first program in `Go`, written with assistance of multiple tutorials and Chat
 
 Seaside is a VPN and distributed system, focused on making final user traffic not easily detectable so that the whole system access blocking becomes not cost-effective.
 
-For user traffic encryption `XChaCha20-Poly1305` and `RSA2048` hybrid encryption is used.
+For user traffic encryption `XChaCha20-Poly1305` encryption is used.
 For protocol obfuscation special [`wavy messages`](#wavy-messages) protocol is used.
 
 Target users of the system are **groups** of people (companies, communities, etc.), residing in different countries and wishing to create their own VPN network.
-System deployment and integration is (planned) to be easy even for not very familiar with networking people, so each system instance will consist of several connected individually managed nodes.
+System deployment and integration is (planned) to be easy even for not very familiar with networking people, so that each system instance will consist of several connected individually managed nodes.
 
 > **NB!** As no global infrastructure (i.e. public servers, domen names, etc.) is planned, user privacy and safety solely depends on the each system instance _node operators_.
 > System can only exist and be active until the people that use it **trust each other**! 🤝
@@ -26,57 +26,49 @@ Following naming is used:
 
 - [`Surface`](#surface) is the main node of the system instance.
   It keeps track of actual gateway worker nodes, collects statistics, performs load-balancing and user distribution.
+  It also manages user authentication and payments, distributes incomes among VPN node owners.
   Basically, the owner of the `surface` node owns (and is responsible) for the whole system instance.
 - [`Whirlpool`](#whirlpool) is a worker node.
   It allows user traffic forwarding, encryption, etc.
   Several `whirlpool` nodes in different locations and of different performance can be included into a single system instance.
-  In order to make the ssytem truly P2P, all system instance users are encouraged to manage their own `whirlpool` node and though contribute to the system.
+  In order to make the sytem truly P2P, all system instance users are encouraged to manage their own `whirlpool` node and though contribute to the system.
 - [`Viridian`](#viridian-client) is a user application (desctop, mobile, browser, etc.).
   One `viridian` can be connected to one seaside system instance at a time, but is allowed to choose between different `whirlpool`s in it.
 
 ```mermaid
-stateDiagram
-    Surface --> Whirlpool1
-    Surface --> Whirlpool2
-    Surface --> Whirlpool3
+graph LR
+  S[Surface] -.- W1([Whirlpool 1])
+  S[Surface] -.- W2([Whirlpool 2])
+  S[Surface] -.- W3([Whirlpool 3])
 
-    Whirlpool1 --> [*]
-    Whirlpool2 --> [*]
-    Whirlpool3 --> [*]
+  W1([Whirlpool 1]) --> I{Internet}
+  W2([Whirlpool 2]) --> I{Internet}
+  W3([Whirlpool 3]) --> I{Internet}
 
-    Viridian1 --> Surface
-    Viridian1 --> Whirlpool1
+  V1{{Viridian 1}} -.- S[Surface]
+  V1{{Viridian 1}} --> W1([Whirlpool 1])
 
-    Viridian2 --> Surface
-    Viridian2 --> Whirlpool1
+  V2{{Viridian 2}} -.- S[Surface]
+  V2{{Viridian 2}} --> W1([Whirlpool 1])
 
-    Viridian3 --> Surface
-    Viridian3 --> Whirlpool1
+  V3{{Viridian 3}} -.- S[Surface]
+  V3{{Viridian 3}} --> W1([Whirlpool 1])
 
-    Viridian4 --> Surface
-    Viridian4 --> Whirlpool2
+  V4{{Viridian 4}} -.- S[Surface]
+  V4{{Viridian 4}} --> W2([Whirlpool 2])
 
-    Viridian5 --> Surface
-    Viridian5 --> Whirlpool2
+  V5{{Viridian 5}} -.- S[Surface]
+  V5{{Viridian 5}} --> W2([Whirlpool 2])
 
+  V6{{Viridian 6}} ---> W3([Whirlpool 3])
 ```
 
-Here, you can see, three users connected to internet (marked by `*` this character) via `whirlpool` №1 and two other users via `whirlpool` №2.
+On this diagram, an example SeaSide system is shown.
+Three `viridian`s are connected to internet via `whirlpool` №1 and two other `viridian`s via `whirlpool` №2.
+All of them are also connected to `surface` node.
+The last `viridian` №6 is connected only to `whirlpool` №3 and not to `surface` node, that is only possible if `viridian` №6 is the administrator of `whirlpool` №3.
 
 ### Conventions
-
-The number of important parameters define the system.
-They define IP addresses, port numbers, names, etc.  
-The parameters can be found in the table below:
-
-| Parameter Name | Parameter Value |
-| --- | --- |
-| Seaside UDP port | 8542 |
-| Control TCP port | 8543 |
-| Caerulean Whirlpool API port | 8587 |
-| Caerulean tunnel network | 192.168.0.87/24 |
-| Tunnel MTU | 1500 |
-| Transmission packet buffer | 2000 |
 
 Each program here has a special numeric identifier, that is the ASCII code of the first letter of its' name (capitalized).  
 The numeric identification table can be found below:
@@ -87,97 +79,74 @@ The numeric identification table can be found below:
 | Viridian Algae | 65 |
 | Seaside VPN | 83 |
 
-Every application supports at least 4 logging levels: `DEBUG`, `INFO`, `WARNING` and `ERROR` (and some of them even more!).
-They should be specified with environmental variable `LOG_LEVEL`.
-
 There are some important notes and conditions that must be fulfilled in order for system to work as expected:
 
-- Viridian packet must have client external IP (not a tunnel IP) as source IP.
+- Viridian packets must not exceed 65495 bytes (that is max UDP packet size minus overflow for encryption).
 
 ## Data, connections and protocols
 
-Packets, forwarded via "seaside port" (encrypted or not) are just raw data packed into UDP packets,
-no headers, states or protocols are used.
+The key difference of SeaSide VPN from other VPN systems is it's undetectability.
+Indeed, according to several articles ([this](https://ieeexplore.ieee.org/document/8275301), [this](https://www.ir.com/guides/deep-packet-inspection) or [this](https://www.sciencedirect.com/science/article/abs/pii/S0167404813000837)), packet analysis is done according to several techniques:
 
-It makes packets forwarded via SeasideVPN indifferent from all the other packets sent across internet,
-so it becomes not as easy to distinguish and block them.
+- Packet header analysis.
+- Packet content analysis.
+- Packet exchange time analysis.
 
-Packets sent to "control port" control viridian to caerulean connection (connected user number, passwords, etc.).
+SeaSide VPN offers several ways to handle all these cases:
 
-These packets use special "control protocol" (described [later in this section](#viridian-to-whirlpool-connection)).
-Moreover, they are obfuscated with special "wavy protocol" (described [right below](#wavy-messages)).
+1. All VPN and control packets are encrypted and don't have any unencrypted header.
+2. Control packet lengths are randomized with random length tail.
+3. Control packets (healthcheck) sending time is random.
+
+Following ways are yet to be implemented:
+
+1. VPN packets sending via several "gateway" servers with different IPs, simulating `BitTorrent` protocol.
+2. All ports and endpoint names are randomized.
+
+The typical packet structure corresponds to special "wavy protocol" (described [right below](#wavy-messages)).
+The only way to decrypt a packet is guessing `XChaCha20-Poly1305` key (32 bytes).
+The only way to prove two messages use "wavy protocol" and belong to one user is either becoming a client of the same system as the user or intercepting 2 packets and guessing packet signature multiplier (8 bytes).
 
 ### Wavy messages
 
-Many messages have the same size (1 byte) and a limited amount of status codes.
-That makes system potentionally voulnerable to distinguishing and blocking.
+All the raw IP packets sent and received by the system (except for initial data exchange packets) have the following structure:
 
-In order to prevent this, all the messages are "waved" and
-instead of the original message, the following structure is sent:
+| Addition | Signature | Payload | Tail |
+| --- | --- | --- | --- |
+| 8 bytes | 8 bytes | (random) | (random) |
 
-| Random (gravity) bytes | Data pointer | Random (prefix) bytes | Status | Data length | Data | Random (postfix) bytes
-| --- | --- | --- | --- | --- | --- | --- |
-| 5 bytes | 1 byte | (random) | 1 byte | 2 bytes | (defined) | (random) |
+Packets can be `signed` and `unsigned`, `tailed` and `untailed`.
+In order to encrypt the message, two 8-byte integers are required: `multiplier` and `zero_user_id`.
+One important number is `max_prime` prime number, that is equal to $2^{64} - 59$.
+For every packet, `addition` is a random number.
 
-> Total message length: not more than 65536
+User ID is a 2-byte integer.
+If packet is signed, `signature` can be calculated:
+
+```math
+((multiplier \cdot ((user\_id + zero\_user\_id) \bmod max\_prime)) + addition) \bmod max\_prime
+```
+
+For calculation of user ID having `signature` and `addition`, the following value is required: `unmultiplier`, that is modular multiplicative inverse of `multiplier`.
+User ID can be calculated:
+
+```math
+(((unmultiplier \cdot (signature - addition)) \bmod max\_prime) - zero\_user\_id + max\_prime) \bmod max\_prime
+```
+
+Tail is expected only for control messages (because they usually have equal length that can be detected).
+A special function has to be defined for tail length calculation: `bit_count`, that maps 64-bit integers to numbers of `1` in their binary representation.
+Tail length can be calculated:
+
+```math
+bit\_count(zero\_user\_id \oplus addition) \bmod 64
+```
+
+> NB! For `XChaCha20-Poly1305` cipher, `addition` and `signature` bytes are included into nonce.
 
 ### Viridian to whirlpool connection
 
-```mermaid
-sequenceDiagram
-    participant Viridian
-    participant Caerulean
-
-    link Viridian: Viridian @ https://github.com/pseusys/SeasideVPN/blob/main/viridian/algae/README.md
-    link Caerulean: Caerulean @ https://github.com/pseusys/SeasideVPN/blob/main/caerulean/whirlpool/README.md
-
-    alt Connection to VPN
-        Note left of Viridian: Viridian forms an RSA keypair
-        Viridian ->> Caerulean: [PUBLIC, RSA public key]
-        Note right of Caerulean: Caerulean forms symmetric key for viridian
-        Caerulean ->> Viridian: [SUCCESS, Symmetric key]
-        Note left of Viridian: Viridian is connected, go to [Packet exchange]
-        Note right of Caerulean: Caerulean user capacity reached
-        Caerulean -->> Viridian: [OVERLOAD, <null>]
-        Note left of Viridian: Viridian is not connected, should try another viridian
-        Note right of Caerulean: Caerulean can't manage cryptography
-        Caerulean -->> Viridian: [ERROR, <null>]
-        Note left of Viridian: Viridian is not connected, should try another viridian
-    end
-
-    opt Packet exchange
-        Viridian ->> Caerulean: Some packets sent via SEA port
-        Caerulean ->> Viridian: Some packets received via SEA port
-    end
-
-    opt Caerulean error
-        Note right of Caerulean: Current connection session might be messed up
-        Caerulean ->> Viridian: [ERROR or UNDEF, <null>]
-        Note left of Viridian: Viridian goes to [Viridian disconnection]
-    end
-
-    opt Caerulean ignorance
-        Note right of Caerulean: Caerulean for some reason has lost user symmetric key
-        Caerulean ->> Viridian: [NO_KEY, <null>]
-        Note left of Viridian: Viridian goes to [Connection to ...]
-    end
-
-    opt Viridian disconnection
-        Note left of Viridian: Viridian wishes to disconnect
-        Viridian ->> Caerulean: [TERMIN, <null>]
-        Note right of Caerulean: Caerulean deletes user symmetric key
-        Caerulean ->> Viridian: [SUCCESS, <null>]
-        Note left of Viridian: Viridian is disconnected
-    end
-
-    opt Caerulean disconnection
-        Note right of Caerulean: Caerulean wishes to interrupt all connections
-        Caerulean ->> Viridian: [TERMIN, <null>]
-        Note left of Viridian: Viridian disconnects from caerulean
-    end
-```
-
-Here optional messages are shown in dotted lines.
+TODO: diagram.
 
 > **NB!** Although the protocol is stateful, the current stateis not really important:
 > viridian can re-connect to caerulean _any_ time it wants!
@@ -192,7 +161,7 @@ Caerulean is server side of Seaside VPN, it consists of several parts:
 
 ### Whirlpool
 
-See detailed documentation [here](https://github.com/pseusys/SeasideVPN/blob/main/caerulean/whirlpool/README.md).
+See detailed documentation [here](./caerulean/whirlpool/README.md).
 
 ## Viridian (client)
 
@@ -200,7 +169,7 @@ Viridian is client side of Seaside VPN, there are several client options:
 
 ### Algae
 
-See detailed documentation [here](https://github.com/pseusys/SeasideVPN/blob/main/viridian/algae/README.md).
+See detailed documentation [here](./viridian/algae/README.md).
 
 ## General launching commands
 
@@ -232,31 +201,41 @@ These are:
 
 1. Add unit tests to both `caerulean/whirlpool` and `viridian/algae` (do not run them in Docker).
 2. Write documentation for both `caerulean/whirlpool` and `viridian/algae`.
-3. Add further integration tests - connection, disconnection, errors.
-4. Remove all `(planned)` marks from READMEs.
-5. Add shell build, generation, etc. script for easy `caerulean/whirlpool` deployment (with and without container).
-6. Add general make script to check dependencies, environment, etc.
-7. Add clean make rule to clean docker images + networks.
-8. Merge READMEs
-9. Check control connections to whirlpool, maybe http.
-12. Different max user values for network and internal (reserved users)
-14. During tests: check whirlpool logs for connections, test with several clients
-15. Rename main module
-16. Move cli args to env vars
-17. All errors to JoinErro
-18. Add gravity to all user requests and responses.
-20. Empty heartbeat messages in control channel: random time intervals, add noise to connection.
-21. Surface to whirlpool status connections: different time intervals.
-22. Add image build target to whirlpool make, add executable build workflow.
-25. Use http.Error in network.go.
-27. Set GET and POST checks in GO.
-28. Change obfuscation methods, apply them for HTTP requests.
-29. Whirlpool: also reseed public key.
-30. Reshuffle go code.
-31. Save and restore all iptables configs (whirlpool) - use lib
-32. Check other tools (nftables) / libs for server
-33. Network for all tests: with common "internet" router
-34. Move some configs tp env
+3. Remove all `(planned)` marks from READMEs.
+4. Add shell build, generation, etc. script for easy `caerulean/whirlpool` deployment (with and without container).
+5. Add clean make rule to clean docker images + networks.
+6. Check control connections to whirlpool, maybe `http` package.
+7. Move cli args to env vars
+8. All errors to JoinError
+9. Add image build target to whirlpool make.
+10. Use http.Error in network.go.
+11. Set GET and POST checks in GO.
+12. Check other tools (nftables) / libs for server
+13. Move some configs tp env
+14. Check other tools (nftables) / libs for server
+15. Whirlpool: -m limit tcp packet number (user number \* tcp method number \* tcp connection packets)
+16. Move default params extraction to controller
+17. Add "stress" profile with pumba on internal router for enhanced testing, use tcp echo server (can be found on dockerhub) (4 containrrs, no ext router).
+18. Add "load" profile for direct access (3 containers) and multiple clients and performance analysis for whirlpool.
+19. Replace array-buffers with REAL buffers in Go
+20. Warning if packet is too large
+21. GO: one type for many args
+22. Parse tunnel properties in config contrutor
+23. Check tunnel address (not in users list): IP and Gateway
+24. Port numbers exchange (users to server, server to users)
+25. Write script for downloading/running/configuring server
+26. Control healthcheck times by cosine function, increase max delay to smth like 360 seconds, add random response delay
+27. Addresses for VPN connection: black and white list (limit addresses to use VPN with) <- add traffic analysis tool to client
+28. Advice on traffic distribution (proxy nodes), all routes and ports masking.
+29. On caerulean side: switch to 10.x.x.x tunnel IP, 1st X will be the number of PROXY the acket has been received from
+30. Protocol disguise: QOTD or any raw socket or data stream
+31. Add RTP protocol disguise option (to obfuscation, sent by client)
+32. In case of admin connection: require admin configuration file (with proxies, ports, etc.)
+33. For connection: alias mapping (for all nodes) dict in YAML
+34. Network center: for connection not only link, but also a special key is required. Without the key connection by IP only is impossible. Key is distributed alongside with network center IP and port and IS NEVER SHOWN TO PROVIDER AS PLAINTEXT. Connection request includes this key + proposed session key.
+35. Create general functions for decryption+unmarshalling and encryption+marshalling for network.go ONLY
+36. TEST LOCAL and GLOBAL python and go
+37. Rewrite pythoon with async/await.
 
 All user requests to control port encrypted with public key, all answers with session key.
 Both requests and responses to sea port encrypted with session key.

@@ -13,6 +13,7 @@ services:
       BUFFER_SIZE: 8192  # Buffer for echo server message storing
       LOCAL_ECHO_PORT: 5000  # Port for echo server accessing
       OWNER_KEY: SuperSafeNodeOwnerKey  # Whirlpool node owner key
+      PUBLIC_KEY: 5e46857bc554cce1e1c1b94a00c41189cde7eafb116500598b211c10bb3c3148  # Whirlpool node public key
 
   whirlpool:
     image: seaside-whirlpool-smoke
@@ -24,6 +25,7 @@ services:
     environment:
       LOG_LEVEL: DEBUG
       OWNER_KEY: SuperSafeNodeOwnerKey  # Whirlpool node owner key
+      PUBLIC_KEY: 5e46857bc554cce1e1c1b94a00c41189cde7eafb116500598b211c10bb3c3148  # Whirlpool node public key
 
   echo:
     image: seaside-echo-smoke

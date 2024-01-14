@@ -28,9 +28,9 @@ ENV LOG_LEVEL WARNING
 ENV MAX_USERS 16
 
 ENV OWNER_KEY none
+ENV PUBLIC_KEY none
 ENV ADDRESS none
 ENV EXTERNAL none
-ENV SURFACE none
 ENV SEA_PORT 8542
 ENV CTRL_PORT 8543
 ENV NET_PORT 8587
@@ -40,7 +40,7 @@ ENV MAX_ADMINS 5
 EXPOSE $SEA_PORT/udp
 EXPOSE $CTRL_PORT/tcp
 EXPOSE $NET_PORT/tcp
-ENTRYPOINT ./whirlpool.run -a $ADDRESS -e $EXTERNAL -s $SURFACE -p $SEA_PORT -c $CTRL_PORT -n $NET_PORT -o $OWNER_KEY
+ENTRYPOINT ./whirlpool.run -a $ADDRESS -e $EXTERNAL -p $SEA_PORT -c $CTRL_PORT -n $NET_PORT
 
 # TODO: after docker engine 25 is out, change to: --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s
-HEALTHCHECK --interval=3s --timeout=1s --retries=3 --start-period=10s CMD wget -qO- http://$ADDRESS:$NET_PORT/public | wc -c | xargs test 512 -lt
+HEALTHCHECK --interval=3s --timeout=1s --retries=3 --start-period=10s CMD netstat -tulpn | grep -q ":$SEA_PORT"
