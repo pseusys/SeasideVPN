@@ -134,7 +134,7 @@ func SendPacketsToViridian(tunnel *water.Interface, tunnetwork *net.IPNet) {
 		}
 
 		// Resolve viridian address to send to
-		gateway, err := net.ResolveUDPAddr(UDP, fmt.Sprintf("%s:%v", viridian.Gateway.String(), SEASIDE_PORT))
+		gateway, err := net.ResolveUDPAddr(UDP, fmt.Sprintf("%s:%v", viridian.Gateway.String(), viridian.Port))
 		if err != nil {
 			logrus.Errorln("Parsing return address error:", err)
 			continue

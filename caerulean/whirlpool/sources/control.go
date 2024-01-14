@@ -13,7 +13,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func connectViridian(encryptedToken, address, gateway []byte) (generated.UserControlResponseStatus, *uint16) {
+func connectViridian(encryptedToken, address, gateway []byte, port uint32) (generated.UserControlResponseStatus, *uint16) {
 	if encryptedToken == nil {
 		logrus.Warnf("User address is null")
 		return generated.UserControlResponseStatus_ERROR, nil
@@ -36,7 +36,7 @@ func connectViridian(encryptedToken, address, gateway []byte) (generated.UserCon
 		logrus.Warnf("User address is null")
 		return generated.UserControlResponseStatus_ERROR, nil
 	} else {
-		userID, status, err := users.AddViridian(token, address, gateway)
+		userID, status, err := users.AddViridian(token, address, gateway, port)
 		if err != nil {
 			logrus.Warnln("Couldn't add viridian", err)
 		}
@@ -115,7 +115,7 @@ func ListenControlPort(ip string, port int) {
 		// In case of PUBLIC status - register user
 		case generated.UserControlRequestStatus_CONNECTION:
 			payload := message.GetConnection()
-			status, userID := connectViridian(payload.Token, payload.Address, address.IP)
+			status, userID := connectViridian(payload.Token, payload.Address, address.IP, uint32(payload.Port))
 			logrus.Infoln("Connecting new user", *userID)
 			users.SendMessageToUser(status, connection, userID)
 		// In case of HEALTHPING status - update user deletion timer
