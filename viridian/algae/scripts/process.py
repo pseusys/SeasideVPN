@@ -8,7 +8,6 @@ from PyInstaller.__main__ import run as install
 from python_on_whales import DockerClient
 from python_on_whales.utils import run as docker_run
 
-from sources.main import main
 from scripts._utils import ALGAE_ROOT
 
 _EXECUTABLE_NAME = "algae.run"
@@ -28,6 +27,7 @@ def compile() -> None:
 
 
 def execute() -> None:
+    from sources.main import main
     main(argv[1:])
 
 
