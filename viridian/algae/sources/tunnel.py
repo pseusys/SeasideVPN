@@ -69,10 +69,9 @@ def _create_internet_rule(default_ip: IPv4Interface, default_interface: str) -> 
 
 
 class Tunnel:
-    def __init__(self, name: str, addr: IPv4Address, sea_port: int):
+    def __init__(self, name: str, addr: IPv4Address):
         self._name = name
         self._address = str(addr)
-        self.sea_port = sea_port
 
         self._tunnel_ip = "192.168.0.65"
         self._tunnel_cdr = 24
@@ -148,20 +147,20 @@ class Tunnel:
             logger.info(f"Tunnel {Fore.GREEN}disabled{Fore.RESET}")
         self._operational = False
 
-    def send_to_caerulean(self, gate: socket, obfuscator: Obfuscator, user_id: int) -> None:
+    def send_to_caerulean(self, gate: socket, sea_port: int, obfuscator: Obfuscator, user_id: int) -> None:
         if self._cipher is None:
             raise ValueError("Cipher must be set before launching sender thread!")
         while self._operational:
             packet = read(self._descriptor, MAX_MESSAGE_SIZE)
-            logger.debug(f"Sending {len(packet)} bytes to caerulean {self._address}:{self.sea_port}")
+            logger.debug(f"Sending {len(packet)} bytes to caerulean {self._address}:{sea_port}")
             payload = obfuscator.encrypt(packet, self._cipher, user_id, False)
-            gate.sendto(payload, (self._address, self.sea_port))
+            gate.sendto(payload, (self._address, sea_port))
 
-    def receive_from_caerulean(self, gate: socket, obfuscator: Obfuscator, _: int) -> None:
+    def receive_from_caerulean(self, gate: socket, sea_port: int, obfuscator: Obfuscator, _: int) -> None:
         if self._cipher is None:
             raise ValueError("Cipher must be set before launching receiver thread!")
         while self._operational:
             packet = gate.recv(MAX_MESSAGE_SIZE)
             payload = obfuscator.decrypt(packet, self._cipher, False)[1]
-            logger.debug(f"Receiving {len(payload)} bytes from caerulean {self._address}:{self.sea_port}")
+            logger.debug(f"Receiving {len(payload)} bytes from caerulean {self._address}:{sea_port}")
             write(self._descriptor, payload)

@@ -189,23 +189,51 @@ Message names reflect corresponding `protobuf` object names (see [message descri
 > **NB!** Although the protocol is stateful, the current stateis not really important:
 > viridian can re-connect to caerulean _any_ time it wants!
 
-## Caerulean (server)
+## Connection certificate
+
+Connection to all seaside system nodes can be done using a special **connection certificate** only.
+If it wouldn't be the case, at least some system nodes should've provided some public interface for user connections (e.g. sending unencrypted public key on request or showing login page).
+That could've potentially compromise the system and provide an intruder a way to automatically create an account or login and receive necessary information for efficient packet signature resolution.
+
+**Connection certificate** for all the nodes have common structure:
+
+- **address** (IP or domain name) where the node HTTP server is hosted.
+- **netport** port number where the node HTTP server is hosted.
+- **nautichart** endpoint name, sending a request to this endpoint will return all the info required to use this node.
+- **public** `XChaCha20-Poly1305` key (hex string), 32 bytes long.
+- **payload** string for user type determination and **public** encryption checking.
+
+Each node can support multiple **payload** options, e.g. for users with differen privelege levels or for users from different origins.
+All the connection certificate can be expressed in a form of an URL:
+
+```text
+seaside://{address}:{netport}/{nautichart}?public={public}&payload={owner}
+```
+
+> NB! Some of the nodes (the ones that can be run in Docker) usually accept the certificate in form of environmental variables.
+> In that case, the certificate field names are ptepended with `seaside_` prefix in order to avoid potential clashes with other variables.
+
+## System parts
+
+Below some short descriptions of different system parts are given alongside with links to their dedicated README files.
+
+### Caerulean (server)
 
 Caerulean is server side of Seaside VPN, it consists of several parts:
 
-### Surface
+#### Surface
 
 🚧 Under construction! 🚧
 
-### Whirlpool
+#### Whirlpool
 
 See detailed documentation [here](./caerulean/whirlpool/README.md).
 
-## Viridian (client)
+### Viridian (client)
 
 Viridian is client side of Seaside VPN, there are several client options:
 
-### Algae
+#### Algae
 
 See detailed documentation [here](./viridian/algae/README.md).
 
@@ -242,33 +270,20 @@ These are:
 3. Remove all `(planned)` marks from READMEs.
 4. Add shell build, generation, etc. script for easy `caerulean/whirlpool` deployment (with and without container).
 5. Add clean make rule to clean docker images + networks.
-6. Move cli args to env vars
-7. Add image build target to whirlpool make.
-8. Set GET and POST checks in GO.
-9. Check other tools (nftables) / libs for server
-10. Move some configs tp env
-11. Whirlpool: -m limit tcp packet number (user number \* tcp method number \* tcp connection packets)
-12. Move default params extraction to controller
-13. Add "stress" profile with pumba on internal router for enhanced testing, use tcp echo server (can be found on dockerhub) (4 containrrs, no ext router).
-14. Add "load" profile for direct access (3 containers) and multiple clients and performance analysis for whirlpool.
-15. Replace array-buffers with REAL buffers in Go
-16. Warning if packet is too large
-17. Parse tunnel properties in config contrutor
-18. Port numbers exchange (users to server, server to users)
-19. Write script for downloading/running/configuring server
-20. Control healthcheck times by cosine function, increase max delay to smth like 360 seconds, add random response delay
-21. Addresses for VPN connection: black and white list (limit addresses to use VPN with) <- add traffic analysis tool to client
-22. Advice on traffic distribution (proxy nodes), all routes and ports masking.
-23. On caerulean side: switch to 10.x.x.x tunnel IP, 1st X will be the number of PROXY the packet has been received from
-24. Protocol disguise: QOTD or any raw socket or data stream
-25. Add RTP protocol disguise option (to obfuscation, sent by client)
-26. In case of admin connection: require admin configuration file (with proxies, ports, etc.)
-27. For connection: alias mapping (for all nodes) dict in YAML
-28. Network center: for connection not only link, but also a special key is required. Without the key connection by IP only is impossible. Key is distributed alongside with network center IP and port and IS NEVER SHOWN TO PROVIDER AS PLAINTEXT. Connection request includes this key + proposed session key.
-29. Create general functions for decryption+unmarshalling and encryption+marshalling for network.go ONLY
-30. TEST LOCAL and GLOBAL python and go
-31. Rewrite pythoon with async/await.
-32. Default vilumes in docker compose, default log level below info
-33. Poetry local launch target
-34. Add "connection certificate" description to README.md.
-35. Use a library for `iptables` management in `caerulean/whirlpool` - if some other types of operations (not adding) are required; same about `ip route` and regex in `whirlpool/console.go`.
+6. Add image build target to whirlpool make.
+7. Set GET and POST checks in GO.
+8. Whirlpool: -m limit tcp packet number (user number \* tcp method number \* tcp connection packets)
+9. Add "stress" profile with pumba on internal router for enhanced testing, use tcp echo server (can be found on dockerhub) (4 containrrs, no ext router).
+10. Add "load" profile for direct access (3 containers) and multiple clients and performance analysis for whirlpool.
+11. Warning if packet is too large
+12. Port numbers exchange (users to server, server to users)
+13. Write script for downloading/running/configuring server
+14. Control healthcheck times by cosine function, increase max delay to smth like 360 seconds, add random response delay
+15. Addresses for VPN connection: black and white list (limit addresses to use VPN with) <- add traffic analysis tool to client
+16. Advice on traffic distribution (proxy nodes), all routes and ports masking, on caerulean side: switch to 10.x.x.x tunnel IP, 1st X will be the number of PROXY the packet has been received from
+17. Protocol disguise: QOTD or any raw socket or data stream
+18. Add RTP protocol disguise option (to obfuscation, sent by client)
+19. Create general functions for decryption+unmarshalling and encryption+marshalling for network.go ONLY
+20. TEST LOCAL and GLOBAL python and go
+21. Rewrite pythoon with async/await.
+22. Poetry local launch target

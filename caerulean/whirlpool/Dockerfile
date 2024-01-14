@@ -24,23 +24,20 @@ WORKDIR /seaside/caerulean
 RUN apk add --no-cache iptables
 COPY --from=builder /seaside/caerulean/whirlpool.run ./
 
-ENV LOG_LEVEL WARNING
-ENV MAX_USERS 16
+ENV SEASIDE_SEAPORT 8542
+ENV SEASIDE_CTRLPORT 8543
+ENV SEASIDE_NETPORT 8587
 
-ENV OWNER_KEY none
-ENV PUBLIC_KEY none
-ENV ADDRESS none
-ENV EXTERNAL none
-ENV SEA_PORT 8542
-ENV CTRL_PORT 8543
-ENV NET_PORT 8587
-ENV MAX_USERS 10
-ENV MAX_ADMINS 5
+ENV SEASIDE_NAUTICHART nautichart
+ENV SEASIDE_AUTH auth
 
-EXPOSE $SEA_PORT/udp
-EXPOSE $CTRL_PORT/tcp
-EXPOSE $NET_PORT/tcp
-ENTRYPOINT ./whirlpool.run -a $ADDRESS -e $EXTERNAL -p $SEA_PORT -c $CTRL_PORT -n $NET_PORT
+ENV SEASIDE_MAX_USERS 10
+ENV SEASIDE_MAX_ADMINS 5
+
+EXPOSE $SEASIDE_SEAPORT/udp
+EXPOSE $SEASIDE_CTRLPORT/tcp
+EXPOSE $SEASIDE_NETPORT/tcp
+ENTRYPOINT ./whirlpool.run
 
 # TODO: after docker engine 25 is out, change to: --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s
-HEALTHCHECK --interval=3s --timeout=1s --retries=3 --start-period=10s CMD netstat -tulpn | grep -q ":$SEA_PORT"
+HEALTHCHECK --interval=3s --timeout=1s --retries=3 --start-period=10s CMD netstat -tulpn | grep -q ":$SEASIDE_SEAPORT"

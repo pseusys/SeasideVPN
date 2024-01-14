@@ -9,4 +9,4 @@ services:
       context: ../../..
       target: sleeping
     environment:
-      NODE_ADDR: 10.65.0.65
+      SEASIDE_ADDRESS: 10.65.0.65

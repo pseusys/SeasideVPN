@@ -11,16 +11,16 @@ from .outputs import logger
 from .requests import post
 from .tunnel import Tunnel
 
-from .generated import UserDataWhirlpool, UserCertificate, UserControlMessage, UserControlResponseStatus, UserControlRequestStatus, UserControlMessageConnectionMessage, UserControlMessageHealthcheckMessage, WhirlpoolControlMessage
+from .generated import UserDataWhirlpool, UserCertificate, UserControlMessage, UserControlResponseStatus, UserControlRequestStatus, UserControlMessageConnectionMessage, UserControlMessageHealthcheckMessage, WhirlpoolControlMessage, WhirlpoolConnectionCertificate, WhirlpoolNauticalChart
 
 
 class Controller:
-    def __init__(self, public_key: str, owner_key: str, name: str, addr: IPv4Address, sea_port: int, net_port: int, ctrl_port: int, hc_min: int, hc_max: int):
+    def __init__(self, public_key: str, owner_key: str, addr: IPv4Address, net_port: int, nautichart: str, name: str, hc_min: int, hc_max: int):
         self._owner_key = owner_key
         self._address = str(addr)
         self._net_port = net_port
-        self._ctrl_port = ctrl_port
-        self._interface = Tunnel(name, addr, sea_port)
+        self._nautichart_endpoint = nautichart
+        self._interface = Tunnel(name, addr)
         self._user_id = 0
         self._min_hc_time = hc_min
         self._max_hc_time = hc_max
@@ -29,6 +29,9 @@ class Controller:
         if hc_min < 1:
             raise ValueError("Minimal healthcheck time can't be less than 1 second!")
 
+        self._sea_port: int
+        self._ctrl_port: int
+        self._auth_endpoint: str
         self._session_token: bytes
         self._receiver_process: Process
         self._sender_process: Process
@@ -49,14 +52,22 @@ class Controller:
             self._clean_tunnel()
 
     def _receive_token(self) -> None:
+        logger.debug(f"Requesting node nautical chart...")
+        connection_data = self._public_cipher.encode(self._owner_key.encode())
+        with post(f"http://{self._address}:{self._net_port}/{self._nautichart_endpoint}", connection_data) as response:
+            chart = WhirlpoolNauticalChart().parse(self._public_cipher.decode(response.read()))
+            self._auth_endpoint = chart.auth_endpoint
+            self._sea_port = chart.seaside_port
+            self._ctrl_port = chart.control_port
+
         self._cipher = Cipher()
         logger.debug(f"Symmetric session cipher initialized: {self._cipher.key}")
         user_data = UserDataWhirlpool(uid="some_cool_uid", session=self._cipher.key, owner_key=self._owner_key)
         user_encrypted = self._public_cipher.encode(bytes(user_data))
 
         logger.debug("Requesting whirlpool token...")
-        with post(f"http://{self._address}:{self._net_port}/auth", user_encrypted) as response:
-            certificate = UserCertificate().parse(self._public_cipher.decode(response.read(), False))
+        with post(f"http://{self._address}:{self._net_port}/{self._auth_endpoint}", user_encrypted) as response:
+            certificate = UserCertificate().parse(self._public_cipher.decode(response.read()))
             self._session_token = certificate.token  # TODO: extract sea and control ports
             self._obfuscator = Obfuscator(c_uint64(certificate.multiplier), c_uint64(certificate.user_zero))
 
@@ -86,9 +97,9 @@ class Controller:
     def _turn_tunnel_on(self) -> None:
         self._interface.up()
         self._gate_socket = socket(AF_INET, SOCK_DGRAM)
-        self._gate_socket.bind((self._interface.default_ip, self._interface.sea_port))
-        self._receiver_process = Process(target=self._interface.receive_from_caerulean, name="receiver", args=[self._gate_socket, self._obfuscator, self._user_id], daemon=True)
-        self._sender_process = Process(target=self._interface.send_to_caerulean, name="sender", args=[self._gate_socket, self._obfuscator, self._user_id], daemon=True)
+        self._gate_socket.bind((self._interface.default_ip, self._sea_port))
+        self._receiver_process = Process(target=self._interface.receive_from_caerulean, name="receiver", args=[self._gate_socket, self._sea_port, self._obfuscator, self._user_id], daemon=True)
+        self._sender_process = Process(target=self._interface.send_to_caerulean, name="sender", args=[self._gate_socket, self._sea_port, self._obfuscator, self._user_id], daemon=True)
         self._receiver_process.start()
         self._sender_process.start()
 

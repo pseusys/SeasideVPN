@@ -12,16 +12,71 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var NODE_OWNER_KEY string
+var (
+	NODE_OWNER_KEY string
+	PAYLOAD_KEY    string
+
+	NAUTICHART_ENDPOINT string
+	AUTH_ENDPOINT       string
+)
 
 func init() {
-	NODE_OWNER_KEY = utils.GetEnv("OWNER_KEY", nil)
+	NODE_OWNER_KEY = utils.GetEnv("SEASIDE_PAYLOAD_OWNER", nil)
+	PAYLOAD_KEY = utils.GetEnv("SEASIDE_PAYLOAD_USER", nil)
+
+	NAUTICHART_ENDPOINT = utils.GetEnv("SEASIDE_NAUTICHART", nil)
+	AUTH_ENDPOINT = utils.GetEnv("SEASIDE_AUTH", nil)
 }
 
 func writeRawData(w http.ResponseWriter, data []byte, code int) {
 	w.Header().Add("Content-Type", "application/octet-stream")
 	w.WriteHeader(code)
 	w.Write(data)
+}
+
+func nautichart(w http.ResponseWriter, r *http.Request) {
+	// TODO: check POST request
+	logrus.Error("NAUTICHART")
+
+	ciphertext, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error reading request bytes: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	plaintext, err := crypto.Decode(ciphertext, false, crypto.PUBLIC_NODE_AEAD)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error decoding request bytes: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	payload := string(plaintext)
+	switch {
+	case payload == NODE_OWNER_KEY:
+		fallthrough
+	case payload == PAYLOAD_KEY:
+		token := &generated.WhirlpoolNauticalChart{
+			AuthEndpoint: AUTH_ENDPOINT,
+			SeasidePort:  int32(SEASIDE_PORT),
+			ControlPort:  int32(CONTROL_PORT),
+		}
+
+		marshToken, err := proto.Marshal(token)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("error marshalling token: %v", err), http.StatusBadRequest)
+			return
+		}
+
+		tokenData, err := crypto.Encode(marshToken, nil, crypto.PUBLIC_NODE_AEAD)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("error encrypting token: %v", err), http.StatusBadRequest)
+			return
+		}
+
+		writeRawData(w, tokenData, http.StatusOK)
+	default:
+		http.Error(w, "wrong payload string", http.StatusBadRequest)
+	}
 }
 
 func auth(w http.ResponseWriter, r *http.Request) {
@@ -34,7 +89,7 @@ func auth(w http.ResponseWriter, r *http.Request) {
 
 	plaintext, err := crypto.Decode(ciphertext, false, crypto.PUBLIC_NODE_AEAD)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("error decoding temp key: %v", err), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("error decoding request bytes: %v", err), http.StatusBadRequest)
 		return
 	}
 
@@ -68,11 +123,9 @@ func auth(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := &generated.UserCertificate{
-		Token:       tokenData,
-		UserZero:    int64(crypto.ZERO_USER_ID),
-		Multiplier:  int64(crypto.MULTIPLIER),
-		SeaPort:     int32(*port),
-		ControlPort: int32(*control),
+		Token:      tokenData,
+		UserZero:   int64(crypto.ZERO_USER_ID),
+		Multiplier: int64(crypto.MULTIPLIER),
 	}
 	marshResponse, err := proto.Marshal(response)
 	if err != nil {
@@ -90,17 +143,14 @@ func auth(w http.ResponseWriter, r *http.Request) {
 }
 
 func InitNetAPI(port int) {
-	if NODE_OWNER_KEY == NONE_ARG {
-		logrus.Fatalln("owner key not provided")
-	} else {
-		logrus.Infoln("Node API setup, node owner key:", NODE_OWNER_KEY)
-	}
+	logrus.Infoln("Node API setup, node owner key:", NODE_OWNER_KEY)
 
+	http.HandleFunc(fmt.Sprintf("/%s", NAUTICHART_ENDPOINT), nautichart)
 	// TODO: distribute stats: http.HandleFunc("/stats", stats)
-	http.HandleFunc("/auth", auth)
+	http.HandleFunc(fmt.Sprintf("/%s", AUTH_ENDPOINT), auth)
 	// TODO: connect to network: http.HandleFunc("/connect", connect)
 
-	network := fmt.Sprintf("%s:%d", *iIP, port)
+	network := fmt.Sprintf("%s:%d", INTERNAL_ADDRESS, port)
 	logrus.Infoln("Listening for HTTP requests at:", network)
 	logrus.Fatalf("Net server error: %s", http.ListenAndServe(network, nil))
 }

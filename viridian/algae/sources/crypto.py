@@ -29,7 +29,7 @@ class Cipher:
         encryption, tag = cipher.encrypt_and_digest(plaintext)
         return nonce + encryption + tag
 
-    def decode(self, ciphertext: bytes, _: bool) -> bytes:
+    def decode(self, ciphertext: bytes) -> bytes:
         nonce, ciphertext = ciphertext[:self._CHACHA_NONCE_LENGTH], ciphertext[self._CHACHA_NONCE_LENGTH:]
         cipher = ChaCha20_Poly1305.new(key=self.key, nonce=nonce)
         encryption, tag = ciphertext[:-self._tag_length], ciphertext[-self._tag_length:]
@@ -83,5 +83,5 @@ class Obfuscator:
     def decrypt(self, message: bytes, encoder: Optional[Cipher], expect_tail: bool) -> Tuple[Optional[int], bytes]:
         user_id = self.unsubscribe(message)
         ciphertext = self._detail_message(message) if expect_tail else message
-        plaintext = ciphertext[16:] if encoder is None else encoder.decode(ciphertext, True)
+        plaintext = ciphertext[16:] if encoder is None else encoder.decode(ciphertext)
         return user_id, plaintext
