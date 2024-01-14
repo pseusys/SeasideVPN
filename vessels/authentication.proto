@@ -18,8 +18,6 @@ message UserCertificate {
     bytes token = 1;
     int64 userZero = 2;
     int64 multiplier = 3;
-    int32 seaPort = 4;
-    int32 controlPort = 5;
 }
 
 

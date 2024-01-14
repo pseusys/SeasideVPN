@@ -28,16 +28,15 @@ def is_tcp_available(address: str = "example.com", port: int = 80) -> bool:
 
 @pytest.fixture(scope="session")
 def controller() -> Generator[Controller, None, None]:
-    owner_key = environ["OWNER_KEY"]
-    public_key = environ["PUBLIC_KEY"]
-    name = getenv("IFACE_NAME", "sea-tun")
-    addr = IPv4Address(environ["NODE_ADDR"])
-    sea_port = int(getenv("SEA_PORT", "8542"))
-    net_port = int(getenv("NET_PORT", "8587"))
-    ctrl_port = int(getenv("CTRL_PORT", "8543"))
-    min_healthcheck = int(getenv("MIN_HEALTHCHECK", "1"))
-    max_healthcheck = int(getenv("MAX_HEALTHCHECK", "5"))
-    yield Controller(public_key, owner_key, name, addr, sea_port, net_port, ctrl_port, min_healthcheck, max_healthcheck)
+    owner_key = environ["SEASIDE_PAYLOAD_OWNER"]
+    public_key = environ["SEASIDE_PUBLIC"]
+    name = getenv("SEASIDE_TUNNEL_NAME", "sea-tun")
+    addr = IPv4Address(environ["SEASIDE_ADDRESS"])
+    net_port = int(getenv("SEASIDE_NETPORT", "8587"))
+    nautichart = getenv("SEASIDE_NAUTICHART", "nautichart")
+    min_healthcheck = int(getenv("SEASIDE_MIN_HC_TIME", "1"))
+    max_healthcheck = int(getenv("SEASIDE_MAX_HC_TIME", "5"))
+    yield Controller(public_key, owner_key, addr, net_port, nautichart, name, min_healthcheck, max_healthcheck)
 
 
 @pytest.mark.dependency()

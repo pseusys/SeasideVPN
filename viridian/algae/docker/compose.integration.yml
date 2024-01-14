@@ -8,11 +8,8 @@ services:
       dockerfile: viridian/algae/docker/Dockerfile.algae
       context: ../../..
       target: sleeping
-    environment:
-      LOG_LEVEL: DEBUG
-      OWNER_KEY: SuperSafeNodeOwnerKey
-      PUBLIC_KEY: 5e46857bc554cce1e1c1b94a00c41189cde7eafb116500598b211c10bb3c3148
-      NODE_ADDR: 10.65.0.87
+    env_file:
+      - test.conf.env
     networks:
       sea-client:
         ipv4_address: 10.65.0.65
@@ -24,12 +21,10 @@ services:
     extends:
       file: compose.default.yml
       service: whirlpool
+    env_file:
+      - test.conf.env
     environment:
-      LOG_LEVEL: DEBUG
-      OWNER_KEY: SuperSafeNodeOwnerKey
-      PUBLIC_KEY: 5e46857bc554cce1e1c1b94a00c41189cde7eafb116500598b211c10bb3c3148
-      ADDRESS: 10.65.0.87
-      EXTERNAL: 10.87.0.87
+      SEASIDE_EXTERNAL: 10.87.0.87
     networks:
       sea-client:
         ipv4_address: 10.65.0.87

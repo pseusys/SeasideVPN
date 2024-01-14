@@ -11,8 +11,8 @@ logger = getLogger(__name__)
 @pytest.mark.timeout(5.0)
 def test_local_echo(random_message: bytes) -> None:
     logger.info("Testing with local echo server")
-    echo_address, echo_port = environ["LOCAL_ECHO"], int(environ["LOCAL_ECHO_PORT"])
-    local_address, vpn_port = environ["LOCAL_ADDR"], int(environ["SEA_PORT"])
+    echo_address, echo_port = environ["ECHO_ADDRESS"], int(environ["ECHO_PORT"])
+    local_address, vpn_port = environ["LOCAL_ADDRESS"], int(environ["SEASIDE_SEAPORT"])
     buffer = int(environ["BUFFER_SIZE"])
 
     with socket(AF_INET, SOCK_DGRAM) as gate:

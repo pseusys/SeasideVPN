@@ -14,10 +14,10 @@ logger = getLogger(__name__)
 
 @pytest.fixture(scope="function")
 def caerulean_address() -> Generator[str, None, None]:
-    if "NODE_ADDR" in environ:
-        yield environ["NODE_ADDR"]
+    if "SEASIDE_ADDRESS" in environ:
+        yield environ["SEASIDE_ADDRESS"]
     else:
-        raise RuntimeError("Caerulean IP ('NODE_ADDR' environmental variable) is not defined!")
+        raise RuntimeError("Caerulean IP ('SEASIDE_ADDRESS' environmental variable) is not defined!")
 
 
 @pytest.mark.skipif("CI" in environ, reason="Ping test shouldn't be run in CI environment as most of them don't support PING")

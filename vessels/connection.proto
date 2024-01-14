@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+option go_package = "/generated";
+
+
+
+message WhirlpoolConnectionCertificate {
+    string address = 1;
+    string netport = 2;
+    string nautichart = 3;
+    bytes public = 4;
+    string payload = 5;
+}
+
+message WhirlpoolNauticalChart {
+    string authEndpoint = 1;
+    int32 seasidePort = 2;
+    int32 controlPort = 3;
+}

@@ -9,9 +9,9 @@ services:
       args:
         NETWORK_GATEWAY: 10.65.0.100
     environment:
-      NODE_ADDR: 10.87.65.87
-      LOCAL_ADDR: 10.65.0.65
-      LOCAL_ECHO: 10.42.0.42
+      SEASIDE_ADDRESS: 10.87.65.87
+      LOCAL_ADDRESS: 10.65.0.65
+      ECHO_ADDRESS: 10.42.0.42
     networks:
       sea-client:
         ipv4_address: 10.65.0.65
@@ -40,8 +40,8 @@ services:
       args:
         NETWORK_GATEWAY: 10.87.42.1
     environment:
-      ADDRESS: 10.87.65.87
-      EXTERNAL: 10.87.42.87
+      SEASIDE_ADDRESS: 10.87.65.87
+      SEASIDE_EXTERNAL: 10.87.42.87
     networks:
       sea-router:
         ipv4_address: 10.87.65.87
