@@ -90,11 +90,9 @@ def test_send_suspicious_message(controller: Controller):
         gate.sendall(get_random_bytes(64))
         gate.shutdown(SHUT_WR)
         encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
-        try:
-            controller._obfuscator.decrypt(encrypted_message, controller._cipher, True)
-            assert False
-        except ValueError:
-            assert True
+        _, response = controller._obfuscator.decrypt(encrypted_message, controller._public_cipher, True)
+        response_status = WhirlpoolControlMessage().parse(response).status
+        assert response_status == UserControlResponseStatus.ERROR
 
 
 @pytest.mark.dependency(depends=["test_send_suspicious_message"])
@@ -112,7 +110,7 @@ def test_send_healthcheck_message(controller: Controller):
             gate.shutdown(SHUT_WR)
             encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
 
-            _, answer_message = controller._obfuscator.decrypt(encrypted_message, controller._cipher, True)
+            _, answer_message = controller._obfuscator.decrypt(encrypted_message, controller._public_cipher, True)
             status = WhirlpoolControlMessage().parse(answer_message).status
             assert status == UserControlResponseStatus.HEALTHPONG
             sleep(1)
@@ -143,11 +141,9 @@ def test_healthcheck_overtime(controller: Controller):
         gate.shutdown(SHUT_WR)
 
         encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
-        try:
-            controller._obfuscator.decrypt(encrypted_message, controller._cipher, True)
-            assert False
-        except ValueError:
-            assert True
+        _, response = controller._obfuscator.decrypt(encrypted_message, controller._public_cipher, True)
+        response_status = WhirlpoolControlMessage().parse(response).status
+        assert response_status == UserControlResponseStatus.ERROR
 
 
 @pytest.mark.dependency(depends=["test_healthcheck_overtime"])

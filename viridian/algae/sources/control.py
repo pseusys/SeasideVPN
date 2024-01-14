@@ -11,7 +11,7 @@ from .outputs import logger
 from .requests import post
 from .tunnel import Tunnel
 
-from .generated import UserDataWhirlpool, UserCertificate, UserControlMessage, UserControlResponseStatus, UserControlRequestStatus, UserControlMessageConnectionMessage, UserControlMessageHealthcheckMessage, WhirlpoolControlMessage, RawKeyExchange
+from .generated import UserDataWhirlpool, UserCertificate, UserControlMessage, UserControlResponseStatus, UserControlRequestStatus, UserControlMessageConnectionMessage, UserControlMessageHealthcheckMessage, WhirlpoolControlMessage
 
 
 class Controller:
@@ -56,7 +56,7 @@ class Controller:
 
         logger.debug("Requesting whirlpool token...")
         with post(f"http://{self._address}:{self._net_port}/auth", user_encrypted) as response:
-            certificate = UserCertificate().parse(self._cipher.decode(response.read(), False))
+            certificate = UserCertificate().parse(self._public_cipher.decode(response.read(), False))
             self._session_token = certificate.token  # TODO: extract sea and control ports
             self._obfuscator = Obfuscator(c_uint64(certificate.multiplier), c_uint64(certificate.user_zero))
 
@@ -75,7 +75,7 @@ class Controller:
             gate.shutdown(SHUT_WR)
 
             encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
-            self._user_id, answer_message = self._obfuscator.decrypt(encrypted_message, self._cipher, True)
+            self._user_id, answer_message = self._obfuscator.decrypt(encrypted_message, self._public_cipher, True)
             status = WhirlpoolControlMessage().parse(answer_message).status
 
             if status == UserControlResponseStatus.SUCCESS:
@@ -120,7 +120,7 @@ class Controller:
                     gate.shutdown(SHUT_WR)
 
                     encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
-                    _, answer_message = self._obfuscator.decrypt(encrypted_message, self._cipher, True)
+                    _, answer_message = self._obfuscator.decrypt(encrypted_message, self._public_cipher, True)
                     status = WhirlpoolControlMessage().parse(answer_message).status
 
                     if status == UserControlResponseStatus.HEALTHPONG:
@@ -152,7 +152,7 @@ class Controller:
             gate.shutdown(SHUT_WR)
 
             encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
-            _, answer_message = self._obfuscator.decrypt(encrypted_message, self._cipher, True)
+            _, answer_message = self._obfuscator.decrypt(encrypted_message, self._public_cipher, True)
             status = WhirlpoolControlMessage().parse(answer_message).status
 
             if status == UserControlResponseStatus.SUCCESS:

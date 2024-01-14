@@ -2,7 +2,7 @@ package tunnel
 
 import (
 	"errors"
-	"main/utils"
+	"fmt"
 	"net"
 	"os/exec"
 	"strings"
@@ -23,7 +23,7 @@ func runCommand(cmd string, args ...string) string {
 func findInterfaceByIP(address string) (string, error) {
 	ifaces, err := net.Interfaces()
 	if err != nil {
-		return "", utils.JoinError("error resolving network addresses", err)
+		return "", fmt.Errorf("error resolving network addresses: %v", err)
 	}
 
 	for _, iface := range ifaces {

@@ -12,7 +12,7 @@ import (
 
 const RANDOM_MESSAGE_LENGTH = 8
 
-func testEncryptionCycle(test *testing.T, subscribe bool, tailed bool) {
+func testEncryptionCycle(test *testing.T, subscribe, tailed bool) {
 	message := make([]byte, RANDOM_MESSAGE_LENGTH)
 	err := binary.Read(rand.Reader, binary.BigEndian, &message)
 	if err != nil {

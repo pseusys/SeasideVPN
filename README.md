@@ -230,9 +230,9 @@ These are:
 
 ### Roadmap
 
+- descriptions + tests for `whirlpool` and `algae`
+- `viridian/...` - windows and linux GUI client ([wintun](https://git.zx2c4.com/wintun/about/) + rust + electron)
 - `caerulean/surface` - distributed node manager
-- `viridian/...` - google chrome (and other browser) extension
-- `viridian/...` - windows and linux GUI client ([wintun](https://git.zx2c4.com/wintun/about/) + [qt](https://www.qt.io/))
 - `viridian/...` - android / ios clients
 
 ### TODOs
@@ -242,61 +242,33 @@ These are:
 3. Remove all `(planned)` marks from READMEs.
 4. Add shell build, generation, etc. script for easy `caerulean/whirlpool` deployment (with and without container).
 5. Add clean make rule to clean docker images + networks.
-6. Check control connections to whirlpool, maybe `http` package.
-7. Move cli args to env vars
-8. All errors to JoinError
-9. Add image build target to whirlpool make.
-10. Use http.Error in network.go.
-11. Set GET and POST checks in GO.
-12. Check other tools (nftables) / libs for server
-13. Move some configs tp env
-14. Check other tools (nftables) / libs for server
-15. Whirlpool: -m limit tcp packet number (user number \* tcp method number \* tcp connection packets)
-16. Move default params extraction to controller
-17. Add "stress" profile with pumba on internal router for enhanced testing, use tcp echo server (can be found on dockerhub) (4 containrrs, no ext router).
-18. Add "load" profile for direct access (3 containers) and multiple clients and performance analysis for whirlpool.
-19. Replace array-buffers with REAL buffers in Go
-20. Warning if packet is too large
-21. GO: one type for many args
-22. Parse tunnel properties in config contrutor
-23. Check tunnel address (not in users list): IP and Gateway
-24. Port numbers exchange (users to server, server to users)
-25. Write script for downloading/running/configuring server
-26. Control healthcheck times by cosine function, increase max delay to smth like 360 seconds, add random response delay
-27. Addresses for VPN connection: black and white list (limit addresses to use VPN with) <- add traffic analysis tool to client
-28. Advice on traffic distribution (proxy nodes), all routes and ports masking.
-29. On caerulean side: switch to 10.x.x.x tunnel IP, 1st X will be the number of PROXY the acket has been received from
-30. Protocol disguise: QOTD or any raw socket or data stream
-31. Add RTP protocol disguise option (to obfuscation, sent by client)
-32. In case of admin connection: require admin configuration file (with proxies, ports, etc.)
-33. For connection: alias mapping (for all nodes) dict in YAML
-34. Network center: for connection not only link, but also a special key is required. Without the key connection by IP only is impossible. Key is distributed alongside with network center IP and port and IS NEVER SHOWN TO PROVIDER AS PLAINTEXT. Connection request includes this key + proposed session key.
-35. Create general functions for decryption+unmarshalling and encryption+marshalling for network.go ONLY
-36. TEST LOCAL and GLOBAL python and go
-37. Rewrite pythoon with async/await.
-
-All user requests to control port encrypted with public key, all answers with session key.
-Both requests and responses to sea port encrypted with session key.
-
-Upon initialization make a file dump with all values generated -> volume
-Logrus write to file?
-Default vilumes in docker compose, default log level below info
-
-Connection can be done via network surface or directly to a node (http://[NODE_IP]/auth)
-
-### Considerations
-
-1. Use a library for `iptables` management in `caerulean/whirlpool` - if some other types of operations (not adding) are required; same about `ip route` and regex in `whirlpool/console.go`.
-   If so, consider also environment restoration in the end of main in `main.go`.
-
-### Current goals
-
-- Add healthcheck to all containers. Health chech special env var [here](https://ma.ttias.be/show-the-environment-variables-of-a-running-process-in-linux/) is a guide on how to do that.
-- Add `try ... except ...` blocks for missing imports in `viridian/algae/script.py`
-- Use monkeypatching to replace random bytes function with one returning zeros and random int with one returning const for easier message obfuscation testing.
-- Pass `gravity` as an input parameter.
-- Add "connection certificate" description to README.md.
-
-### Dependencies
-
-- `protoc` (can be installed via package manager, e.g. `apt install protobuf-compiler` for Ubuntu)
+6. Move cli args to env vars
+7. Add image build target to whirlpool make.
+8. Set GET and POST checks in GO.
+9. Check other tools (nftables) / libs for server
+10. Move some configs tp env
+11. Whirlpool: -m limit tcp packet number (user number \* tcp method number \* tcp connection packets)
+12. Move default params extraction to controller
+13. Add "stress" profile with pumba on internal router for enhanced testing, use tcp echo server (can be found on dockerhub) (4 containrrs, no ext router).
+14. Add "load" profile for direct access (3 containers) and multiple clients and performance analysis for whirlpool.
+15. Replace array-buffers with REAL buffers in Go
+16. Warning if packet is too large
+17. Parse tunnel properties in config contrutor
+18. Port numbers exchange (users to server, server to users)
+19. Write script for downloading/running/configuring server
+20. Control healthcheck times by cosine function, increase max delay to smth like 360 seconds, add random response delay
+21. Addresses for VPN connection: black and white list (limit addresses to use VPN with) <- add traffic analysis tool to client
+22. Advice on traffic distribution (proxy nodes), all routes and ports masking.
+23. On caerulean side: switch to 10.x.x.x tunnel IP, 1st X will be the number of PROXY the packet has been received from
+24. Protocol disguise: QOTD or any raw socket or data stream
+25. Add RTP protocol disguise option (to obfuscation, sent by client)
+26. In case of admin connection: require admin configuration file (with proxies, ports, etc.)
+27. For connection: alias mapping (for all nodes) dict in YAML
+28. Network center: for connection not only link, but also a special key is required. Without the key connection by IP only is impossible. Key is distributed alongside with network center IP and port and IS NEVER SHOWN TO PROVIDER AS PLAINTEXT. Connection request includes this key + proposed session key.
+29. Create general functions for decryption+unmarshalling and encryption+marshalling for network.go ONLY
+30. TEST LOCAL and GLOBAL python and go
+31. Rewrite pythoon with async/await.
+32. Default vilumes in docker compose, default log level below info
+33. Poetry local launch target
+34. Add "connection certificate" description to README.md.
+35. Use a library for `iptables` management in `caerulean/whirlpool` - if some other types of operations (not adding) are required; same about `ip route` and regex in `whirlpool/console.go`.

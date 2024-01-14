@@ -3,19 +3,20 @@ package utils
 import (
 	crand "crypto/rand"
 	"encoding/binary"
+	"fmt"
 	rand "math/rand"
 )
 
 const LETTER_BYTES = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
 
-func RandInt() (v int) {
-	if binary.Read(crand.Reader, binary.BigEndian, &v) != nil {
-		v = rand.Int()
+func RandInt() (value int) {
+	if binary.Read(crand.Reader, binary.BigEndian, &value) != nil {
+		value = rand.Int()
 	}
-	if v < 0 {
-		return -v
+	if value < 0 {
+		return -value
 	} else {
-		return v
+		return value
 	}
 }
 
@@ -23,10 +24,10 @@ func RandByteStr(length int) (string, error) {
 	byteString := make([]byte, length)
 	size, err := crand.Read(byteString)
 	if err != nil {
-		return "", JoinError("error reading random bytes", err)
+		return "", fmt.Errorf("error reading random bytes: %v", err)
 	}
 	if size != length {
-		return "", JoinError("wrong number of random bytes read", size)
+		return "", fmt.Errorf("wrong number of random bytes read: %v", size)
 	}
 
 	for i := 0; i < len(byteString); i++ {

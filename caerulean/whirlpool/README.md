@@ -5,9 +5,8 @@
 Whirlpool program is written in Go language.  
 It manages encrypting, decrypting, assembling and transferring requests and responses.
 
-Whirlpool accepts client packages at UDP port 8542, no more than 2000 bytes in size, encrypted.  
-
-Whirlpool sends messages to UDP port 8542, in packets of size 2000, encrypted.
+Whirlpool accepts client packages at UDP port 8542, encrypted.  
+Whirlpool sends messages to UDP port 8542, encrypted.
 
 > TODO: update (and check) ports.
 > WARNING! Any UDP packets arriving to ports 8542 and 8587 will be treated as user packets, i.e. user should never expect to receive any packets from these ports from any server via Seaside VPN!
@@ -92,40 +91,3 @@ It also sensitive to the following environmental variable:
   ```bash
   make -C caerulean/whirlpool clean
   ```
-
-## Time diagram
-
-```mermaid
-sequenceDiagram
-    actor Client
-    box Caerulean
-    participant Input as Caerulean UDP port 8542
-    participant Tunnel
-    participant Output as Caerulean Output
-    end
-    participant Server
-
-    Note right of Client: Encrypt request, pack in UDP
-    Client ->> Input: Encrypted & packed client request
-    
-    Note right of Input: Decrypt and unpack request
-    Input ->> Tunnel: Decrypted client request binary
-
-    Note right of Tunnel: Construct original packet
-    Tunnel ->> Output: Decrypted client request
-
-    Note right of Output: Masquerade and send packet
-    Output ->> Server: Client request
-
-    Note right of Output: Receive and unmasquerade packet
-    Server ->> Output: Server response
-    
-    Note right of Tunnel: Send packet to tunnel
-    Output ->> Tunnel: Routed server response
-
-    Note right of Input: Encrypt request, pack in UDP
-    Tunnel ->> Input: Encrypted server response
-
-    Note right of Client: Decrypt and unpack request
-    Input ->> Client: Encrypted & packed server response (UDP)
-```
