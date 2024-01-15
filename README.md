@@ -14,14 +14,14 @@ For user traffic encryption `XChaCha20-Poly1305` encryption is used.
 For protocol obfuscation special [`wavy messages`](#wavy-messages) protocol is used.
 
 Target users of the system are **groups** of people (companies, communities, etc.), residing in different countries and wishing to create their own VPN network.
-System deployment and integration is (planned) to be easy even for not very familiar with networking people, so that each system instance will consist of several connected individually managed nodes.
+System deployment and integration is designed to be easy even for not very familiar with networking people, so that each system instance will consist of several connected individually managed nodes.
 
 > **NB!** As no global infrastructure (i.e. public servers, domen names, etc.) is planned, user privacy and safety solely depends on the each system instance _node operators_.
 > System can only exist and be active until the people that use it **trust each other**! 🤝
 
 ### System structure
 
-Below, you can see the (planned) system structure.
+Below, you can see the system structure.
 Following naming is used:
 
 - [`Surface`](#surface) is the main node of the system instance.
@@ -197,9 +197,10 @@ That could've potentially compromise the system and provide an intruder a way to
 
 **Connection certificate** for all the nodes have common structure:
 
+- **nodetype**: type of node the certificate describes.
 - **address**: (IP or domain name) where the node HTTP server is hosted.
 - **netport**: port number where the node HTTP server is hosted.
-- **nautichart**: endpoint name, sending a request to this endpoint will return all the info required to use this node.
+- **anchor**: endpoint name, sending a request to this endpoint will initiate login sequence.
 - **public**: `XChaCha20-Poly1305` key (hex string), 32 bytes long.
 - **payload**: string for user type determination and **public** encryption checking.
 
@@ -207,7 +208,7 @@ Each node can support multiple **payload** options, e.g. for users with differen
 All the connection certificate can be expressed in a form of an URL:
 
 ```text
-seaside://{address}:{netport}/{nautichart}?public={public}&payload={owner}
+seaside+{nodetype}://{address}:{netport}/{anchor}?public={public}&payload={owner}
 ```
 
 > NB! Some of the nodes (the ones that can be run in Docker) usually accept the certificate in form of environmental variables.
@@ -273,19 +274,18 @@ These are:
 
 1. Add unit tests to both `caerulean/whirlpool` and `viridian/algae` (do not run them in Docker).
 2. Write documentation for both `caerulean/whirlpool` and `viridian/algae`.
-3. Remove all `(planned)` marks from READMEs.
-4. Add shell build, generation, etc. script for easy `caerulean/whirlpool` deployment (with and without container).
-5. Set GET and POST checks in GO.
-6. Whirlpool: -m limit tcp packet number (user number \* tcp method number \* tcp connection packets)
-7. Add "stress" profile with pumba on internal router for enhanced testing, use tcp echo server (can be found on dockerhub) (4 containrrs, no ext router).
-8. Add "load" profile for direct access (3 containers) and multiple clients and performance analysis for whirlpool.
-9. Warning if packet is too large
-10. Write script for downloading/running/configuring server
-11. Control healthcheck times by cosine function, increase max delay to smth like 360 seconds, add random response delay
-12. Addresses for VPN connection: black and white list (limit addresses to use VPN with) <- add traffic analysis tool to client
-13. Advice on traffic distribution (proxy nodes), all routes and ports masking, on caerulean side: switch to 172.x.x.x tunnel IP, 1st X will be the number of PROXY the packet has been received from
-14. Protocol disguise: QOTD or any raw socket or data stream
-15. Add RTP protocol disguise option (to obfuscation, sent by client)
-16. Create general functions for decryption+unmarshalling and encryption+marshalling for network.go ONLY
-17. Rewrite pythoon with async/await
-18. Extract `VIRIDIAN` calls from go files.
+3. Add shell build, generation, etc. script for easy `caerulean/whirlpool` deployment (with and without container).
+4. Set GET and POST checks in GO.
+5. Whirlpool: -m limit tcp packet number (user number \* tcp method number \* tcp connection packets)
+6. Add "stress" profile with pumba on internal router for enhanced testing, use tcp echo server (can be found on dockerhub) (4 containrrs, no ext router).
+7. Add "load" profile for direct access (3 containers) and multiple clients and performance analysis for whirlpool.
+8. Warning if packet is too large
+9. Write script for downloading/running/configuring server
+10. Control healthcheck times by cosine function, increase max delay to smth like 360 seconds, add random response delay
+11. Addresses for VPN connection: black and white list (limit addresses to use VPN with) <- add traffic analysis tool to client
+12. Advice on traffic distribution (proxy nodes), all routes and ports masking, on caerulean side: switch to 172.x.x.x tunnel IP, 1st X will be the number of PROXY the packet has been received from
+13. Protocol disguise: QOTD or any raw socket or data stream
+14. Add RTP protocol disguise option (to obfuscation, sent by client)
+15. Create general functions for decryption+unmarshalling and encryption+marshalling for network.go ONLY
+16. Rewrite pythoon with async/await
+17. Extract `VIRIDIAN` calls from go files.

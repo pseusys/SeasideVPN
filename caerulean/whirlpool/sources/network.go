@@ -17,53 +17,14 @@ var (
 	NODE_OWNER_KEY string
 	PAYLOAD_KEY    string
 
-	NAUTICHART_ENDPOINT string
-	AUTH_ENDPOINT       string
+	AUTH_ENDPOINT string
 )
 
 func init() {
 	NODE_OWNER_KEY = utils.GetEnv("SEASIDE_PAYLOAD_OWNER", nil)
 	PAYLOAD_KEY = utils.GetEnv("SEASIDE_PAYLOAD_USER", nil)
 
-	NAUTICHART_ENDPOINT = utils.GetEnv("SEASIDE_NAUTICHART", nil)
 	AUTH_ENDPOINT = utils.GetEnv("SEASIDE_AUTH", nil)
-}
-
-func nautichart(w http.ResponseWriter, r *http.Request) {
-	// TODO: check POST request
-	ciphertext, err := io.ReadAll(r.Body)
-	if err != nil {
-		writeHttpError(w, fmt.Errorf("error reading request bytes: %v", err), http.StatusBadRequest)
-		return
-	}
-
-	plaintext, err := crypto.Decode(ciphertext, false, crypto.PUBLIC_NODE_AEAD)
-	if err != nil {
-		writeHttpError(w, fmt.Errorf("error decoding request bytes: %v", err), http.StatusBadRequest)
-		return
-	}
-
-	payload := string(plaintext)
-	switch {
-	case payload == NODE_OWNER_KEY:
-		fallthrough
-	case payload == PAYLOAD_KEY:
-		token := &generated.WhirlpoolNauticalChart{
-			AuthEndpoint: AUTH_ENDPOINT,
-			SeasidePort:  int32(SEASIDE_PORT),
-			ControlPort:  int32(CONTROL_PORT),
-		}
-
-		marshToken, err := proto.Marshal(token)
-		if err != nil {
-			writeHttpError(w, fmt.Errorf("error marshalling token: %v", err), http.StatusBadRequest)
-			return
-		}
-
-		writeHttpData(w, marshToken)
-	default:
-		writeHttpError(w, errors.New("wrong payload string"), http.StatusBadRequest)
-	}
 }
 
 func auth(w http.ResponseWriter, r *http.Request) {
@@ -110,9 +71,11 @@ func auth(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := &generated.UserCertificate{
-		Token:      tokenData,
-		UserZero:   int64(crypto.ZERO_USER_ID),
-		Multiplier: int64(crypto.MULTIPLIER),
+		Token:       tokenData,
+		UserZero:    int64(crypto.ZERO_USER_ID),
+		Multiplier:  int64(crypto.MULTIPLIER),
+		SeasidePort: int32(SEASIDE_PORT),
+		ControlPort: int32(CONTROL_PORT),
 	}
 	marshResponse, err := proto.Marshal(response)
 	if err != nil {
@@ -126,7 +89,6 @@ func auth(w http.ResponseWriter, r *http.Request) {
 func InitNetAPI(port int) {
 	logrus.Infoln("Node API setup, node owner key:", NODE_OWNER_KEY)
 
-	http.HandleFunc(fmt.Sprintf("/%s", NAUTICHART_ENDPOINT), nautichart)
 	// TODO: distribute stats: http.HandleFunc("/stats", stats)
 	http.HandleFunc(fmt.Sprintf("/%s", AUTH_ENDPOINT), auth)
 	// TODO: connect to network: http.HandleFunc("/connect", connect)
