@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"main/crypto"
@@ -28,25 +29,17 @@ func init() {
 	AUTH_ENDPOINT = utils.GetEnv("SEASIDE_AUTH", nil)
 }
 
-func writeRawData(w http.ResponseWriter, data []byte, code int) {
-	w.Header().Add("Content-Type", "application/octet-stream")
-	w.WriteHeader(code)
-	w.Write(data)
-}
-
 func nautichart(w http.ResponseWriter, r *http.Request) {
 	// TODO: check POST request
-	logrus.Error("NAUTICHART")
-
 	ciphertext, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("error reading request bytes: %v", err), http.StatusBadRequest)
+		writeHttpError(w, fmt.Errorf("error reading request bytes: %v", err), http.StatusBadRequest)
 		return
 	}
 
 	plaintext, err := crypto.Decode(ciphertext, false, crypto.PUBLIC_NODE_AEAD)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("error decoding request bytes: %v", err), http.StatusBadRequest)
+		writeHttpError(w, fmt.Errorf("error decoding request bytes: %v", err), http.StatusBadRequest)
 		return
 	}
 
@@ -63,19 +56,13 @@ func nautichart(w http.ResponseWriter, r *http.Request) {
 
 		marshToken, err := proto.Marshal(token)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("error marshalling token: %v", err), http.StatusBadRequest)
+			writeHttpError(w, fmt.Errorf("error marshalling token: %v", err), http.StatusBadRequest)
 			return
 		}
 
-		tokenData, err := crypto.Encode(marshToken, nil, crypto.PUBLIC_NODE_AEAD)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("error encrypting token: %v", err), http.StatusBadRequest)
-			return
-		}
-
-		writeRawData(w, tokenData, http.StatusOK)
+		writeHttpData(w, marshToken)
 	default:
-		http.Error(w, "wrong payload string", http.StatusBadRequest)
+		writeHttpError(w, errors.New("wrong payload string"), http.StatusBadRequest)
 	}
 }
 
@@ -83,25 +70,25 @@ func auth(w http.ResponseWriter, r *http.Request) {
 	// TODO: check POST request
 	ciphertext, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("error reading request bytes: %v", err), http.StatusBadRequest)
+		writeHttpError(w, fmt.Errorf("error reading request bytes: %v", err), http.StatusBadRequest)
 		return
 	}
 
 	plaintext, err := crypto.Decode(ciphertext, false, crypto.PUBLIC_NODE_AEAD)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("error decoding request bytes: %v", err), http.StatusBadRequest)
+		writeHttpError(w, fmt.Errorf("error decoding request bytes: %v", err), http.StatusBadRequest)
 		return
 	}
 
 	message := &generated.UserDataWhirlpool{}
 	err = proto.Unmarshal(plaintext, message)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("error unmarshalling message: %v", err), http.StatusBadRequest)
+		writeHttpError(w, fmt.Errorf("error unmarshalling message: %v", err), http.StatusBadRequest)
 		return
 	}
 
 	if message.OwnerKey != NODE_OWNER_KEY {
-		http.Error(w, "wrong owner key", http.StatusBadRequest)
+		writeHttpError(w, errors.New("wrong owner key"), http.StatusBadRequest)
 		return
 	}
 
@@ -112,13 +99,13 @@ func auth(w http.ResponseWriter, r *http.Request) {
 	}
 	marshToken, err := proto.Marshal(token)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("error marshalling token: %v", err), http.StatusBadRequest)
+		writeHttpError(w, fmt.Errorf("error marshalling token: %v", err), http.StatusBadRequest)
 		return
 	}
 
 	tokenData, err := crypto.Encode(marshToken, nil, crypto.PRIVATE_NODE_AEAD)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("error encrypting token: %v", err), http.StatusBadRequest)
+		writeHttpError(w, fmt.Errorf("error encrypting token: %v", err), http.StatusBadRequest)
 		return
 	}
 
@@ -129,17 +116,11 @@ func auth(w http.ResponseWriter, r *http.Request) {
 	}
 	marshResponse, err := proto.Marshal(response)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("error marshalling response: %v", err), http.StatusBadRequest)
+		writeHttpError(w, fmt.Errorf("error marshalling response: %v", err), http.StatusBadRequest)
 		return
 	}
 
-	responseData, err := crypto.Encode(marshResponse, nil, crypto.PUBLIC_NODE_AEAD)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("error encrypting response: %v", err), http.StatusBadRequest)
-		return
-	}
-
-	writeRawData(w, responseData, http.StatusOK)
+	writeHttpData(w, marshResponse)
 }
 
 func InitNetAPI(port int) {
@@ -152,14 +133,14 @@ func InitNetAPI(port int) {
 
 	network := fmt.Sprintf("%s:%d", INTERNAL_ADDRESS, port)
 	logrus.Infoln("Listening for HTTP requests at:", network)
-	logrus.Fatalf("Net server error: %s", http.ListenAndServe(network, nil))
+	logrus.Fatalf("Error serving HTTP server: %s", http.ListenAndServe(network, nil))
 }
 
 func ExchangeNodeKey() {
 	var err error
 	crypto.PRIVATE_NODE_AEAD, crypto.PRIVATE_NODE_KEY, err = crypto.GenerateCipher()
 	if err != nil {
-		logrus.Fatalf("error private node cipher generating: %v", err)
+		logrus.Fatalf("Error private node cipher generating: %v", err)
 	}
 
 	// TODO: send public and private keys to surface

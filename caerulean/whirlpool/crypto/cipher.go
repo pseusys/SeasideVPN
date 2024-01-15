@@ -22,12 +22,12 @@ func init() {
 
 	publicKeyBytes, err := hex.DecodeString(publicKeyHex)
 	if err != nil {
-		logrus.Fatalf("error parsing public key bytes: %v (%s)", err, publicKeyHex)
+		logrus.Fatalf("Error parsing public key bytes: %v (%s)", err, publicKeyHex)
 	}
 
 	PUBLIC_NODE_AEAD, err = ParseCipher(publicKeyBytes)
 	if err != nil {
-		logrus.Fatalf("error parsing public aead: %v (%s)", err, publicKeyHex)
+		logrus.Fatalf("Error parsing public aead: %v (%s)", err, publicKeyHex)
 	}
 }
 

@@ -13,7 +13,7 @@ func storeForwarding(conf *TunnelConfig) {
 	command.Stdout = &conf.buffer
 	err := command.Run()
 	if err != nil {
-		logrus.Errorf("Command %s error: %v", command, err)
+		logrus.Errorf("Error running command %s: %v", command, err)
 	}
 }
 
@@ -62,6 +62,6 @@ func closeForwarding(conf *TunnelConfig) {
 	command.Stdin = &conf.buffer
 	err := command.Run()
 	if err != nil {
-		logrus.Errorf("Command %s error: %v", command, err)
+		logrus.Errorf("Error running command %s: %v", command, err)
 	}
 }

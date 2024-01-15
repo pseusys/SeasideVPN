@@ -14,8 +14,8 @@ func runCommand(cmd string, args ...string) string {
 	command := exec.Command(cmd, args...)
 	output, err := command.CombinedOutput()
 	if err != nil {
-		logrus.Errorf("Command %s output: %s", cmd, output)
-		logrus.Fatalln("Running command error:", err)
+		logrus.Infof("Command %s output: %s", cmd, output)
+		logrus.Fatalf("Error running command: %v", err)
 	}
 	return string(output)
 }
@@ -29,7 +29,7 @@ func findInterfaceByIP(address string) (string, error) {
 	for _, iface := range ifaces {
 		addrs, err := iface.Addrs()
 		if err != nil {
-			logrus.Warnf("couldn't parse interface %s IP addresses", iface.Name)
+			logrus.Warnf("Error parsing interface IP addresses: %s", iface.Name)
 			continue
 		}
 

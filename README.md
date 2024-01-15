@@ -197,11 +197,11 @@ That could've potentially compromise the system and provide an intruder a way to
 
 **Connection certificate** for all the nodes have common structure:
 
-- **address** (IP or domain name) where the node HTTP server is hosted.
-- **netport** port number where the node HTTP server is hosted.
-- **nautichart** endpoint name, sending a request to this endpoint will return all the info required to use this node.
-- **public** `XChaCha20-Poly1305` key (hex string), 32 bytes long.
-- **payload** string for user type determination and **public** encryption checking.
+- **address**: (IP or domain name) where the node HTTP server is hosted.
+- **netport**: port number where the node HTTP server is hosted.
+- **nautichart**: endpoint name, sending a request to this endpoint will return all the info required to use this node.
+- **public**: `XChaCha20-Poly1305` key (hex string), 32 bytes long.
+- **payload**: string for user type determination and **public** encryption checking.
 
 Each node can support multiple **payload** options, e.g. for users with differen privelege levels or for users from different origins.
 All the connection certificate can be expressed in a form of an URL:
@@ -254,6 +254,12 @@ These are:
 
   for linting all system components.
 
+- ```bash
+  make clean
+  ```
+
+  for cleaning all building artifacts and Docker containers/images/networks.
+
 ## Future development
 
 ### Roadmap
@@ -282,3 +288,4 @@ These are:
 15. Add RTP protocol disguise option (to obfuscation, sent by client)
 16. Create general functions for decryption+unmarshalling and encryption+marshalling for network.go ONLY
 17. Rewrite pythoon with async/await
+18. Extract `VIRIDIAN` calls from go files.

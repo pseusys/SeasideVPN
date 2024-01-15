@@ -42,4 +42,5 @@ message UserControlMessage {
 
 message WhirlpoolControlMessage {
     UserControlResponseStatus status = 1;
+    string message = 2;
 }
