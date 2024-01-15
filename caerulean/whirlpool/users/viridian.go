@@ -53,10 +53,10 @@ func isViridianOvertime(viridian *Viridian) bool {
 	return !viridian.admin && viridian.timeout.Before(time.Now().UTC())
 }
 
-func AddViridian(token *generated.UserToken, address, gateway net.IP, port uint32) (*uint16, generated.UserControlResponseStatus, error) {
+func AddViridian(token *generated.UserToken, address, gateway net.IP, port uint32) (*uint16, generated.ControlResponseStatus, error) {
 	aead, err := crypto.ParseCipher(token.Session)
 	if err != nil {
-		return nil, generated.UserControlResponseStatus_ERROR, fmt.Errorf("error parsing encryption algorithm for user: %v", err)
+		return nil, generated.ControlResponseStatus_ERROR, fmt.Errorf("error parsing encryption algorithm for user: %v", err)
 	}
 
 	var limit uint16
@@ -75,7 +75,7 @@ func AddViridian(token *generated.UserToken, address, gateway net.IP, port uint3
 		}
 	}
 	if VIRIDIANS[ITERATOR] != nil {
-		return nil, generated.UserControlResponseStatus_OVERLOAD, errors.New("error searching place for a new user")
+		return nil, generated.ControlResponseStatus_OVERLOAD, errors.New("error searching place for a new user")
 	}
 
 	userID := ITERATOR + 2
@@ -83,11 +83,11 @@ func AddViridian(token *generated.UserToken, address, gateway net.IP, port uint3
 	viridian := &Viridian{aead, deletionTimer, token.Privileged, token.Subscription.AsTime(), address, gateway, port}
 
 	if isViridianOvertime(viridian) {
-		return nil, generated.UserControlResponseStatus_OVERTIME, errors.New("viridian subscription outdated")
+		return nil, generated.ControlResponseStatus_OVERTIME, errors.New("viridian subscription outdated")
 	} else {
 		VIRIDIANS[ITERATOR] = viridian
 		logrus.Infof("User %d (uid: %s, privileged: %t) created", userID, token.Uid, token.Privileged)
-		return &userID, generated.UserControlResponseStatus_SUCCESS, nil
+		return &userID, generated.ControlResponseStatus_SUCCESS, nil
 	}
 }
 
@@ -104,17 +104,17 @@ func DeleteViridian(userID uint16, timeout bool) {
 	}
 }
 
-func UpdateViridian(userID uint16, nextIn int32) (generated.UserControlResponseStatus, error) {
+func UpdateViridian(userID uint16, nextIn int32) (generated.ControlResponseStatus, error) {
 	viridian := VIRIDIANS[userID-2]
 	if viridian != nil {
 		if isViridianOvertime(viridian) {
 			DeleteViridian(userID, false)
-			return generated.UserControlResponseStatus_OVERTIME, errors.New("viridian subscription outdated")
+			return generated.ControlResponseStatus_OVERTIME, errors.New("viridian subscription outdated")
 		} else {
 			viridian.reset.Reset(time.Duration(nextIn*USER_WAITING_OVERTIME) * time.Second)
-			return generated.UserControlResponseStatus_HEALTHPONG, nil
+			return generated.ControlResponseStatus_HEALTHPONG, nil
 		}
 	} else {
-		return generated.UserControlResponseStatus_ERROR, errors.New("requested viridian doesn't exist")
+		return generated.ControlResponseStatus_ERROR, errors.New("requested viridian doesn't exist")
 	}
 }

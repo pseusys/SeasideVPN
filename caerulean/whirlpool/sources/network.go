@@ -41,7 +41,7 @@ func auth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	message := &generated.UserDataWhirlpool{}
+	message := &generated.UserDataForWhirlpool{}
 	err = proto.Unmarshal(plaintext, message)
 	if err != nil {
 		writeHttpError(w, fmt.Errorf("error unmarshalling message: %v", err), http.StatusBadRequest)

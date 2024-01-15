@@ -39,14 +39,14 @@ func writeHttpError(w http.ResponseWriter, message error, code int) {
 	}
 }
 
-func sendMessageToSocket(status generated.UserControlResponseStatus, message error, connection *net.TCPConn, addressee *uint16) {
+func sendMessageToSocket(status generated.ControlResponseStatus, message error, connection *net.TCPConn, addressee *uint16) {
 	byteMessage := ""
 	if message != nil {
 		logrus.Warn(message)
 		byteMessage = message.Error()
 	}
 
-	controlMessage := generated.WhirlpoolControlMessage{Status: status, Message: byteMessage}
+	controlMessage := generated.ControlResponse{Status: status, Message: byteMessage}
 	payload, err := proto.Marshal(&controlMessage)
 	if err != nil {
 		logrus.Errorf("Error serializing message: %v", err)

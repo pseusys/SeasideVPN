@@ -9,7 +9,7 @@ from typing import Generator
 import pytest
 from Crypto.Random import get_random_bytes
 
-from ..sources.generated import UserControlMessage, UserControlMessageHealthcheckMessage, UserControlRequestStatus, UserControlResponseStatus, WhirlpoolControlMessage
+from ..sources.generated import ControlRequest, ControlRequestHealthcheckMessage, ControlRequestStatus, ControlResponseStatus, ControlResponse
 from ..sources.control import Controller
 from ..sources.crypto import MAX_MESSAGE_SIZE
 
@@ -90,8 +90,8 @@ def test_send_suspicious_message(controller: Controller):
         gate.shutdown(SHUT_WR)
         encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
         _, response = controller._obfuscator.decrypt(encrypted_message, controller._public_cipher, True)
-        response_status = WhirlpoolControlMessage().parse(response).status
-        assert response_status == UserControlResponseStatus.ERROR
+        response_status = ControlResponse().parse(response).status
+        assert response_status == ControlResponseStatus.ERROR
 
 
 @pytest.mark.dependency(depends=["test_send_suspicious_message"])
@@ -102,16 +102,16 @@ def test_send_healthcheck_message(controller: Controller):
             gate.settimeout(5.0)
             gate.connect((controller._interface._address, controller._ctrl_port))
 
-            healthcheck_message = UserControlMessageHealthcheckMessage(next_in=controller._min_hc_time)
-            control_message = UserControlMessage(status=UserControlRequestStatus.HEALTHPING, healthcheck=healthcheck_message)
+            healthcheck_message = ControlRequestHealthcheckMessage(next_in=controller._min_hc_time)
+            control_message = ControlRequest(status=ControlRequestStatus.HEALTHPING, healthcheck=healthcheck_message)
             encrypted_message = controller._obfuscator.encrypt(bytes(control_message), controller._public_cipher, controller._user_id, True)
             gate.sendall(encrypted_message)
             gate.shutdown(SHUT_WR)
             encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
 
             _, answer_message = controller._obfuscator.decrypt(encrypted_message, controller._public_cipher, True)
-            status = WhirlpoolControlMessage().parse(answer_message).status
-            assert status == UserControlResponseStatus.HEALTHPONG
+            status = ControlResponse().parse(answer_message).status
+            assert status == ControlResponseStatus.HEALTHPONG
             sleep(1)
 
 
@@ -122,8 +122,8 @@ def test_healthcheck_overtime(controller: Controller):
         gate.settimeout(5.0)
         gate.connect((controller._interface._address, controller._ctrl_port))
 
-        healthcheck_message = UserControlMessageHealthcheckMessage(next_in=controller._min_hc_time)
-        control_message = UserControlMessage(status=UserControlRequestStatus.HEALTHPING, healthcheck=healthcheck_message)
+        healthcheck_message = ControlRequestHealthcheckMessage(next_in=controller._min_hc_time)
+        control_message = ControlRequest(status=ControlRequestStatus.HEALTHPING, healthcheck=healthcheck_message)
         encrypted_message = controller._obfuscator.encrypt(bytes(control_message), controller._public_cipher, controller._user_id, True)
         gate.sendall(encrypted_message)
         gate.shutdown(SHUT_WR)
@@ -133,16 +133,16 @@ def test_healthcheck_overtime(controller: Controller):
     with socket(AF_INET, SOCK_STREAM) as gate:
         gate.connect((controller._interface._address, controller._ctrl_port))
 
-        healthcheck_message = UserControlMessageHealthcheckMessage(next_in=controller._min_hc_time)
-        control_message = UserControlMessage(status=UserControlRequestStatus.HEALTHPING, healthcheck=healthcheck_message)
+        healthcheck_message = ControlRequestHealthcheckMessage(next_in=controller._min_hc_time)
+        control_message = ControlRequest(status=ControlRequestStatus.HEALTHPING, healthcheck=healthcheck_message)
         encrypted_message = controller._obfuscator.encrypt(bytes(control_message), controller._public_cipher, controller._user_id, True)
         gate.sendall(encrypted_message)
         gate.shutdown(SHUT_WR)
 
         encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
         _, response = controller._obfuscator.decrypt(encrypted_message, controller._public_cipher, True)
-        response_status = WhirlpoolControlMessage().parse(response).status
-        assert response_status == UserControlResponseStatus.ERROR
+        response_status = ControlResponse().parse(response).status
+        assert response_status == ControlResponseStatus.ERROR
 
 
 @pytest.mark.dependency(depends=["test_healthcheck_overtime"])
