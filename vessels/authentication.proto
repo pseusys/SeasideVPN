@@ -26,7 +26,7 @@ message UserToken {
 
 
 
-message UserDataWhirlpool {
+message UserDataForWhirlpool {
     string uid = 1;
     bytes session = 2;
     string ownerKey = 3;

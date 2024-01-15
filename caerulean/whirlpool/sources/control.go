@@ -13,28 +13,28 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func connectViridian(encryptedToken, address, gateway []byte, port uint32) (generated.UserControlResponseStatus, *uint16) {
+func connectViridian(encryptedToken, address, gateway []byte, port uint32) (generated.ControlResponseStatus, *uint16) {
 	if encryptedToken == nil {
 		logrus.Warnf("Error: user (%v) token is null", address)
-		return generated.UserControlResponseStatus_ERROR, nil
+		return generated.ControlResponseStatus_ERROR, nil
 	}
 
 	plaintext, err := crypto.Decode(encryptedToken, false, crypto.PRIVATE_NODE_AEAD)
 	if err != nil {
 		logrus.Warnf("Error decrypting token from user (%v): %v", address, err)
-		return generated.UserControlResponseStatus_ERROR, nil
+		return generated.ControlResponseStatus_ERROR, nil
 	}
 
 	token := &generated.UserToken{}
 	err = proto.Unmarshal(plaintext, token)
 	if err != nil {
 		logrus.Warnf("Error unmarshalling token from user %v: %v", address, err)
-		return generated.UserControlResponseStatus_ERROR, nil
+		return generated.ControlResponseStatus_ERROR, nil
 	}
 
 	if address == nil {
 		logrus.Warnf("Error: user address is null (gateway: %v)", gateway)
-		return generated.UserControlResponseStatus_ERROR, nil
+		return generated.ControlResponseStatus_ERROR, nil
 	} else {
 		userID, status, err := users.AddViridian(token, address, gateway, port)
 		if err != nil {
@@ -76,14 +76,14 @@ func ListenControlPort(ip string, port int) {
 		// Read CTRLBUFFERSIZE of data from viridian
 		r, err := io.Copy(&buffer, connection)
 		if err != nil {
-			sendMessageToSocket(generated.UserControlResponseStatus_ERROR, fmt.Errorf("error reading control message (%d bytes read): %v", r, err), connection, nil)
+			sendMessageToSocket(generated.ControlResponseStatus_ERROR, fmt.Errorf("error reading control message (%d bytes read): %v", r, err), connection, nil)
 			continue
 		}
 
 		// Resolve viridian TCP address
 		address, err := net.ResolveTCPAddr(TCP, connection.RemoteAddr().String())
 		if err != nil {
-			sendMessageToSocket(generated.UserControlResponseStatus_ERROR, fmt.Errorf("error resolving remote user address: %v", connection.RemoteAddr().String()), connection, nil)
+			sendMessageToSocket(generated.ControlResponseStatus_ERROR, fmt.Errorf("error resolving remote user address: %v", connection.RemoteAddr().String()), connection, nil)
 			continue
 		}
 
@@ -91,15 +91,15 @@ func ListenControlPort(ip string, port int) {
 		requester := address.IP.String()
 		plaintext, userID, err := crypto.Decrypt(buffer.Bytes(), crypto.PUBLIC_NODE_AEAD, true)
 		if err != nil {
-			sendMessageToSocket(generated.UserControlResponseStatus_ERROR, fmt.Errorf("error decrypting message from IP %v: %v", requester, err), connection, nil)
+			sendMessageToSocket(generated.ControlResponseStatus_ERROR, fmt.Errorf("error decrypting message from IP %v: %v", requester, err), connection, nil)
 			continue
 		}
 
 		// Unmarshall received message
-		message := &generated.UserControlMessage{}
+		message := &generated.ControlRequest{}
 		err = proto.Unmarshal(plaintext, message)
 		if err != nil {
-			sendMessageToSocket(generated.UserControlResponseStatus_ERROR, fmt.Errorf("error unmarshalling request from IP %v: %v", requester, err), connection, nil)
+			sendMessageToSocket(generated.ControlResponseStatus_ERROR, fmt.Errorf("error unmarshalling request from IP %v: %v", requester, err), connection, nil)
 			continue
 		}
 
@@ -111,24 +111,24 @@ func ListenControlPort(ip string, port int) {
 
 		switch message.Status {
 		// In case of PUBLIC status - register user
-		case generated.UserControlRequestStatus_CONNECTION:
+		case generated.ControlRequestStatus_CONNECTION:
 			payload := message.GetConnection()
 			status, userID := connectViridian(payload.Token, payload.Address, address.IP, uint32(payload.Port))
 			logrus.Infoln("Connecting new user", *userID)
 			sendMessageToSocket(status, nil, connection, userID)
 		// In case of HEALTHPING status - update user deletion timer
-		case generated.UserControlRequestStatus_HEALTHPING:
+		case generated.ControlRequestStatus_HEALTHPING:
 			logrus.Infoln("Healthcheck from user", *userID)
 			status, err := users.UpdateViridian(*userID, message.GetHealthcheck().NextIn)
 			sendMessageToSocket(status, err, connection, userID)
 		// In case of TERMIN status - delete user record
-		case generated.UserControlRequestStatus_DISCONNECTION:
+		case generated.ControlRequestStatus_DISCONNECTION:
 			logrus.Infoln("Deleting user", *userID)
-			sendMessageToSocket(generated.UserControlResponseStatus_SUCCESS, nil, connection, userID)
+			sendMessageToSocket(generated.ControlResponseStatus_SUCCESS, nil, connection, userID)
 			users.DeleteViridian(*userID, false)
 		// Default action - send user undefined status
 		default:
-			sendMessageToSocket(generated.UserControlResponseStatus_UNDEFINED, fmt.Errorf("error status %v received from user %d", message.Status, *userID), connection, userID)
+			sendMessageToSocket(generated.ControlResponseStatus_UNDEFINED, fmt.Errorf("error status %v received from user %d", message.Status, *userID), connection, userID)
 		}
 	}
 }

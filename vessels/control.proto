@@ -4,13 +4,13 @@ option go_package = "/generated";
 
 
 
-enum UserControlRequestStatus {
+enum ControlRequestStatus {
     CONNECTION = 0;  // User to server connection request
     DISCONNECTION = 1;  // User from server disconnection request
     HEALTHPING = 2;  // Obfuscation PING request, sent from time to time
 }
 
-enum UserControlResponseStatus {
+enum ControlResponseStatus {
     UNDEFINED = 0;  // Undefined status, always leads to an error
     SUCCESS = 1;  // Operation success, e.g. user connection termination
     ERROR = 2;  // Operation error, sent if any operation failed on server side
@@ -22,7 +22,7 @@ enum UserControlResponseStatus {
 
 
 
-message UserControlMessage {
+message ControlRequest {
     message ConnectionMessage {
         bytes token = 1;
         bytes address = 2;
@@ -33,14 +33,14 @@ message UserControlMessage {
         int32 nextIn = 1;
     }
 
-    UserControlRequestStatus status = 1;
+    ControlRequestStatus status = 1;
     oneof payload {
         ConnectionMessage connection = 2;
         HealthcheckMessage healthcheck = 3;
     }
 }
 
-message WhirlpoolControlMessage {
-    UserControlResponseStatus status = 1;
+message ControlResponse {
+    ControlResponseStatus status = 1;
     string message = 2;
 }

@@ -153,20 +153,20 @@ sequenceDiagram
   participant W as Whirlpool
 
   alt Viridian is whirlpool admin
-    V ->> W: UserDataWhirlpool (unsig, untail)
+    V ->> W: UserDataForWhirlpool (unsig, untail)
     W ->> V: UserCertificate (unsig, untail)
   else Viridian is whirlpool user
     V ->> S: UserDataSurface (unsig, untail)
     S ->> V: UserCertificate (unsig, untail)
   end
 
-  V ->> W: UserControlMessage+ConnectionMessage (unsig, tail)
-  W ->> V: WhirlpoolControlMessage (sig, tail)
+  V ->> W: ControlRequest+ConnectionMessage (unsig, tail)
+  W ->> V: ControlResponse (sig, tail)
 
   par On "control" port
     loop With random time intervals
-      V ->> W: UserControlMessage+HealthcheckMessage (sig, tail)
-      W ->> V: WhirlpoolControlMessage (sig, tail)
+      V ->> W: ControlRequest+HealthcheckMessage (sig, tail)
+      W ->> V: ControlResponse (sig, tail)
     end
   and On "seaside" port
     loop On every user packet
@@ -176,8 +176,8 @@ sequenceDiagram
   end
 
   opt Connection interrupted gracefully
-    V ->> W: UserControlMessage (sig, tail)
-    W ->> V: WhirlpoolControlMessage (sig, tail)
+    V ->> W: ControlRequest (sig, tail)
+    W ->> V: ControlResponse (sig, tail)
   end
 ```
 

@@ -11,7 +11,7 @@ from .outputs import logger
 from .requests import post
 from .tunnel import Tunnel
 
-from .generated import UserDataWhirlpool, UserCertificate, UserControlMessage, UserControlResponseStatus, UserControlRequestStatus, UserControlMessageConnectionMessage, UserControlMessageHealthcheckMessage, WhirlpoolControlMessage
+from .generated import UserDataForWhirlpool, UserCertificate, ControlRequest, ControlResponseStatus, ControlRequestStatus, ControlRequestConnectionMessage, ControlRequestHealthcheckMessage, ControlResponse
 
 
 class Controller:
@@ -56,7 +56,7 @@ class Controller:
     def _receive_token(self) -> None:
         self._cipher = Cipher()
         logger.debug(f"Symmetric session cipher initialized: {self._cipher.key}")
-        user_data = UserDataWhirlpool(uid="some_cool_uid", session=self._cipher.key, owner_key=self._owner_key)
+        user_data = UserDataForWhirlpool(uid="some_cool_uid", session=self._cipher.key, owner_key=self._owner_key)
         user_encrypted = self._public_cipher.encode(bytes(user_data))
 
         logger.debug("Requesting whirlpool token...")
@@ -75,17 +75,17 @@ class Controller:
             gate.connect((self._address, self._ctrl_port))
             logger.debug(f"Establishing connection to caerulean {self._address}:{self._ctrl_port}")
 
-            connection_message = UserControlMessageConnectionMessage(token=self._session_token, address=inet_aton(self._interface.default_ip), port=self._gate_socket.getsockname()[1])
-            control_message = UserControlMessage(status=UserControlRequestStatus.CONNECTION, connection=connection_message)
+            connection_message = ControlRequestConnectionMessage(token=self._session_token, address=inet_aton(self._interface.default_ip), port=self._gate_socket.getsockname()[1])
+            control_message = ControlRequest(status=ControlRequestStatus.CONNECTION, connection=connection_message)
             encrypted_message = self._obfuscator.encrypt(bytes(control_message), self._public_cipher, None, True)
             gate.sendall(encrypted_message)
             gate.shutdown(SHUT_WR)
 
             encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
             self._user_id, answer_message = self._obfuscator.decrypt(encrypted_message, self._public_cipher, True)
-            answer = WhirlpoolControlMessage().parse(answer_message)
+            answer = ControlResponse().parse(answer_message)
 
-            if answer.status == UserControlResponseStatus.SUCCESS:
+            if answer.status == ControlResponseStatus.SUCCESS:
                 logger.info(f"Connected to caerulean {self._address}:{self._ctrl_port} successfully!")
             else:
                 raise RuntimeError(f"Couldn't exchange keys with caerulean: {answer.message}!")
@@ -119,19 +119,19 @@ class Controller:
                     next_in = randint(self._min_hc_time, self._max_hc_time)
                     gate.connect((self._address, self._ctrl_port))
 
-                    healthcheck_message = UserControlMessageHealthcheckMessage(next_in=next_in)
-                    control_message = UserControlMessage(status=UserControlRequestStatus.HEALTHPING, healthcheck=healthcheck_message)
+                    healthcheck_message = ControlRequestHealthcheckMessage(next_in=next_in)
+                    control_message = ControlRequest(status=ControlRequestStatus.HEALTHPING, healthcheck=healthcheck_message)
                     encrypted_message = self._obfuscator.encrypt(bytes(control_message), self._public_cipher, self._user_id, True)
                     gate.sendall(encrypted_message)
                     gate.shutdown(SHUT_WR)
 
                     encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
                     _, answer_message = self._obfuscator.decrypt(encrypted_message, self._public_cipher, True)
-                    answer = WhirlpoolControlMessage().parse(answer_message)
+                    answer = ControlResponse().parse(answer_message)
 
-                    if answer.status == UserControlResponseStatus.HEALTHPONG:
+                    if answer.status == ControlResponseStatus.HEALTHPONG:
                         sleep(next_in)
-                    elif answer.status == UserControlResponseStatus.ERROR:
+                    elif answer.status == ControlResponseStatus.ERROR:
                         raise ValueError(f"Healthping request error: {answer.message}!")
                     else:
                         raise Exception(f"Couldn't perform healthcheck: {answer.message}!")
@@ -152,16 +152,16 @@ class Controller:
             gate.connect((self._address, self._ctrl_port))
             logger.debug(f"Interrupting connection to caerulean {self._address}:{self._ctrl_port}")
 
-            control_message = UserControlMessage(status=UserControlRequestStatus.DISCONNECTION)
+            control_message = ControlRequest(status=ControlRequestStatus.DISCONNECTION)
             encrypted_message = self._obfuscator.encrypt(bytes(control_message), self._public_cipher, self._user_id, True)
             gate.sendall(encrypted_message)
             gate.shutdown(SHUT_WR)
 
             encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
             _, answer_message = self._obfuscator.decrypt(encrypted_message, self._public_cipher, True)
-            answer = WhirlpoolControlMessage().parse(answer_message)
+            answer = ControlResponse().parse(answer_message)
 
-            if answer.status == UserControlResponseStatus.SUCCESS:
+            if answer.status == ControlResponseStatus.SUCCESS:
                 logger.info(f"Disconnected from caerulean {self._address}:{self._ctrl_port} successfully!")
             else:
                 logger.info(f"Error disconnecting from caerulean: {answer.message}!")
