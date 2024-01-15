@@ -33,10 +33,10 @@ def controller() -> Generator[Controller, None, None]:
     name = getenv("SEASIDE_TUNNEL_NAME", "sea-tun")
     addr = IPv4Address(environ["SEASIDE_ADDRESS"])
     net_port = int(getenv("SEASIDE_NETPORT", "8587"))
-    nautichart = getenv("SEASIDE_NAUTICHART", "nautichart")
+    anchor = getenv("SEASIDE_ANCHOR", "auth")
     min_healthcheck = int(getenv("SEASIDE_MIN_HC_TIME", "1"))
     max_healthcheck = int(getenv("SEASIDE_MAX_HC_TIME", "5"))
-    yield Controller(public_key, owner_key, addr, net_port, nautichart, name, min_healthcheck, max_healthcheck)
+    yield Controller(public_key, owner_key, addr, net_port, anchor, name, min_healthcheck, max_healthcheck)
 
 
 @pytest.mark.dependency()

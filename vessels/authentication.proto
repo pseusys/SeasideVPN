@@ -6,6 +6,26 @@ option go_package = "/generated";
 
 
 
+message SeasideConnectionCertificate {
+    string nodetype = 1;
+    string address = 2;
+    string netport = 3;
+    string anchor = 4;
+    bytes public = 5;
+    string payload = 6;
+}
+
+
+
+message UserToken {
+    string uid = 1;
+    bytes session = 2;
+    bool privileged = 3;
+    optional google.protobuf.Timestamp subscription = 4;
+}
+
+
+
 message UserDataWhirlpool {
     string uid = 1;
     bytes session = 2;
@@ -18,13 +38,6 @@ message UserCertificate {
     bytes token = 1;
     int64 userZero = 2;
     int64 multiplier = 3;
-}
-
-
-
-message UserToken {
-    string uid = 1;
-    bytes session = 2;
-    bool privileged = 3;
-    optional google.protobuf.Timestamp subscription = 4;
+    int32 seasidePort = 4;
+    int32 controlPort = 5;
 }
