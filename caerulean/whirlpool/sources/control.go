@@ -15,30 +15,30 @@ import (
 
 func connectViridian(encryptedToken, address, gateway []byte, port uint32) (generated.UserControlResponseStatus, *uint16) {
 	if encryptedToken == nil {
-		logrus.Warnf("User address is null")
+		logrus.Warnf("Error: user (%v) token is null", address)
 		return generated.UserControlResponseStatus_ERROR, nil
 	}
 
 	plaintext, err := crypto.Decode(encryptedToken, false, crypto.PRIVATE_NODE_AEAD)
 	if err != nil {
-		logrus.Warnln("Couldn't decrypt token from user", err)
+		logrus.Warnf("Error decrypting token from user (%v): %v", address, err)
 		return generated.UserControlResponseStatus_ERROR, nil
 	}
 
 	token := &generated.UserToken{}
 	err = proto.Unmarshal(plaintext, token)
 	if err != nil {
-		logrus.Warnln("Couldn't unmarshall token from user", err)
+		logrus.Warnf("Error unmarshalling token from user %v: %v", address, err)
 		return generated.UserControlResponseStatus_ERROR, nil
 	}
 
 	if address == nil {
-		logrus.Warnf("User address is null")
+		logrus.Warnf("Error: user address is null (gateway: %v)", gateway)
 		return generated.UserControlResponseStatus_ERROR, nil
 	} else {
 		userID, status, err := users.AddViridian(token, address, gateway, port)
 		if err != nil {
-			logrus.Warnln("Couldn't add viridian", err)
+			logrus.Warnf("Error adding viridian: %v", err)
 		}
 		return status, userID
 	}
@@ -52,13 +52,13 @@ func ListenControlPort(ip string, port int) {
 
 	gateway, err := net.ResolveTCPAddr(TCP, network)
 	if err != nil {
-		logrus.Fatalf("Couldn't resolve address (%s): %v", network, err)
+		logrus.Fatalf("Error resolving address (%s): %v", network, err)
 	}
 
 	// Create a TCP listener
 	listener, err := net.ListenTCP(TCP, gateway)
 	if err != nil {
-		logrus.Fatalf("Couldn't create listener (%s): %v", gateway.String(), err)
+		logrus.Fatalf("Error creating listener (%s): %v", gateway.String(), err)
 	}
 
 	defer listener.Close()
@@ -70,20 +70,20 @@ func ListenControlPort(ip string, port int) {
 		// Accept the incoming TCP connection
 		connection, err := listener.AcceptTCP()
 		if err != nil {
-			logrus.Fatalf("Couldn't resolve connection (%s): %v", gateway.String(), err)
+			logrus.Fatalf("Error resolving connection (%s): %v", gateway.String(), err)
 		}
 
 		// Read CTRLBUFFERSIZE of data from viridian
 		r, err := io.Copy(&buffer, connection)
 		if err != nil {
-			logrus.Errorf("Reading control error (%d bytes read): %v", r, err)
+			sendMessageToSocket(generated.UserControlResponseStatus_ERROR, fmt.Errorf("error reading control message (%d bytes read): %v", r, err), connection, nil)
 			continue
 		}
 
 		// Resolve viridian TCP address
 		address, err := net.ResolveTCPAddr(TCP, connection.RemoteAddr().String())
 		if err != nil {
-			logrus.Errorf("Resolving remote user address error: %v", connection.RemoteAddr().String())
+			sendMessageToSocket(generated.UserControlResponseStatus_ERROR, fmt.Errorf("error resolving remote user address: %v", connection.RemoteAddr().String()), connection, nil)
 			continue
 		}
 
@@ -91,8 +91,7 @@ func ListenControlPort(ip string, port int) {
 		requester := address.IP.String()
 		plaintext, userID, err := crypto.Decrypt(buffer.Bytes(), crypto.PUBLIC_NODE_AEAD, true)
 		if err != nil {
-			logrus.Warnln("Couldn't decrypt message from IP", requester, err)
-			users.SendMessageToUser(generated.UserControlResponseStatus_ERROR, connection, nil)
+			sendMessageToSocket(generated.UserControlResponseStatus_ERROR, fmt.Errorf("error decrypting message from IP %v: %v", requester, err), connection, nil)
 			continue
 		}
 
@@ -100,8 +99,7 @@ func ListenControlPort(ip string, port int) {
 		message := &generated.UserControlMessage{}
 		err = proto.Unmarshal(plaintext, message)
 		if err != nil {
-			logrus.Warnln("Couldn't unmarshall request from IP", requester, err)
-			users.SendMessageToUser(generated.UserControlResponseStatus_ERROR, connection, nil)
+			sendMessageToSocket(generated.UserControlResponseStatus_ERROR, fmt.Errorf("error unmarshalling request from IP %v: %v", requester, err), connection, nil)
 			continue
 		}
 
@@ -117,24 +115,20 @@ func ListenControlPort(ip string, port int) {
 			payload := message.GetConnection()
 			status, userID := connectViridian(payload.Token, payload.Address, address.IP, uint32(payload.Port))
 			logrus.Infoln("Connecting new user", *userID)
-			users.SendMessageToUser(status, connection, userID)
+			sendMessageToSocket(status, nil, connection, userID)
 		// In case of HEALTHPING status - update user deletion timer
 		case generated.UserControlRequestStatus_HEALTHPING:
 			logrus.Infoln("Healthcheck from user", *userID)
 			status, err := users.UpdateViridian(*userID, message.GetHealthcheck().NextIn)
-			if err != nil {
-				logrus.Warnln("Healthping error", err)
-			}
-			users.SendMessageToUser(status, connection, userID)
+			sendMessageToSocket(status, err, connection, userID)
 		// In case of TERMIN status - delete user record
 		case generated.UserControlRequestStatus_DISCONNECTION:
 			logrus.Infoln("Deleting user", *userID)
-			users.SendMessageToUser(generated.UserControlResponseStatus_SUCCESS, connection, userID)
+			sendMessageToSocket(generated.UserControlResponseStatus_SUCCESS, nil, connection, userID)
 			users.DeleteViridian(*userID, false)
 		// Default action - send user undefined status
 		default:
-			logrus.Infof("Unexpected status %v received from user %d", message.Status, *userID)
-			users.SendMessageToUser(generated.UserControlResponseStatus_UNDEFINED, connection, userID)
+			sendMessageToSocket(generated.UserControlResponseStatus_UNDEFINED, fmt.Errorf("error status %v received from user %d", message.Status, *userID), connection, userID)
 		}
 	}
 }

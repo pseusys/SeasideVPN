@@ -37,10 +37,11 @@ func init() {
 	CONTROL_PORT = utils.GetIntEnv("SEASIDE_CTRLPORT", nil)
 	NETWORK_PORT = utils.GetIntEnv("SEASIDE_NETPORT", nil)
 
-	default_level := "WARNING"
-	level, err := logrus.ParseLevel(utils.GetEnv("SEASIDE_LOG_LEVEL", &default_level))
+	defaultLevel := "WARNING"
+	unparsedLevel := utils.GetEnv("SEASIDE_LOG_LEVEL", &defaultLevel)
+	level, err := logrus.ParseLevel(unparsedLevel)
 	if err != nil {
-		logrus.Fatalln("Couldn't parse log level environmental variable!")
+		logrus.Fatalf("Error parsing log level environmental variable: %v", unparsedLevel)
 	}
 	logrus.SetLevel(level)
 }
@@ -63,13 +64,13 @@ func main() {
 	// Resolve UDP address to send to
 	gateway, err := net.ResolveUDPAddr(UDP, fmt.Sprintf("%s:%d", INTERNAL_ADDRESS, SEASIDE_PORT))
 	if err != nil {
-		logrus.Fatalf("Couldn't resolve local address: %v", err)
+		logrus.Fatalf("Error resolving local address: %v", err)
 	}
 
 	// Open the corresponding UDP socket
 	SEA_CONNECTION, err = net.ListenUDP(UDP, gateway)
 	if err != nil {
-		logrus.Fatalf("Couldn't resolve connection (%s): %v", gateway.String(), err)
+		logrus.Fatalf("Error resolving connection (%s): %v", gateway.String(), err)
 	}
 
 	// Start goroutines for packet forwarding

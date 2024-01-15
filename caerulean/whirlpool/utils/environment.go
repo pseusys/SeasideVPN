@@ -13,7 +13,7 @@ func GetEnv(key string, def *string) string {
 	} else if def != nil {
 		return *def
 	}
-	logrus.Fatalf("env var '%s' undefined", key)
+	logrus.Fatalf("Error reading env var: %s", key)
 	return ""
 }
 
@@ -23,10 +23,10 @@ func GetIntEnv(key string, def *int) int {
 		if err == nil {
 			return number
 		}
-		logrus.Fatalf("env var '%s' not converted", key)
+		logrus.Fatalf("Error converting env var: %s", key)
 	} else if def != nil {
 		return *def
 	}
-	logrus.Fatalf("env var '%s' undefined", key)
+	logrus.Fatalf("Error reading env var: %s", key)
 	return -1
 }

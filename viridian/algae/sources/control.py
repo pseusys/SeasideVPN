@@ -89,12 +89,12 @@ class Controller:
 
             encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
             self._user_id, answer_message = self._obfuscator.decrypt(encrypted_message, self._public_cipher, True)
-            status = WhirlpoolControlMessage().parse(answer_message).status
+            answer = WhirlpoolControlMessage().parse(answer_message)
 
-            if status == UserControlResponseStatus.SUCCESS:
+            if answer.status == UserControlResponseStatus.SUCCESS:
                 logger.info(f"Connected to caerulean {self._address}:{self._ctrl_port} successfully!")
             else:
-                raise RuntimeError(f"Couldn't exchange keys with caerulean (status: {status})!")
+                raise RuntimeError(f"Couldn't exchange keys with caerulean: {answer.message}!")
 
     def _turn_tunnel_on(self) -> None:
         self._interface.up()
@@ -133,14 +133,14 @@ class Controller:
 
                     encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
                     _, answer_message = self._obfuscator.decrypt(encrypted_message, self._public_cipher, True)
-                    status = WhirlpoolControlMessage().parse(answer_message).status
+                    answer = WhirlpoolControlMessage().parse(answer_message)
 
-                    if status == UserControlResponseStatus.HEALTHPONG:
+                    if answer.status == UserControlResponseStatus.HEALTHPONG:
                         sleep(next_in)
-                    elif status == UserControlResponseStatus.ERROR:
-                        raise ValueError("Healthping request error!")
+                    elif answer.status == UserControlResponseStatus.ERROR:
+                        raise ValueError(f"Healthping request error: {answer.message}!")
                     else:
-                        raise Exception("Couldn't perform healthcheck!")
+                        raise Exception(f"Couldn't perform healthcheck: {answer.message}!")
 
                 except ValueError:
                     logger.info("Server lost session key!")
@@ -165,11 +165,11 @@ class Controller:
 
             encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
             _, answer_message = self._obfuscator.decrypt(encrypted_message, self._public_cipher, True)
-            status = WhirlpoolControlMessage().parse(answer_message).status
+            answer = WhirlpoolControlMessage().parse(answer_message)
 
-            if status == UserControlResponseStatus.SUCCESS:
+            if answer.status == UserControlResponseStatus.SUCCESS:
                 logger.info(f"Disconnected from caerulean {self._address}:{self._ctrl_port} successfully!")
             else:
-                logger.info(f"Error disconnecting from caerulean (status: {status})!")
+                logger.info(f"Error disconnecting from caerulean: {answer.message}!")
 
         self._clean_tunnel()

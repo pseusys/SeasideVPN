@@ -24,11 +24,11 @@ var (
 
 func init() {
 	if binary.Read(rand.Reader, binary.BigEndian, &ZERO_USER_ID) != nil {
-		logrus.Fatal("error reading random 64bit integer")
+		logrus.Fatal("Error reading random 64bit integer")
 	}
 
 	if binary.Read(rand.Reader, binary.BigEndian, &MULTIPLIER) != nil {
-		logrus.Fatal("error reading random 64bit integer")
+		logrus.Fatal("Error reading random 64bit integer")
 	}
 	MULTIPLIER %= LARGEST_PRIME_UINT64
 

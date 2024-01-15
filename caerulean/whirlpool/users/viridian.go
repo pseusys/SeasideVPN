@@ -44,7 +44,7 @@ func init() {
 	MAX_TOTAL = MAX_USERS + MAX_ADMINS
 
 	if MAX_TOTAL > math.MaxUint16-3 {
-		logrus.Fatalf("error initializing viridian array: too many users requested %d", MAX_TOTAL)
+		logrus.Fatalf("Error initializing viridian array: too many users requested: %d", MAX_TOTAL)
 	}
 	VIRIDIANS = make([]*Viridian, MAX_TOTAL)
 }

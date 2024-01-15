@@ -33,15 +33,14 @@ func ReceivePacketsFromViridian(tunnel *water.Interface, tunnetwork *net.IPNet) 
 		// Read IOBUFFERSIZE of data
 		r, _, err := SEA_CONNECTION.ReadFromUDP(buffer)
 		if err != nil || r == 0 {
-			logrus.Errorf("Reading from viridian error (%d bytes read): %v", r, err)
+			logrus.Errorf("Error reading from viridian (%d bytes read): %v", r, err)
 			continue
 		}
 
 		// Deobfuscate packet
 		userID, err := crypto.UnsubscribeMessage(buffer[:r])
 		if err != nil {
-			logrus.Errorln("Deobfuscating packet error:", err)
-			// SendMessageToUser(generated.UserControlResponseStatus_ERROR, address.IP, nil, true)
+			logrus.Errorf("Error deobfuscating packet: %v", err)
 			continue
 		}
 
@@ -50,23 +49,21 @@ func ReceivePacketsFromViridian(tunnel *water.Interface, tunnetwork *net.IPNet) 
 		binary.BigEndian.PutUint16(viridianID, *userID)
 		viridian := users.GetViridian(*userID)
 		if viridian == nil {
-			logrus.Errorln("User not registered")
-			// SendMessageToUser(generated.UserControlResponseStatus_ERROR, gateway.IP, nil, true)
+			logrus.Errorf("Error: user %d not registered", viridianID)
 			continue
 		}
 
 		// Decrypt packet
 		raw, err := crypto.Decode(buffer[:r], true, viridian.Aead)
 		if err != nil {
-			logrus.Errorln("Decrypting packet error:", err)
-			// SendMessageToUser(generated.UserControlResponseStatus_ERROR, address.IP, nil, true)
+			logrus.Errorf("Error decrypting packet: %v", err)
 			continue
 		}
 
 		// Decode all packet headers
 		packet := gopacket.NewPacket(raw, layers.LayerTypeIPv4, gopacket.NoCopy)
 		if err := packet.ErrorLayer(); err != nil {
-			logrus.Errorln("Error decoding some part of the packet:", err)
+			logrus.Errorf("Error decoding some part of the packet: %v", err)
 		}
 
 		// Get IP layer header and change source IP
@@ -85,15 +82,14 @@ func ReceivePacketsFromViridian(tunnel *water.Interface, tunnetwork *net.IPNet) 
 		// Serialize the packet
 		err = gopacket.SerializePacket(serialBuffer, gopacket.SerializeOptions{ComputeChecksums: true}, packet)
 		if err != nil {
-			logrus.Errorln("Serializing packet error:", err)
+			logrus.Errorf("Error serializing packet: %v", err)
 			continue
 		}
 
 		// Write packet to tunnel
 		s, err := tunnel.Write(serialBuffer.Bytes())
 		if err != nil || s == 0 {
-			logrus.Errorf("Writing to tunnel error (%d bytes written): %v", s, err)
-			// SendMessageToUser(generated.UserControlResponseStatus_ERROR, gateway.IP, nil, true)
+			logrus.Errorf("Error writing to tunnel (%d bytes written): %v", s, err)
 			continue
 		}
 	}
@@ -112,14 +108,14 @@ func SendPacketsToViridian(tunnel *water.Interface, tunnetwork *net.IPNet) {
 		// Read data from tunnel
 		r, err := tunnel.Read(buffer)
 		if r == 0 && err != nil {
-			logrus.Errorf("Reading from tunnel error (%d bytes read): %v", r, err)
+			logrus.Errorf("Error reading from tunnel error (%d bytes read): %v", r, err)
 			continue
 		}
 
 		// Decode all packet headers
 		packet := gopacket.NewPacket(buffer[:r], layers.LayerTypeIPv4, gopacket.NoCopy)
 		if err := packet.ErrorLayer(); err != nil {
-			logrus.Errorln("Error decoding some part of the packet:", err)
+			logrus.Errorf("Error decoding some part of the packet: %v", err)
 		}
 
 		// Get IP layer header and change source IP
@@ -129,14 +125,14 @@ func SendPacketsToViridian(tunnel *water.Interface, tunnetwork *net.IPNet) {
 		viridianID := binary.BigEndian.Uint16([]byte{netLayer.DstIP[2], netLayer.DstIP[3]})
 		viridian := users.GetViridian(viridianID)
 		if viridian == nil {
-			logrus.Errorln("User not registered")
+			logrus.Errorf("Error: user %d not registered", viridianID)
 			continue
 		}
 
 		// Resolve viridian address to send to
 		gateway, err := net.ResolveUDPAddr(UDP, fmt.Sprintf("%s:%v", viridian.Gateway.String(), viridian.Port))
 		if err != nil {
-			logrus.Errorln("Parsing return address error:", err)
+			logrus.Errorf("Error parsing return address: %v", err)
 			continue
 		}
 
@@ -154,23 +150,21 @@ func SendPacketsToViridian(tunnel *water.Interface, tunnetwork *net.IPNet) {
 		// Serialize the packet
 		err = gopacket.SerializePacket(serialBuffer, gopacket.SerializeOptions{ComputeChecksums: true}, packet)
 		if err != nil {
-			logrus.Errorln("Serializing packet error:", err)
+			logrus.Errorf("Error serializing packet: %v", err)
 			continue
 		}
 
 		// Encrypt packet
 		encrypted, err := crypto.Encrypt(serialBuffer.Bytes(), viridian.Aead, &viridianID, false)
 		if err != nil {
-			logrus.Errorln("Encrypting packet error:", err)
-			// SendMessageToUser(generated.UserControlResponseStatus_ERROR, gateway.IP, nil, true)
+			logrus.Errorf("Error encrypting packet: %v", err)
 			continue
 		}
 
 		// Send packet to viridian
 		s, err := SEA_CONNECTION.WriteToUDP(encrypted, gateway)
 		if err != nil || s == 0 {
-			logrus.Errorf("Writing to viridian error (%d bytes written): %v", s, err)
-			// SendMessageToUser(generated.UserControlResponseStatus_ERROR, gateway.IP, nil, true)
+			logrus.Errorf("Error writing to viridian (%d bytes written): %v", s, err)
 			continue
 		}
 	}
