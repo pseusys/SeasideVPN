@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"main/crypto"
 	"main/generated"
 	"main/utils"
+	"net"
 	"net/http"
 
 	"github.com/sirupsen/logrus"
@@ -21,14 +24,18 @@ var (
 )
 
 func init() {
-	NODE_OWNER_KEY = utils.GetEnv("SEASIDE_PAYLOAD_OWNER", nil)
-	PAYLOAD_KEY = utils.GetEnv("SEASIDE_PAYLOAD_USER", nil)
+	NODE_OWNER_KEY = utils.GetEnv("SEASIDE_PAYLOAD_OWNER")
+	PAYLOAD_KEY = utils.GetEnv("SEASIDE_PAYLOAD_USER")
 
-	AUTH_ENDPOINT = utils.GetEnv("SEASIDE_AUTH", nil)
+	AUTH_ENDPOINT = utils.GetEnv("SEASIDE_AUTH")
 }
 
 func auth(w http.ResponseWriter, r *http.Request) {
-	// TODO: check POST request
+	if r.Method != "POST" {
+		writeHttpError(w, fmt.Errorf("method %s not supported", r.Method), http.StatusBadRequest)
+		return
+	}
+
 	ciphertext, err := io.ReadAll(r.Body)
 	if err != nil {
 		writeHttpError(w, fmt.Errorf("error reading request bytes: %v", err), http.StatusBadRequest)
@@ -86,16 +93,20 @@ func auth(w http.ResponseWriter, r *http.Request) {
 	writeHttpData(w, marshResponse)
 }
 
-func InitNetAPI(port int) {
-	logrus.Infoln("Node API setup, node owner key:", NODE_OWNER_KEY)
+func InitNetAPI(ctx context.Context, port int) {
+	logrus.Infof("Node API setup, node owner key: %v", NODE_OWNER_KEY)
+
+	network := fmt.Sprintf("%s:%d", INTERNAL_ADDRESS, port)
+	logrus.Debugf("Listening for HTTP requests at: %s", network)
+	server := &http.Server{Addr: network, BaseContext: func(net.Listener) context.Context { return ctx }}
 
 	// TODO: distribute stats: http.HandleFunc("/stats", stats)
 	http.HandleFunc(fmt.Sprintf("/%s", AUTH_ENDPOINT), auth)
 	// TODO: connect to network: http.HandleFunc("/connect", connect)
 
-	network := fmt.Sprintf("%s:%d", INTERNAL_ADDRESS, port)
-	logrus.Infoln("Listening for HTTP requests at:", network)
-	logrus.Fatalf("Error serving HTTP server: %s", http.ListenAndServe(network, nil))
+	if err := server.ListenAndServe(); err != http.ErrServerClosed {
+		log.Fatalf("Error serving HTTP server: %v", err)
+	}
 }
 
 func ExchangeNodeKey() {

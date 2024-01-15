@@ -39,8 +39,8 @@ var (
 
 func init() {
 	ITERATOR = 0
-	MAX_USERS = uint16(utils.GetIntEnv("SEASIDE_MAX_USERS", nil))
-	MAX_ADMINS = uint16(utils.GetIntEnv("SEASIDE_MAX_ADMINS", nil))
+	MAX_USERS = uint16(utils.GetIntEnv("SEASIDE_MAX_USERS"))
+	MAX_ADMINS = uint16(utils.GetIntEnv("SEASIDE_MAX_ADMINS"))
 	MAX_TOTAL = MAX_USERS + MAX_ADMINS
 
 	if MAX_TOTAL > math.MaxUint16-3 {

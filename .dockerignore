@@ -3,8 +3,11 @@
 ## Whirlpool
 
 caerulean/whirlpool/build
+caerulean/whirlpool/generated
 caerulean/whirlpool/tests
 caerulean/whirlpool/Dockerfile
+caerulean/whirlpool/example.conf.env
+caerulean/whirlpool/go.sum
 caerulean/whirlpool/Makefile
 caerulean/whirlpool/README.md
 
@@ -14,11 +17,14 @@ caerulean/whirlpool/README.md
 ## Algae
 
 viridian/algae/**/__pycache__
-viridian/algae/**/.pytest_cache
+viridian/algae/*.spec
+viridian/algae/.pytest_cache
 viridian/algae/build
 viridian/algae/dist
 viridian/algae/docker/compose.*.yml
 viridian/algae/docker/Dockerfile.*
-viridian/algae/algae.run.spec
+viridian/algae/docker/test.conf.env
+viridian/algae/scripts
+viridian/algae/sources/generated
 viridian/algae/poetry.lock
 viridian/algae/README.md

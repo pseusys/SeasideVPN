@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"main/crypto"
@@ -44,7 +45,7 @@ func connectViridian(encryptedToken, address, gateway []byte, port uint32) (gene
 	}
 }
 
-func ListenControlPort(ip string, port int) {
+func ListenControlPort(ctx context.Context, ip string, port int) {
 	var buffer bytes.Buffer
 
 	// Open viridian control TCP connection
@@ -61,9 +62,17 @@ func ListenControlPort(ip string, port int) {
 		logrus.Fatalf("Error creating listener (%s): %v", gateway.String(), err)
 	}
 
+	logrus.Debug("Control port listening started")
 	defer listener.Close()
 
 	for {
+		select {
+		case <-ctx.Done():
+			logrus.Debug("Control port listening stopped")
+			return
+		default: // do nothing
+		}
+
 		// Clear the buffer
 		buffer.Reset()
 
@@ -104,9 +113,9 @@ func ListenControlPort(ip string, port int) {
 		}
 
 		if userID != nil {
-			logrus.Infoln("Received control message from user", *userID)
+			logrus.Infof("Received control message from user: %d", *userID)
 		} else {
-			logrus.Infoln("Received control request from IP", requester)
+			logrus.Infof("Received control request from IP: %v", requester)
 		}
 
 		switch message.Status {
@@ -114,16 +123,16 @@ func ListenControlPort(ip string, port int) {
 		case generated.ControlRequestStatus_CONNECTION:
 			payload := message.GetConnection()
 			status, userID := connectViridian(payload.Token, payload.Address, address.IP, uint32(payload.Port))
-			logrus.Infoln("Connecting new user", *userID)
+			logrus.Infof("Connecting new user: %d", *userID)
 			sendMessageToSocket(status, nil, connection, userID)
 		// In case of HEALTHPING status - update user deletion timer
 		case generated.ControlRequestStatus_HEALTHPING:
-			logrus.Infoln("Healthcheck from user", *userID)
+			logrus.Infof("Healthcheck from user: %d", *userID)
 			status, err := users.UpdateViridian(*userID, message.GetHealthcheck().NextIn)
-			sendMessageToSocket(status, err, connection, userID)
+			sendMessageToSocket(status, fmt.Errorf("error updating viridian: %v", err), connection, userID)
 		// In case of TERMIN status - delete user record
 		case generated.ControlRequestStatus_DISCONNECTION:
-			logrus.Infoln("Deleting user", *userID)
+			logrus.Infof("Deleting user: %d", *userID)
 			sendMessageToSocket(generated.ControlResponseStatus_SUCCESS, nil, connection, userID)
 			users.DeleteViridian(*userID, false)
 		// Default action - send user undefined status

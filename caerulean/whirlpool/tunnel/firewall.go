@@ -53,7 +53,7 @@ func openForwarding(intIP, extIP, tunIface string, seaPort, netPort, ctrlPort in
 	// Enable masquerade on all non-claimed output and input from and to eth0
 	runCommand("iptables", "-t", "nat", "-A", "POSTROUTING", "-o", extIface, "-j", "MASQUERADE")
 
-	logrus.Infoln("Forwarding configured:", intIface, "<->", tunIface, "<->", extIface)
+	logrus.Infof("Forwarding configured: %s <-> %s <-> %s", intIface, tunIface, extIface)
 	return nil
 }
 

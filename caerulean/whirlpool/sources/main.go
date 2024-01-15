@@ -1,11 +1,10 @@
 package main
 
 import (
+	"context"
 	"flag"
-	"fmt"
 	"main/tunnel"
 	"main/utils"
-	"net"
 	"os"
 	"os/signal"
 	"syscall"
@@ -30,15 +29,14 @@ var (
 )
 
 func init() {
-	INTERNAL_ADDRESS = utils.GetEnv("SEASIDE_ADDRESS", nil)
-	EXTERNAL_ADDRESS = utils.GetEnv("SEASIDE_EXTERNAL", nil)
+	INTERNAL_ADDRESS = utils.GetEnv("SEASIDE_ADDRESS")
+	EXTERNAL_ADDRESS = utils.GetEnv("SEASIDE_EXTERNAL")
 
-	SEASIDE_PORT = utils.GetIntEnv("SEASIDE_SEAPORT", nil)
-	CONTROL_PORT = utils.GetIntEnv("SEASIDE_CTRLPORT", nil)
-	NETWORK_PORT = utils.GetIntEnv("SEASIDE_NETPORT", nil)
+	SEASIDE_PORT = utils.GetIntEnv("SEASIDE_SEAPORT")
+	CONTROL_PORT = utils.GetIntEnv("SEASIDE_CTRLPORT")
+	NETWORK_PORT = utils.GetIntEnv("SEASIDE_NETPORT")
 
-	defaultLevel := "WARNING"
-	unparsedLevel := utils.GetEnv("SEASIDE_LOG_LEVEL", &defaultLevel)
+	unparsedLevel := utils.GetEnv("SEASIDE_LOG_LEVEL")
 	level, err := logrus.ParseLevel(unparsedLevel)
 	if err != nil {
 		logrus.Fatalf("Error parsing log level environmental variable: %v", unparsedLevel)
@@ -61,25 +59,22 @@ func main() {
 		logrus.Fatalf("Error establishing network connections: %v", err)
 	}
 
-	// Resolve UDP address to send to
-	gateway, err := net.ResolveUDPAddr(UDP, fmt.Sprintf("%s:%d", INTERNAL_ADDRESS, SEASIDE_PORT))
+	// Initialize VPN connection
+	err = InitializeSeasideConnection()
 	if err != nil {
-		logrus.Fatalf("Error resolving local address: %v", err)
+		logrus.Fatalf("Error initializing seaside connection: %v", err)
 	}
 
-	// Open the corresponding UDP socket
-	SEA_CONNECTION, err = net.ListenUDP(UDP, gateway)
-	if err != nil {
-		logrus.Fatalf("Error resolving connection (%s): %v", gateway.String(), err)
-	}
+	// Initialize context for goroutines stopping
+	ctx, cancel := context.WithCancel(context.Background())
 
 	// Start goroutines for packet forwarding
-	go ListenControlPort(INTERNAL_ADDRESS, CONTROL_PORT)
-	go ReceivePacketsFromViridian(tunnelConfig.Tunnel, tunnelConfig.Network)
-	go SendPacketsToViridian(tunnelConfig.Tunnel, tunnelConfig.Network)
+	go ListenControlPort(ctx, INTERNAL_ADDRESS, CONTROL_PORT)
+	go ReceivePacketsFromViridian(ctx, tunnelConfig.Tunnel, tunnelConfig.Network)
+	go SendPacketsToViridian(ctx, tunnelConfig.Tunnel, tunnelConfig.Network)
 
 	// Start web API, connect to surface if available
-	go InitNetAPI(NETWORK_PORT)
+	go InitNetAPI(ctx, NETWORK_PORT)
 	go ExchangeNodeKey()
 
 	// Prepare termination signal
@@ -87,8 +82,10 @@ func main() {
 	signal.Notify(exitSignal, syscall.SIGINT, syscall.SIGTERM)
 	<-exitSignal
 
-	// TODO: terminate goroutines
-	// TODO: defer delete all users
+	// Send termination signal to goroutines and close VPN connection
+	cancel()
 	SEA_CONNECTION.Close()
+
+	// Disable tunnel and restore firewall config
 	tunnelConfig.Close()
 }

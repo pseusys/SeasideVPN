@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"main/crypto"
 	"main/generated"
 	"net"
@@ -22,7 +21,7 @@ func writeHttpData(w http.ResponseWriter, data []byte) {
 	encrypted, err := crypto.Encode(data, nil, crypto.PUBLIC_NODE_AEAD)
 	if err != nil {
 		writeHttpResponse(w, nil, http.StatusInternalServerError)
-		logrus.Warn(fmt.Errorf("%v (%v)", err, data))
+		logrus.Warnf("Error encoding HTTP response: %v (%v)", err, data)
 	} else {
 		writeHttpResponse(w, encrypted, http.StatusOK)
 	}
@@ -32,17 +31,21 @@ func writeHttpError(w http.ResponseWriter, message error, code int) {
 	data, err := crypto.Encode([]byte(message.Error()), nil, crypto.PUBLIC_NODE_AEAD)
 	if err != nil {
 		writeHttpResponse(w, nil, http.StatusInternalServerError)
-		logrus.Warn(fmt.Errorf("%v (%v)", err, message))
+		logrus.Warnf("Error encoding HTTP response: %v (%v)", err, message)
 	} else {
 		writeHttpResponse(w, data, code)
-		logrus.Warn(message)
+		logrus.Warnf("Sending error by HTTP: %v", message)
 	}
 }
 
 func sendMessageToSocket(status generated.ControlResponseStatus, message error, connection *net.TCPConn, addressee *uint16) {
 	byteMessage := ""
 	if message != nil {
-		logrus.Warn(message)
+		if addressee != nil {
+			logrus.Warnf("Sending error to viridian %d: %v", addressee, message)
+		} else {
+			logrus.Warnf("Sending error to IP %v: %v", connection.RemoteAddr(), message)
+		}
 		byteMessage = message.Error()
 	}
 

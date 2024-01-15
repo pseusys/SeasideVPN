@@ -2,13 +2,17 @@ package tunnel
 
 import (
 	"fmt"
+	"main/utils"
 	"strconv"
 
 	"github.com/sirupsen/logrus"
 )
 
-// TODO: load from env
-const MTU = 1500
+var MTU int
+
+func init() {
+	MTU = utils.GetIntEnv("SEASIDE_TUNNEL_MTU")
+}
 
 func openInterface(conf *TunnelConfig) error {
 	tunnelName := conf.Tunnel.Name()

@@ -9,8 +9,7 @@ import (
 	"github.com/songgao/water"
 )
 
-// TODO: load from env
-const TUNNEL_IP = "192.168.0.87/16"
+const TUNNEL_IP = "172.16.0.1/12"
 
 type TunnelConfig struct {
 	mutex   sync.Mutex
