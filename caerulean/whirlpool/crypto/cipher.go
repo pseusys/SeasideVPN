@@ -18,7 +18,7 @@ var (
 )
 
 func init() {
-	publicKeyHex := utils.GetEnv("SEASIDE_PUBLIC", nil)
+	publicKeyHex := utils.GetEnv("SEASIDE_PUBLIC")
 
 	publicKeyBytes, err := hex.DecodeString(publicKeyHex)
 	if err != nil {

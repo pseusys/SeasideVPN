@@ -6,8 +6,8 @@ include example.conf.env
 EXECUTABLE_NAME = whirlpool.run
 
 build:
-	go mod tidy
 	protoc -I=../../ --go_out=. ../../vessels/*.proto
+	go mod tidy
 	go build -o build/$(EXECUTABLE_NAME) ./sources
 .PHONY: build
 
@@ -34,7 +34,7 @@ endif
 
 clean:
 	rm -rf build
+	rm -rf generated
 	rm -f go.sum
-	rm -f ~/sysconfig.txt
-	docker rmi "seaside-whirlpool-latest"
+	docker rmi --force "seaside-whirlpool-latest"
 .PHONY: clean

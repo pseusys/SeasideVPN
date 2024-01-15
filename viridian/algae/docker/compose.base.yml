@@ -11,7 +11,6 @@ services:
     env_file:
       - test.conf.env
     environment:
-      SEASIDE_LOG_LEVEL: DEBUG
       BUFFER_SIZE: 8192  # Buffer for echo server message storing
       ECHO_PORT: 5000  # Port for echo server accessing
 
@@ -22,8 +21,6 @@ services:
     build:
       dockerfile: Dockerfile.whirlpool
       target: smoke
-    environment:
-      SEASIDE_LOG_LEVEL: DEBUG
     env_file:
       - test.conf.env
 

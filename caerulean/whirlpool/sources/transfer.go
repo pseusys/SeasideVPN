@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/binary"
 	"fmt"
 	"main/crypto"
@@ -20,13 +21,35 @@ type NetSettableLayerType interface {
 	SetNetworkLayerForChecksum(gopacket.NetworkLayer) error
 }
 
-func ReceivePacketsFromViridian(tunnel *water.Interface, tunnetwork *net.IPNet) {
+func InitializeSeasideConnection() error {
+	gateway, err := net.ResolveUDPAddr(UDP, fmt.Sprintf("%s:%d", INTERNAL_ADDRESS, SEASIDE_PORT))
+	if err != nil {
+		logrus.Fatalf("Error resolving local address: %v", err)
+	}
+
+	SEA_CONNECTION, err = net.ListenUDP(UDP, gateway)
+	if err != nil {
+		logrus.Fatalf("Error resolving connection (%s): %v", gateway.String(), err)
+	}
+
+	return nil
+}
+
+func ReceivePacketsFromViridian(ctx context.Context, tunnel *water.Interface, tunnetwork *net.IPNet) {
 	buffer := make([]byte, math.MaxUint16)
 
 	// Create objects for packet decoding
 	serialBuffer := gopacket.NewSerializeBuffer()
 
+	logrus.Debug("Receiving packets from viridian started")
 	for {
+		select {
+		case <-ctx.Done():
+			logrus.Debug("Receiving packets from viridian stopped")
+			return
+		default: // do nothing
+		}
+
 		// Clear the serialization buffer
 		serialBuffer.Clear()
 
@@ -95,13 +118,21 @@ func ReceivePacketsFromViridian(tunnel *water.Interface, tunnetwork *net.IPNet) 
 	}
 }
 
-func SendPacketsToViridian(tunnel *water.Interface, tunnetwork *net.IPNet) {
+func SendPacketsToViridian(ctx context.Context, tunnel *water.Interface, tunnetwork *net.IPNet) {
 	buffer := make([]byte, math.MaxUint16)
 
 	// Create objects for packet decoding
 	serialBuffer := gopacket.NewSerializeBuffer()
 
+	logrus.Debug("Sending packets to viridian started")
 	for {
+		select {
+		case <-ctx.Done():
+			logrus.Debug("Sending packets to viridian stopped")
+			return
+		default: // do nothing
+		}
+
 		// Clear the serialization buffer
 		serialBuffer.Clear()
 

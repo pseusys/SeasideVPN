@@ -7,26 +7,26 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func GetEnv(key string, def *string) string {
+func GetEnv(key string) string {
 	if value, ok := os.LookupEnv(key); ok {
 		return value
-	} else if def != nil {
-		return *def
+	} else {
+		logrus.Fatalf("Error reading env var: %s", key)
+		return ""
 	}
-	logrus.Fatalf("Error reading env var: %s", key)
-	return ""
 }
 
-func GetIntEnv(key string, def *int) int {
+func GetIntEnv(key string) int {
 	if value, ok := os.LookupEnv(key); ok {
 		number, err := strconv.Atoi(value)
 		if err == nil {
 			return number
+		} else {
+			logrus.Fatalf("Error converting env var: %s", key)
+			return -1
 		}
-		logrus.Fatalf("Error converting env var: %s", key)
-	} else if def != nil {
-		return *def
+	} else {
+		logrus.Fatalf("Error reading env var: %s", key)
+		return -1
 	}
-	logrus.Fatalf("Error reading env var: %s", key)
-	return -1
 }
