@@ -275,17 +275,16 @@ These are:
 1. Add unit tests to both `caerulean/whirlpool` and `viridian/algae` (do not run them in Docker).
 2. Write documentation for both `caerulean/whirlpool` and `viridian/algae`.
 3. Add shell build, generation, etc. script for easy `caerulean/whirlpool` deployment (with and without container).
-4. Set GET and POST checks in GO.
-5. Whirlpool: -m limit tcp packet number (user number \* tcp method number \* tcp connection packets)
-6. Add "stress" profile with pumba on internal router for enhanced testing, use tcp echo server (can be found on dockerhub) (4 containrrs, no ext router).
-7. Add "load" profile for direct access (3 containers) and multiple clients and performance analysis for whirlpool.
-8. Warning if packet is too large
-9. Write script for downloading/running/configuring server
-10. Control healthcheck times by cosine function, increase max delay to smth like 360 seconds, add random response delay
-11. Addresses for VPN connection: black and white list (limit addresses to use VPN with) <- add traffic analysis tool to client
-12. Advice on traffic distribution (proxy nodes), all routes and ports masking, on caerulean side: switch to 172.x.x.x tunnel IP, 1st X will be the number of PROXY the packet has been received from
-13. Protocol disguise: QOTD or any raw socket or data stream
-14. Add RTP protocol disguise option (to obfuscation, sent by client)
-15. Create general functions for decryption+unmarshalling and encryption+marshalling for network.go ONLY
-16. Rewrite pythoon with async/await
-17. Extract `VIRIDIAN` calls from go files.
+4. Add "stress" profile with pumba on internal router for enhanced testing, use tcp echo server (can be found on dockerhub) (4 containrrs, no ext router).
+5. Add "load" profile for direct access (3 containers) and multiple clients and performance analysis for whirlpool.
+6. Warning if packet is too large
+7. Write script for downloading/running/configuring server
+8. Control healthcheck times by cosine function, increase max delay to smth like 360 seconds, add random response delay
+9. Addresses for VPN connection: black and white list (limit addresses to use VPN with) <- add traffic analysis tool to client
+10. Advice on traffic distribution (proxy nodes), all routes and ports masking, on caerulean side: switch to 172.x.x.x tunnel IP, 1st X will be the number of PROXY the packet has been received from
+11. Protocol disguise: QOTD or any raw socket or data stream
+12. Add RTP protocol disguise option (to obfuscation, sent by client)
+13. Create general functions for decryption+unmarshalling and encryption+marshalling for network.go ONLY
+14. Rewrite pythoon with async/await
+15. Extract `VIRIDIAN` calls from go files.
+16. Use uint128 in golang.

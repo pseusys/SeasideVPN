@@ -6,8 +6,6 @@ RUN apk add --no-cache protobuf>=24.4 protobuf-dev>=24.4
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 
 COPY caerulean/whirlpool/go.mod ./
-RUN go get ./...
-
 COPY vessels ./vessels
 RUN protoc -I=vessels --go_out=. vessels/*.proto
 
@@ -34,6 +32,12 @@ ENV SEASIDE_MAX_USERS 10
 ENV SEASIDE_MAX_ADMINS 5
 
 ENV SEASIDE_TUNNEL_MTU 1500
+ENV SEASIDE_VPN_DATA_LIMIT -1
+ENV SEASIDE_CONTROL_PACKET_LIMIT 2
+ENV SEASIDE_HTTP_PACKET_LIMIT 3
+ENV SEASIDE_ICMP_PACKET_LIMIT 5
+ENV SEASIDE_BURST_LIMIT_MULTIPLIER 3
+
 ENV SEASIDE_LOG_LEVEL WARNING
 
 EXPOSE $SEASIDE_SEAPORT/udp
