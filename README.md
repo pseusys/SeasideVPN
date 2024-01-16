@@ -281,11 +281,8 @@ These are:
 7. Control healthcheck times by cosine function, increase max delay to smth like 360 seconds, add random response delay
 8. Addresses for VPN connection: black and white list (limit addresses to use VPN with) <- add traffic analysis tool to client
 9. Advice on traffic distribution (proxy nodes), all routes and ports masking, on caerulean side: switch to 172.x.x.x tunnel IP, 1st X will be the number of PROXY the packet has been received from
-10. Protocol disguise: QOTD or any raw socket or data stream
-11. Add RTP protocol disguise option (to obfuscation, sent by client)
-12. Create general functions for decryption+unmarshalling and encryption+marshalling for network.go ONLY
-13. Rewrite pythoon with async/await
-14. Extract `VIRIDIAN` calls from go files.
+10. Add RTP protocol disguise option (to obfuscation, sent by client)
+11. Rewrite pythoon with async/await
 
 ### Further considerations
 
