@@ -5,8 +5,8 @@ import (
 	"encoding/binary"
 	"errors"
 	"main/utils"
-	"math/big"
 
+	"github.com/ncw/gmp"
 	"github.com/sirupsen/logrus"
 )
 
@@ -32,41 +32,41 @@ func init() {
 	}
 	MULTIPLIER %= LARGEST_PRIME_UINT64
 
-	bigA := new(big.Int).SetUint64(MULTIPLIER)
-	bigM := new(big.Int).SetUint64(LARGEST_PRIME_UINT64)
-	MULTIPLIER_1 = new(big.Int).ModInverse(bigA, bigM).Uint64()
+	bigA := new(gmp.Int).SetUint64(MULTIPLIER)
+	bigM := new(gmp.Int).SetUint64(LARGEST_PRIME_UINT64)
+	MULTIPLIER_1 = new(gmp.Int).ModInverse(bigA, bigM).Uint64()
 }
 
 func randomPermute(addition uint64, ptr *uint16) uint64 {
-	bigI := new(big.Int).SetUint64(ZERO_USER_ID)
-	bigP := new(big.Int).SetUint64(LARGEST_PRIME_UINT64)
+	bigI := new(gmp.Int).SetUint64(ZERO_USER_ID)
+	bigP := new(gmp.Int).SetUint64(LARGEST_PRIME_UINT64)
 	if ptr != nil {
-		bigU := new(big.Int).SetUint64(uint64(*ptr))
-		bigI = new(big.Int).Add(bigU, bigI)
+		bigU := new(gmp.Int).SetUint64(uint64(*ptr))
+		bigI = new(gmp.Int).Add(bigU, bigI)
 	}
-	bigN := new(big.Int).Mod(bigI, bigP)
+	bigN := new(gmp.Int).Mod(bigI, bigP)
 	if bigN.Cmp(bigP) >= 0 {
 		return bigN.Uint64()
 	} else {
-		bigM := new(big.Int).SetUint64(MULTIPLIER)
-		bigA := new(big.Int).SetUint64(addition)
-		return new(big.Int).Mod(new(big.Int).Add(new(big.Int).Mul(bigN, bigM), bigA), bigP).Uint64()
+		bigM := new(gmp.Int).SetUint64(MULTIPLIER)
+		bigA := new(gmp.Int).SetUint64(addition)
+		return new(gmp.Int).Mod(new(gmp.Int).Add(new(gmp.Int).Mul(bigN, bigM), bigA), bigP).Uint64()
 	}
 }
 
 func randomUnpermute(addition, number uint64) *uint16 {
-	bigN := new(big.Int).SetUint64(number)
-	bigS := new(big.Int).SetUint64(ZERO_USER_ID)
-	bigP := new(big.Int).SetUint64(LARGEST_PRIME_UINT64)
-	var bigUNP *big.Int
+	bigN := new(gmp.Int).SetUint64(number)
+	bigS := new(gmp.Int).SetUint64(ZERO_USER_ID)
+	bigP := new(gmp.Int).SetUint64(LARGEST_PRIME_UINT64)
+	var bigUNP *gmp.Int
 	if number >= LARGEST_PRIME_UINT64 {
 		bigUNP = bigN
 	} else {
-		bigM := new(big.Int).SetUint64(MULTIPLIER_1)
-		bigA := new(big.Int).SetUint64(addition)
-		bigUNP = new(big.Int).Mod(new(big.Int).Mul(bigM, new(big.Int).Sub(bigN, bigA)), bigP)
+		bigM := new(gmp.Int).SetUint64(MULTIPLIER_1)
+		bigA := new(gmp.Int).SetUint64(addition)
+		bigUNP = new(gmp.Int).Mod(new(gmp.Int).Mul(bigM, new(gmp.Int).Sub(bigN, bigA)), bigP)
 	}
-	ptr := uint16(new(big.Int).Mod(new(big.Int).Add(new(big.Int).Sub(bigUNP, bigS), bigP), bigP).Uint64())
+	ptr := uint16(new(gmp.Int).Mod(new(gmp.Int).Add(new(gmp.Int).Sub(bigUNP, bigS), bigP), bigP).Uint64())
 	if ptr == 0 {
 		return nil
 	} else {
