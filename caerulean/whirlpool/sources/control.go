@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"main/crypto"
 	"main/generated"
 	"main/users"
@@ -82,13 +81,6 @@ func ListenControlPort(ctx context.Context, ip string, port int) {
 			logrus.Fatalf("Error resolving connection (%s): %v", gateway.String(), err)
 		}
 
-		// Read CTRLBUFFERSIZE of data from viridian
-		r, err := io.Copy(&buffer, connection)
-		if err != nil {
-			sendMessageToSocket(generated.ControlResponseStatus_ERROR, fmt.Errorf("error reading control message (%d bytes read): %v", r, err), connection, nil)
-			continue
-		}
-
 		// Resolve viridian TCP address
 		address, err := net.ResolveTCPAddr(TCP, connection.RemoteAddr().String())
 		if err != nil {
@@ -96,22 +88,16 @@ func ListenControlPort(ctx context.Context, ip string, port int) {
 			continue
 		}
 
-		// Decrypt received message
+		// Resolve viridian IP address string and decrypt request
 		requester := address.IP.String()
-		plaintext, userID, err := crypto.Decrypt(buffer.Bytes(), crypto.PUBLIC_NODE_AEAD, true)
-		if err != nil {
-			sendMessageToSocket(generated.ControlResponseStatus_ERROR, fmt.Errorf("error decrypting message from IP %v: %v", requester, err), connection, nil)
-			continue
-		}
-
-		// Unmarshall received message
 		message := &generated.ControlRequest{}
-		err = proto.Unmarshal(plaintext, message)
+		userID, err := readMessageFromSocket(connection, buffer, requester, message)
 		if err != nil {
-			sendMessageToSocket(generated.ControlResponseStatus_ERROR, fmt.Errorf("error unmarshalling request from IP %v: %v", requester, err), connection, nil)
+			sendMessageToSocket(generated.ControlResponseStatus_ERROR, fmt.Errorf("error decrypting request from IP %v: %v", requester, err), connection, nil)
 			continue
 		}
 
+		// Print control message information
 		if userID != nil {
 			logrus.Infof("Received control message from user: %d", *userID)
 		} else {

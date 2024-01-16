@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"main/crypto"
 	"main/generated"
@@ -36,22 +35,10 @@ func auth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ciphertext, err := io.ReadAll(r.Body)
-	if err != nil {
-		writeHttpError(w, fmt.Errorf("error reading request bytes: %v", err), http.StatusBadRequest)
-		return
-	}
-
-	plaintext, err := crypto.Decode(ciphertext, false, crypto.PUBLIC_NODE_AEAD)
-	if err != nil {
-		writeHttpError(w, fmt.Errorf("error decoding request bytes: %v", err), http.StatusBadRequest)
-		return
-	}
-
 	message := &generated.UserDataForWhirlpool{}
-	err = proto.Unmarshal(plaintext, message)
+	err := readHttpRequest(w, r, message)
 	if err != nil {
-		writeHttpError(w, fmt.Errorf("error unmarshalling message: %v", err), http.StatusBadRequest)
+		writeHttpError(w, fmt.Errorf("error decrypting HTTP request: %v", err), http.StatusBadRequest)
 		return
 	}
 
@@ -84,13 +71,7 @@ func auth(w http.ResponseWriter, r *http.Request) {
 		SeasidePort: int32(SEASIDE_PORT),
 		ControlPort: int32(CONTROL_PORT),
 	}
-	marshResponse, err := proto.Marshal(response)
-	if err != nil {
-		writeHttpError(w, fmt.Errorf("error marshalling response: %v", err), http.StatusBadRequest)
-		return
-	}
-
-	writeHttpData(w, marshResponse)
+	writeHttpData(w, response)
 }
 
 func InitNetAPI(ctx context.Context, port int) {
