@@ -2,7 +2,7 @@ FROM golang:1.20-alpine3.17 as builder
 
 WORKDIR /seaside/caerulean
 
-RUN apk add --no-cache protobuf>=24.4 protobuf-dev>=24.4
+RUN apk add --no-cache protobuf protobuf-dev build-base gmp-dev
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 
 COPY caerulean/whirlpool/go.mod ./
@@ -19,7 +19,7 @@ FROM alpine:3.17 as default
 
 WORKDIR /seaside/caerulean
 
-RUN apk add --no-cache iptables
+RUN apk add --no-cache iptables gmp
 COPY --from=builder /seaside/caerulean/whirlpool.run ./
 
 ENV SEASIDE_SEAPORT 8542

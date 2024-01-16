@@ -277,14 +277,16 @@ These are:
 3. Add shell build, generation, etc. script for easy `caerulean/whirlpool` deployment (with and without container).
 4. Add "stress" profile with pumba on internal router for enhanced testing, use tcp echo server (can be found on dockerhub) (4 containrrs, no ext router).
 5. Add "load" profile for direct access (3 containers) and multiple clients and performance analysis for whirlpool.
-6. Warning if packet is too large
-7. Write script for downloading/running/configuring server
-8. Control healthcheck times by cosine function, increase max delay to smth like 360 seconds, add random response delay
-9. Addresses for VPN connection: black and white list (limit addresses to use VPN with) <- add traffic analysis tool to client
-10. Advice on traffic distribution (proxy nodes), all routes and ports masking, on caerulean side: switch to 172.x.x.x tunnel IP, 1st X will be the number of PROXY the packet has been received from
-11. Protocol disguise: QOTD or any raw socket or data stream
-12. Add RTP protocol disguise option (to obfuscation, sent by client)
-13. Create general functions for decryption+unmarshalling and encryption+marshalling for network.go ONLY
-14. Rewrite pythoon with async/await
-15. Extract `VIRIDIAN` calls from go files.
-16. Use uint128 in golang.
+6. Write script for downloading/running/configuring server
+7. Control healthcheck times by cosine function, increase max delay to smth like 360 seconds, add random response delay
+8. Addresses for VPN connection: black and white list (limit addresses to use VPN with) <- add traffic analysis tool to client
+9. Advice on traffic distribution (proxy nodes), all routes and ports masking, on caerulean side: switch to 172.x.x.x tunnel IP, 1st X will be the number of PROXY the packet has been received from
+10. Protocol disguise: QOTD or any raw socket or data stream
+11. Add RTP protocol disguise option (to obfuscation, sent by client)
+12. Create general functions for decryption+unmarshalling and encryption+marshalling for network.go ONLY
+13. Rewrite pythoon with async/await
+14. Extract `VIRIDIAN` calls from go files.
+
+### Further considerations
+
+- Fix docker healthchecks when docker engine v25 is out.
