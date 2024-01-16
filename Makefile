@@ -1,3 +1,6 @@
+.ONESHELL:
+
+
 build-whirlpool:
 	make -C caerulean/whirlpool -s build
 .PHONY: install-algae

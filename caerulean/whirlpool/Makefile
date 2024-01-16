@@ -16,7 +16,7 @@ build-docker:
 .PHONY: build
 
 run: build
-	sudo build/$(EXECUTABLE_NAME) -ip 127.0.0.1
+	sudo build/$(EXECUTABLE_NAME)
 .PHONY: run
 
 lint: build
