@@ -46,7 +46,7 @@ def test_controller_initialization(controller: Controller):
 
 
 @pytest.mark.dependency(depends=["test_controller_initialization"])
-def test_no_vpn_request(controller: Controller):
+def test_no_vpn_request():
     logger.info("Testing unreachability with TCP echo server")
     assert not is_tcp_available()
 
@@ -67,16 +67,22 @@ def test_initialize_control(controller: Controller):
 
 
 @pytest.mark.dependency(depends=["test_initialize_control"])
-def test_turn_tunnel_on(controller: Controller):
-    logger.info("Testing turning tunnel on")
-    controller._turn_tunnel_on()
-    assert controller._sender_process.is_alive()
-    assert controller._receiver_process.is_alive()
+def test_open_tunnel(controller: Controller):
+    logger.info("Testing opening the tunnel")
+    controller._interface.up()
+    assert controller._interface._operational
 
 
-@pytest.mark.dependency(depends=["test_turn_tunnel_on"])
-def test_validate_request(controller: Controller):
-    logger.info("Testing reachability with TCP echo server")
+@pytest.mark.dependency(depends=["test_open_tunnel"])
+def test_open_client(controller: Controller):
+    logger.info("Testing opening the client")
+    controller._client.open()
+    assert controller._client._operational
+
+
+@pytest.mark.dependency(depends=["test_open_client"])
+def test_validate_request():
+    logger.info("Testing reachability with TCP example server")
     assert is_tcp_available()
 
 
@@ -146,7 +152,7 @@ def test_healthcheck_overtime(controller: Controller):
 
 
 @pytest.mark.dependency(depends=["test_healthcheck_overtime"])
-def test_no_vpn_rerequest(controller: Controller):
+def test_no_vpn_rerequest():
     logger.info("Testing unreachability with TCP echo server again")
     assert not is_tcp_available()
 
@@ -154,19 +160,19 @@ def test_no_vpn_rerequest(controller: Controller):
 @pytest.mark.dependency(depends=["test_no_vpn_rerequest"])
 def test_reconnect(controller: Controller):
     logger.info("Testing reconnecting to caerulean")
-    logger.info("Closing connection...")
-    controller._turn_tunnel_off()
+    logger.info("Closing client...")
+    controller._client.close()
     logger.info("Receiving user token...")
     controller._receive_token()
     logger.info("Exchanging basic information...")
     controller._initialize_control()
-    logger.info("Turning tunnel on...")
-    controller._turn_tunnel_on()
+    logger.info("Opening client back...")
+    controller._client.open()
 
 
 @pytest.mark.dependency(depends=["test_reconnect"])
-def test_revalidate_request(controller: Controller):
-    logger.info("Testing reachability with TCP echo server again")
+def test_revalidate_request():
+    logger.info("Testing reachability with TCP example server again")
     assert is_tcp_available()
 
 

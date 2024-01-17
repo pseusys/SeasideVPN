@@ -1,11 +1,12 @@
 from ctypes import c_uint64
 from ipaddress import IPv4Address
-from multiprocessing import Process
 from socket import AF_INET, SHUT_WR, SOCK_DGRAM, SOCK_STREAM, socket, inet_aton
 from time import sleep
 
 from Crypto.Random.random import randint
+from colorama import Fore
 
+from .client import SeaClient
 from .crypto import MAX_MESSAGE_SIZE, Cipher, Obfuscator
 from .outputs import logger
 from .requests import post
@@ -36,9 +37,8 @@ class Controller:
         self._ctrl_port: int
         self._auth_endpoint: str
         self._session_token: bytes
-        self._receiver_process: Process
-        self._sender_process: Process
         self._obfuscator: Obfuscator
+        self._client: SeaClient
 
     def start(self) -> None:
         try:
@@ -46,16 +46,19 @@ class Controller:
             self._receive_token()
             logger.info("Exchanging basic information...")
             self._initialize_control()
-            logger.info("Turning tunnel on...")
-            self._turn_tunnel_on()
+            logger.info("Opening the tunnel...")
+            self._interface.up()
+            logger.info("Opening the seaside client...")
+            self._client.open()
             logger.info("Starting controller process...")
             self._perform_control()
+            logger.info("Connection established!")
         except SystemExit:
             self._clean_tunnel()
 
     def _receive_token(self) -> None:
         self._cipher = Cipher()
-        logger.debug(f"Symmetric session cipher initialized: {self._cipher.key}")
+        logger.debug(f"Symmetric session cipher initialized: {self._cipher.key}!")
         user_data = UserDataForWhirlpool(uid="some_cool_uid", session=self._cipher.key, owner_key=self._owner_key)
         user_encrypted = self._public_cipher.encode(bytes(user_data))
 
@@ -67,13 +70,12 @@ class Controller:
             self._sea_port = certificate.seaside_port
             self._ctrl_port = certificate.control_port
 
-        logger.debug(f"Symmetric session token received: {self._session_token}")
-        self._interface.setup(self._cipher)
+        logger.debug(f"Symmetric session token received: {self._session_token}!")
 
     def _initialize_control(self) -> None:
         with socket(AF_INET, SOCK_STREAM) as gate:
             gate.connect((self._address, self._ctrl_port))
-            logger.debug(f"Establishing connection to caerulean {self._address}:{self._ctrl_port}")
+            logger.debug(f"Establishing connection to caerulean {self._address}:{self._ctrl_port}...")
 
             connection_message = ControlRequestConnectionMessage(token=self._session_token, address=inet_aton(self._interface.default_ip), port=self._gate_socket.getsockname()[1])
             control_message = ControlRequest(status=ControlRequestStatus.CONNECTION, connection=connection_message)
@@ -82,34 +84,33 @@ class Controller:
             gate.shutdown(SHUT_WR)
 
             encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
-            self._user_id, answer_message = self._obfuscator.decrypt(encrypted_message, self._public_cipher, True)
-            answer = ControlResponse().parse(answer_message)
+            user_id, answer_message = self._obfuscator.decrypt(encrypted_message, self._public_cipher, True)
+            if user_id is None:
+                raise RuntimeError("User ID is None in control server response!")
+            else:
+                logger.info(f"User ID assigned: {Fore.BLUE}{user_id}{Fore.RESET}")
+                self._user_id = user_id
 
+            self._client = SeaClient(self._gate_socket, self._interface.descriptor, self._address, self._sea_port, self._cipher, self._obfuscator, self._user_id)
+
+            answer = ControlResponse().parse(answer_message)
             if answer.status == ControlResponseStatus.SUCCESS:
                 logger.info(f"Connected to caerulean {self._address}:{self._ctrl_port} successfully!")
             else:
                 raise RuntimeError(f"Couldn't exchange keys with caerulean: {answer.message}!")
 
-    def _turn_tunnel_on(self) -> None:
-        self._interface.up()
-        self._receiver_process = Process(target=self._interface.receive_from_caerulean, name="receiver", args=[self._gate_socket, self._sea_port, self._obfuscator, self._user_id], daemon=True)
-        self._sender_process = Process(target=self._interface.send_to_caerulean, name="sender", args=[self._gate_socket, self._sea_port, self._obfuscator, self._user_id], daemon=True)
-        self._receiver_process.start()
-        self._sender_process.start()
-
-    def _turn_tunnel_off(self) -> None:
-        self._receiver_process.terminate()
-        self._sender_process.terminate()
-        self._interface.down()
-
     def _clean_tunnel(self) -> None:
+        logger.info("Terminating whirlpool connection...")
         if self._interface.operational:
-            logger.warning("Terminating whirlpool connection...")
-            self._turn_tunnel_off()
-            logger.warning("Gracefully stopping algae client...")
-            self._interface.delete()
-            logger.warning("Closing seaside port...")
-            self._gate_socket.close()
+            logger.info("Closing the tunnel...")
+            self._interface.down()
+        if self._client.operational:
+            logger.info("Closing the seaside client...")
+            self._client.close()
+        logger.info("Closing the seaside socket...")
+        self._gate_socket.close()
+        logger.info("Deleting the tunnel...")
+        self._interface.delete()
 
     def _perform_control(self) -> None:
         logger.debug(f"Performing connection control to caerulean {self._address}:{self._ctrl_port}")
@@ -138,19 +139,21 @@ class Controller:
 
                 except ValueError:
                     logger.info("Server lost session key!")
-                    self._turn_tunnel_off()
-                    logger.info("Re-fetching token!")
+                    logger.info("Closing the seaside client...")
+                    self._client.close()
+                    logger.info("Re-fetching token...")
                     self._receive_token()
-                    logger.info("Re-initializing control!")
+                    logger.info("Re-initializing control...")
                     self._initialize_control()
-                    logger.info("Turning tunnel back on...")
-                    self._turn_tunnel_on()
+                    logger.info("Re-opening the seaside client...")
+                    self._client.open()
+                    logger.info("Connection re-establiched!")
 
 
     def interrupt(self) -> None:
         with socket(AF_INET, SOCK_STREAM) as gate:
             gate.connect((self._address, self._ctrl_port))
-            logger.debug(f"Interrupting connection to caerulean {self._address}:{self._ctrl_port}")
+            logger.debug(f"Interrupting connection to caerulean {self._address}:{self._ctrl_port}...")
 
             control_message = ControlRequest(status=ControlRequestStatus.DISCONNECTION)
             encrypted_message = self._obfuscator.encrypt(bytes(control_message), self._public_cipher, self._user_id, True)
@@ -167,3 +170,4 @@ class Controller:
                 logger.info(f"Error disconnecting from caerulean: {answer.message}!")
 
         self._clean_tunnel()
+        logger.warning("Whirlpool connection terminated!")

@@ -90,7 +90,7 @@ func sendMessageToSocket(status generated.ControlResponseStatus, message error, 
 	byteMessage := ""
 	if message != nil {
 		if addressee != nil {
-			logrus.Warnf("Sending error to viridian %d: %v", addressee, message)
+			logrus.Warnf("Sending error to viridian %d: %v", *addressee, message)
 		} else {
 			logrus.Warnf("Sending error to IP %v: %v", connection.RemoteAddr(), message)
 		}

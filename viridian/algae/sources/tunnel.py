@@ -1,7 +1,6 @@
 from fcntl import ioctl
 from ipaddress import IPv4Address, IPv4Interface
-from os import O_RDWR, getegid, geteuid, open, read, write
-from socket import socket
+from os import O_RDWR, getegid, geteuid, open
 from struct import pack
 from typing import Tuple
 
@@ -9,7 +8,6 @@ from colorama import Fore
 from iptc import Rule, Target, Chain, Table
 from pyroute2 import IPRoute
 
-from .crypto import MAX_MESSAGE_SIZE, Cipher, Obfuscator
 from .outputs import logger
 
 _UNIX_TUNSETIFF = 0x400454CA
@@ -78,7 +76,6 @@ class Tunnel:
         self._def_iface, def_iface_name, self._mtu = _get_default_interface(self._address)
 
         self._operational = False
-        self._cipher = None
 
         self._descriptor, self._tunnel_dev = _create_tunnel(name)
         logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} created")
@@ -98,8 +95,9 @@ class Tunnel:
     def default_ip(self) -> str:
         return str(self._def_iface.ip)
 
-    def setup(self, cipher: Cipher) -> None:
-        self._cipher = cipher
+    @property
+    def descriptor(self) -> int:
+        return self._descriptor
 
     def delete(self) -> None:
         if self._operational:
@@ -109,9 +107,6 @@ class Tunnel:
             logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} deleted")
 
     def up(self) -> None:
-        if self._cipher is None:
-            raise ValueError("Tunnel symmetrical cipher not initialized!")
-
         self._filter_output_chain.append_rule(self._send_to_caerulean_rule)
         self._filter_output_chain.append_rule(self._send_to_internet_rule)
         self._filter_forward_chain.append_rule(self._send_to_caerulean_rule)
@@ -146,21 +141,3 @@ class Tunnel:
             ip.link("set", index=self._tunnel_dev, state="down")
             logger.info(f"Tunnel {Fore.GREEN}disabled{Fore.RESET}")
         self._operational = False
-
-    def send_to_caerulean(self, gate: socket, sea_port: int, obfuscator: Obfuscator, user_id: int) -> None:
-        if self._cipher is None:
-            raise ValueError("Cipher must be set before launching sender thread!")
-        while self._operational:
-            packet = read(self._descriptor, MAX_MESSAGE_SIZE)
-            logger.debug(f"Sending {len(packet)} bytes to caerulean {self._address}:{sea_port}")
-            payload = obfuscator.encrypt(packet, self._cipher, user_id, False)
-            gate.sendto(payload, (self._address, sea_port))
-
-    def receive_from_caerulean(self, gate: socket, sea_port: int, obfuscator: Obfuscator, _: int) -> None:
-        if self._cipher is None:
-            raise ValueError("Cipher must be set before launching receiver thread!")
-        while self._operational:
-            packet = gate.recv(MAX_MESSAGE_SIZE)
-            payload = obfuscator.decrypt(packet, self._cipher, False)[1]
-            logger.debug(f"Receiving {len(payload)} bytes from caerulean {self._address}:{sea_port}")
-            write(self._descriptor, payload)

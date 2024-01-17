@@ -1,7 +1,7 @@
 from glob import glob
 from pathlib import Path
 from shutil import rmtree
-from subprocess import run
+from subprocess import run as subprocess_run
 from sys import argv
 
 from PyInstaller.__main__ import run as install
@@ -18,7 +18,7 @@ def generate() -> None:
     generated_dir = ALGAE_ROOT / "sources" / "generated"
     rmtree(generated_dir, ignore_errors=True)
     generated_dir.mkdir(exist_ok=True)
-    run(command, cwd=ALGAE_ROOT.parent.parent, shell=True, check=True)
+    subprocess_run(command, cwd=ALGAE_ROOT.parent.parent, shell=True, check=True)
 
 
 def compile() -> None:

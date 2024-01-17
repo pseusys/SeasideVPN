@@ -168,7 +168,7 @@ func SendPacketsToViridian(ctx context.Context, tunnel *water.Interface, tunnetw
 		}
 
 		netLayer.DstIP = viridian.Address
-		logrus.Infof("Sending %d bytes to viridian %v (src: %v, dst: %v)", netLayer.Length, gateway, netLayer.SrcIP, netLayer.DstIP)
+		logrus.Infof("Sending %d bytes to viridian %d (src: %v, dst: %v)", netLayer.Length, viridianID, netLayer.SrcIP, netLayer.DstIP)
 
 		// Set this network layer to all the layers that require a network layer
 		for _, layer := range packet.Layers() {
