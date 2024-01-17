@@ -2,12 +2,10 @@ from contextlib import contextmanager
 from logging import getLogger
 from os import environ
 from pathlib import Path
-from time import sleep
 from typing import Iterator, Literal, Tuple, Union
 
 from colorama import Fore, Style, just_fix_windows_console
 from python_on_whales import DockerClient, DockerException
-from python_on_whales.exceptions import NoSuchContainer
 
 from scripts._utils import ALGAE_ROOT
 
@@ -29,8 +27,8 @@ def docker_test() -> Iterator[Tuple[Path, bool]]:
 def _print_container_logs(docker: DockerClient, container: str, last: int = 100) -> None:
     try:
         logger.error(f"{Style.BRIGHT}{Fore.YELLOW}Container {container} logs:{Style.RESET_ALL}")
-        logger.error(docker.container.logs(container, tail=last))
-    except NoSuchContainer: 
+        logger.error(docker.compose.logs(container, tail=str(last)))
+    except DockerException: 
         logger.error(f"{Style.BRIGHT}{Fore.RED}No container {container} found!{Style.RESET_ALL}")
 
 
@@ -53,13 +51,8 @@ def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remot
         logger.error(f"Testing {profile}: {Style.BRIGHT}{Fore.RED}failed{Fore.RESET}!{Style.RESET_ALL}")
         logger.error(f"Error message: {exc}")
 
-        # Wait for a second to synchronize whirlpool logs
-        sleep(1)
-
-        _print_container_logs(docker, "algae")
-        if profile != "unit":
-            _print_container_logs(docker, "whirlpool")
-            _print_container_logs(docker, "seaside-echo")
+        _print_container_logs(docker, "whirlpool")
+        _print_container_logs(docker, "seaside-echo")
 
         docker.compose.kill()
         exit_code = 1
