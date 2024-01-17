@@ -1,6 +1,6 @@
+from multiprocessing import Process
 from os import read, write
 from socket import socket
-from multiprocessing import Process
 
 from .crypto import MAX_MESSAGE_SIZE, Cipher, Obfuscator
 from .outputs import logger
@@ -24,28 +24,28 @@ class SeaClient:
     def operational(self) -> bool:
         return self._operational
 
-    def open(self):
+    def open(self) -> None:
         self._sender_process = Process(target=self._send_to_caerulean, name="sender")
         self._receiver_process = Process(target=self._receive_from_caerulean, name="receiver")
         self._sender_process.start()
         self._receiver_process.start()
         self._operational = True
 
-    def _send_to_caerulean(self):
+    def _send_to_caerulean(self) -> None:
         while True:
             packet = read(self._descriptor, MAX_MESSAGE_SIZE)
             logger.debug(f"Sending {len(packet)} bytes to caerulean {self._address}:{self._port}")
             payload = self._obfuscator.encrypt(packet, self._cipher, self._user_id, False)
             self._socket.sendto(payload, (self._address, self._port))
 
-    def _receive_from_caerulean(self):
+    def _receive_from_caerulean(self) -> None:
         while True:
             packet = self._socket.recv(MAX_MESSAGE_SIZE)
             payload = self._obfuscator.decrypt(packet, self._cipher, False)[1]
             logger.debug(f"Receiving {len(payload)} bytes from caerulean {self._address}:{self._port}")
             write(self._descriptor, payload)
 
-    def close(self):
+    def close(self) -> None:
         logger.info("Whirlpool connection closed")
         self._operational = False
         self._sender_process.terminate()

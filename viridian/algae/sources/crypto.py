@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from ctypes import c_uint64
 from typing import Optional, Tuple
 
@@ -30,9 +31,9 @@ class Cipher:
         return nonce + encryption + tag
 
     def decode(self, ciphertext: bytes) -> bytes:
-        nonce, ciphertext = ciphertext[:self._CHACHA_NONCE_LENGTH], ciphertext[self._CHACHA_NONCE_LENGTH:]
+        nonce, ciphertext = ciphertext[: self._CHACHA_NONCE_LENGTH], ciphertext[self._CHACHA_NONCE_LENGTH :]
         cipher = ChaCha20_Poly1305.new(key=self.key, nonce=nonce)
-        encryption, tag = ciphertext[:-self._tag_length], ciphertext[-self._tag_length:]
+        encryption, tag = ciphertext[: -self._tag_length], ciphertext[-self._tag_length :]
         return cipher.decrypt_and_verify(encryption, tag)
 
 
@@ -59,7 +60,7 @@ class Obfuscator:
         addition = randint(0, (1 << 64) - 1)
         identity = self._random_permute(addition, user_id)
         return addition.to_bytes(8, "big") + identity.to_bytes(8, "big")
-    
+
     def unsubscribe(self, message: bytes) -> Optional[int]:
         addition = int.from_bytes(message[:8], "big")
         identity = int.from_bytes(message[8:16], "big")
@@ -73,10 +74,10 @@ class Obfuscator:
         return message + get_random_bytes(self._get_tail_length(message))
 
     def _detail_message(self, message: bytes) -> bytes:
-        return message[:-self._get_tail_length(message)]
+        return message[: -self._get_tail_length(message)]
 
     def encrypt(self, message: bytes, encoder: Optional[Cipher], user_id: Optional[int], add_tail: bool) -> bytes:
-        signature = self.subscribe(user_id) 
+        signature = self.subscribe(user_id)
         ciphertext = signature + message if encoder is None else encoder.encode(message, signature)
         return self._entail_message(ciphertext) if add_tail else ciphertext
 

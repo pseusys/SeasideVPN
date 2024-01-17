@@ -9,9 +9,9 @@ from typing import Generator
 import pytest
 from Crypto.Random import get_random_bytes
 
-from ..sources.generated import ControlRequest, ControlRequestHealthcheckMessage, ControlRequestStatus, ControlResponseStatus, ControlResponse
 from ..sources.control import Controller
 from ..sources.crypto import MAX_MESSAGE_SIZE
+from ..sources.generated import ControlRequest, ControlRequestHealthcheckMessage, ControlRequestStatus, ControlResponse, ControlResponseStatus
 
 logger = getLogger(__name__)
 
@@ -40,26 +40,26 @@ def controller() -> Generator[Controller, None, None]:
 
 
 @pytest.mark.dependency()
-def test_controller_initialization(controller: Controller):
+def test_controller_initialization(controller: Controller) -> None:
     routes = check_output(["ip", "link", "show"]).decode()
     assert controller._interface._name in routes
 
 
 @pytest.mark.dependency(depends=["test_controller_initialization"])
-def test_no_vpn_request():
+def test_no_vpn_request() -> None:
     logger.info("Testing unreachability with TCP echo server")
     assert not is_tcp_available()
 
 
 @pytest.mark.dependency(depends=["test_no_vpn_request"])
-def test_receive_token(controller: Controller):
+def test_receive_token(controller: Controller) -> None:
     logger.info("Testing receiving user token")
     controller._receive_token()
     assert len(controller._cipher.key) > 0
 
 
 @pytest.mark.dependency(depends=["test_receive_token"])
-def test_initialize_control(controller: Controller):
+def test_initialize_control(controller: Controller) -> None:
     logger.info("Testing initializing control sequence")
     controller._initialize_control()
     assert isinstance(controller._user_id, int)
@@ -67,27 +67,27 @@ def test_initialize_control(controller: Controller):
 
 
 @pytest.mark.dependency(depends=["test_initialize_control"])
-def test_open_tunnel(controller: Controller):
+def test_open_tunnel(controller: Controller) -> None:
     logger.info("Testing opening the tunnel")
     controller._interface.up()
     assert controller._interface._operational
 
 
 @pytest.mark.dependency(depends=["test_open_tunnel"])
-def test_open_client(controller: Controller):
+def test_open_client(controller: Controller) -> None:
     logger.info("Testing opening the client")
     controller._client.open()
     assert controller._client._operational
 
 
 @pytest.mark.dependency(depends=["test_open_client"])
-def test_validate_request():
+def test_validate_request() -> None:
     logger.info("Testing reachability with TCP example server")
     assert is_tcp_available()
 
 
 @pytest.mark.dependency(depends=["test_validate_request"])
-def test_send_suspicious_message(controller: Controller):
+def test_send_suspicious_message(controller: Controller) -> None:
     logger.info("Testing sending a suspicious message to caerulean")
     with socket(AF_INET, SOCK_STREAM) as gate:
         gate.settimeout(5.0)
@@ -101,7 +101,7 @@ def test_send_suspicious_message(controller: Controller):
 
 
 @pytest.mark.dependency(depends=["test_send_suspicious_message"])
-def test_send_healthcheck_message(controller: Controller):
+def test_send_healthcheck_message(controller: Controller) -> None:
     logger.info("Testing sending healthcheck to caerulean")
     for _ in range(3):
         with socket(AF_INET, SOCK_STREAM) as gate:
@@ -122,7 +122,7 @@ def test_send_healthcheck_message(controller: Controller):
 
 
 @pytest.mark.dependency(depends=["test_send_healthcheck_message"])
-def test_healthcheck_overtime(controller: Controller):
+def test_healthcheck_overtime(controller: Controller) -> None:
     logger.info("Testing exceeding healthcheck time with caerulean")
     with socket(AF_INET, SOCK_STREAM) as gate:
         gate.settimeout(5.0)
@@ -152,13 +152,13 @@ def test_healthcheck_overtime(controller: Controller):
 
 
 @pytest.mark.dependency(depends=["test_healthcheck_overtime"])
-def test_no_vpn_rerequest():
+def test_no_vpn_rerequest() -> None:
     logger.info("Testing unreachability with TCP echo server again")
     assert not is_tcp_available()
 
 
 @pytest.mark.dependency(depends=["test_no_vpn_rerequest"])
-def test_reconnect(controller: Controller):
+def test_reconnect(controller: Controller) -> None:
     logger.info("Testing reconnecting to caerulean")
     logger.info("Closing client...")
     controller._client.close()
@@ -171,12 +171,12 @@ def test_reconnect(controller: Controller):
 
 
 @pytest.mark.dependency(depends=["test_reconnect"])
-def test_revalidate_request():
+def test_revalidate_request() -> None:
     logger.info("Testing reachability with TCP example server again")
     assert is_tcp_available()
 
 
 @pytest.mark.dependency(depends=["test_revalidate_request"])
-def test_close_connection(controller: Controller):
+def test_close_connection(controller: Controller) -> None:
     logger.info("Testing closing viridian connection")
     controller.interrupt()

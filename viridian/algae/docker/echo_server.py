@@ -1,7 +1,7 @@
 from logging import StreamHandler, getLogger
-from pickle import dumps
 from os import environ, getenv
-from socket import socket, AF_INET, SOCK_DGRAM
+from pickle import dumps
+from socket import AF_INET, SOCK_DGRAM, socket
 from sys import stdout
 
 LOG_LEVEL = getenv("LOG_LEVEL", "INFO")
