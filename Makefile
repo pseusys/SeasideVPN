@@ -9,6 +9,10 @@ install-algae:
 	poetry -C viridian/algae install --without client,devel
 .PHONY: install-algae
 
+install-algae-all:
+	poetry -C viridian/algae install
+.PHONY: install-algae
+
 
 
 test-whirlpool: build-whirlpool
@@ -16,6 +20,7 @@ test-whirlpool: build-whirlpool
 .PHONY: test-whirlpool
 
 test-algae: install-algae
+	poetry -C viridian/algae install --without client,devel
 	poetry -C viridian/algae run test_all
 .PHONY: test-algae
 
@@ -28,7 +33,7 @@ lint-whirlpool: build-whirlpool
 	make -C caerulean/whirlpool -s lint
 .PHONY: lint-whirlpool
 
-lint-algae: install-algae
+lint-algae: install-algae-all
 	poetry -C viridian/algae run lint
 .PHONY: lint-algae
 
