@@ -12,7 +12,7 @@ build:
 .PHONY: build
 
 build-docker:
-	docker build -f Dockerfile -t "seaside-whirlpool-latest" ../..
+	docker build -f Dockerfile -t seaside-whirlpool-latest ../..
 .PHONY: build
 
 run: build
@@ -36,5 +36,5 @@ clean:
 	rm -rf build
 	rm -rf generated
 	rm -f go.sum
-	docker rmi --force "seaside-whirlpool-latest"
+	docker rmi -f seaside-whirlpool-latest
 .PHONY: clean
