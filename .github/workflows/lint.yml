@@ -49,7 +49,7 @@ jobs:
           python-version: "3.10"
 
       - name: Install Dependencies 🔮
-        run: poetry -C viridian/algae install
+        run: pip3 install poetry
 
       - name: Lint Viridian Algae 🧪
         run: make lint-algae
