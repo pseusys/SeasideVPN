@@ -28,6 +28,7 @@ def compile() -> None:
 
 def execute() -> None:
     from sources.main import main
+
     main(argv[1:])
 
 

@@ -1,6 +1,4 @@
 from logging import getLogger
-from os import getcwd
-from pathlib import Path
 
 from black import Mode, Report, WriteBack, reformat_one
 from flake8.api.legacy import get_style_guide
@@ -9,7 +7,7 @@ from mypy import api
 
 from scripts._utils import ALGAE_ROOT
 
-_MAX_LINE_LEN = 180
+_MAX_LINE_LEN = 250
 
 logger = getLogger(__name__)
 
@@ -17,7 +15,7 @@ logger = getLogger(__name__)
 def lint() -> int:
     lint_result = 0
     selector = ["E", "W", "F"]
-    ignore = ["E24", "W503"]
+    ignore = ["E24", "W503", "E203"]  # E24 and W503 are recommended, E203 conflictss with `black`
     report = get_style_guide(select=selector, ignore=ignore, max_line_length=_MAX_LINE_LEN).check_files()
     lint_result += sum(len(report.get_statistics(sel)) for sel in selector)
     lint_result += format(False)

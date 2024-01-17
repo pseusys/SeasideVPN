@@ -1,18 +1,17 @@
 from ctypes import c_uint64
 from ipaddress import IPv4Address
-from socket import AF_INET, SHUT_WR, SOCK_DGRAM, SOCK_STREAM, socket, inet_aton
+from socket import AF_INET, SHUT_WR, SOCK_DGRAM, SOCK_STREAM, inet_aton, socket
 from time import sleep
 
-from Crypto.Random.random import randint
 from colorama import Fore
+from Crypto.Random.random import randint
 
 from .client import SeaClient
 from .crypto import MAX_MESSAGE_SIZE, Cipher, Obfuscator
+from .generated import ControlRequest, ControlRequestConnectionMessage, ControlRequestHealthcheckMessage, ControlRequestStatus, ControlResponse, ControlResponseStatus, UserCertificate, UserDataForWhirlpool
 from .outputs import logger
 from .requests import post
 from .tunnel import Tunnel
-
-from .generated import UserDataForWhirlpool, UserCertificate, ControlRequest, ControlResponseStatus, ControlRequestStatus, ControlRequestConnectionMessage, ControlRequestHealthcheckMessage, ControlResponse
 
 
 class Controller:
@@ -70,7 +69,7 @@ class Controller:
             self._sea_port = certificate.seaside_port
             self._ctrl_port = certificate.control_port
 
-        logger.debug(f"Symmetric session token received: {self._session_token}!")
+        logger.debug(f"Symmetric session token received: {self._session_token!r}!")
 
     def _initialize_control(self) -> None:
         with socket(AF_INET, SOCK_STREAM) as gate:
@@ -148,7 +147,6 @@ class Controller:
                     logger.info("Re-opening the seaside client...")
                     self._client.open()
                     logger.info("Connection re-establiched!")
-
 
     def interrupt(self) -> None:
         with socket(AF_INET, SOCK_STREAM) as gate:

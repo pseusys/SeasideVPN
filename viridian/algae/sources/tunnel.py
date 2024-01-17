@@ -5,7 +5,7 @@ from struct import pack
 from typing import Tuple
 
 from colorama import Fore
-from iptc import Rule, Target, Chain, Table
+from iptc import Chain, Rule, Table, Target
 from pyroute2 import IPRoute
 
 from .outputs import logger

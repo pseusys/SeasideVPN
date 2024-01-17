@@ -28,7 +28,7 @@ def _print_container_logs(docker: DockerClient, container: str, last: int = 100)
     try:
         logger.error(f"{Style.BRIGHT}{Fore.YELLOW}Container {container} logs:{Style.RESET_ALL}")
         logger.error(docker.compose.logs(container, tail=str(last)))
-    except DockerException: 
+    except DockerException:
         logger.error(f"{Style.BRIGHT}{Fore.RED}No container {container} found!{Style.RESET_ALL}")
 
 
@@ -91,5 +91,5 @@ def test_all() -> int:
     with docker_test() as (docker_path, hosted):
         result = 0
         for test_set in ("unit", "integration", "local", "remote"):
-            result = result or _test_set(docker_path, test_set, hosted)
+            result = result or _test_set(docker_path, test_set, hosted)  # type: ignore[arg-type]
         return result

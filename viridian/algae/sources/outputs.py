@@ -1,7 +1,6 @@
-from logging import getLogger, StreamHandler
+from logging import StreamHandler, getLogger
 from os import getenv
 from sys import stdout
-
 
 _level = getenv("SEASIDE_LOG_LEVEL", "DEBUG")
 

@@ -53,7 +53,7 @@ ENTRYPOINT python3 -m sources.main $SEASIDE_PUBLIC $SEASIDE_PAYLOAD_OWNER -a $SE
 FROM seaside-algae-default as sleeping
 
 RUN apt-get update && apt-get install -y --no-install-recommends iproute2 && rm -rf /var/lib/apt/lists/*
-RUN touch __init__.py sources/__init__.py tests/__init__.py
+RUN touch __init__.py sources/__init__.py
 ENTRYPOINT sleep infinity
 
 

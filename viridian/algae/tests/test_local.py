@@ -1,7 +1,7 @@
 from logging import getLogger
 from os import environ
-from socket import AF_INET, SOCK_DGRAM, socket
 from pickle import loads
+from socket import AF_INET, SOCK_DGRAM, socket
 
 import pytest
 

@@ -19,8 +19,8 @@ _DEFAULT_HEALTHCHECK_MAX_TIME = 5
 
 
 parser = ArgumentParser()
-parser.add_argument("public_key", help=f"Whirlpool public key (required!)")
-parser.add_argument("owner_key", help=f"Whirlpool node owner key (required!)")
+parser.add_argument("public_key", help="Whirlpool public key (required!)")
+parser.add_argument("owner_key", help="Whirlpool node owner key (required!)")
 parser.add_argument("-a", "--address", dest="addr", default=_DEFAULT_ADDRESS, type=IPv4Address, help=f"Caerulean remote IP address (default: {_DEFAULT_ADDRESS})")
 parser.add_argument("-n", "--net-port", dest="net_port", default=_DEFAULT_NET_PORT, type=int, help=f"Caerulean remote network port number (default: {_DEFAULT_NET_PORT})")
 parser.add_argument("-c", "--anchor", dest="anchor", default=_DEFAULT_ANCHOR, help=f"Caerulean anchor endpoint name (default: {_DEFAULT_ANCHOR})")
