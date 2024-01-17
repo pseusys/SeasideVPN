@@ -17,13 +17,16 @@ class SeaClient:
         self._socket = socket
         self._operational = False
 
+        self._sender_process: Process
+        self._receiver_process: Process
+
     @property
     def operational(self) -> bool:
         return self._operational
 
     def open(self):
-        self._sender_process = Process(target=self._send_to_caerulean, name="sender", daemon=True)
-        self._receiver_process = Process(target=self._receive_from_caerulean, name="receiver", daemon=True)
+        self._sender_process = Process(target=self._send_to_caerulean, name="sender")
+        self._receiver_process = Process(target=self._receive_from_caerulean, name="receiver")
         self._sender_process.start()
         self._receiver_process.start()
         self._operational = True
