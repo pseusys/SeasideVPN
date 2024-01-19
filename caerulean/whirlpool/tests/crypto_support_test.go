@@ -5,15 +5,23 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"main/crypto"
-	"main/utils"
 	"math"
 	"testing"
 )
 
-const RANDOM_MESSAGE_LENGTH = 8
+const ENCRYPTION_CYCLE_MESSAGE_LENGTH = 8
+
+func generateRandomUserID(test *testing.T) uint16 {
+	var randomInt int
+	err := binary.Read(rand.Reader, binary.BigEndian, &randomInt)
+	if err != nil {
+		test.Fatalf("error generating random int: %v", err)
+	}
+	return uint16((randomInt % (math.MaxUint16 - 3)) + 2)
+}
 
 func testEncryptionCycle(test *testing.T, subscribe, tailed bool) {
-	message := make([]byte, RANDOM_MESSAGE_LENGTH)
+	message := make([]byte, ENCRYPTION_CYCLE_MESSAGE_LENGTH)
 	err := binary.Read(rand.Reader, binary.BigEndian, &message)
 	if err != nil {
 		test.Fatalf("error generating random bytes: %v", err)
@@ -28,7 +36,7 @@ func testEncryptionCycle(test *testing.T, subscribe, tailed bool) {
 
 	var userEncode *uint16
 	if subscribe {
-		userID := uint16((utils.RandInt() % (math.MaxUint16 - 3)) + 2)
+		userID := generateRandomUserID(test)
 		userEncode = &userID
 		test.Logf("user id generated: %d", userID)
 	} else {

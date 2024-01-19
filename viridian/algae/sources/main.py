@@ -9,6 +9,7 @@ from colorama import just_fix_windows_console
 
 from .control import Controller
 from .outputs import logger
+from .requests import parse_connection_link
 
 _DEFAULT_NAME = "seatun"
 _DEFAULT_ADDRESS = "127.0.0.1"
@@ -27,6 +28,7 @@ parser.add_argument("-c", "--anchor", dest="anchor", default=_DEFAULT_ANCHOR, he
 parser.add_argument("-t", "--tunnel", dest="name", default=_DEFAULT_NAME, help=f"Tunnel interface name (default: {_DEFAULT_NAME})")
 parser.add_argument("-s", "--health-min", dest="hc_min", default=_DEFAULT_HEALTHCHECK_MIN_TIME, type=int, help=f"Minimal healthcheck delay (default: {_DEFAULT_HEALTHCHECK_MIN_TIME}, shouldn't be less than 1)")
 parser.add_argument("-b", "--health-max", dest="hc_max", default=_DEFAULT_HEALTHCHECK_MAX_TIME, type=int, help=f"Maximal healthcheck delay (default: {_DEFAULT_HEALTHCHECK_MAX_TIME})")
+parser.add_argument("-l", "--link", dest="link", default=None, help="Connection link, will be used instead of other arguments if specified")
 
 controller: Controller
 
@@ -34,11 +36,18 @@ controller: Controller
 def main(args: Sequence[str] = argv[1:]) -> None:
     global controller
     just_fix_windows_console()
-    arguments = vars(parser.parse_args(args))
 
+    arguments = vars(parser.parse_args(args))
+    connection_link = arguments.pop("link")
+    if connection_link is not None:
+        arguments.update(parse_connection_link(connection_link))
+
+    logger.debug(f"Initializing controller with parameters: {arguments}")
     controller = Controller(**arguments)
+
     signal(SIGTERM, finish)
     signal(SIGINT, finish)
+
     logger.warning("Starting algae client controller...")
     controller.start()
 
