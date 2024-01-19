@@ -94,7 +94,7 @@ jobs:
       - name: Build Caerulean Whirlpool 🏗️
         env:
           EXEC_NAME: ${{ format('caerulean-whirlpool-executable-{0}', env.ID) }}
-        run: make -C caerulean/whirlpool build
+        run: EXEC_NAME=${{ env.EXEC_NAME }}.run make -C caerulean/whirlpool build
 
       - name: Save Artifact 🏺
         uses: actions/upload-artifact@v3
