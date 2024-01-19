@@ -3,18 +3,18 @@
 
 include example.conf.env
 
-EXECUTABLE_NAME = whirlpool.run
+EXEC_NAME = whirlpool.run
 
 
 
 build:
 	protoc -I=../../ --go_out=. ../../vessels/*.proto
 	go mod tidy
-	go build -o build/$(EXECUTABLE_NAME) ./sources
+	go build -o build/$(EXEC_NAME) ./sources
 .PHONY: build
 
 run: build
-	sudo build/$(EXECUTABLE_NAME)
+	sudo build/$(EXEC_NAME)
 .PHONY: run
 
 format: build

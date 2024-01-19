@@ -53,6 +53,53 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: algae-executable
-          path: dist/
+          path: viridian/algae/dist/
+          retention-days: 3
+          if-no-files-found: error
+
+  caerulean-whirlpool-build:
+    name: Build Caerulean Whirlpool Server Executable
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v3
+
+      - name: Setup Go 1.20 🦫
+        uses: actions/setup-go@v4
+        with:
+          go-version: "^1.20.4"
+
+      - name: Install Protoc 💾
+        uses: arduino/setup-protoc@v2
+        with:
+          version: "24.4"
+
+      - name: Install Dependencies 🔮
+        run: |
+          sudo apt-get install -y protobuf-compiler
+          go install golang.org/x/lint/golint@latest
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+
+      - name: Create Executable ID 📛
+        id: id-creator
+        env:
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+        run: |
+          BRANCH_NAME="${{ env.BRANCH_NAME }}"
+          BRANCH_NAME=${BRANCH_NAME////-}
+          BRANCH_NAME=${BRANCH_NAME/_/-}
+          echo ID=${BRANCH_NAME} >> $GITHUB_ENV
+
+      - name: Build Caerulean Whirlpool 🏗️
+        env:
+          EXEC_NAME: ${{ format('caerulean-whirlpool-executable-{0}', env.ID) }}
+        run: make -C caerulean/whirlpool build
+
+      - name: Save Artifact 🏺
+        uses: actions/upload-artifact@v3
+        with:
+          name: whirlpool-executable
+          path: caerulean/whirlpool/build/
           retention-days: 3
           if-no-files-found: error
