@@ -40,7 +40,7 @@ def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remot
     try:
         docker.compose.up(wait=True, build=True, detach=True, quiet=hosted)
 
-        test_command = ["pytest", "--log-cli-level=DEBUG", f"tests/test_{profile}.py"]
+        test_command = ["pytest"] + (["--log-disable"] if hosted else ["--log-cli-level=DEBUG"]) + [f"tests/test_{profile}.py"]
         docker.compose.execute("algae", test_command, envs=dict() if not hosted else {"CI": environ["CI"]})
 
         docker.compose.kill(signal="SIGINT")
