@@ -1,9 +1,6 @@
 .ONESHELL:
 
 
-build-whirlpool:
-	make -C caerulean/whirlpool -s build
-.PHONY: install-algae
 
 install-algae:
 	poetry -C viridian/algae install --without client,devel
@@ -15,7 +12,7 @@ install-algae-all:
 
 
 
-test-whirlpool: build-whirlpool
+test-whirlpool:
 	make -C caerulean/whirlpool -s test
 .PHONY: test-whirlpool
 
@@ -29,7 +26,7 @@ test: test-whirlpool test-algae
 
 
 
-lint-whirlpool: build-whirlpool
+lint-whirlpool:
 	make -C caerulean/whirlpool -s lint
 .PHONY: lint-whirlpool
 
@@ -42,7 +39,7 @@ lint: lint-whirlpool lint-algae
 
 
 
-clean-whirlpool: build-whirlpool
+clean-whirlpool:
 	make -C caerulean/whirlpool -s clean
 .PHONY: clean-whirlpool
 
