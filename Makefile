@@ -17,7 +17,6 @@ test-whirlpool:
 .PHONY: test-whirlpool
 
 test-algae: install-algae
-	poetry -C viridian/algae install --without client,devel
 	poetry -C viridian/algae run test_all
 .PHONY: test-algae
 
