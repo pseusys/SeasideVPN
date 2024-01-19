@@ -23,7 +23,8 @@ def generate() -> None:
 
 def compile() -> None:
     executable_name = argv[1] if len(argv) > 1 else _EXECUTABLE_NAME
-    install(["-F", "-c", "-y", "-n", executable_name, str(ALGAE_ROOT / "sources" / "main.py")])
+    paths = ["--specpath", str(ALGAE_ROOT), "--distpath", str(ALGAE_ROOT / "dist"), "--workpath", str(ALGAE_ROOT / "build")]
+    install(paths + ["-F", "-c", "-y", "-n", executable_name, str(ALGAE_ROOT / "sources" / "main.py")])
 
 
 def execute() -> None:
