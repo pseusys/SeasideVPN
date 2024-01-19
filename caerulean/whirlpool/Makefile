@@ -45,14 +45,14 @@ endif
 .PHONY: build-docker-test
 
 lint: build-docker-test
-	docker run -it --rm --name seaside-whirlpool-lint --env-file example.conf.env --entrypoint golint seaside-whirlpool-test .
+	docker run --rm --name seaside-whirlpool-lint --env-file example.conf.env --entrypoint golint seaside-whirlpool-test .
 .PHONY: lint
 
 test: build-docker-test
 ifndef CI
-	docker run -it --rm --name seaside-whirlpool-test --env-file example.conf.env --entrypoint go seaside-whirlpool-test test -v ./tests
+	docker run --rm --name seaside-whirlpool-test --env-file example.conf.env --entrypoint go seaside-whirlpool-test test -v ./tests
 else
-	docker run -it --rm --name seaside-whirlpool-test --env-file example.conf.env --entrypoint go seaside-whirlpool-test test ./tests
+	docker run --rm --name seaside-whirlpool-test --env-file example.conf.env --entrypoint go seaside-whirlpool-test test ./tests
 endif
 .PHONY: test
 
