@@ -1,5 +1,5 @@
 from ipaddress import IPv4Address
-from typing import BinaryIO, Dict, Optional
+from typing import Any, BinaryIO, Dict, Optional
 from urllib.parse import parse_qs, urlparse
 from urllib.request import Request, urlopen
 
@@ -18,7 +18,7 @@ def get(url: str) -> BinaryIO:
     return _send_request(url, "GET", None)
 
 
-def parse_connection_link(link: str) -> Dict:
+def parse_connection_link(link: str) -> Dict[str, Any]:
     result = dict()
     parsed = urlparse(link, allow_fragments=False)
 
@@ -35,7 +35,7 @@ def parse_connection_link(link: str) -> Dict:
 
     result.update({"anchor": parsed.path[1:]})
 
-    parsed = parse_qs(parsed.query)
-    result.update({"public_key": parsed["public"][0], "owner_key": parsed["payload"][0]})
+    query = parse_qs(parsed.query)
+    result.update({"public_key": query["public"][0], "owner_key": query["payload"][0]})
 
     return result
