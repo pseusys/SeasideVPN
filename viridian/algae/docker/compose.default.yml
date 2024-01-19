@@ -13,7 +13,7 @@ services:
     image: seaside-whirlpool-default
     privileged: true
     build:
-      dockerfile: caerulean/whirlpool/Dockerfile
+      dockerfile: caerulean/whirlpool/Dockerfile.prod
       context: ../../..
       target: default
 

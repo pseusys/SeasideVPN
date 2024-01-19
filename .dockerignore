@@ -5,7 +5,7 @@
 caerulean/whirlpool/build
 caerulean/whirlpool/generated
 caerulean/whirlpool/tests
-caerulean/whirlpool/Dockerfile
+caerulean/whirlpool/Dockerfile.*
 caerulean/whirlpool/example.conf.env
 caerulean/whirlpool/go.sum
 caerulean/whirlpool/Makefile
