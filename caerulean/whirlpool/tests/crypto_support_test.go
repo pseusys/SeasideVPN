@@ -12,7 +12,7 @@ import (
 const ENCRYPTION_CYCLE_MESSAGE_LENGTH = 8
 
 func generateRandomUserID(test *testing.T) uint16 {
-	var randomInt int
+	var randomInt uint16
 	err := binary.Read(rand.Reader, binary.BigEndian, &randomInt)
 	if err != nil {
 		test.Fatalf("error generating random int: %v", err)
