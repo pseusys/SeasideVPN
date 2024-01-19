@@ -49,7 +49,7 @@ jobs:
       - name: Build and push Docker image 🏗️
         uses: docker/build-push-action@v4
         with:
-          file: ${{ matrix.root }}/Dockerfile
+          file: ${{ matrix.root }}/Dockerfile.prod
           target: default
           push: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/releases') }}
           tags: ${{ steps.meta.outputs.tags }}
