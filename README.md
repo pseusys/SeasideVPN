@@ -186,7 +186,15 @@ For every message, `sig`/`unsig` means that the message is expected to be `signe
 All the messages are expected to be exchanged on `control` port (unless specified).
 Message names reflect corresponding `protobuf` object names (see [message descriptions](./vessels/)).
 
-> **NB!** Although the protocol is stateful, the current stateis not really important:
+During connection, after some initial HTTP requests, two ports are used:
+
+1. "Control Port": TCP port for control message exchange.
+2. "Sea Port": UDP port for VPN data packets exchange.
+
+After the initial control message exchange is done, control port is used for healthcheck message exchange.
+Healthcheck control messages are sent at random time intervals, losing several healthcheck messages in a row leads to user disconnection.
+
+> **NB!** Although the protocol is stateful, the current state is not really important:
 > viridian can re-connect to caerulean _any_ time it wants!
 
 ## Connection certificate
