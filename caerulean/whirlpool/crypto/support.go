@@ -22,7 +22,7 @@ func Encrypt(message []byte, key cipher.AEAD, userID *uint16, addTail bool) ([]b
 	}
 
 	if addTail {
-		encrypted, err := entailMessage(ciphertext)
+		encrypted, err := EntailMessage(ciphertext)
 		if err != nil {
 			return nil, fmt.Errorf("error entailing message: %v", err)
 		}
@@ -40,7 +40,7 @@ func Decrypt(message []byte, key cipher.AEAD, expectTail bool) ([]byte, *uint16,
 
 	var ciphertext []byte
 	if expectTail {
-		ciphertext, err = detailMessage(message)
+		ciphertext, err = DetailMessage(message)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error entailing message: %v", err)
 		}
