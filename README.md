@@ -280,7 +280,7 @@ These are:
 
 ### TODOs
 
-1. Add unit tests to both `caerulean/whirlpool` and `viridian/algae` (do not run them in Docker).
+1. Add unit tests for `viridian/algae`.
 2. Write documentation for both `caerulean/whirlpool` and `viridian/algae`.
 3. Add shell build, generation, etc. script for easy `caerulean/whirlpool` deployment (with and without container).
 4. Add "stress" profile with pumba on internal router for enhanced testing, use tcp echo server (can be found on dockerhub) (4 containrrs, no ext router).
@@ -290,6 +290,8 @@ These are:
 8. Addresses for VPN connection: black and white list (limit addresses to use VPN with) <- add traffic analysis tool to client
 9. Advice on traffic distribution (proxy nodes), all routes and ports masking, on caerulean side: switch to 172.x.x.x tunnel IP, 1st X will be the number of PROXY the packet has been received from
 10. Add RTP protocol disguise option (to obfuscation, sent by client)
+11. Reprivate tests + make tunnel methods available by dot from config
+12. Comment and rewrite env files
 
 ### Further considerations
 
