@@ -15,7 +15,8 @@ import (
 )
 
 type Viridian struct {
-	Aead    cipher.AEAD
+	UID     string
+	AEAD    cipher.AEAD
 	reset   *time.Timer
 	admin   bool
 	timeout time.Time
@@ -80,7 +81,7 @@ func AddViridian(token *generated.UserToken, address, gateway net.IP, port uint3
 
 	userID := ITERATOR + 2
 	deletionTimer := time.AfterFunc(FIRST_HEALTHCHECK_DELAY, func() { DeleteViridian(userID, true) })
-	viridian := &Viridian{aead, deletionTimer, token.Privileged, token.Subscription.AsTime(), address, gateway, port}
+	viridian := &Viridian{token.Uid, aead, deletionTimer, token.Privileged, token.Subscription.AsTime(), address, gateway, port}
 
 	if isViridianOvertime(viridian) {
 		return nil, generated.ControlResponseStatus_OVERTIME, errors.New("viridian subscription outdated")

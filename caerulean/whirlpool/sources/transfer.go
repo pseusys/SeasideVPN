@@ -77,7 +77,7 @@ func ReceivePacketsFromViridian(ctx context.Context, tunnel *water.Interface, tu
 		}
 
 		// Decrypt packet
-		raw, err := crypto.Decode(buffer[:r], true, viridian.Aead)
+		raw, err := crypto.Decode(buffer[:r], true, viridian.AEAD)
 		if err != nil {
 			logrus.Errorf("Error decrypting packet: %v", err)
 			continue
@@ -186,7 +186,7 @@ func SendPacketsToViridian(ctx context.Context, tunnel *water.Interface, tunnetw
 		}
 
 		// Encrypt packet
-		encrypted, err := crypto.Encrypt(serialBuffer.Bytes(), viridian.Aead, &viridianID, false)
+		encrypted, err := crypto.Encrypt(serialBuffer.Bytes(), viridian.AEAD, &viridianID, false)
 		if err != nil {
 			logrus.Errorf("Error encrypting packet: %v", err)
 			continue
