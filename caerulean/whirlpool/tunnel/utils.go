@@ -20,10 +20,10 @@ func RunCommand(cmd string, args ...string) string {
 	return string(output)
 }
 
-func FindInterfaceByIP(address string) (string, error) {
+func FindInterfaceByIP(address string) (*net.Interface, error) {
 	ifaces, err := net.Interfaces()
 	if err != nil {
-		return "", fmt.Errorf("error resolving network addresses: %v", err)
+		return nil, fmt.Errorf("error resolving network addresses: %v", err)
 	}
 
 	for _, iface := range ifaces {
@@ -35,10 +35,10 @@ func FindInterfaceByIP(address string) (string, error) {
 
 		for _, addr := range addrs {
 			if strings.HasPrefix(addr.String(), address) {
-				return iface.Name, nil
+				return &iface, nil
 			}
 		}
 	}
 
-	return "", errors.New("error finding suitable interface")
+	return nil, errors.New("error finding suitable interface")
 }

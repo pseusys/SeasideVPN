@@ -24,7 +24,7 @@ func TestOpenInterfaceCycle(test *testing.T) {
 		IP:      tunIP,
 		Network: tunNetwork,
 	}
-	tunnel.OpenInterface(&conf)
+	tunnel.OpenInterface(&conf, "127.0.0.1")
 	test.Logf("tunnel interface created: %s", conf.Tunnel.Name())
 
 	tunnelOpenedIface, err := net.InterfaceByName(conf.Tunnel.Name())

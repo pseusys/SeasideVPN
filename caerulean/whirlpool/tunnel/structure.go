@@ -40,7 +40,7 @@ func (conf *TunnelConfig) Open(tunIP, intIP, extIP string, seaPort, netPort, ctr
 		return fmt.Errorf("error allocating TUN interface: %v", err)
 	}
 
-	err = OpenInterface(conf)
+	err = OpenInterface(conf, extIP)
 	if err != nil {
 		return fmt.Errorf("error creating tunnel interface: %v", err)
 	}

@@ -14,11 +14,20 @@ func init() {
 	MTU = utils.GetIntEnv("SEASIDE_TUNNEL_MTU")
 }
 
-func OpenInterface(conf *TunnelConfig) error {
+func OpenInterface(conf *TunnelConfig, extIP string) error {
 	tunnelName := conf.Tunnel.Name()
-	tunnelMTU := strconv.Itoa(MTU)
 	tunnelString := conf.IP.String()
 	tunnelCIDR, _ := conf.Network.Mask.Size()
+
+	tunnelIntMTU := MTU
+	if MTU <= 0 {
+		tunnelInterface, err := FindInterfaceByIP(extIP)
+		if err != nil {
+			return fmt.Errorf("error resolving network addresses: %v", err)
+		}
+		tunnelIntMTU = tunnelInterface.MTU
+	}
+	tunnelMTU := strconv.Itoa(tunnelIntMTU)
 
 	// Setup tunnel interface MTU
 	RunCommand("ip", "link", "set", "dev", tunnelName, "mtu", tunnelMTU)
