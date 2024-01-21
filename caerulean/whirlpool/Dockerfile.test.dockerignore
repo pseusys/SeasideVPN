@@ -1,9 +1,0 @@
-## Whirlpool test
-
-caerulean/whirlpool/build
-caerulean/whirlpool/generated
-caerulean/whirlpool/Dockerfile.*
-caerulean/whirlpool/example.conf.env
-caerulean/whirlpool/go.sum
-caerulean/whirlpool/Makefile
-caerulean/whirlpool/README.md

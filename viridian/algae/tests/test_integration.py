@@ -19,10 +19,20 @@ logger = getLogger(__name__)
 def is_tcp_available(address: str = "example.com", port: int = 80) -> bool:
     with socket(AF_INET, SOCK_STREAM) as sock:
         try:
+            #logger.error(check_output(["iptables-legacy", "-t", "mangle", "-L", "-Z", "-v"]).decode())
+            #logger.error(check_output(["ip", "link", "show"]).decode())
+            logger.error(check_output(["ip", "route", "show"]).decode())
+            logger.error(check_output(["ip", "rule", "list"]).decode())
+            #logger.error(check_output(["ip", "route", "show", "table", "65"]).decode())
+            #logger.error(gethostbyname(address))
+            gethostbyname(address)
+            logger.error("NAME RESOLVED")
             sock.settimeout(5.0)
             sock.connect((gethostbyname(address), port))
             return True
-        except TimeoutError:
+        except OSError as x:
+            logger.error(check_output(["iptables-legacy", "-t", "mangle", "-vnL"]).decode())
+            logger.error(x)
             return False
 
 
@@ -42,6 +52,8 @@ def controller() -> Generator[Controller, None, None]:
 @pytest.mark.dependency()
 def test_controller_initialization(controller: Controller) -> None:
     routes = check_output(["ip", "link", "show"]).decode()
+    with open('/etc/resolv.conf') as fp:
+        logger.error(fp.readlines())
     assert controller._interface._name in routes
 
 

@@ -33,7 +33,7 @@ def _print_container_logs(docker: DockerClient, container: str, last: int = 100)
 
 
 def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remote"], Literal["integration"], Literal["unit"]], hosted: bool) -> int:
-    logger.info(f"{Style.BRIGHT}{Fore.BLUE}Testing {profile}...{Style.RESET_ALL}")
+    logger.warning(f"{Style.BRIGHT}{Fore.BLUE}Testing {profile}...{Style.RESET_ALL}")
     docker = DockerClient(compose_files=[docker_path / f"compose.{profile}.yml"])
     before_networks = set([net.name for net in docker.network.list()])
 
@@ -44,7 +44,7 @@ def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remot
         docker.compose.execute("algae", test_command, envs=dict() if not hosted else {"CI": environ["CI"]})
 
         docker.compose.kill(signal="SIGINT")
-        logger.info(f"{Style.BRIGHT}Testing {profile}: {Fore.GREEN}success{Fore.RESET}!{Style.RESET_ALL}")
+        logger.warning(f"{Style.BRIGHT}Testing {profile}: {Fore.GREEN}success{Fore.RESET}!{Style.RESET_ALL}")
         exit_code = 0
 
     except DockerException as exc:

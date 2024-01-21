@@ -54,11 +54,13 @@ lint: build-docker-test
 
 test: build-docker-test
 	@
-	echo "Will be tested: $(shell docker run --rm --name seaside-whirlpool-test --env-file example.conf.env --entrypoint go seaside-whirlpool-test test ./tests  -list=.)"
+	echo "Will be tested:"
+	docker run --rm --name seaside-whirlpool-test --env-file example.conf.env --entrypoint go seaside-whirlpool-test test ./...  -list=.
+	echo "Testing:"
 ifndef CI
-	docker run --privileged --rm --name seaside-whirlpool-test --env-file example.conf.env --entrypoint go seaside-whirlpool-test test -v ./tests
+	docker run --privileged --rm --name seaside-whirlpool-test --env-file example.conf.env --entrypoint go seaside-whirlpool-test test -v ./...
 else
-	docker run --privileged --rm --name seaside-whirlpool-test --env-file example.conf.env --entrypoint go seaside-whirlpool-test test ./tests
+	docker run --privileged --rm --name seaside-whirlpool-test --env-file example.conf.env --entrypoint go seaside-whirlpool-test test ./...
 endif
 .PHONY: test
 

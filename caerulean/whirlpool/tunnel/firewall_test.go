@@ -1,30 +1,27 @@
-package tests
+package tunnel
 
-import (
-	"main/tunnel"
-	"testing"
-)
+import "testing"
 
 func TestStoreForwardingCycle(test *testing.T) {
-	var conf tunnel.TunnelConfig
+	var conf TunnelConfig
 
-	beforesave := tunnel.RunCommand("iptables", "-vnL", "INPUT")
+	beforesave := runCommand("iptables", "-vnL", "INPUT")
 	test.Logf("IP tables configuration before saving: %s", beforesave)
 
-	tunnel.StoreForwarding(&conf)
+	conf.storeForwarding()
 
-	tunnel.RunCommand("iptables", "-F")
-	tunnel.RunCommand("iptables", "-A", "INPUT", "-j", "LOG")
+	runCommand("iptables", "-F")
+	runCommand("iptables", "-A", "INPUT", "-j", "LOG")
 
-	intermediate := tunnel.RunCommand("iptables", "-vnL", "INPUT")
+	intermediate := runCommand("iptables", "-vnL", "INPUT")
 	if beforesave == intermediate {
 		test.Fatalf("IP tables alteration changed nothing: %s == %s", intermediate, beforesave)
 	}
 	test.Logf("IP tables configuration after alteration: %s", intermediate)
 
-	tunnel.CloseForwarding(&conf)
+	conf.closeForwarding()
 
-	aftersave := tunnel.RunCommand("iptables", "-vnL", "INPUT")
+	aftersave := runCommand("iptables", "-vnL", "INPUT")
 	if aftersave != beforesave {
 		test.Fatalf("IP tables were not restored: %s != %s", aftersave, beforesave)
 	}

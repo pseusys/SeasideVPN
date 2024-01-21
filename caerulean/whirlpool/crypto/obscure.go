@@ -36,7 +36,7 @@ func init() {
 	MULTIPLIER_1 = new(gmp.Int).ModInverse(bigA, bigM).Uint64()
 }
 
-func RandomPermute(addition uint64, ptr *uint16) uint64 {
+func randomPermute(addition uint64, ptr *uint16) uint64 {
 	bigI := new(gmp.Int).SetUint64(ZERO_USER_ID)
 	bigP := new(gmp.Int).SetUint64(LARGEST_PRIME_UINT64)
 	if ptr != nil {
@@ -53,7 +53,7 @@ func RandomPermute(addition uint64, ptr *uint16) uint64 {
 	}
 }
 
-func RandomUnpermute(addition, number uint64) *uint16 {
+func randomUnpermute(addition, number uint64) *uint16 {
 	bigN := new(gmp.Int).SetUint64(number)
 	bigS := new(gmp.Int).SetUint64(ZERO_USER_ID)
 	bigP := new(gmp.Int).SetUint64(LARGEST_PRIME_UINT64)
@@ -73,13 +73,13 @@ func RandomUnpermute(addition, number uint64) *uint16 {
 	}
 }
 
-func SubscribeMessage(userID *uint16) ([]byte, error) {
+func subscribeMessage(userID *uint16) ([]byte, error) {
 	var addition uint64
 	if binary.Read(rand.Reader, binary.BigEndian, &addition) != nil {
 		return nil, errors.New("error reading random 64bit integer")
 	}
 
-	identity := RandomPermute(addition, userID)
+	identity := randomPermute(addition, userID)
 	signature := make([]byte, SIGNATURE_LENGTH)
 	binary.BigEndian.PutUint64(signature[:8], addition)
 	binary.BigEndian.PutUint64(signature[8:], identity)
@@ -89,16 +89,16 @@ func SubscribeMessage(userID *uint16) ([]byte, error) {
 func UnsubscribeMessage(message []byte) (*uint16, error) {
 	addition := binary.BigEndian.Uint64(message[:8])
 	identity := binary.BigEndian.Uint64(message[8:16])
-	return RandomUnpermute(addition, identity), nil
+	return randomUnpermute(addition, identity), nil
 }
 
-func GetTailLength(message []byte) int {
+func getTailLength(message []byte) int {
 	addition := binary.BigEndian.Uint64(message[:8])
 	return utils.CountSetBits(ZERO_USER_ID ^ addition)
 }
 
-func EntailMessage(message []byte) ([]byte, error) {
-	entailed := make([]byte, len(message)+GetTailLength(message))
+func entailMessage(message []byte) ([]byte, error) {
+	entailed := make([]byte, len(message)+getTailLength(message))
 	copy(entailed, message)
 
 	if binary.Read(rand.Reader, binary.BigEndian, entailed[len(message):]) != nil {
@@ -108,6 +108,6 @@ func EntailMessage(message []byte) ([]byte, error) {
 	return entailed, nil
 }
 
-func DetailMessage(message []byte) ([]byte, error) {
-	return message[:len(message)-GetTailLength(message)], nil
+func detailMessage(message []byte) ([]byte, error) {
+	return message[:len(message)-getTailLength(message)], nil
 }

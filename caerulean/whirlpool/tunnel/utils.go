@@ -10,7 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func RunCommand(cmd string, args ...string) string {
+func runCommand(cmd string, args ...string) string {
 	command := exec.Command(cmd, args...)
 	output, err := command.CombinedOutput()
 	if err != nil {
@@ -20,7 +20,7 @@ func RunCommand(cmd string, args ...string) string {
 	return string(output)
 }
 
-func FindInterfaceByIP(address string) (*net.Interface, error) {
+func findInterfaceByIP(address string) (*net.Interface, error) {
 	ifaces, err := net.Interfaces()
 	if err != nil {
 		return nil, fmt.Errorf("error resolving network addresses: %v", err)

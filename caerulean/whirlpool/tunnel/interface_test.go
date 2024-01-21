@@ -1,7 +1,6 @@
-package tests
+package tunnel
 
 import (
-	"main/tunnel"
 	"net"
 	"testing"
 
@@ -19,12 +18,12 @@ func TestOpenInterfaceCycle(test *testing.T) {
 		test.Fatalf("error allocating TUN interface: %v", err)
 	}
 
-	conf := tunnel.TunnelConfig{
+	conf := TunnelConfig{
 		Tunnel:  tun,
 		IP:      tunIP,
 		Network: tunNetwork,
 	}
-	tunnel.OpenInterface(&conf, "127.0.0.1")
+	conf.openInterface("127.0.0.1")
 	test.Logf("tunnel interface created: %s", conf.Tunnel.Name())
 
 	tunnelOpenedIface, err := net.InterfaceByName(conf.Tunnel.Name())
@@ -32,8 +31,8 @@ func TestOpenInterfaceCycle(test *testing.T) {
 		test.Fatalf("tunnel interface not found: %v", err)
 	}
 
-	if tunnelOpenedIface.MTU != tunnel.MTU {
-		test.Fatalf("tunnel interface setup incorrectly: %d != %d", tunnel.MTU, tunnelOpenedIface.MTU)
+	if tunnelOpenedIface.MTU != MTU {
+		test.Fatalf("tunnel interface setup incorrectly: %d != %d", MTU, tunnelOpenedIface.MTU)
 	}
 
 	test.Logf("tunnel interface flags set: %s", tunnelOpenedIface.Flags.String())
@@ -46,7 +45,7 @@ func TestOpenInterfaceCycle(test *testing.T) {
 		test.Fatal("tunnel interface is not up")
 	}
 
-	tunnel.CloseInterface(&conf)
+	conf.closeInterface()
 
 	tunnelClosedIface, err := net.InterfaceByName(conf.Tunnel.Name())
 	if err == nil {

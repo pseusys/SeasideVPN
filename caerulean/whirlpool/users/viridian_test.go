@@ -1,9 +1,8 @@
-package tests
+package users
 
 import (
 	"main/crypto"
 	"main/generated"
-	"main/users"
 	"net"
 	"testing"
 	"time"
@@ -35,7 +34,7 @@ func TestViridianCycle(test *testing.T) {
 	viridianPort := uint32(12345)
 	test.Logf("viridian additional params: address: %v, gateway: %v, port: %d", viridianInternalAddress, viridianGatewayAddress, viridianPort)
 
-	viridianID, createStatus, err := users.AddViridian(&viridianToken, viridianInternalAddress, viridianGatewayAddress, viridianPort)
+	viridianID, createStatus, err := AddViridian(&viridianToken, viridianInternalAddress, viridianGatewayAddress, viridianPort)
 	if err != nil {
 		test.Fatalf("error adding viridian: %v, status %d", err, createStatus)
 	}
@@ -46,11 +45,15 @@ func TestViridianCycle(test *testing.T) {
 		test.Fatalf("error generating viridian number: %d != %d", *viridianID, expectedViridianID)
 	}
 
-	viridian := users.GetViridian(*viridianID)
+	viridian := GetViridian(*viridianID)
 	if viridian == nil {
 		test.Fatalf("error getting added viridian: %v", viridian)
 	}
 	test.Logf("viridian added: %v", viridian)
+
+	if !isViridianOvertime(viridian) {
+		test.Fatalf("incorrect viridian overtime value for timeout: %v", viridian.timeout)
+	}
 
 	if !net.IP.Equal(viridian.Address, viridianInternalAddress) {
 		test.Fatalf("viridian address doesn't match provided: %v != %v", viridian.Address, viridianInternalAddress)
@@ -60,14 +63,14 @@ func TestViridianCycle(test *testing.T) {
 		test.Fatalf("viridian UID doesn't match provided: %v != %v", viridian.UID, viridianUID)
 	}
 
-	updateStatus, err := users.UpdateViridian(*viridianID, int32(100))
+	updateStatus, err := UpdateViridian(*viridianID, int32(100))
 	if err != nil {
 		test.Fatalf("error updating viridian: %v, status %d", err, updateStatus)
 	}
 
-	users.DeleteViridian(*viridianID, false)
+	DeleteViridian(*viridianID, false)
 
-	deletedViridian := users.GetViridian(*viridianID)
+	deletedViridian := GetViridian(*viridianID)
 	if deletedViridian != nil {
 		test.Fatalf("error getting deleted viridian: %v", deletedViridian)
 	}

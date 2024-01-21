@@ -1,14 +1,13 @@
-package tests
+package tunnel
 
 import (
-	"main/tunnel"
 	"net"
 	"testing"
 )
 
 func TestRunCommand(test *testing.T) {
 	expectedOutput := "hello world!"
-	outputWithNewLine := tunnel.RunCommand("echo", expectedOutput)
+	outputWithNewLine := runCommand("echo", expectedOutput)
 	output := outputWithNewLine[:len(outputWithNewLine)-1]
 	if output != expectedOutput {
 		test.Fatalf("echo command output doesn't match expected: %s != %s", output, expectedOutput)
@@ -22,7 +21,7 @@ func TestFindInterfaceByIP(test *testing.T) {
 	}
 	test.Logf("exists loopback interface with name: %s", loopbackExpected.Name)
 
-	loopbackFound, err := tunnel.FindInterfaceByIP("127.0.0.1")
+	loopbackFound, err := findInterfaceByIP("127.0.0.1")
 	if err != nil {
 		test.Fatalf("interface for ip 127.0.0.1 not found: %v", err)
 	}

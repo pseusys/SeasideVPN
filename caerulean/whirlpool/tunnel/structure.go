@@ -20,11 +20,11 @@ type TunnelConfig struct {
 }
 
 func Preserve() *TunnelConfig {
-	config := TunnelConfig{}
-	config.mutex.Lock()
-	StoreForwarding(&config)
-	config.mutex.Unlock()
-	return &config
+	conf := TunnelConfig{}
+	conf.mutex.Lock()
+	conf.storeForwarding()
+	conf.mutex.Unlock()
+	return &conf
 }
 
 func (conf *TunnelConfig) Open(tunIP, intIP, extIP string, seaPort, netPort, ctrlPort int) (err error) {
@@ -40,12 +40,12 @@ func (conf *TunnelConfig) Open(tunIP, intIP, extIP string, seaPort, netPort, ctr
 		return fmt.Errorf("error allocating TUN interface: %v", err)
 	}
 
-	err = OpenInterface(conf, extIP)
+	err = conf.openInterface(extIP)
 	if err != nil {
 		return fmt.Errorf("error creating tunnel interface: %v", err)
 	}
 
-	err = openForwarding(intIP, extIP, conf.Tunnel.Name(), seaPort, netPort, ctrlPort)
+	err = conf.openForwarding(intIP, extIP, seaPort, netPort, ctrlPort)
 	if err != nil {
 		return fmt.Errorf("error creating firewall rules: %v", err)
 	}
@@ -56,8 +56,8 @@ func (conf *TunnelConfig) Open(tunIP, intIP, extIP string, seaPort, netPort, ctr
 
 func (conf *TunnelConfig) Close() {
 	conf.mutex.Lock()
-	CloseForwarding(conf)
-	CloseInterface(conf)
+	conf.closeForwarding()
+	conf.closeInterface()
 	conf.Tunnel.Close()
 	conf.mutex.Unlock()
 }
