@@ -6,7 +6,7 @@ import (
 )
 
 func Encrypt(message []byte, key cipher.AEAD, userID *uint16, addTail bool) ([]byte, error) {
-	signature, err := SubscribeMessage(userID)
+	signature, err := subscribeMessage(userID)
 	if err != nil {
 		return nil, fmt.Errorf("error signing message: %v", err)
 	}
@@ -22,7 +22,7 @@ func Encrypt(message []byte, key cipher.AEAD, userID *uint16, addTail bool) ([]b
 	}
 
 	if addTail {
-		encrypted, err := EntailMessage(ciphertext)
+		encrypted, err := entailMessage(ciphertext)
 		if err != nil {
 			return nil, fmt.Errorf("error entailing message: %v", err)
 		}
@@ -40,7 +40,7 @@ func Decrypt(message []byte, key cipher.AEAD, expectTail bool) ([]byte, *uint16,
 
 	var ciphertext []byte
 	if expectTail {
-		ciphertext, err = DetailMessage(message)
+		ciphertext, err = detailMessage(message)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error entailing message: %v", err)
 		}

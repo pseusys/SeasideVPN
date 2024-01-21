@@ -1,11 +1,10 @@
-package tests
+package crypto
 
 import (
 	"bytes"
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/binary"
-	"main/crypto"
 	"testing"
 )
 
@@ -23,13 +22,13 @@ func testEncodeCycle(test *testing.T, aead cipher.AEAD) {
 	}
 	test.Logf("bytes generated: %v", message)
 
-	encoded, err := crypto.Encode(message, nil, aead)
+	encoded, err := Encode(message, nil, aead)
 	if err != nil {
 		test.Fatalf("error encoding message: %v", err)
 	}
 	test.Logf("message encoded: %v", encoded)
 
-	decoded, err := crypto.Decode(encoded, false, aead)
+	decoded, err := Decode(encoded, false, aead)
 	if err != nil {
 		test.Fatalf("error decoding message: %v", err)
 	}
@@ -41,7 +40,7 @@ func testEncodeCycle(test *testing.T, aead cipher.AEAD) {
 }
 
 func TestGenerateCipher(test *testing.T) {
-	aead, key, err := crypto.GenerateCipher()
+	aead, key, err := GenerateCipher()
 	if err != nil {
 		test.Fatalf("error generating cipher: %v", err)
 	}
@@ -64,7 +63,7 @@ func TestParseCipher(test *testing.T) {
 	}
 	test.Logf("key generated: %v", key)
 
-	aead, err := crypto.ParseCipher(key)
+	aead, err := ParseCipher(key)
 	if err != nil {
 		test.Fatalf("error parsing cipher: %v", err)
 	}

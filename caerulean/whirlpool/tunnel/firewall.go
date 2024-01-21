@@ -39,7 +39,7 @@ func readLimit(envVar, template string, userNumber, burstMultiplier int) []strin
 	}
 }
 
-func StoreForwarding(conf *TunnelConfig) {
+func (conf *TunnelConfig) storeForwarding() {
 	command := exec.Command("iptables-save")
 	command.Stdout = &conf.buffer
 	err := command.Run()
@@ -48,48 +48,49 @@ func StoreForwarding(conf *TunnelConfig) {
 	}
 }
 
-func openForwarding(intIP, extIP, tunIface string, seaPort, netPort, ctrlPort int) error {
+func (conf *TunnelConfig) openForwarding(intIP, extIP string, seaPort, netPort, ctrlPort int) error {
+	tunIface := conf.Tunnel.Name()
 	netStr := strconv.Itoa(netPort)
 	portStr := strconv.Itoa(seaPort)
 	ctrlStr := strconv.Itoa(ctrlPort)
 
-	intIface, err := FindInterfaceByIP(intIP)
+	intIface, err := findInterfaceByIP(intIP)
 	if err != nil {
 		return fmt.Errorf("error finding interface for internal IP %s: %v", intIP, err)
 	}
 	intName := intIface.Name
 
-	extIface, err := FindInterfaceByIP(extIP)
+	extIface, err := findInterfaceByIP(extIP)
 	if err != nil {
 		return fmt.Errorf("error finding interface for external IP %s: %v", extIP, err)
 	}
 	extName := extIface.Name
 
 	// Flush iptables rules
-	RunCommand("iptables", "-F")
-	RunCommand("iptables", "-t", "nat", "-F")
-	RunCommand("iptables", "-t", "mangle", "-F")
+	runCommand("iptables", "-F")
+	runCommand("iptables", "-t", "nat", "-F")
+	runCommand("iptables", "-t", "mangle", "-F")
 	// Accept packets to port network, control and whirlpool ports, also accept PING packets
-	RunCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "udp", "-d", intIP, "--dport", portStr, "-i", intName}, VPN_DATA_KBYTE_LIMIT_RULE)...)
-	RunCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "tcp", "-d", intIP, "--dport", ctrlStr, "-i", intName}, CONTROL_PACKET_LIMIT_RULE)...)
-	RunCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "tcp", "-d", intIP, "--dport", netStr, "-i", intName}, HTTP_PACKET_LIMIT_RULE)...)
-	RunCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "icmp", "-d", intIP, "-i", intName}, ICMP_PACKET_LIMIT_RULE)...)
+	runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "udp", "-d", intIP, "--dport", portStr, "-i", intName}, VPN_DATA_KBYTE_LIMIT_RULE)...)
+	runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "tcp", "-d", intIP, "--dport", ctrlStr, "-i", intName}, CONTROL_PACKET_LIMIT_RULE)...)
+	runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "tcp", "-d", intIP, "--dport", netStr, "-i", intName}, HTTP_PACKET_LIMIT_RULE)...)
+	runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "icmp", "-d", intIP, "-i", intName}, ICMP_PACKET_LIMIT_RULE)...)
 	// Else drop all input packets
-	RunCommand("iptables", "-P", "INPUT", "DROP")
+	runCommand("iptables", "-P", "INPUT", "DROP")
 	// Enable forwarding from tun0 to eth0 (forward)
-	RunCommand("iptables", "-A", "FORWARD", "-i", tunIface, "-o", extName, "-j", "ACCEPT")
+	runCommand("iptables", "-A", "FORWARD", "-i", tunIface, "-o", extName, "-j", "ACCEPT")
 	// Enable forwarding from eth0 to tun0 (backward)
-	RunCommand("iptables", "-A", "FORWARD", "-i", extName, "-o", tunIface, "-j", "ACCEPT")
+	runCommand("iptables", "-A", "FORWARD", "-i", extName, "-o", tunIface, "-j", "ACCEPT")
 	// Drop all other forwarding packets (e.g. from eth0 to eth0)
-	RunCommand("iptables", "-P", "FORWARD", "DROP")
+	runCommand("iptables", "-P", "FORWARD", "DROP")
 	// Enable masquerade on all non-claimed output and input from and to eth0
-	RunCommand("iptables", "-t", "nat", "-A", "POSTROUTING", "-o", extName, "-j", "MASQUERADE")
+	runCommand("iptables", "-t", "nat", "-A", "POSTROUTING", "-o", extName, "-j", "MASQUERADE")
 
 	logrus.Infof("Forwarding configured: %s <-> %s <-> %s", intName, tunIface, extName)
 	return nil
 }
 
-func CloseForwarding(conf *TunnelConfig) {
+func (conf *TunnelConfig) closeForwarding() {
 	command := exec.Command("iptables-restore", "--counters")
 	command.Stdin = &conf.buffer
 	err := command.Run()

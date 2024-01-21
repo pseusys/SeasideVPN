@@ -1,10 +1,9 @@
-package tests
+package crypto
 
 import (
 	"bytes"
 	"crypto/rand"
 	"encoding/binary"
-	"main/crypto"
 	"testing"
 )
 
@@ -30,21 +29,21 @@ func getMessageForTailLengthCalculationRepeating() []byte {
 }
 
 func TestRandomPermuteExact(test *testing.T) {
-	crypto.MULTIPLIER = RANDOM_PERMUTE_EXACT_MULTIPLIER
-	crypto.MULTIPLIER_1 = RANDOM_PERMUTE_EXACT_MULTIPLIER_1
-	crypto.ZERO_USER_ID = RANDOM_PERMUTE_EXACT_ZERO_USER_ID
+	MULTIPLIER = RANDOM_PERMUTE_EXACT_MULTIPLIER
+	MULTIPLIER_1 = RANDOM_PERMUTE_EXACT_MULTIPLIER_1
+	ZERO_USER_ID = RANDOM_PERMUTE_EXACT_ZERO_USER_ID
 
 	addition := RANDOM_PERMUTE_EXACT_ADDITION
 	userID := RANDOM_PERMUTE_EXACT_USER_ID
 
 	expectedIdentity := RANDOM_PERMUTE_EXACT_EXPECTED_IDENTITY
-	identity := crypto.RandomPermute(addition, &userID)
+	identity := randomPermute(addition, &userID)
 	if identity != expectedIdentity {
 		test.Fatalf("calculated identity does not match expected: %d != %d", identity, expectedIdentity)
 	}
 	test.Logf("calculated identity: %d, expected identity: %d", identity, expectedIdentity)
 
-	receivedUserID := crypto.RandomUnpermute(addition, identity)
+	receivedUserID := randomUnpermute(addition, identity)
 	if *receivedUserID != userID {
 		test.Fatalf("calculated user ID does not match expected: %d != %d", *receivedUserID, userID)
 	}
@@ -65,10 +64,10 @@ func TestRandomPermuteCycle(test *testing.T) {
 	}
 	test.Logf("generated user ID: %d", userID)
 
-	identity := crypto.RandomPermute(addition, &userID)
+	identity := randomPermute(addition, &userID)
 	test.Logf("calculated identity: %d", identity)
 
-	receivedUserID := crypto.RandomUnpermute(addition, identity)
+	receivedUserID := randomUnpermute(addition, identity)
 	if *receivedUserID != userID {
 		test.Fatalf("calculated user ID does not match expected: %d != %d", *receivedUserID, userID)
 	}
@@ -83,13 +82,13 @@ func TestSubscribeMessageCycle(test *testing.T) {
 	}
 	test.Logf("generated user ID: %d", userID)
 
-	subscription, err := crypto.SubscribeMessage(&userID)
+	subscription, err := subscribeMessage(&userID)
 	if err != nil {
 		test.Fatalf("error subscribing message: %v", err)
 	}
 	test.Logf("calculated subscription: %v", subscription)
 
-	receivedUserID, err := crypto.UnsubscribeMessage(subscription)
+	receivedUserID, err := UnsubscribeMessage(subscription)
 	if err != nil {
 		test.Fatalf("error unsubscribing message: %v", err)
 	}
@@ -101,11 +100,11 @@ func TestSubscribeMessageCycle(test *testing.T) {
 }
 
 func TestGetTailLength(test *testing.T) {
-	crypto.ZERO_USER_ID = GET_TAIL_LENGTH_ZERO_USER_ID
+	ZERO_USER_ID = GET_TAIL_LENGTH_ZERO_USER_ID
 	message := getMessageForTailLengthCalculationRepeating()
 
 	expectedTailLength := 14
-	tailLength := crypto.GetTailLength(message)
+	tailLength := getTailLength(message)
 	test.Logf("calculated tail length: %d", tailLength)
 
 	if tailLength != expectedTailLength {
@@ -121,13 +120,13 @@ func TestEntailMessageCycle(test *testing.T) {
 	}
 	test.Logf("generated message: %v", message)
 
-	entailedMessage, err := crypto.EntailMessage(message)
+	entailedMessage, err := entailMessage(message)
 	if err != nil {
 		test.Fatalf("error entailing message: %v", err)
 	}
 	test.Logf("entailed message: %v", entailedMessage)
 
-	detailedMessage, err := crypto.DetailMessage(entailedMessage)
+	detailedMessage, err := detailMessage(entailedMessage)
 	if err != nil {
 		test.Fatalf("error detailing message: %v", err)
 	}

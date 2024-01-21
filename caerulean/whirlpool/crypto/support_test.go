@@ -1,10 +1,9 @@
-package tests
+package crypto
 
 import (
 	"bytes"
 	"crypto/rand"
 	"encoding/binary"
-	"main/crypto"
 	"math"
 	"testing"
 )
@@ -28,7 +27,7 @@ func testEncryptionCycle(test *testing.T, subscribe, tailed bool) {
 	}
 	test.Logf("bytes generated: %v", message)
 
-	aead, key, err := crypto.GenerateCipher()
+	aead, key, err := GenerateCipher()
 	if err != nil {
 		test.Fatalf("error generating AEAD: %v", err)
 	}
@@ -44,13 +43,13 @@ func testEncryptionCycle(test *testing.T, subscribe, tailed bool) {
 		test.Log("message will not be subscribed")
 	}
 
-	ciphertext, err := crypto.Encrypt(message, aead, userEncode, tailed)
+	ciphertext, err := Encrypt(message, aead, userEncode, tailed)
 	if err != nil {
 		test.Fatalf("error encrypting bytes: %v", err)
 	}
 	test.Logf("bytes encrypted: %v", ciphertext)
 
-	plaintext, userDecode, err := crypto.Decrypt(ciphertext, aead, tailed)
+	plaintext, userDecode, err := Decrypt(ciphertext, aead, tailed)
 	if err != nil {
 		test.Fatalf("error decrypting bytes: %v", err)
 	}

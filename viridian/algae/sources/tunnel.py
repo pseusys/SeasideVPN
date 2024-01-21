@@ -118,12 +118,12 @@ class Tunnel:
             ip.link("del", index=self._tunnel_dev)
             logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} deleted")
 
-    def _setup_iptables_rules(self, chain: Chain):
+    def _setup_iptables_rules(self, chain: Chain) -> None:
         chain.insert_rule(self._send_to_internet_rule_accept)
         chain.insert_rule(self._send_to_internet_rule_mark)
         chain.insert_rule(self._send_to_caerulean_rule)
 
-    def _reset_iptables_rules(self, chain: Chain):
+    def _reset_iptables_rules(self, chain: Chain) -> None:
         chain.delete_rule(self._send_to_caerulean_rule)
         chain.delete_rule(self._send_to_internet_rule_mark)
         chain.delete_rule(self._send_to_internet_rule_accept)
