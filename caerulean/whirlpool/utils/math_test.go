@@ -2,7 +2,7 @@ package utils
 
 import "testing"
 
-func CountSetBitsTest(test *testing.T) {
+func TestCountSetBits(test *testing.T) {
 	binaryNumber := uint64(0b0101001011101101)
 	expectedBitSetCount := 9
 	bitSetCount := CountSetBits(binaryNumber)

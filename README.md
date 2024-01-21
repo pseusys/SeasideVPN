@@ -283,14 +283,14 @@ These are:
 1. Add unit tests for `viridian/algae`.
 2. Write documentation for both `caerulean/whirlpool` and `viridian/algae`.
 3. Add shell build, generation, etc. script for easy `caerulean/whirlpool` deployment (with and without container).
-4. Add "stress" profile with pumba on internal router for enhanced testing, use tcp echo server (can be found on dockerhub) (4 containrrs, no ext router).
-5. Add "load" profile for direct access (3 containers) and multiple clients and performance analysis for whirlpool.
-6. Write script for downloading/running/configuring server
-7. Control healthcheck times by cosine function, increase max delay to smth like 360 seconds, add random response delay
-8. Addresses for VPN connection: black and white list (limit addresses to use VPN with) <- add traffic analysis tool to client
-9. Advice on traffic distribution (proxy nodes), all routes and ports masking, on caerulean side: switch to 172.x.x.x tunnel IP, 1st X will be the number of PROXY the packet has been received from
-10. Add RTP protocol disguise option (to obfuscation, sent by client)
+4. Write script for downloading/running/configuring server.
+5. Add "smoke/stress" profile with pumba on internal router for enhanced testing, use tcp echo server (can be found on dockerhub) (4 containrrs, no ext router).
+6. Add "smoke/load" profile for direct access (3 containers) and multiple clients and performance analysis for whirlpool.
 
 ### Further considerations
 
 - Fix docker healthchecks when docker engine v25 is out.
+- Addresses for VPN connection: black and white list (limit addresses to use VPN with) <- add traffic analysis tool to client.
+- Control healthcheck times by cosine function, increase max delay to smth like 360 seconds, add random response delay.
+- Advice on traffic distribution (proxy nodes), all routes and ports masking, on caerulean side: switch to 172.x.x.x tunnel IP, 1st X will be the number of PROXY the packet has been received from.
+- Add RTP protocol disguise option (to obfuscation, sent by client).
