@@ -5,7 +5,7 @@ from struct import pack
 from typing import Tuple
 
 from colorama import Fore
-from iptc import Chain, Policy, Rule, Table, Target
+from iptc import Chain, Rule, Table, Target
 from pyroute2 import IPRoute
 
 from .outputs import logger
@@ -98,8 +98,6 @@ class Tunnel:
 
         self._filter_output_chain = Chain(Table(Table.MANGLE), "OUTPUT")
         self._filter_forward_chain = Chain(Table(Table.MANGLE), "FORWARD")
-        self._filter_output_chain_policy: Policy
-        self._filter_forward_chain_policy: Policy
 
     @property
     def operational(self) -> bool:
@@ -120,23 +118,19 @@ class Tunnel:
             ip.link("del", index=self._tunnel_dev)
             logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} deleted")
 
-    def _setup_iptables_rules(self, chain: Chain) -> Policy:
-        chain_policy = chain.get_policy()
-        chain.append_rule(self._send_to_caerulean_rule)
-        chain.append_rule(self._send_to_internet_rule_mark)
-        chain.append_rule(self._send_to_internet_rule_accept)
-        chain.set_policy(Policy.DROP)
-        return chain_policy
+    def _setup_iptables_rules(self, chain: Chain):
+        chain.insert_rule(self._send_to_internet_rule_accept)
+        chain.insert_rule(self._send_to_internet_rule_mark)
+        chain.insert_rule(self._send_to_caerulean_rule)
 
-    def _reset_iptables_rules(self, chain: Chain, policy: Policy):
+    def _reset_iptables_rules(self, chain: Chain):
         chain.delete_rule(self._send_to_caerulean_rule)
         chain.delete_rule(self._send_to_internet_rule_mark)
         chain.delete_rule(self._send_to_internet_rule_accept)
-        chain.set_policy(policy)
 
     def up(self) -> None:
-        self._filter_output_chain_policy = self._setup_iptables_rules(self._filter_output_chain)
-        self._filter_forward_chain_policy = self._setup_iptables_rules(self._filter_forward_chain)
+        self._setup_iptables_rules(self._filter_output_chain)
+        self._setup_iptables_rules(self._filter_forward_chain)
         logger.info(f"Packet forwarding with mark {Fore.BLUE}{_SVA_CODE}{Fore.RESET} via table {Fore.BLUE}{_SVA_CODE}{Fore.RESET} configured")
 
         with IPRoute() as ip:
@@ -154,8 +148,8 @@ class Tunnel:
         self._operational = True
 
     def down(self) -> None:
-        self._reset_iptables_rules(self._filter_output_chain, self._filter_output_chain_policy)
-        self._reset_iptables_rules(self._filter_forward_chain, self._filter_forward_chain_policy)
+        self._reset_iptables_rules(self._filter_output_chain)
+        self._reset_iptables_rules(self._filter_forward_chain)
         logger.info(f"Packet forwarding with mark {Fore.BLUE}{_SVA_CODE}{Fore.RESET} via table {Fore.BLUE}{_SVA_CODE}{Fore.RESET} removed")
 
         with IPRoute() as ip:
