@@ -170,7 +170,7 @@ sequenceDiagram
     end
   and On "seaside" port
     loop On every user packet
-      V ->> W: [Encrypted packet (request)] (sig, tail)
+      V ->> W: [Encrypted packet (request)] (sig, untail)
       W ->> V: [Encrypted packet (response)] (sig, untail)
     end
   end
