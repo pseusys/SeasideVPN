@@ -19,13 +19,10 @@ func TestViridianCycle(test *testing.T) {
 	viridianUID := "test_user_uid"
 	generationTime := time.Now().UTC()
 	viridianToken := generated.UserToken{
-		Uid:        viridianUID,
-		Session:    viridianKey,
-		Privileged: true,
-		Subscription: &timestamppb.Timestamp{
-			Seconds: int64(generationTime.Second()),
-			Nanos:   int32(generationTime.Nanosecond()),
-		},
+		Uid:          viridianUID,
+		Session:      viridianKey,
+		Privileged:   true,
+		Subscription: timestamppb.New(generationTime),
 	}
 	test.Logf("viridian will be added: %v", viridianToken.String())
 
@@ -51,8 +48,8 @@ func TestViridianCycle(test *testing.T) {
 	}
 	test.Logf("viridian added: %v", viridian)
 
-	if !isViridianOvertime(viridian) {
-		test.Fatalf("incorrect viridian overtime value for timeout: %v", viridian.timeout)
+	if !viridian.timeout.Before(time.Now().UTC()) {
+		test.Fatalf("incorrect viridian overtime value: %v >= %v", viridian.timeout, time.Now().UTC())
 	}
 
 	if !net.IP.Equal(viridian.Address, viridianInternalAddress) {
