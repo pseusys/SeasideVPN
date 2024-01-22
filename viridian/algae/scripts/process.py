@@ -3,10 +3,12 @@ from pathlib import Path
 from shutil import rmtree
 from subprocess import run as subprocess_run
 from sys import argv
+from typing import List
 
 from PyInstaller.__main__ import run as install
 from python_on_whales import DockerClient
 from python_on_whales.utils import run as docker_run
+from python_on_whales.components.image.cli_wrapper import ValidImage
 
 from scripts._utils import ALGAE_ROOT
 
@@ -47,5 +49,8 @@ def clean() -> None:
 
     docker = DockerClient()
     docker.container.remove(["seaside-algae", "seaside-whirlpool", "seaside-echo", "seaside-internal-router", "seaside-external-router"], True, True)
-    docker.image.remove(["seaside-algae-smoke", "seaside-whirlpool-smoke", "seaside-echo-smoke", "seaside-router-smoke", "seaside-algae-default", "seaside-whirlpool-default", "seaside-echo-default", "seaside-algae-sleeping"], True, True)
-    docker_run(docker.docker_cmd + ["network", "remove", "--force"] + [f"docker_{net}" for net in ("sea-client", "sea-router", "sea-server", "sea-cli-int", "sea-rout-int", "sea-rout-ext", "sea-serv-ext")])
+    algae_images: List[ValidImage] = [f"seaside-algae-{mode}" for mode in ("default", "smoke", "smoke-sleeping", "default-sleeping", "smoke-local", "smoke-remote")]
+    whirlpool_images: List[ValidImage] = [f"seaside-whirlpool-{mode}" for mode in ("default", "smoke", "integration", "smoke-local", "smoke-remote")]
+    docker.image.remove(["seaside-echo-smoke", "seaside-router-smoke", "seaside-router-smoke-sleeping", "seaside-echo-default", "seaside-echo"] + algae_images + whirlpool_images, True, True)
+    docker_network = [f"docker_{net}" for net in ("sea-client", "sea-router", "sea-server", "sea-cli-int", "sea-rout-int", "sea-rout-ext", "sea-serv-ext")]
+    docker_run(docker.docker_cmd + ["network", "remove", "--force"] + docker_network)

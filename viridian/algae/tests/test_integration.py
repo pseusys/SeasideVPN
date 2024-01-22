@@ -1,10 +1,10 @@
 from ipaddress import IPv4Address
 from logging import getLogger
 from os import environ, getenv
-from socket import AF_INET, SHUT_WR, SOCK_STREAM, gethostbyname, socket
+from socket import AF_INET, SHUT_WR, SOCK_STREAM, socket
 from subprocess import check_output
 from time import sleep
-from typing import Generator
+from typing import Generator, Optional
 
 import pytest
 from Crypto.Random import get_random_bytes
@@ -16,11 +16,12 @@ from ..sources.generated import ControlRequest, ControlRequestHealthcheckMessage
 logger = getLogger(__name__)
 
 
-def is_tcp_available(address: str = "example.com", port: int = 80) -> bool:
+def is_tcp_available(address: Optional[str] = None, port: int = 80) -> bool:
+    address = environ["RESTRICTED_ADDRESS"] if address is None else address 
     with socket(AF_INET, SOCK_STREAM) as sock:
         try:
             sock.settimeout(5.0)
-            sock.connect((gethostbyname(address), port))
+            sock.connect((address, port))
             return True
         except TimeoutError:
             return False

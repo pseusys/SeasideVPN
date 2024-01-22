@@ -6,7 +6,8 @@ services:
     container_name: seaside-algae
     privileged: true
     build:
-      dockerfile: Dockerfile.algae
+      dockerfile: viridian/algae/docker/Dockerfile.algae
+      context: ../../..
       target: smoke
     env_file:
       - test.conf.env

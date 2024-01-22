@@ -1,46 +1,74 @@
-version: "3.3"
+version: "3.9"
 
 services:
   algae:
-    image: seaside-algae-sleeping
+    image: seaside-algae-smoke-sleeping
     privileged: true
     build:
       dockerfile: viridian/algae/docker/Dockerfile.algae
       context: ../../..
-      target: sleeping
+      target: smoke-sleeping
+      args:
+        NETWORK_GATEWAY: 10.65.0.100
     env_file:
       - test.conf.env
+    environment:
+      RESTRICTED_ADDRESS: 1.1.1.1
+      SEASIDE_ADDRESS: 10.87.65.87
     networks:
       sea-client:
         ipv4_address: 10.65.0.65
     depends_on:
       whirlpool:
         condition: service_healthy
+      router:
+        condition: service_started
 
-  whirlpool:
+  router:
+    image: seaside-router-smoke-sleeping
     extends:
-      file: compose.default.yml
-      service: whirlpool
-    env_file:
-      - test.conf.env
-    environment:
-      SEASIDE_EXTERNAL: 10.87.0.87
+      file: compose.base.yml
+      service: router
+    build:
+      args:
+        RESTRICTED_ADDRESS: 1.1.1.1
+    container_name: seaside-internal-router
     networks:
       sea-client:
-        ipv4_address: 10.65.0.87
-      sea-server:
-        ipv4_address: 10.87.0.87
+        ipv4_address: 10.65.0.100
+      sea-router:
+        ipv4_address: 10.87.65.100
 
+  whirlpool:
+    image: seaside-whirlpool-integration
+    extends:
+      file: compose.base.yml
+      service: whirlpool
+    build:
+      args:
+        NETWORK_GATEWAY: 10.87.42.1
+    environment:
+      SEASIDE_ADDRESS: 10.87.65.87
+      SEASIDE_EXTERNAL: 10.87.42.87
+    networks:
+      sea-router:
+        ipv4_address: 10.87.65.87
+      sea-server:
+        ipv4_address: 10.87.42.87
 
 networks:
   sea-client:
-    internal: true
     ipam:
       config:
         - subnet: 10.65.0.0/24
           gateway: 10.65.0.1
+  sea-router:
+    ipam:
+      config:
+        - subnet: 10.87.65.0/24
+          gateway: 10.87.65.1
   sea-server:
     ipam:
       config:
-        - subnet: 10.87.0.0/24
-          gateway: 10.87.0.1
+        - subnet: 10.87.42.0/24
+          gateway: 10.87.42.1

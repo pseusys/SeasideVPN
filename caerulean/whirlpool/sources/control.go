@@ -44,6 +44,14 @@ func connectViridian(encryptedToken, address, gateway []byte, port uint32) (gene
 	}
 }
 
+func updateViridian(userID *uint16, nextIn int32) generated.ControlResponseStatus {
+	status, err := users.UpdateViridian(*userID, nextIn)
+	if err != nil {
+		logrus.Warnf("Error updating viridian: %v", err)
+	}
+	return status
+}
+
 func ListenControlPort(ctx context.Context, ip string, port int) {
 	var buffer bytes.Buffer
 
@@ -113,9 +121,10 @@ func ListenControlPort(ctx context.Context, ip string, port int) {
 			sendMessageToSocket(status, nil, connection, userID)
 		// In case of HEALTHPING status - update user deletion timer
 		case generated.ControlRequestStatus_HEALTHPING:
-			logrus.Infof("Healthcheck from user: %d", *userID)
-			status, err := users.UpdateViridian(*userID, message.GetHealthcheck().NextIn)
-			sendMessageToSocket(status, fmt.Errorf("error updating viridian: %v", err), connection, userID)
+			nextIn := message.GetHealthcheck().NextIn
+			logrus.Infof("Healthcheck from user: %d, next in %d", *userID, nextIn)
+			status := updateViridian(userID, nextIn)
+			sendMessageToSocket(status, nil, connection, userID)
 		// In case of TERMIN status - delete user record
 		case generated.ControlRequestStatus_DISCONNECTION:
 			logrus.Infof("Deleting user: %d", *userID)
