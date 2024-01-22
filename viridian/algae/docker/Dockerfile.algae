@@ -21,7 +21,7 @@ COPY vessels ./vessels
 RUN mkdir generated && protoc -I=vessels --python_betterproto_out=generated vessels/*.proto
 
 
-FROM ubuntu:22.04 as default
+FROM ubuntu:22.04 as default-sleeping
 
 WORKDIR /seaside/algae
 
@@ -29,13 +29,14 @@ ENV PYTHONUNBUFFERED 1
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential iptables python3-pip && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential iptables iproute2 iputils-ping python3-pip && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /seaside/algae/requirements.txt ./
 RUN pip install --upgrade --no-cache-dir pip -r requirements.txt
 
 COPY --from=builder /seaside/algae/generated ./sources/generated/
 COPY viridian/algae/sources/*.py ./sources/
 COPY viridian/algae/tests/*.py ./tests/
+RUN touch __init__.py sources/__init__.py
 
 ENV SEASIDE_PUBLIC=
 ENV SEASIDE_PAYLOAD_OWNER=
@@ -47,23 +48,27 @@ ENV SEASIDE_TUNNEL_NAME seatun
 ENV SEASIDE_MIN_HC_TIME 1
 ENV SEASIDE_MAX_HC_TIME 5
 
-ENTRYPOINT python3 -m sources.main $SEASIDE_PUBLIC $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -n $SEASIDE_NETPORT -c $SEASIDE_ANCHOR -t $SEASIDE_TUNNEL_NAME -s $SEASIDE_MIN_HC_TIME -b $SEASIDE_MAX_HC_TIME
-
-
-FROM seaside-algae-default as sleeping
-
-RUN apt-get update && apt-get install -y --no-install-recommends iproute2 && rm -rf /var/lib/apt/lists/*
-RUN touch __init__.py sources/__init__.py
 ENTRYPOINT sleep infinity
 
 
-FROM seaside-algae-default as smoke
+FROM default-sleeping as default
+
+ENTRYPOINT python3 -m sources.main $SEASIDE_PUBLIC $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -n $SEASIDE_NETPORT -c $SEASIDE_ANCHOR -t $SEASIDE_TUNNEL_NAME -s $SEASIDE_MIN_HC_TIME -b $SEASIDE_MAX_HC_TIME
+
+HEALTHCHECK --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s CMD ls /sys/class/net | grep $SEASIDE_TUNNEL_NAME
+
+
+FROM default-sleeping as smoke-sleeping
 
 ARG NETWORK_GATEWAY
 ENV ARG_NETWORK_GATEWAY $NETWORK_GATEWAY
 
-RUN apt-get update && apt-get install -y --no-install-recommends iproute2 iputils-ping && rm -rf /var/lib/apt/lists/*
+ENTRYPOINT ip route replace default via $ARG_NETWORK_GATEWAY && sleep infinity
+
+
+FROM smoke-sleeping as smoke
+
 ENTRYPOINT ip route replace default via $ARG_NETWORK_GATEWAY && \
     python3 -m sources.main $SEASIDE_PUBLIC $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -n $SEASIDE_NETPORT -t $SEASIDE_TUNNEL_NAME -s $SEASIDE_MIN_HC_TIME -b $SEASIDE_MAX_HC_TIME
 
-HEALTHCHECK --interval=3s --timeout=1s --retries=3 --start-period=10s CMD ls /sys/class/net | grep $SEASIDE_TUNNEL_NAME
+HEALTHCHECK --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s CMD ls /sys/class/net | grep $SEASIDE_TUNNEL_NAME

@@ -286,10 +286,12 @@ These are:
 4. Write script for downloading/running/configuring server.
 5. Add "smoke/stress" profile with pumba on internal router for enhanced testing, use tcp echo server (can be found on dockerhub) (4 containrrs, no ext router).
 6. Add "smoke/load" profile for direct access (3 containers) and multiple clients and performance analysis for whirlpool.
+7. Flush table 65 + remove ip rule.
+8. Check tests without 0.0.0.0 iptables rule(s).
+9. Add testolang test script.
 
 ### Further considerations
 
-- Fix docker healthchecks when docker engine v25 is out.
 - Addresses for VPN connection: black and white list (limit addresses to use VPN with) <- add traffic analysis tool to client.
 - Control healthcheck times by cosine function, increase max delay to smth like 360 seconds, add random response delay.
 - Advice on traffic distribution (proxy nodes), all routes and ports masking, on caerulean side: switch to 172.x.x.x tunnel IP, 1st X will be the number of PROXY the packet has been received from.

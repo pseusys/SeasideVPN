@@ -45,5 +45,4 @@ EXPOSE $SEASIDE_CTRLPORT/tcp
 EXPOSE $SEASIDE_NETPORT/tcp
 ENTRYPOINT ./whirlpool.run
 
-# TODO: after docker engine 25 is out, change to: --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s
-HEALTHCHECK --interval=3s --timeout=1s --retries=3 --start-period=10s CMD netstat -tulpn | grep -q ":$SEASIDE_SEAPORT"
+HEALTHCHECK --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s CMD netstat -tulpn | grep -q ":$SEASIDE_SEAPORT"
