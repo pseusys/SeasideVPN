@@ -17,7 +17,7 @@ logger = getLogger(__name__)
 
 
 def is_tcp_available(address: Optional[str] = None, port: int = 80) -> bool:
-    address = environ["RESTRICTED_ADDRESS"] if address is None else address 
+    address = environ["RESTRICTED_ADDRESS"] if address is None else address
     with socket(AF_INET, SOCK_STREAM) as sock:
         try:
             sock.settimeout(5.0)

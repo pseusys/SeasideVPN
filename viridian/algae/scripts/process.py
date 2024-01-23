@@ -7,8 +7,8 @@ from typing import List
 
 from PyInstaller.__main__ import run as install
 from python_on_whales import DockerClient
-from python_on_whales.utils import run as docker_run
 from python_on_whales.components.image.cli_wrapper import ValidImage
+from python_on_whales.utils import run as docker_run
 
 from scripts._utils import ALGAE_ROOT
 
