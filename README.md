@@ -216,7 +216,7 @@ Each node can support multiple **payload** options, e.g. for users with differen
 All the connection certificate can be expressed in a form of an URL:
 
 ```text
-seaside+{nodetype}://{address}:{netport}/{anchor}?public={public}&payload={owner}
+seaside+{nodetype}://{address}:{netport}/{anchor}?public={public}&payload={payload}
 ```
 
 > NB! Some of the nodes (the ones that can be run in Docker) usually accept the certificate in form of environmental variables.
@@ -281,7 +281,7 @@ These are:
 ### TODOs
 
 1. Add unit tests for `viridian/algae`.
-2. Write documentation for both `caerulean/whirlpool` and `viridian/algae`.
+2. Write documentation for both `caerulean/whirlpool` and `viridian/algae` (including Dockerfiles).
 3. Add shell build, generation, etc. script for easy `caerulean/whirlpool` deployment (with and without container).
 4. Write script for downloading/running/configuring server.
 5. Add "smoke/stress" profile with pumba on internal router for enhanced testing, use tcp echo server (can be found on dockerhub) (4 containrrs, no ext router).
@@ -289,6 +289,7 @@ These are:
 7. Flush table 65 + remove ip rule.
 8. Check tests without 0.0.0.0 iptables rule(s).
 9. Add testolang test script.
+10. Add messages to all asserts in python.
 
 ### Further considerations
 

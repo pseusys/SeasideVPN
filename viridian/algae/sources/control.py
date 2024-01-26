@@ -15,8 +15,8 @@ from .tunnel import Tunnel
 
 
 class Controller:
-    def __init__(self, public_key: str, owner_key: str, addr: IPv4Address, net_port: int, anchor: str, name: str, hc_min: int, hc_max: int):
-        self._owner_key = owner_key
+    def __init__(self, public_key: str, payload: str, addr: IPv4Address, net_port: int, anchor: str, name: str, hc_min: int, hc_max: int):
+        self._owner_key = payload
         self._address = str(addr)
         self._net_port = net_port
         self._anchor_endpoint = anchor

@@ -111,13 +111,6 @@ class Tunnel:
     def descriptor(self) -> int:
         return self._descriptor
 
-    def delete(self) -> None:
-        if self._operational:
-            self.down()
-        with IPRoute() as ip:
-            ip.link("del", index=self._tunnel_dev)
-            logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} deleted")
-
     def _setup_iptables_rules(self, chain: Chain) -> None:
         chain.insert_rule(self._send_to_internet_rule_accept)
         chain.insert_rule(self._send_to_internet_rule_mark)
@@ -159,3 +152,10 @@ class Tunnel:
             ip.link("set", index=self._tunnel_dev, state="down")
             logger.info(f"Tunnel {Fore.GREEN}disabled{Fore.RESET}")
         self._operational = False
+
+    def delete(self) -> None:
+        if self._operational:
+            self.down()
+        with IPRoute() as ip:
+            ip.link("del", index=self._tunnel_dev)
+            logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} deleted")

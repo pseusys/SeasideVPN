@@ -8,5 +8,3 @@ services:
       dockerfile: viridian/algae/docker/Dockerfile.algae
       context: ../../..
       target: default-sleeping
-    environment:
-      SEASIDE_ADDRESS: 10.65.0.65
