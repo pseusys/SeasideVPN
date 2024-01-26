@@ -4,21 +4,32 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/binary"
+	"math"
 	"testing"
 )
 
 const (
+	OBSCURE_TEST_ZERO_USER_ID = uint64(42)
+
 	RANDOM_PERMUTE_EXACT_MULTIPLIER        = uint64(10)
 	RANDOM_PERMUTE_EXACT_MULTIPLIER_1      = uint64(12912720851596686090)
-	RANDOM_PERMUTE_EXACT_ZERO_USER_ID      = uint64(42)
 	RANDOM_PERMUTE_EXACT_ADDITION          = uint64(5)
 	RANDOM_PERMUTE_EXACT_USER_ID           = uint16(10)
 	RANDOM_PERMUTE_EXACT_EXPECTED_IDENTITY = uint64(525)
 
-	GET_TAIL_LENGTH_ZERO_USER_ID = uint64(42)
+	GET_TAIL_LENGTH_EXPECTED_TAIL_LENGTH = 14
 
 	ENTAIL_MESSAGE_CYCLE_MESSAGE_LENGTH = 8
 )
+
+func generateRandomUserID(test *testing.T) uint16 {
+	var randomInt uint16
+	err := binary.Read(rand.Reader, binary.BigEndian, &randomInt)
+	if err != nil {
+		test.Fatalf("error generating random int: %v", err)
+	}
+	return uint16((randomInt % (math.MaxUint16 - 3)) + 2)
+}
 
 func getMessageForTailLengthCalculationRepeating() []byte {
 	data := make([]byte, 8)
@@ -31,7 +42,7 @@ func getMessageForTailLengthCalculationRepeating() []byte {
 func TestRandomPermuteExact(test *testing.T) {
 	MULTIPLIER = RANDOM_PERMUTE_EXACT_MULTIPLIER
 	MULTIPLIER_1 = RANDOM_PERMUTE_EXACT_MULTIPLIER_1
-	ZERO_USER_ID = RANDOM_PERMUTE_EXACT_ZERO_USER_ID
+	ZERO_USER_ID = OBSCURE_TEST_ZERO_USER_ID
 
 	addition := RANDOM_PERMUTE_EXACT_ADDITION
 	userID := RANDOM_PERMUTE_EXACT_USER_ID
@@ -75,11 +86,7 @@ func TestRandomPermuteCycle(test *testing.T) {
 }
 
 func TestSubscribeMessageCycle(test *testing.T) {
-	var userID uint16
-	err := binary.Read(rand.Reader, binary.BigEndian, &userID)
-	if err != nil {
-		test.Fatalf("error generating random bytes: %v", err)
-	}
+	userID := generateRandomUserID(test)
 	test.Logf("generated user ID: %d", userID)
 
 	subscription, err := subscribeMessage(&userID)
@@ -100,10 +107,10 @@ func TestSubscribeMessageCycle(test *testing.T) {
 }
 
 func TestGetTailLength(test *testing.T) {
-	ZERO_USER_ID = GET_TAIL_LENGTH_ZERO_USER_ID
+	ZERO_USER_ID = OBSCURE_TEST_ZERO_USER_ID
 	message := getMessageForTailLengthCalculationRepeating()
 
-	expectedTailLength := 14
+	expectedTailLength := GET_TAIL_LENGTH_EXPECTED_TAIL_LENGTH
 	tailLength := getTailLength(message)
 	test.Logf("calculated tail length: %d", tailLength)
 

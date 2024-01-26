@@ -36,6 +36,6 @@ def parse_connection_link(link: str) -> Dict[str, Any]:
     result.update({"anchor": parsed.path[1:]})
 
     query = parse_qs(parsed.query)
-    result.update({"public_key": query["public"][0], "owner_key": query["payload"][0]})
+    result.update({"public_key": query["public"][0], "payload": query["payload"][0]})
 
     return result
