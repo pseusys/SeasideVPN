@@ -7,7 +7,6 @@ import pytest
 
 from ..sources.tunnel import Tunnel
 
-
 TUNNEL_NAME = "test-tun"
 TUNNEL_DIRECTION = IPv4Address("8.8.8.8")
 
