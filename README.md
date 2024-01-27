@@ -280,16 +280,13 @@ These are:
 
 ### TODOs
 
-1. Add unit tests for `viridian/algae`.
-2. Write documentation for both `caerulean/whirlpool` and `viridian/algae` (including Dockerfiles).
-3. Add shell build, generation, etc. script for easy `caerulean/whirlpool` deployment (with and without container).
-4. Write script for downloading/running/configuring server.
-5. Add "smoke/stress" profile with pumba on internal router for enhanced testing, use tcp echo server (can be found on dockerhub) (4 containrrs, no ext router).
-6. Add "smoke/load" profile for direct access (3 containers) and multiple clients and performance analysis for whirlpool.
-7. Flush table 65 + remove ip rule.
-8. Check tests without 0.0.0.0 iptables rule(s).
-9. Add testolang test script.
-10. Add messages to all asserts in python.
+1. Write documentation for both `caerulean/whirlpool` and `viridian/algae` (including Dockerfiles).
+2. Add shell build, generation, etc. script for easy `caerulean/whirlpool` deployment (with and without container).
+3. Write script for downloading/running/configuring server.
+4. Add "smoke/stress" profile with pumba on internal router for enhanced testing, use tcp echo server (can be found on dockerhub) (4 containrrs, no ext router).
+5. Add "smoke/load" profile for direct access (3 containers) and multiple clients and performance analysis for whirlpool.
+6. Check tests without 0.0.0.0 iptables rule(s).
+7. Add testolang test script.
 
 ### Further considerations
 

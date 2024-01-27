@@ -23,8 +23,8 @@ def caerulean_address() -> Generator[str, None, None]:
 @pytest.mark.skipif("CI" in environ, reason="Ping test shouldn't be run in CI environment as most of them don't support PING")
 def test_caerulean_ping(caerulean_address: str) -> None:
     logger.info("Testing with PING porotocol")
-    assert ping(caerulean_address, count=1, size=16).success(SuccessOn.All)
-    assert ping("8.8.8.8", count=8, size=64).success(SuccessOn.Most)
+    assert ping(caerulean_address, count=1, size=16).success(SuccessOn.All), "PING request was not completely successfull!"
+    assert ping("8.8.8.8", count=8, size=64).success(SuccessOn.Most), "PING request was not completely successfull!"
 
 
 @pytest.mark.xfail(reason="QOTD is a UDP-based protocol, so it is not reliable and can sometimes fail")
@@ -51,7 +51,7 @@ def test_tcp_protocol(random_message: bytes) -> None:
         sock.sendall(random_message)
         sock.shutdown(SHUT_WR)
         tcp_echo = sock.recv(len(random_message))
-        assert random_message == tcp_echo
+        assert random_message == tcp_echo, "Received echo message doesn't match sent!"
 
 
 @pytest.mark.timeout(7.0)
@@ -59,7 +59,7 @@ def test_ftp_protocol() -> None:
     address = "https://picsum.photos/800/600"
     logger.info("Testing with FTP protocol")
     file, message = urlretrieve(address)
-    assert int(message["Content-Length"]) == stat(file).st_size != 0
+    assert int(message["Content-Length"]) == stat(file).st_size != 0, "Received file length doesn't match header!"
     logger.info(f"Downloaded image of size {message['Content-Length']}")
 
 
@@ -68,6 +68,6 @@ def test_http_protocol() -> None:
     address = "https://example.com/"
     logger.info("Testing with HTTP protocol")
     response = urlopen(address)
-    assert response.status == 200
+    assert response.status == 200, "Response status doesn't match expected!"
     contents = response.fp.read()
-    assert "<h1>Example Domain</h1>" in contents.decode()
+    assert "<h1>Example Domain</h1>" in contents.decode(), "URL content doesn't match expected!"

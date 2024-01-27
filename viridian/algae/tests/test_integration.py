@@ -43,48 +43,48 @@ def controller() -> Generator[Controller, None, None]:
 @pytest.mark.dependency()
 def test_controller_initialization(controller: Controller) -> None:
     routes = check_output(["ip", "link", "show"]).decode()
-    assert controller._interface._name in routes
+    assert controller._interface._name in routes, "Tunnel wasn't created!"
 
 
 @pytest.mark.dependency(depends=["test_controller_initialization"])
 def test_no_vpn_request() -> None:
     logger.info("Testing unreachability with TCP echo server")
-    assert not is_tcp_available()
+    assert not is_tcp_available(), "External website is already available!"
 
 
 @pytest.mark.dependency(depends=["test_no_vpn_request"])
 def test_receive_token(controller: Controller) -> None:
     logger.info("Testing receiving user token")
     controller._receive_token()
-    assert len(controller._cipher.key) > 0
+    assert len(controller._cipher.key) > 0, "Key was not received!"
 
 
 @pytest.mark.dependency(depends=["test_receive_token"])
 def test_initialize_control(controller: Controller) -> None:
     logger.info("Testing initializing control sequence")
     controller._initialize_control()
-    assert isinstance(controller._user_id, int)
-    assert controller._user_id >= 1 and controller._user_id <= MAX_MESSAGE_SIZE
+    assert isinstance(controller._user_id, int), "User ID wasn't created!"
+    assert controller._user_id >= 1 and controller._user_id <= MAX_MESSAGE_SIZE, "User ID isn't in range!"
 
 
 @pytest.mark.dependency(depends=["test_initialize_control"])
 def test_open_tunnel(controller: Controller) -> None:
     logger.info("Testing opening the tunnel")
     controller._interface.up()
-    assert controller._interface._operational
+    assert controller._interface._operational, "Tunnel interface isn't operational!"
 
 
 @pytest.mark.dependency(depends=["test_open_tunnel"])
 def test_open_client(controller: Controller) -> None:
     logger.info("Testing opening the client")
     controller._client.open()
-    assert controller._client._operational
+    assert controller._client._operational, "Client processes aren't operational!"
 
 
 @pytest.mark.dependency(depends=["test_open_client"])
 def test_validate_request() -> None:
     logger.info("Testing reachability with TCP example server")
-    assert is_tcp_available()
+    assert is_tcp_available(), "External website isn't available!"
 
 
 @pytest.mark.dependency(depends=["test_validate_request"])
@@ -98,7 +98,7 @@ def test_send_suspicious_message(controller: Controller) -> None:
         encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
         _, response = controller._obfuscator.decrypt(encrypted_message, controller._public_cipher, True)
         response_status = ControlResponse().parse(response).status
-        assert response_status == ControlResponseStatus.ERROR
+        assert response_status == ControlResponseStatus.ERROR, "Server reaction wasn't error!"
 
 
 @pytest.mark.dependency(depends=["test_send_suspicious_message"])
@@ -118,7 +118,7 @@ def test_send_healthcheck_message(controller: Controller) -> None:
 
             _, answer_message = controller._obfuscator.decrypt(encrypted_message, controller._public_cipher, True)
             status = ControlResponse().parse(answer_message).status
-            assert status == ControlResponseStatus.HEALTHPONG
+            assert status == ControlResponseStatus.HEALTHPONG, "Server reaction wasn't healthpong!"
             sleep(1)
 
 
@@ -149,13 +149,13 @@ def test_healthcheck_overtime(controller: Controller) -> None:
         encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
         _, response = controller._obfuscator.decrypt(encrypted_message, controller._public_cipher, True)
         response_status = ControlResponse().parse(response).status
-        assert response_status == ControlResponseStatus.ERROR
+        assert response_status == ControlResponseStatus.ERROR, "Server reaction wasn't error!"
 
 
 @pytest.mark.dependency(depends=["test_healthcheck_overtime"])
 def test_no_vpn_rerequest() -> None:
     logger.info("Testing unreachability with TCP echo server again")
-    assert not is_tcp_available()
+    assert not is_tcp_available(), "External website is still available!"
 
 
 @pytest.mark.dependency(depends=["test_no_vpn_rerequest"])
@@ -174,7 +174,7 @@ def test_reconnect(controller: Controller) -> None:
 @pytest.mark.dependency(depends=["test_reconnect"])
 def test_revalidate_request() -> None:
     logger.info("Testing reachability with TCP example server again")
-    assert is_tcp_available()
+    assert is_tcp_available(), "External website isn't available!"
 
 
 @pytest.mark.dependency(depends=["test_revalidate_request"])

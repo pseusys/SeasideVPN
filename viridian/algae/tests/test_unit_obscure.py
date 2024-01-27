@@ -40,36 +40,36 @@ def random_user_id() -> int:
 
 def test_random_permute_exact(obfuscator: Obfuscator) -> None:
     identity = obfuscator._random_permute(RANDOM_PERMUTE_EXACT_ADDITION, RANDOM_PERMUTE_EXACT_USER_ID)
-    assert identity == RANDOM_PERMUTE_EXACT_EXPECTED_IDENTITY
+    assert identity == RANDOM_PERMUTE_EXACT_EXPECTED_IDENTITY, "Received identity doesn't match expected!"
     user_id = obfuscator._random_unpermute(RANDOM_PERMUTE_EXACT_ADDITION, identity)
-    assert user_id == RANDOM_PERMUTE_EXACT_USER_ID
+    assert user_id == RANDOM_PERMUTE_EXACT_USER_ID, "Received user ID doesn't match expected!"
 
 
 def test_random_permute_cycle(obfuscator: Obfuscator) -> None:
     addition, user_id = random_long(), random_long()
     identity = obfuscator._random_permute(addition, user_id)
     received_user_id = obfuscator._random_unpermute(addition, identity)
-    assert received_user_id == user_id
+    assert received_user_id == user_id, "Received user ID doesn't match permuted!"
 
 
 def test_subscribe_message_cycle(obfuscator: Obfuscator) -> None:
     user_id = random_user_id()
     subscription = obfuscator.subscribe(user_id)
     received_user_id = obfuscator.unsubscribe(subscription)
-    assert received_user_id == user_id
+    assert received_user_id == user_id, "Received user ID doesn't match subscribed!"
 
 
 def test_get_tail_length(obfuscator: Obfuscator) -> None:
     message = bytes(range(1, 9))
     tail_length = obfuscator._get_tail_length(message)
-    assert tail_length == GET_TAIL_LENGTH_EXPECTED_TAIL_LENGTH
+    assert tail_length == GET_TAIL_LENGTH_EXPECTED_TAIL_LENGTH, "Message tail length doesn't match expected!"
 
 
 def test_entail_message_cycle(obfuscator: Obfuscator) -> None:
     message = get_random_bytes(ENTAIL_MESSAGE_CYCLE_MESSAGE_LENGTH)
     entailed_message = obfuscator._entail_message(message)
     detailed_message = obfuscator._detail_message(entailed_message)
-    assert detailed_message == message
+    assert detailed_message == message, "Detailed message doesn't match entailed!"
 
 
 def _test_encrypt_cycle(subscribe: bool, tailed: bool, obfuscator: Obfuscator) -> None:
@@ -84,8 +84,8 @@ def _test_encrypt_cycle(subscribe: bool, tailed: bool, obfuscator: Obfuscator) -
     ciphertext = obfuscator.encrypt(message, cipher, user_encode, tailed)
     decoded_user_id, plaintext = obfuscator.decrypt(ciphertext, cipher, tailed)
 
-    assert decoded_user_id == user_encode
-    assert plaintext == message
+    assert decoded_user_id == user_encode, "Decrypted user ID doesn't match encrypted!"
+    assert plaintext == message, "Plain text doesn't match encrypted!"
 
 
 def test_encrypt_cycle_subscribed_tailed(obfuscator: Obfuscator) -> None:
