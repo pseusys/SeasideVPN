@@ -4,8 +4,9 @@ FROM golang:1.20-alpine3.17 as builder
 
 WORKDIR /seaside/caerulean
 
-RUN apk add --no-cache protobuf protobuf-dev build-base gmp-dev
+RUN apk add --no-cache iptables protobuf protobuf-dev build-base gmp-dev
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+RUN go install golang.org/x/lint/golint@latest
 
 COPY caerulean/whirlpool/go.mod ./
 COPY vessels ./vessels

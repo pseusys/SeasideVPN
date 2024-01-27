@@ -1,6 +1,6 @@
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from ipaddress import IPv4Address
-from json import loads, dumps
+from json import loads
 
 from Crypto.Random import get_random_bytes
 
@@ -26,11 +26,11 @@ def test_get_request() -> None:
     response = get(request_url).read()
     response_dict = loads(response)
     response_url = response_dict["url"]
-    assert request_url == response_url
+    assert request_url == response_url, "Request URL doesn't match response URL!"
 
     response_args = response_url[len(HTTP_REQUEST_LINK) + 1:]
     response_decoded = urlsafe_b64decode(response_args)
-    assert response_decoded == request_bytes
+    assert response_decoded == request_bytes, "Response args don't match request args!"
 
 
 
@@ -43,7 +43,7 @@ def test_post_request() -> None:
     response_raw = response_dict["data"]
     response_encoded = response_raw[len(response_data_prefix):]
     response_bytes = urlsafe_b64decode(response_encoded)
-    assert response_bytes == request_bytes
+    assert response_bytes == request_bytes, "Response data doesn't match request data!"
 
 
 def test_parse_connection_link() -> None:
@@ -55,4 +55,4 @@ def test_parse_connection_link() -> None:
         "anchor": CONNECTION_ANCHOR
     }
     params_dict = parse_connection_link(CONNECTION_LINK)
-    assert all(item in params_expected.items() for item in params_dict.items())
+    assert all(item in params_expected.items() for item in params_dict.items()), "Some of the link parts are not parsed properly!"

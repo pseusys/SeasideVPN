@@ -19,6 +19,6 @@ def test_local_echo(random_message: bytes) -> None:
         gate.bind(("0.0.0.0", 0))
         gate.sendto(random_message, (echo_address, int(echo_port)))
         tcp_echo = loads(gate.recv(buffer))
-        assert tcp_echo["from"][0] != local_address, "Echo address doesn't match VPN address"
-        assert tcp_echo["from"][1] != vpn_port, "Echo port does match VPN input port"
-        assert tcp_echo["message"] == random_message, "Echo message doesn't match"
+        assert tcp_echo["from"][0] != local_address, "Echo address doesn't match VPN address!"
+        assert tcp_echo["from"][1] != vpn_port, "Echo port does match VPN input port!"
+        assert tcp_echo["message"] == random_message, "Echo message doesn't match!"

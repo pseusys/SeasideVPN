@@ -17,13 +17,13 @@ def _test_encode_cycle(cipher: Cipher) -> None:
     logger.info(f"Bytes encoded: {encoded!r}")
     decoded = cipher.decode(encoded)
     logger.info(f"Bytes decoded: {decoded!r}")
-    assert message == decoded
+    assert message == decoded, "Decoded message doesn't match encoded!"
 
 
 def test_generate_cipher() -> None:
     cipher = Cipher()
     logger.info(f"Cipher generated, key: {cipher.key!r}")
-    assert len(cipher.key) == GENERATE_CIPHER_KEY_LENGTH
+    assert len(cipher.key) == GENERATE_CIPHER_KEY_LENGTH, "Cipher key length doesn't match expected!"
     logger.info(f"Cipher key length: {len(cipher.key)}")
     _test_encode_cycle(cipher)
 

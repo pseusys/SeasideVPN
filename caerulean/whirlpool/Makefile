@@ -1,6 +1,8 @@
 .ONESHELL:
 .EXPORT_ALL_VARIABLES:
 
+DOCKER_BUILDKIT = 1
+
 include example.conf.env
 
 EXEC_NAME = whirlpool.run
@@ -28,7 +30,7 @@ format: build
 
 build-docker-prod:
 	@
-	DOCKER_BUILDKIT=1 docker build -f Dockerfile -t seaside-whirlpool-prod ../..
+	docker build -f Dockerfile --target default -t seaside-whirlpool-prod ../..
 .PHONY: build-docker-prod
 
 run-docker: build-docker-prod
@@ -41,9 +43,9 @@ run-docker: build-docker-prod
 build-docker-test:
 	@
 ifndef CI
-	DOCKER_BUILDKIT=1 docker build -f Dockerfile.test -t seaside-whirlpool-test ../..
+	docker build -f Dockerfile --target builder -t seaside-whirlpool-test ../..
 else
-	DOCKER_BUILDKIT=1 docker build -f Dockerfile.test -t seaside-whirlpool-test -q ../..
+	docker build -f Dockerfile --target builder -t seaside-whirlpool-test -q ../..
 endif
 .PHONY: build-docker-test
 
