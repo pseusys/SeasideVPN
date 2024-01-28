@@ -64,7 +64,7 @@ graph LR
 ```
 
 On this diagram, an example SeaSide system is shown.
-Three `viridian`s are connected to internet via `whirlpool` №1 and two other `viridian`s via `whirlpool` №2.
+Three `viridian`s are connected to the internet via `whirlpool` №1 and two other `viridian`s via `whirlpool` №2.
 All of them are also connected to `surface` node.
 The last `viridian` №6 is connected only to `whirlpool` №3 and not to `surface` node, that is only possible if `viridian` №6 is the administrator of `whirlpool` №3.
 

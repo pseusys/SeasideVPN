@@ -13,18 +13,25 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// Helper function, creates new viridians, parses and checks received token and address.
+// Accepts encrypted user token, local network viridian address, address from that the message was received and viridian seaside port number.
+// Returns ControlResponseStatus: (Success) if user is created, other status otherwise.
+// Also returns viridian ID pointer: nil if user is not created, uint16 pointer otherwise.
 func connectViridian(encryptedToken, address, gateway []byte, port uint32) (generated.ControlResponseStatus, *uint16) {
+	// Check if token is not null
 	if encryptedToken == nil {
 		logrus.Warnf("Error: user (%v) token is null", address)
 		return generated.ControlResponseStatus_ERROR, nil
 	}
 
+	// Decode token
 	plaintext, err := crypto.Decode(encryptedToken, false, crypto.PRIVATE_NODE_AEAD)
 	if err != nil {
 		logrus.Warnf("Error decrypting token from user (%v): %v", address, err)
 		return generated.ControlResponseStatus_ERROR, nil
 	}
 
+	// Unmarshall token datastructure
 	token := &generated.UserToken{}
 	err = proto.Unmarshal(plaintext, token)
 	if err != nil {
@@ -32,6 +39,7 @@ func connectViridian(encryptedToken, address, gateway []byte, port uint32) (gene
 		return generated.ControlResponseStatus_ERROR, nil
 	}
 
+	// Check if address is not null, if so add viridian
 	if address == nil {
 		logrus.Warnf("Error: user address is null (gateway: %v)", gateway)
 		return generated.ControlResponseStatus_ERROR, nil
@@ -44,6 +52,9 @@ func connectViridian(encryptedToken, address, gateway []byte, port uint32) (gene
 	}
 }
 
+// Helper function, updates viridian, resets healthcheck deletion timer.
+// Accepts target viridian ID and next healthping request timeout.
+// Returns ControlResponseStatus: (Healthpong) if user is updated, other status otherwise.
 func updateViridian(userID *uint16, nextIn int32) generated.ControlResponseStatus {
 	status, err := users.UpdateViridian(*userID, nextIn)
 	if err != nil {
@@ -52,19 +63,22 @@ func updateViridian(userID *uint16, nextIn int32) generated.ControlResponseStatu
 	return status
 }
 
+// Set up CONTROL port listener, it accepts and processes viridian control messages.
+// Accepts Context for graceful termination, internal IP (as a string) and CTRL port (as an int).
+// NB! this method is blocking, so it should be run as goroutine.
 func ListenControlPort(ctx context.Context, ip string, port int) {
 	var buffer bytes.Buffer
 
 	// Open viridian control TCP connection
 	network := fmt.Sprintf("%s:%d", ip, port)
 
-	gateway, err := net.ResolveTCPAddr(TCP, network)
+	gateway, err := net.ResolveTCPAddr("tcp4", network)
 	if err != nil {
 		logrus.Fatalf("Error resolving address (%s): %v", network, err)
 	}
 
 	// Create a TCP listener
-	listener, err := net.ListenTCP(TCP, gateway)
+	listener, err := net.ListenTCP("tcp4", gateway)
 	if err != nil {
 		logrus.Fatalf("Error creating listener (%s): %v", gateway.String(), err)
 	}
@@ -72,12 +86,13 @@ func ListenControlPort(ctx context.Context, ip string, port int) {
 	logrus.Debug("Control port listening started")
 	defer listener.Close()
 
+	// Listen to TCP CTRL requests
 	for {
 		select {
 		case <-ctx.Done():
 			logrus.Debug("Control port listening stopped")
 			return
-		default: // do nothing
+		default: // Do nothing
 		}
 
 		// Clear the buffer
@@ -90,7 +105,7 @@ func ListenControlPort(ctx context.Context, ip string, port int) {
 		}
 
 		// Resolve viridian TCP address
-		address, err := net.ResolveTCPAddr(TCP, connection.RemoteAddr().String())
+		address, err := net.ResolveTCPAddr("tcp4", connection.RemoteAddr().String())
 		if err != nil {
 			sendMessageToSocket(generated.ControlResponseStatus_ERROR, fmt.Errorf("error resolving remote user address: %v", connection.RemoteAddr().String()), connection, nil)
 			continue

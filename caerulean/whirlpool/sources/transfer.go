@@ -15,34 +15,46 @@ import (
 	"github.com/songgao/water"
 )
 
+// UDP connection for viridian messages accepting.
 var SEA_CONNECTION *net.UDPConn
 
-type NetSettableLayerType interface {
+// Special type for checking IP packet layers - if they should use IP header in checksum calculation.
+type netSettableLayerType interface {
 	SetNetworkLayerForChecksum(gopacket.NetworkLayer) error
 }
 
-func InitializeSeasideConnection() error {
-	gateway, err := net.ResolveUDPAddr(UDP, fmt.Sprintf("%s:%d", INTERNAL_ADDRESS, SEASIDE_PORT))
+// Initialize UDP connection for viridian messages accepting.
+// Accepts internal network address (as a string) and UDP port number.
+// Returns error if the connection wasn't initialized.
+func InitializeSeasideConnection(internalAddress string, port int) error {
+	// Resolve UDP address
+	gateway, err := net.ResolveUDPAddr("udp4", fmt.Sprintf("%s:%d", internalAddress, port))
 	if err != nil {
 		logrus.Fatalf("Error resolving local address: %v", err)
 	}
 
-	SEA_CONNECTION, err = net.ListenUDP(UDP, gateway)
+	// Create connection
+	SEA_CONNECTION, err = net.ListenUDP("udp4", gateway)
 	if err != nil {
 		logrus.Fatalf("Error resolving connection (%s): %v", gateway.String(), err)
 	}
 
+	// Return no error
 	return nil
 }
 
+// Start receiving UDP VPN packets from viridians (internal interface, seaside port) and sending them to the internet.
+// Accepts Context for graceful termination, tunnel interface pointer and tunnel IP network address pointer.
+// NB! this method is blocking, so it should be run as goroutine.
 func ReceivePacketsFromViridian(ctx context.Context, tunnel *water.Interface, tunnetwork *net.IPNet) {
 	buffer := make([]byte, math.MaxUint16)
 
-	// Create objects for packet decoding
+	// Create buffer for packet decoding
 	serialBuffer := gopacket.NewSerializeBuffer()
 
 	logrus.Debug("Receiving packets from viridian started")
 	for {
+		// Handle graceful termination
 		select {
 		case <-ctx.Done():
 			logrus.Debug("Receiving packets from viridian stopped")
@@ -53,21 +65,21 @@ func ReceivePacketsFromViridian(ctx context.Context, tunnel *water.Interface, tu
 		// Clear the serialization buffer
 		serialBuffer.Clear()
 
-		// Read IOBUFFERSIZE of data
+		// Read packet from UDP connection
 		r, _, err := SEA_CONNECTION.ReadFromUDP(buffer)
 		if err != nil || r == 0 {
 			logrus.Errorf("Error reading from viridian (%d bytes read): %v", r, err)
 			continue
 		}
 
-		// Deobfuscate packet
+		// Read message subscription
 		userID, err := crypto.UnsubscribeMessage(buffer[:r])
 		if err != nil {
 			logrus.Errorf("Error deobfuscating packet: %v", err)
 			continue
 		}
 
-		// Get the viridian we receive the packet from
+		// Get the viridian the packet belongs to
 		viridianID := []byte{0, 0}
 		binary.BigEndian.PutUint16(viridianID, *userID)
 		viridian := users.GetViridian(*userID)
@@ -76,14 +88,14 @@ func ReceivePacketsFromViridian(ctx context.Context, tunnel *water.Interface, tu
 			continue
 		}
 
-		// Decrypt packet
+		// Decode the packet
 		raw, err := crypto.Decode(buffer[:r], true, viridian.AEAD)
 		if err != nil {
 			logrus.Errorf("Error decrypting packet: %v", err)
 			continue
 		}
 
-		// Decode all packet headers
+		// Parse all packet headers
 		packet := gopacket.NewPacket(raw, layers.LayerTypeIPv4, gopacket.NoCopy)
 		if err := packet.ErrorLayer(); err != nil {
 			logrus.Errorf("Error decoding some part of the packet: %v", err)
@@ -94,9 +106,9 @@ func ReceivePacketsFromViridian(ctx context.Context, tunnel *water.Interface, tu
 		logrus.Infof("Received %d bytes from viridian %d (src: %v, dst: %v)", netLayer.Length, *userID, netLayer.SrcIP, netLayer.DstIP)
 		netLayer.SrcIP = net.IPv4(tunnetwork.IP[0], tunnetwork.IP[1], viridianID[0], viridianID[1])
 
-		// Set this network layer to all the layers that require a network layer
+		// Set the network layer to all the layers that require a network layer
 		for _, layer := range packet.Layers() {
-			netSettableLayer, ok := layer.(NetSettableLayerType)
+			netSettableLayer, ok := layer.(netSettableLayerType)
 			if ok {
 				netSettableLayer.SetNetworkLayerForChecksum(netLayer)
 			}
@@ -118,14 +130,18 @@ func ReceivePacketsFromViridian(ctx context.Context, tunnel *water.Interface, tu
 	}
 }
 
+// Start receiving packets from the internet (external interface) and sending them to viridians.
+// Accepts Context for graceful termination, tunnel interface pointer and tunnel IP network address pointer.
+// NB! this method is blocking, so it should be run as goroutine.
 func SendPacketsToViridian(ctx context.Context, tunnel *water.Interface, tunnetwork *net.IPNet) {
 	buffer := make([]byte, math.MaxUint16)
 
-	// Create objects for packet decoding
+	// CCreate buffer for packet decoding
 	serialBuffer := gopacket.NewSerializeBuffer()
 
 	logrus.Debug("Sending packets to viridian started")
 	for {
+		// Handle graceful termination
 		select {
 		case <-ctx.Done():
 			logrus.Debug("Sending packets to viridian stopped")
@@ -136,23 +152,23 @@ func SendPacketsToViridian(ctx context.Context, tunnel *water.Interface, tunnetw
 		// Clear the serialization buffer
 		serialBuffer.Clear()
 
-		// Read data from tunnel
+		// Read data from the tunnel
 		r, err := tunnel.Read(buffer)
 		if r == 0 && err != nil {
 			logrus.Errorf("Error reading from tunnel error (%d bytes read): %v", r, err)
 			continue
 		}
 
-		// Decode all packet headers
+		// Parse all packet headers
 		packet := gopacket.NewPacket(buffer[:r], layers.LayerTypeIPv4, gopacket.NoCopy)
 		if err := packet.ErrorLayer(); err != nil {
 			logrus.Errorf("Error decoding some part of the packet: %v", err)
 		}
 
-		// Get IP layer header and change source IP
+		// Get packet IP layer header
 		netLayer, _ := packet.Layer(layers.LayerTypeIPv4).(*layers.IPv4)
 
-		// Get the viridian we receive the packet from and set packet destination
+		// Get the viridian the packet was received from
 		viridianID := binary.BigEndian.Uint16([]byte{netLayer.DstIP[2], netLayer.DstIP[3]})
 		viridian := users.GetViridian(viridianID)
 		if viridian == nil {
@@ -160,19 +176,20 @@ func SendPacketsToViridian(ctx context.Context, tunnel *water.Interface, tunnetw
 			continue
 		}
 
-		// Resolve viridian address to send to
-		gateway, err := net.ResolveUDPAddr(UDP, fmt.Sprintf("%s:%v", viridian.Gateway.String(), viridian.Port))
+		// Resolve the viridian destination address
+		gateway, err := net.ResolveUDPAddr("udp4", fmt.Sprintf("%s:%v", viridian.Gateway.String(), viridian.Port))
 		if err != nil {
 			logrus.Errorf("Error parsing return address: %v", err)
 			continue
 		}
 
+		// Change packet IP layer destination address
 		netLayer.DstIP = viridian.Address
 		logrus.Infof("Sending %d bytes to viridian %d (src: %v, dst: %v)", netLayer.Length, viridianID, netLayer.SrcIP, netLayer.DstIP)
 
-		// Set this network layer to all the layers that require a network layer
+		// Set the network layer to all the layers that require a network layer
 		for _, layer := range packet.Layers() {
-			netSettableLayer, ok := layer.(NetSettableLayerType)
+			netSettableLayer, ok := layer.(netSettableLayerType)
 			if ok {
 				netSettableLayer.SetNetworkLayerForChecksum(netLayer)
 			}
