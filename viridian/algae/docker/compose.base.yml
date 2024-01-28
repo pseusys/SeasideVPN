@@ -3,7 +3,6 @@ version: "3.9"
 services:
   algae:
     image: seaside-algae-smoke
-    container_name: seaside-algae
     privileged: true
     build:
       dockerfile: viridian/algae/docker/Dockerfile.algae

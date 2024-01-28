@@ -3,10 +3,10 @@ from pathlib import Path
 from shutil import rmtree
 from subprocess import run as subprocess_run
 from sys import argv
-from typing import List
+from typing import List, Union
 
 from PyInstaller.__main__ import run as install
-from python_on_whales import DockerClient
+from python_on_whales import Container, DockerClient
 from python_on_whales.components.image.cli_wrapper import ValidImage
 from python_on_whales.utils import run as docker_run
 
@@ -48,7 +48,9 @@ def clean() -> None:
     Path("poetry.lock").unlink(missing_ok=True)
 
     docker = DockerClient()
-    docker.container.remove(["seaside-algae", "seaside-whirlpool", "seaside-echo", "seaside-internal-router", "seaside-external-router"], True, True)
+    unique_containers: List[Union[str, Container]] = ["seaside-algae", "seaside-whirlpool", "seaside-echo", "seaside-internal-router", "seaside-external-router", "network-disruptor"]
+    copy_containers: List[Union[str, Container]] = [f"docker-algae-copy-{n + 1}" for n in range(3)]
+    docker.container.remove(unique_containers + copy_containers, True, True)
     algae_images: List[ValidImage] = [f"seaside-algae-{mode}" for mode in ("default", "smoke", "smoke-sleeping", "default-sleeping", "smoke-local", "smoke-remote")]
     whirlpool_images: List[ValidImage] = [f"seaside-whirlpool-{mode}" for mode in ("default", "smoke", "integration", "smoke-local", "smoke-remote")]
     docker.image.remove(["seaside-echo-smoke", "seaside-router-smoke", "seaside-router-smoke-sleeping", "seaside-echo-default", "seaside-echo"] + algae_images + whirlpool_images, True, True)

@@ -15,8 +15,6 @@ _DEFAULT_NAME = "seatun"
 _DEFAULT_ADDRESS = "127.0.0.1"
 _DEFAULT_NET_PORT = 8587
 _DEFAULT_ANCHOR = "auth"
-_DEFAULT_HEALTHCHECK_MIN_TIME = 1
-_DEFAULT_HEALTHCHECK_MAX_TIME = 5
 
 
 parser = ArgumentParser()
@@ -26,8 +24,6 @@ parser.add_argument("-a", "--address", dest="addr", default=_DEFAULT_ADDRESS, ty
 parser.add_argument("-n", "--net-port", dest="net_port", default=_DEFAULT_NET_PORT, type=int, help=f"Caerulean remote network port number (default: {_DEFAULT_NET_PORT})")
 parser.add_argument("-c", "--anchor", dest="anchor", default=_DEFAULT_ANCHOR, help=f"Caerulean anchor endpoint name (default: {_DEFAULT_ANCHOR})")
 parser.add_argument("-t", "--tunnel", dest="name", default=_DEFAULT_NAME, help=f"Tunnel interface name (default: {_DEFAULT_NAME})")
-parser.add_argument("-s", "--health-min", dest="hc_min", default=_DEFAULT_HEALTHCHECK_MIN_TIME, type=int, help=f"Minimal healthcheck delay (default: {_DEFAULT_HEALTHCHECK_MIN_TIME}, shouldn't be less than 1)")
-parser.add_argument("-b", "--health-max", dest="hc_max", default=_DEFAULT_HEALTHCHECK_MAX_TIME, type=int, help=f"Maximal healthcheck delay (default: {_DEFAULT_HEALTHCHECK_MAX_TIME})")
 parser.add_argument("-l", "--link", dest="link", default=None, help="Connection link, will be used instead of other arguments if specified")
 
 controller: Controller

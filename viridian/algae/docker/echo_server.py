@@ -1,7 +1,7 @@
 from logging import StreamHandler, getLogger
 from os import environ, getenv
 from pickle import dumps
-from socket import AF_INET, SOCK_DGRAM, socket
+from socket import AF_INET, SOCK_STREAM, socket
 from sys import stdout
 
 LOG_LEVEL = getenv("LOG_LEVEL", "INFO")
@@ -14,16 +14,18 @@ logger.setLevel(LOG_LEVEL)
 logger.addHandler(handler)
 
 
-sock = socket(AF_INET, SOCK_DGRAM)
+sock = socket(AF_INET, SOCK_STREAM)
 buffer = int(environ["BUFFER_SIZE"])
 sock.bind(("0.0.0.0", int(environ["ECHO_PORT"])))
+sock.listen(1)
 
 while True:
     try:
-        message, address = sock.recvfrom(buffer)
+        client, address = sock.accept()
+        message = client.recv(buffer)
         payload = {"message": message, "from": address}
         logger.info(f"Processing object: {payload}")
-        sock.sendto(dumps(payload), address)
+        client.sendall(dumps(payload))
     except KeyboardInterrupt:
         logger.info("Server stopped")
         exit(0)

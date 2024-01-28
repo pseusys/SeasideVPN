@@ -80,10 +80,25 @@ def test_integration() -> int:
         return _test_set(docker_path, "integration", hosted)
 
 
+def test_local() -> int:
+    just_fix_windows_console()
+    with docker_test() as (docker_path, hosted):
+        return _test_set(docker_path, "local", hosted)
+
+
+def test_remote() -> int:
+    just_fix_windows_console()
+    with docker_test() as (docker_path, hosted):
+        return _test_set(docker_path, "remote", hosted)
+
+
 def test_smoke() -> int:
     just_fix_windows_console()
     with docker_test() as (docker_path, hosted):
-        return _test_set(docker_path, "local", hosted) or _test_set(docker_path, "remote", hosted)
+        result = 0
+        for test_set in ("local", "remote"):
+            result = result or _test_set(docker_path, test_set, hosted)  # type: ignore[arg-type]
+        return result
 
 
 def test_all() -> int:
