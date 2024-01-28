@@ -1,8 +1,13 @@
+// Whirlpool represents a simple Seaside VPN "worker" node.
+// It accepts packages from Seaside viridians and transfers them to the internet.
+// It is only supposed to be run on Linux as it uses unix-only TUN devices.
+// The node can be run either freestanding (for users with admin permissions) or as a part of seaside network.
+// It is not supposed to perform any "demanding" operations, such as database connections, etc.
+// For any additional functionality, seaside network should be used.
 package main
 
 import (
 	"context"
-	"flag"
 	"main/tunnel"
 	"main/utils"
 	"os"
@@ -12,22 +17,29 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const (
-	UDP       = "udp4"
-	TCP       = "tcp4"
-	TUNNEL_IP = "172.16.0.1/12"
-)
+// Tunnel IP address, also serves as gateway address for tunnel network interface.
+// Last bits of the packet source network address are used to store state user information in "iptables" firewall.
+// Last 2 bytes of will be used for attributing packages belonging to different viridians.
+const TUNNEL_IP = "172.16.0.1/12"
 
 var (
-	HELP_FLAG = flag.Bool("h", false, "Print this message again and exit")
-
+	// Internal node IP address - the address for viridians to connect.
 	INTERNAL_ADDRESS string
+
+	// Internal node IP address - the address the packets will be sent from.
 	EXTERNAL_ADDRESS string
-	SEASIDE_PORT     int
-	CONTROL_PORT     int
-	NETWORK_PORT     int
+
+	// UDP port for viridian messages accepting.
+	SEASIDE_PORT int
+
+	// TCP port for control messages accepting.
+	CONTROL_PORT int
+
+	// TCP/HTTP port for network endpoints hosting.
+	NETWORK_PORT int
 )
 
+// Initialize package variables from environment variables and setup logging level.
 func init() {
 	INTERNAL_ADDRESS = utils.GetEnv("SEASIDE_ADDRESS")
 	EXTERNAL_ADDRESS = utils.GetEnv("SEASIDE_EXTERNAL")
@@ -45,13 +57,6 @@ func init() {
 }
 
 func main() {
-	// Parse CLI args
-	flag.Parse()
-	if *HELP_FLAG {
-		flag.Usage()
-		return
-	}
-
 	// Create and get IP for tunnel interface
 	tunnelConfig := tunnel.Preserve()
 	err := tunnelConfig.Open(TUNNEL_IP, INTERNAL_ADDRESS, EXTERNAL_ADDRESS, SEASIDE_PORT, NETWORK_PORT, CONTROL_PORT)
@@ -60,7 +65,7 @@ func main() {
 	}
 
 	// Initialize VPN connection
-	err = InitializeSeasideConnection()
+	err = InitializeSeasideConnection(INTERNAL_ADDRESS, SEASIDE_PORT)
 	if err != nil {
 		logrus.Fatalf("Error initializing seaside connection: %v", err)
 	}
@@ -74,7 +79,7 @@ func main() {
 	go SendPacketsToViridian(ctx, tunnelConfig.Tunnel, tunnelConfig.Network)
 
 	// Start web API, connect to surface if available
-	go InitNetAPI(ctx, NETWORK_PORT)
+	go InitNetAPI(ctx, INTERNAL_ADDRESS, NETWORK_PORT)
 	go ExchangeNodeKey()
 
 	// Prepare termination signal
