@@ -283,10 +283,7 @@ These are:
 1. Write documentation for both `caerulean/whirlpool` and `viridian/algae` (including Dockerfiles).
 2. Add shell build, generation, etc. script for easy `caerulean/whirlpool` deployment (with and without container).
 3. Write script for downloading/running/configuring server.
-4. Add "smoke/stress" profile with pumba on internal router for enhanced testing, use tcp echo server (can be found on dockerhub) (4 containrrs, no ext router).
-5. Add "smoke/load" profile for direct access (3 containers) and multiple clients and performance analysis for whirlpool.
-6. Check tests without 0.0.0.0 iptables rule(s).
-7. Add testolang test script.
+4. Check tests without 0.0.0.0 iptables rule(s).
 
 ### Further considerations
 

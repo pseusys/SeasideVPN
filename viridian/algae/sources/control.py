@@ -1,5 +1,6 @@
 from ctypes import c_uint64
 from ipaddress import IPv4Address
+from os import getenv
 from socket import AF_INET, SHUT_WR, SOCK_DGRAM, SOCK_STREAM, inet_aton, socket
 from time import sleep
 
@@ -13,23 +14,26 @@ from .outputs import logger
 from .requests import post
 from .tunnel import Tunnel
 
+_DEFAULT_HEALTHCHECK_MIN_TIME = 1
+_DEFAULT_HEALTHCHECK_MAX_TIME = 5
+
 
 class Controller:
-    def __init__(self, public_key: str, payload: str, addr: IPv4Address, net_port: int, anchor: str, name: str, hc_min: int, hc_max: int):
+    def __init__(self, public_key: str, payload: str, addr: IPv4Address, net_port: int, anchor: str, name: str):
         self._owner_key = payload
         self._address = str(addr)
         self._net_port = net_port
         self._anchor_endpoint = anchor
         self._interface = Tunnel(name, addr)
         self._user_id = 0
-        self._min_hc_time = hc_min
-        self._max_hc_time = hc_max
+        self._min_hc_time = int(getenv("SEASIDE_MIN_HC_TIME", _DEFAULT_HEALTHCHECK_MIN_TIME))
+        self._max_hc_time = int(getenv("SEASIDE_MAX_HC_TIME", _DEFAULT_HEALTHCHECK_MAX_TIME))
         self._public_cipher = Cipher(bytes.fromhex(public_key))
 
         self._gate_socket = socket(AF_INET, SOCK_DGRAM)
         self._gate_socket.bind((self._interface.default_ip, 0))
 
-        if hc_min < 1:
+        if self._min_hc_time < 1:
             raise ValueError("Minimal healthcheck time can't be less than 1 second!")
 
         self._sea_port: int

@@ -3,6 +3,7 @@ version: "3.9"
 services:
   algae:
     image: seaside-algae-smoke-remote
+    container_name: seaside-algae
     extends:
       file: compose.base.yml
       service: algae

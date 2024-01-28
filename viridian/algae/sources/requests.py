@@ -1,12 +1,16 @@
 from ipaddress import IPv4Address
+from os import getenv
 from typing import Any, BinaryIO, Dict, Optional
 from urllib.parse import parse_qs, urlparse
 from urllib.request import Request, urlopen
 
+_DEFAULT_CONNECTION_TIMEOUT = 3
+
 
 def _send_request(url: str, method: str, data: Optional[bytes]) -> BinaryIO:
+    timeout = float(getenv("SEASIDE_CONNECTION_TIMEOUT", _DEFAULT_CONNECTION_TIMEOUT))
     headers = {"Content-Type": "application/octet-stream"}
-    response = urlopen(Request(url, data, headers, method=method), timeout=3)
+    response = urlopen(Request(url, data, headers, method=method), timeout=timeout)
     return response  # type: ignore[no-any-return]
 
 

@@ -49,13 +49,14 @@ ENV SEASIDE_ANCHOR=
 ENV SEASIDE_TUNNEL_NAME seatun
 ENV SEASIDE_MIN_HC_TIME 1
 ENV SEASIDE_MAX_HC_TIME 5
+ENV SEASIDE_CONNECTION_TIMEOUT 3
 
 ENTRYPOINT sleep infinity
 
 
 FROM default-sleeping as default
 
-ENTRYPOINT python3 -m sources.main $SEASIDE_PUBLIC $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -n $SEASIDE_NETPORT -c $SEASIDE_ANCHOR -t $SEASIDE_TUNNEL_NAME -s $SEASIDE_MIN_HC_TIME -b $SEASIDE_MAX_HC_TIME
+ENTRYPOINT python3 -m sources.main $SEASIDE_PUBLIC $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -n $SEASIDE_NETPORT -c $SEASIDE_ANCHOR -t $SEASIDE_TUNNEL_NAME
 
 HEALTHCHECK --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s CMD ls /sys/class/net | grep $SEASIDE_TUNNEL_NAME
 
@@ -71,6 +72,6 @@ ENTRYPOINT ip route replace default via $ARG_NETWORK_GATEWAY && sleep infinity
 FROM smoke-sleeping as smoke
 
 ENTRYPOINT ip route replace default via $ARG_NETWORK_GATEWAY && \
-    python3 -m sources.main $SEASIDE_PUBLIC $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -n $SEASIDE_NETPORT -t $SEASIDE_TUNNEL_NAME -s $SEASIDE_MIN_HC_TIME -b $SEASIDE_MAX_HC_TIME
+    python3 -m sources.main $SEASIDE_PUBLIC $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -n $SEASIDE_NETPORT -t $SEASIDE_TUNNEL_NAME
 
 HEALTHCHECK --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s CMD ls /sys/class/net | grep $SEASIDE_TUNNEL_NAME
