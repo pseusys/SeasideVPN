@@ -7,6 +7,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Get value from environment variable.
+// Accept environment variable (string).
+// Return environment variable value or empty string.
 func GetEnv(key string) string {
 	if value, ok := os.LookupEnv(key); ok {
 		return value
@@ -16,6 +19,9 @@ func GetEnv(key string) string {
 	}
 }
 
+// Get integer value from environment variable.
+// Accept environment variable (string).
+// Return environment variable value (converted to integer) or terminate program with an error.
 func GetIntEnv(key string) int {
 	if value, ok := os.LookupEnv(key); ok {
 		number, err := strconv.Atoi(value)

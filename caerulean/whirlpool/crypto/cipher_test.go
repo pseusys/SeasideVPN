@@ -28,7 +28,7 @@ func testEncodeCycle(test *testing.T, aead cipher.AEAD) {
 	}
 	test.Logf("message encoded: %v", encoded)
 
-	decoded, err := Decode(encoded, false, aead)
+	decoded, err := Decode(encoded, aead)
 	if err != nil {
 		test.Fatalf("error decoding message: %v", err)
 	}

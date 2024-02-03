@@ -5,41 +5,62 @@ option go_package = "/generated";
 
 
 enum ControlRequestStatus {
-    CONNECTION = 0;  // User to server connection request
-    DISCONNECTION = 1;  // User from server disconnection request
-    HEALTHPING = 2;  // Obfuscation PING request, sent from time to time
+    // User to server connection request
+    CONNECTION = 0;
+    // User from server disconnection request
+    DISCONNECTION = 1;
+    // PING request, sent from time to time
+    HEALTHPING = 2;
 }
 
 enum ControlResponseStatus {
-    UNDEFINED = 0;  // Undefined status, always leads to an error
-    SUCCESS = 1;  // Operation success, e.g. user connection termination
-    ERROR = 2;  // Operation error, sent if any operation failed on server side
-    OVERLOAD = 3;  // Too many users connected to caerulean, can't accept more connections
-    OVERTIME = 4;  // User subscription outdated, user will be disconnected
-    HEALTHPONG = 5;  // Response to obfuscation PING request
+    // Undefined status, operation not processed
+    UNDEFINED = 0;
+    // Control operation success
+    SUCCESS = 1;
+    // Control operation error
+    ERROR = 2;
+    // Too many users connected to caerulean, can't accept more connections
+    OVERLOAD = 3;
+    // User subscription outdated, user will be disconnected
+    OVERTIME = 4;
+    // Response to PING request
+    HEALTHPONG = 5;
 }
 
 
 
+// User control request to whirlpool node
 message ControlRequest {
+    // Connection initialization message
     message ConnectionMessage {
+        // Encrypted user token
         bytes token = 1;
+        // Internal user IP address
         bytes address = 2;
+        // User seaside port number
         int32 port = 3;
     }
 
+    // Healthcheck message
     message HealthcheckMessage {
+        // Next healthping request timeout
         int32 nextIn = 1;
     }
 
+    // Control request status
     ControlRequestStatus status = 1;
+    // Control message payload
     oneof payload {
         ConnectionMessage connection = 2;
         HealthcheckMessage healthcheck = 3;
     }
 }
 
+// Whirlpool control responseto user
 message ControlResponse {
+    // Control response status
     ControlResponseStatus status = 1;
+    // Encoded error message or empty string
     string message = 2;
 }
