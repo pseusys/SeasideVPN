@@ -14,9 +14,9 @@ import (
 )
 
 // Helper function, creates new viridians, parses and checks received token and address.
-// Accepts encrypted user token, local network viridian address, address from that the message was received and viridian seaside port number.
-// Returns ControlResponseStatus: (Success) if user is created, other status otherwise.
-// Also returns viridian ID pointer: nil if user is not created, uint16 pointer otherwise.
+// Accept encrypted user token, local network viridian address, address from that the message was received and viridian seaside port number.
+// Return ControlResponseStatus: (Success) if user is created, other status otherwise.
+// Also return viridian ID pointer: nil if user is not created, uint16 pointer otherwise.
 func connectViridian(encryptedToken, address, gateway []byte, port uint32) (generated.ControlResponseStatus, *uint16) {
 	// Check if token is not null
 	if encryptedToken == nil {
@@ -25,7 +25,7 @@ func connectViridian(encryptedToken, address, gateway []byte, port uint32) (gene
 	}
 
 	// Decode token
-	plaintext, err := crypto.Decode(encryptedToken, false, crypto.PRIVATE_NODE_AEAD)
+	plaintext, err := crypto.Decode(encryptedToken, crypto.PRIVATE_NODE_AEAD)
 	if err != nil {
 		logrus.Warnf("Error decrypting token from user (%v): %v", address, err)
 		return generated.ControlResponseStatus_ERROR, nil
@@ -53,8 +53,8 @@ func connectViridian(encryptedToken, address, gateway []byte, port uint32) (gene
 }
 
 // Helper function, updates viridian, resets healthcheck deletion timer.
-// Accepts target viridian ID and next healthping request timeout.
-// Returns ControlResponseStatus: (Healthpong) if user is updated, other status otherwise.
+// Accept target viridian ID and next healthping request timeout.
+// Return ControlResponseStatus: (Healthpong) if user is updated, other status otherwise.
 func updateViridian(userID *uint16, nextIn int32) generated.ControlResponseStatus {
 	status, err := users.UpdateViridian(*userID, nextIn)
 	if err != nil {
@@ -64,7 +64,7 @@ func updateViridian(userID *uint16, nextIn int32) generated.ControlResponseStatu
 }
 
 // Set up CONTROL port listener, it accepts and processes viridian control messages.
-// Accepts Context for graceful termination, internal IP (as a string) and CTRL port (as an int).
+// Accept Context for graceful termination, internal IP (as a string) and CTRL port (as an int).
 // NB! this method is blocking, so it should be run as goroutine.
 func ListenControlPort(ctx context.Context, ip string, port int) {
 	var buffer bytes.Buffer

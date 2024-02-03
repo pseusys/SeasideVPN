@@ -24,8 +24,8 @@ type netSettableLayerType interface {
 }
 
 // Initialize UDP connection for viridian messages accepting.
-// Accepts internal network address (as a string) and UDP port number.
-// Returns error if the connection wasn't initialized.
+// Accept internal network address (as a string) and UDP port number.
+// Return error if the connection wasn't initialized.
 func InitializeSeasideConnection(internalAddress string, port int) error {
 	// Resolve UDP address
 	gateway, err := net.ResolveUDPAddr("udp4", fmt.Sprintf("%s:%d", internalAddress, port))
@@ -44,7 +44,7 @@ func InitializeSeasideConnection(internalAddress string, port int) error {
 }
 
 // Start receiving UDP VPN packets from viridians (internal interface, seaside port) and sending them to the internet.
-// Accepts Context for graceful termination, tunnel interface pointer and tunnel IP network address pointer.
+// Accept Context for graceful termination, tunnel interface pointer and tunnel IP network address pointer.
 // NB! this method is blocking, so it should be run as goroutine.
 func ReceivePacketsFromViridian(ctx context.Context, tunnel *water.Interface, tunnetwork *net.IPNet) {
 	buffer := make([]byte, math.MaxUint16)
@@ -89,7 +89,7 @@ func ReceivePacketsFromViridian(ctx context.Context, tunnel *water.Interface, tu
 		}
 
 		// Decode the packet
-		raw, err := crypto.Decode(buffer[:r], true, viridian.AEAD)
+		raw, err := crypto.Decode(buffer[:r], viridian.AEAD)
 		if err != nil {
 			logrus.Errorf("Error decrypting packet: %v", err)
 			continue
@@ -131,7 +131,7 @@ func ReceivePacketsFromViridian(ctx context.Context, tunnel *water.Interface, tu
 }
 
 // Start receiving packets from the internet (external interface) and sending them to viridians.
-// Accepts Context for graceful termination, tunnel interface pointer and tunnel IP network address pointer.
+// Accept Context for graceful termination, tunnel interface pointer and tunnel IP network address pointer.
 // NB! this method is blocking, so it should be run as goroutine.
 func SendPacketsToViridian(ctx context.Context, tunnel *water.Interface, tunnetwork *net.IPNet) {
 	buffer := make([]byte, math.MaxUint16)
