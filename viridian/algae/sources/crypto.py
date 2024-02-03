@@ -46,8 +46,7 @@ class Obfuscator:
     def _random_permute(self, addition: int, number: Optional[int]) -> int:
         number = 0 if number is None else number
         number = (self._zero_user_id + number) % _LARGEST_PRIME_UINT64
-        if number < _LARGEST_PRIME_UINT64:
-            number = ((number * self._multiplier) + addition) % _LARGEST_PRIME_UINT64
+        number = ((number * self._multiplier) + addition) % _LARGEST_PRIME_UINT64
         return number
 
     def _random_unpermute(self, addition: int, number: int) -> Optional[int]:

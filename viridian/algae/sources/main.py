@@ -1,5 +1,4 @@
 from argparse import ArgumentParser
-from ipaddress import IPv4Address
 from multiprocessing import current_process
 from signal import SIGINT, SIGTERM, signal
 from sys import argv, exit
@@ -20,7 +19,7 @@ _DEFAULT_ANCHOR = "auth"
 parser = ArgumentParser()
 parser.add_argument("public_key", help="Whirlpool public key (required!)")
 parser.add_argument("payload", help="Whirlpool node owner key (required!)")
-parser.add_argument("-a", "--address", dest="addr", default=_DEFAULT_ADDRESS, type=IPv4Address, help=f"Caerulean remote IP address (default: {_DEFAULT_ADDRESS})")
+parser.add_argument("-a", "--address", dest="addr", default=_DEFAULT_ADDRESS, type=str, help=f"Caerulean remote IP address (default: {_DEFAULT_ADDRESS})")
 parser.add_argument("-n", "--net-port", dest="net_port", default=_DEFAULT_NET_PORT, type=int, help=f"Caerulean remote network port number (default: {_DEFAULT_NET_PORT})")
 parser.add_argument("-c", "--anchor", dest="anchor", default=_DEFAULT_ANCHOR, help=f"Caerulean anchor endpoint name (default: {_DEFAULT_ANCHOR})")
 parser.add_argument("-t", "--tunnel", dest="name", default=_DEFAULT_NAME, help=f"Tunnel interface name (default: {_DEFAULT_NAME})")
