@@ -1,5 +1,4 @@
 from base64 import urlsafe_b64decode, urlsafe_b64encode
-from ipaddress import IPv4Address
 from json import loads
 
 import pytest
@@ -11,7 +10,7 @@ HTTP_REQUEST_LENGTH = 16
 HTTP_REQUEST_LINK = "https://httpbin.org/anything"
 
 CONNECTION_NODETYPE = "whirlpool"
-CONNECTION_ADDRESS = IPv4Address("1.2.3.4")
+CONNECTION_ADDRESS = "whirlpool_host"
 CONNECTION_NETPORT = 54321
 CONNECTION_ANCHOR = "anchor"
 CONNECTION_PUBLIC = "ffeeddccbbaa9988776655443322110000112233445566778899aabbccddeeff"

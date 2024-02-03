@@ -1,7 +1,7 @@
 from ctypes import c_uint64
-from ipaddress import IPv4Address
+from ipaddress import AddressValueError, IPv4Address
 from os import getenv
-from socket import AF_INET, SHUT_WR, SOCK_DGRAM, SOCK_STREAM, inet_aton, socket
+from socket import AF_INET, SHUT_WR, SOCK_DGRAM, SOCK_STREAM, gethostbyname, inet_aton, socket
 from time import sleep
 
 from colorama import Fore
@@ -19,12 +19,16 @@ _DEFAULT_HEALTHCHECK_MAX_TIME = 5
 
 
 class Controller:
-    def __init__(self, public_key: str, payload: str, addr: IPv4Address, net_port: int, anchor: str, name: str):
+    def __init__(self, public_key: str, payload: str, addr: str, net_port: int, anchor: str, name: str):
+        try:
+            self._address = str(IPv4Address(addr))
+        except AddressValueError:
+            self._address = gethostbyname(addr)
+
         self._owner_key = payload
-        self._address = str(addr)
         self._net_port = net_port
         self._anchor_endpoint = anchor
-        self._interface = Tunnel(name, addr)
+        self._interface = Tunnel(name, IPv4Address(self._address))
         self._user_id = 0
         self._min_hc_time = int(getenv("SEASIDE_MIN_HC_TIME", _DEFAULT_HEALTHCHECK_MIN_TIME))
         self._max_hc_time = int(getenv("SEASIDE_MAX_HC_TIME", _DEFAULT_HEALTHCHECK_MAX_TIME))

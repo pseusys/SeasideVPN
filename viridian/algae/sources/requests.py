@@ -1,4 +1,3 @@
-from ipaddress import IPv4Address
 from os import getenv
 from typing import Any, BinaryIO, Dict, Optional
 from urllib.parse import parse_qs, urlparse
@@ -35,7 +34,7 @@ def parse_connection_link(link: str) -> Dict[str, Any]:
     if parsed.port is None:
         raise RuntimeError(f"Unknown connection address: {parsed.netloc}")
     else:
-        result.update({"addr": IPv4Address(parsed.hostname), "net_port": parsed.port})
+        result.update({"addr": str(parsed.hostname), "net_port": parsed.port})
 
     result.update({"anchor": parsed.path[1:]})
 
