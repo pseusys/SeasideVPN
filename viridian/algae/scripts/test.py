@@ -9,11 +9,17 @@ from python_on_whales import DockerClient, DockerException
 
 from scripts._utils import ALGAE_ROOT
 
+# Default logger instance.
 logger = getLogger(__name__)
 
 
 @contextmanager
 def docker_test() -> Iterator[Tuple[Path, bool]]:
+    """
+    Helper function. Build all base Docker images.
+    Also prepare Docker client.
+    Context manager, yields path to "algae/docker" directory and current docker client.
+    """
     hosted = "CI" in environ
     docker_path = ALGAE_ROOT / "docker"
     docker = DockerClient(compose_files=[docker_path / "compose.default.yml"])
@@ -25,6 +31,12 @@ def docker_test() -> Iterator[Tuple[Path, bool]]:
 
 
 def _print_container_logs(docker: DockerClient, container: str, last: int = 100) -> None:
+    """
+    Print container logs if container exists. Otherwise display warning.
+    :param docker: current Docker client.
+    :param container: container name string.
+    :param last: number of last lines to print (default: 100).
+    """
     try:
         logger.error(f"{Style.BRIGHT}{Fore.YELLOW}Container {container} logs:{Style.RESET_ALL}")
         logger.error(docker.compose.logs(container, tail=str(last)))
@@ -33,6 +45,14 @@ def _print_container_logs(docker: DockerClient, container: str, last: int = 100)
 
 
 def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remote"], Literal["integration"], Literal["unit"]], hosted: bool) -> int:
+    """
+    Launch specified compose file and launch speceified test set inside of it.
+    Print test output and any errors that happened.
+    :param docker_path: path to "algae/docker" directory, containing all dockerfiles and compose files.
+    :param profile: name of the testing profile, one of "local", "remote", "integration", "unit".
+    :param hosted: flag, whether the current test set is being run in CI (disables verbose output).
+    :return: integer return code, 0 if tests succeeded.
+    """
     logger.warning(f"{Style.BRIGHT}{Fore.BLUE}Testing {profile}...{Style.RESET_ALL}")
     docker = DockerClient(compose_files=[docker_path / f"compose.{profile}.yml"])
     before_networks = set([net.name for net in docker.network.list()])
@@ -69,30 +89,52 @@ def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remot
 
 
 def test_unit() -> int:
+    """
+    Run unit tests: all the algae client functions in particular.
+    :return: integer return code.
+    """
     just_fix_windows_console()
     with docker_test() as (docker_path, hosted):
         return _test_set(docker_path, "unit", hosted)
 
 
 def test_integration() -> int:
+    """
+    Run integration tests: sequence of VPN connection, disconnection and other control requests.
+    :return: integer return code.
+    """
     just_fix_windows_console()
     with docker_test() as (docker_path, hosted):
         return _test_set(docker_path, "integration", hosted)
 
 
 def test_local() -> int:
+    """
+    Run local smoke tests: connection is made to local TCP server in a Doocker container.
+    Also network packet random drop (50%) is enabled ("gaiaadm/pumba" library is used).
+    :return: integer return code.
+    """
     just_fix_windows_console()
     with docker_test() as (docker_path, hosted):
         return _test_set(docker_path, "local", hosted)
 
 
 def test_remote() -> int:
+    """
+    Run remote smoke tests: connection is made to several remote servers.
+    Several different transport and application layer protocols are used.
+    :return: integer return code.
+    """
     just_fix_windows_console()
     with docker_test() as (docker_path, hosted):
         return _test_set(docker_path, "remote", hosted)
 
 
 def test_smoke() -> int:
+    """
+    Run smoke tests: run both "local" and "remote" smoke tests (specified above).
+    :return: integer return code.
+    """
     just_fix_windows_console()
     with docker_test() as (docker_path, hosted):
         result = 0
@@ -102,6 +144,10 @@ def test_smoke() -> int:
 
 
 def test_all() -> int:
+    """
+    Run tests: run all tests (specified above).
+    :return: integer return code.
+    """
     just_fix_windows_console()
     with docker_test() as (docker_path, hosted):
         result = 0

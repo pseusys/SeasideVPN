@@ -7,15 +7,23 @@ from mypy import api
 
 from scripts._utils import ALGAE_ROOT
 
+# Maximum python sources line length.
 _MAX_LINE_LEN = 250
 
+# Default logger instance.
 logger = getLogger(__name__)
 
 
 def lint() -> int:
+    """
+    Run python code linting.
+    "Error", "warning" and "fatal" levels of `flake8` library are chacked.
+    Library `black` is also used without source files modification.
+    :return: exit code integer.
+    """
     lint_result = 0
     selector = ["E", "W", "F"]
-    ignore = ["E24", "W503", "E203"]  # E24 and W503 are recommended, E203 conflictss with `black`
+    ignore = ["E24", "W503", "E203"]  # E24 and W503 are recommended, E203 conflicts with `black`.
     report = get_style_guide(select=selector, ignore=ignore, max_line_length=_MAX_LINE_LEN).check_files()
     lint_result += sum(len(report.get_statistics(sel)) for sel in selector)
     lint_result += format(False)
@@ -29,6 +37,11 @@ def lint() -> int:
 
 
 def format(modify: bool = True) -> int:
+    """
+    Format python code using `black` library.
+    :param modify: whether source files should be modified.
+    :return: exit code integer.
+    """
     result = True
     report = Report(check=not modify, quiet=False)
     write = WriteBack.YES if modify else WriteBack.CHECK

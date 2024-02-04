@@ -14,11 +14,24 @@ from .outputs import logger
 from .requests import post
 from .tunnel import Tunnel
 
+# Minimal time between two healthpings, in seconds.
 _DEFAULT_HEALTHCHECK_MIN_TIME = 1
+
+# Maximal time between two healthpings, in seconds.
 _DEFAULT_HEALTHCHECK_MAX_TIME = 5
 
 
 class Controller:
+    """
+    Viridian "controller" class: it is responsible for VPN connection management and lifecycle.
+    It is capale of receiving connection token from viridian, initializing and supporting connection control.
+    Externally, it connects to viridian node, sends and receives healthpings and terminates connection.
+    Internally, it manages both "interface" and "client" viridian objects lifetime.
+    In particular, during initialization it creates tunnel interface and opens client seaside port.
+    They are closed and deleted in destructor or using a special function.
+    They can also be stopped and resumed in runtime.
+    """
+
     def __init__(self, public_key: str, payload: str, addr: str, net_port: int, anchor: str, name: str):
         try:
             self._address = str(IPv4Address(addr))
@@ -48,6 +61,12 @@ class Controller:
         self._client: SeaClient
 
     def start(self) -> None:
+        """
+        Create VPN connection.
+        Receive viridian connection token, initializes and manages control.
+        It also opens and starts "interface" and "client" objects.
+        Upon system exit, it stops the controller.
+        """
         try:
             logger.info("Receiving user token...")
             self._receive_token()
@@ -64,6 +83,11 @@ class Controller:
             self._clean_tunnel()
 
     def _receive_token(self) -> None:
+        """
+        Receive viridian connection token.
+        Alongside with token, receive caerulean seaside and control port numbers.
+        Also initialize the session obfuscator.
+        """
         self._cipher = Cipher()
         logger.debug(f"Symmetric session cipher initialized: {self._cipher.key}!")
         user_data = UserDataForWhirlpool(uid="some_cool_uid", session=self._cipher.key, owner_key=self._owner_key)
@@ -80,6 +104,11 @@ class Controller:
         logger.debug(f"Symmetric session token received: {self._session_token!r}!")
 
     def _initialize_control(self) -> None:
+        """
+        Connect to VPN node and initialize connection control.
+        Initialize "client" object.
+        Only proceed if valid user ID and successful control response status is received.
+        """
         with socket(AF_INET, SOCK_STREAM) as gate:
             gate.connect((self._address, self._ctrl_port))
             logger.debug(f"Establishing connection to caerulean {self._address}:{self._ctrl_port}...")
@@ -107,6 +136,10 @@ class Controller:
                 raise RuntimeError(f"Couldn't exchange keys with caerulean: {answer.message}!")
 
     def _clean_tunnel(self) -> None:
+        """
+        Close both "interface" and "client" objects if they are still running.
+        Also close the seaside socket and delete "interface".
+        """
         logger.info("Terminating whirlpool connection...")
         if self._interface.operational:
             logger.info("Closing the tunnel...")
@@ -120,6 +153,11 @@ class Controller:
         self._interface.delete()
 
     def _perform_control(self) -> None:
+        """
+        Exchange healthping messages and process receiving all error messages.
+        NB! This method is blocking, should be run while VPN is active.
+        Upon receiving an error message, client is re-initialized, token is received once again and control is re-initialized.
+        """
         logger.debug(f"Performing connection control to caerulean {self._address}:{self._ctrl_port}")
         while self._interface.operational:
             with socket(AF_INET, SOCK_STREAM) as gate:
@@ -157,6 +195,10 @@ class Controller:
                     logger.info("Connection re-establiched!")
 
     def interrupt(self) -> None:
+        """
+        Interrupt VPN connection gracefully.
+        Includes not only tunnel closing ("interface", "client" and seaside socket), but also sending termination request to caerulean.
+        """
         with socket(AF_INET, SOCK_STREAM) as gate:
             gate.connect((self._address, self._ctrl_port))
             logger.debug(f"Interrupting connection to caerulean {self._address}:{self._ctrl_port}...")
@@ -177,3 +219,10 @@ class Controller:
 
         self._clean_tunnel()
         logger.warning("Whirlpool connection terminated!")
+
+    def __del__(self) -> None:
+        """
+        Remove all the local changes made on current device upon deletion of this class.
+        Doesn't terminate caerulean connection gracefully.
+        """
+        self._clean_tunnel()

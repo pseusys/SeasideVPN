@@ -1,4 +1,3 @@
-from ipaddress import IPv4Address
 from logging import getLogger
 from os import environ, getenv
 from socket import AF_INET, SHUT_WR, SOCK_STREAM, socket
@@ -32,7 +31,7 @@ def controller() -> Generator[Controller, None, None]:
     owner_key = environ["SEASIDE_PAYLOAD_OWNER"]
     public_key = environ["SEASIDE_PUBLIC"]
     name = getenv("SEASIDE_TUNNEL_NAME", "sea-tun")
-    addr = IPv4Address(environ["SEASIDE_ADDRESS"])
+    addr = environ["SEASIDE_ADDRESS"]
     net_port = int(getenv("SEASIDE_NETPORT", "8587"))
     anchor = getenv("SEASIDE_ANCHOR", "auth")
     yield Controller(public_key, owner_key, addr, net_port, anchor, name)

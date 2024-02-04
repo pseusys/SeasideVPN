@@ -54,7 +54,7 @@ func init() {
 // where UserID = 0 if no user ID is provided (available range of IDs id [2;2^32-2])
 // Identity := ((ExtendedUserID * Multiplier) + Addition) % LargestPrimeNumber64
 // Accept: addition (64-bit integer) and user ID pointer (16-bit integer pointer).
-// Return 64-bit integer, addition.
+// Return 64-bit integer, identity.
 func randomPermute(addition uint64, ptr *uint16) uint64 {
 	bigI := new(gmp.Int).SetUint64(ZERO_USER_ID)
 	bigP := new(gmp.Int).SetUint64(LARGEST_PRIME_UINT64)
@@ -125,7 +125,7 @@ func UnsubscribeMessage(message []byte) (*uint16, error) {
 
 // Calculate tail length for the given message.
 // The following formula is used:
-// TailLength := number of 1s in binary representation of Addition
+// TailLength := number of 1s in binary representation of ZeroUserID XOR Addition
 // Accepts message (as a byte array) - with subscription prefix.
 // Returns integer - tail length.
 func getTailLength(message []byte) int {

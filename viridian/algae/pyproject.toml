@@ -58,6 +58,7 @@ test_all = "scripts.test:test_all"
 compile = "scripts.process:compile"
 execute = "scripts.process:execute"
 clean = "scripts.process:clean"
+help = "scripts.process:help"
 
 
 
