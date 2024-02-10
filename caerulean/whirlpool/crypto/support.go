@@ -2,8 +2,37 @@ package crypto
 
 import (
 	"crypto/cipher"
+	"crypto/rand"
+	"encoding/binary"
+	"errors"
 	"fmt"
+	"math"
+
+	"github.com/sirupsen/logrus"
 )
+
+const (
+	// Largest prime number before 2^64, will be used for signature calculation.
+	LARGEST_PRIME_UINT64 = uint64((1 << 64) - 59)
+
+	// Signature length (in bytes), namely 2 64-bit integers.
+	SIGNATURE_LENGTH = 4
+
+	MAXIMUM_TAIL_LENGTH = 64
+)
+
+var (
+	// 64-bit addition to real ser ID.
+	ZERO_USER_ID uint16
+)
+
+// Initialize package variables, read random integers and calculate mod inverse.
+func init() {
+	// Read random 64-bit integer into zero user ID
+	if binary.Read(rand.Reader, binary.BigEndian, &ZERO_USER_ID) != nil {
+		logrus.Fatal("Error reading random 64bit integer")
+	}
+}
 
 // Encrypt bytes with given XChaCha20-Poly1305 AEAD.
 // NB! Encrypting (unlike encoding) includes entailing and signing.
@@ -13,33 +42,75 @@ import (
 // Accept message to encrypt (bytes), AEAD (or nil), user ID (or nil) and flag for adding tail.
 // Return encrypted message (bytes array) and nil if encrypted successfully, otherwise nil and error.
 func Encrypt(message []byte, key cipher.AEAD, userID *uint16, addTail bool) ([]byte, error) {
-	// Calculate message signature
-	signature, err := subscribeMessage(userID)
-	if err != nil {
-		return nil, fmt.Errorf("error signing message: %v", err)
+	// Read random addition integer
+	var secret uint16
+	if binary.Read(rand.Reader, binary.BigEndian, &secret) != nil {
+		return nil, errors.New("error reading integer secret")
 	}
 
-	// Calculate ciphertext if key is not nil
-	var ciphertext []byte
-	if key != nil {
-		ciphertext, err = Encode(message, signature, key)
-		if err != nil {
-			return nil, fmt.Errorf("error encoding message: %v", err)
-		}
+	// Reset user ID if it is nil
+	var userIdentity uint16
+	if userID == nil {
+		userIdentity = 0
 	} else {
-		ciphertext = append(signature, message...)
+		userIdentity = *userID
 	}
+
+	// Calculate identity
+	identity := uint16((int(userIdentity)+int(ZERO_USER_ID))%math.MaxUint16) ^ secret
+	signature := make([]byte, SIGNATURE_LENGTH)
+	binary.BigEndian.PutUint16(signature[:2], secret)
+	binary.BigEndian.PutUint16(signature[2:], identity)
+
+	// Encode signature ciphertext
+	signatureCiphertext, err := Encode(signature, PUBLIC_NODE_AEAD)
+	if err != nil {
+		return nil, fmt.Errorf("error encoding signature: %v", err)
+	}
+
+	// Calculate message ciphertext
+	messageCiphertext, err := Encode(message, key)
+	if err != nil {
+		return nil, fmt.Errorf("error encoding message: %v", err)
+	}
+
+	// Calculate global ciphertext
+	ciphertext := append(signatureCiphertext, messageCiphertext...)
 
 	// Add tail if addTail flag is set
 	if addTail {
-		encrypted, err := entailMessage(ciphertext)
-		if err != nil {
-			return nil, fmt.Errorf("error entailing message: %v", err)
+		entailed := make([]byte, secret%MAXIMUM_TAIL_LENGTH)
+		if binary.Read(rand.Reader, binary.BigEndian, entailed) != nil {
+			return nil, errors.New("error reading random tail")
 		}
-		return encrypted, nil
+		return append(ciphertext, entailed...), nil
 	} else {
 		return ciphertext, nil
 	}
+}
+
+func UnsubscribeMessage(message []byte) (*uint16, error) {
+	// Calculate signature length
+	signatureLength := 4 + PUBLIC_NODE_AEAD.NonceSize() + PUBLIC_NODE_AEAD.Overhead()
+	signature, err := Decode(message[:signatureLength], PUBLIC_NODE_AEAD)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding signature: %v", err)
+	}
+
+	// Calculate secret and identity
+	secret := binary.BigEndian.Uint16(signature[:2])
+	identity := binary.BigEndian.Uint16(signature[2:4])
+
+	// Calculate user ID from the message
+	var userID *uint16
+	userIdentity := uint16((int(secret^identity) + math.MaxUint16 - int(ZERO_USER_ID)) % math.MaxUint16)
+	if userIdentity == 0 {
+		userID = nil
+	} else {
+		userID = &userIdentity
+	}
+
+	return userID, nil
 }
 
 // Decrypt bytes with given XChaCha20-Poly1305 AEAD.
@@ -50,32 +121,39 @@ func Encrypt(message []byte, key cipher.AEAD, userID *uint16, addTail bool) ([]b
 // Accept message to decrypt (bytes), AEAD (or nil) and flag for removing tail.
 // Return decrypted message (bytes array), user ID pointer (if one is calculated) and nil if encrypted successfully, otherwise nil, nil and error.
 func Decrypt(message []byte, key cipher.AEAD, expectTail bool) ([]byte, *uint16, error) {
-	// Calculate user ID from the message
-	userID, err := UnsubscribeMessage(message)
+	// Calculate signature length
+	signatureLength := 4 + PUBLIC_NODE_AEAD.NonceSize() + PUBLIC_NODE_AEAD.Overhead()
+	signature, err := Decode(message[:signatureLength], PUBLIC_NODE_AEAD)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error unsigning message: %v", err)
+		return nil, nil, fmt.Errorf("error decoding signature: %v", err)
+	}
+
+	// Calculate secret and identity
+	secret := binary.BigEndian.Uint16(signature[:2])
+	identity := binary.BigEndian.Uint16(signature[2:4])
+
+	// Calculate user ID from the message
+	var userID *uint16
+	userIdentity := uint16((int(secret^identity) + math.MaxUint16 - int(ZERO_USER_ID)) % math.MaxUint16)
+	if userIdentity == 0 {
+		userID = nil
+	} else {
+		userID = &userIdentity
 	}
 
 	// Remove tail from the message (if tail is expected)
 	var ciphertext []byte
 	if expectTail {
-		ciphertext, err = detailMessage(message)
-		if err != nil {
-			return nil, nil, fmt.Errorf("error entailing message: %v", err)
-		}
+		tailLength := secret % MAXIMUM_TAIL_LENGTH
+		ciphertext = message[signatureLength : len(message)-int(tailLength)]
 	} else {
-		ciphertext = message
+		ciphertext = message[signatureLength:]
 	}
 
 	// Decode message
-	var plaintext []byte
-	if key != nil {
-		plaintext, err = Decode(ciphertext, key)
-		if err != nil {
-			return nil, nil, fmt.Errorf("error decoding message: %v", err)
-		}
-	} else {
-		plaintext = ciphertext[16:]
+	plaintext, err := Decode(ciphertext, key)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding message: %v", err)
 	}
 
 	// Return no error

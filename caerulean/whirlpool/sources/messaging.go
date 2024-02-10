@@ -61,7 +61,7 @@ func writeHttpData(w http.ResponseWriter, message protoreflect.ProtoMessage) {
 	}
 
 	// Encode the message with public key
-	encrypted, err := crypto.Encode(marshMessage, nil, crypto.PUBLIC_NODE_AEAD)
+	encrypted, err := crypto.Encode(marshMessage, crypto.PUBLIC_NODE_AEAD)
 	if err != nil {
 		writeHttpError(w, fmt.Errorf("error encoding response: %v", err), http.StatusInternalServerError)
 		return
@@ -74,7 +74,7 @@ func writeHttpData(w http.ResponseWriter, message protoreflect.ProtoMessage) {
 // Helper function, encode an error with public key and write it as HTTP response.
 // Accept response writer, error to write and HTTP code.
 func writeHttpError(w http.ResponseWriter, message error, code int) {
-	data, err := crypto.Encode([]byte(message.Error()), nil, crypto.PUBLIC_NODE_AEAD)
+	data, err := crypto.Encode([]byte(message.Error()), crypto.PUBLIC_NODE_AEAD)
 	if err != nil {
 		writeHttpResponse(w, nil, http.StatusInternalServerError)
 		logrus.Warnf("Error encoding HTTP response: %v (%v)", err, message)

@@ -77,24 +77,14 @@ func ParseCipher(key []byte) (cipher.AEAD, error) {
 // Use the nonce and AEAD argument to encode plaintext, then concatenate nonce with ciphertext.
 // Accept: plaintext (as bytes), signature (as bytes [0 <= N <= 24] or nil) and cipher AEAD.
 // Return ciphertext and nil if encoding was successful, otherwise nil and error.
-func Encode(plaintext, signature []byte, aead cipher.AEAD) ([]byte, error) {
-	if signature == nil {
-		signature = make([]byte, 0)
-	}
-
-	// Check signature length doesn't exceed nonce length
-	if len(signature) > aead.NonceSize() {
-		return nil, fmt.Errorf("signature length %d should be less than nonce length %d", len(signature), aead.NonceSize())
-	}
-
+func Encode(plaintext []byte, aead cipher.AEAD) ([]byte, error) {
 	// Concatenate signature with random bytes to form nonce
 	nonce := make([]byte, aead.NonceSize(), aead.NonceSize()+len(plaintext)+aead.Overhead())
-	if _, err := rand.Read(nonce[len(signature):aead.NonceSize()]); err != nil {
+	if _, err := rand.Read(nonce[:aead.NonceSize()]); err != nil {
 		return nil, fmt.Errorf("symmetrical encoding error: %v", err)
 	}
 
 	// Concatenate signature, rest of the nonce and ciphertext
-	copy(nonce[:len(signature)], signature)
 	encrypted := aead.Seal(nil, nonce, plaintext, nil)
 	return append(nonce, encrypted...), nil
 }

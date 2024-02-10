@@ -89,7 +89,8 @@ func ReceivePacketsFromViridian(ctx context.Context, tunnel *water.Interface, tu
 		}
 
 		// Decode the packet
-		raw, err := crypto.Decode(buffer[:r], viridian.AEAD)
+		signatureLength := 4 + crypto.PUBLIC_NODE_AEAD.NonceSize() + crypto.PUBLIC_NODE_AEAD.Overhead()
+		raw, err := crypto.Decode(buffer[signatureLength:r], viridian.AEAD)
 		if err != nil {
 			logrus.Errorf("Error decrypting packet: %v", err)
 			continue
