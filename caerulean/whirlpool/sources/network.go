@@ -69,7 +69,7 @@ func auth(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Encode token
-	tokenData, err := crypto.Encode(marshToken, nil, crypto.PRIVATE_NODE_AEAD)
+	tokenData, err := crypto.Encode(marshToken, crypto.PRIVATE_NODE_AEAD)
 	if err != nil {
 		writeHttpError(w, fmt.Errorf("error encrypting token: %v", err), http.StatusBadRequest)
 		return
@@ -78,8 +78,7 @@ func auth(w http.ResponseWriter, r *http.Request) {
 	// Create and marshall response
 	response := &generated.UserCertificate{
 		Token:       tokenData,
-		UserZero:    int64(crypto.ZERO_USER_ID),
-		Multiplier:  int64(crypto.MULTIPLIER),
+		UserZero:    int32(crypto.ZERO_USER_ID),
 		SeasidePort: int32(SEASIDE_PORT),
 		ControlPort: int32(CONTROL_PORT),
 	}

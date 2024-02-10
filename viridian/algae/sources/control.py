@@ -96,7 +96,7 @@ class Controller:
         logger.debug("Requesting whirlpool token...")
         with post(f"http://{self._address}:{self._net_port}/{self._anchor_endpoint}", user_encrypted) as response:
             certificate = UserCertificate().parse(self._public_cipher.decode(response.read()))
-            self._obfuscator = Obfuscator(c_uint64(certificate.multiplier), c_uint64(certificate.user_zero))
+            self._obfuscator = Obfuscator(certificate.user_zero, self._public_cipher)
             self._session_token = certificate.token
             self._sea_port = certificate.seaside_port
             self._ctrl_port = certificate.control_port

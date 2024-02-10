@@ -4,10 +4,20 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/binary"
+	"math"
 	"testing"
 )
 
 const ENCRYPTION_CYCLE_MESSAGE_LENGTH = 8
+
+func generateRandomUserID(test *testing.T) uint16 {
+	var randomInt uint16
+	err := binary.Read(rand.Reader, binary.BigEndian, &randomInt)
+	if err != nil {
+		test.Fatalf("error generating random int: %v", err)
+	}
+	return uint16((randomInt % (math.MaxUint16 - 3)) + 2)
+}
 
 func testEncryptCycle(test *testing.T, subscribe, tailed bool) {
 	message := make([]byte, ENCRYPTION_CYCLE_MESSAGE_LENGTH)

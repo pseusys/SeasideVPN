@@ -55,11 +55,9 @@ message UserCertificate {
     // Encrypted user token
     bytes token = 1;
     // Zero user ID
-    int64 userZero = 2;
-    // User subscription multiplier
-    int64 multiplier = 3;
+    int32 userZero = 2;
     // Whirlpool seaside port
-    int32 seasidePort = 4;
+    int32 seasidePort = 3;
     // Whirlpool control port
-    int32 controlPort = 5;
+    int32 controlPort = 4;
 }
