@@ -74,7 +74,7 @@ Each program here has a special numeric identifier, that is the ASCII code of th
 The numeric identification table can be found below:
 
 | Program Name | Numeric Identifier |
-| --- | --- |
+| --- | :-: |
 | Caerulean Whirlpool | 87 |
 | Viridian Algae | 65 |
 | Seaside VPN | 83 |
@@ -280,10 +280,15 @@ These are:
 
 ### TODOs
 
-1. Write documentation for both `caerulean/whirlpool` and `viridian/algae` (including Dockerfiles).
+1. Write documentation for `viridian/algae` (including Dockerfiles).
 2. Add shell build, generation, etc. script for easy `caerulean/whirlpool` deployment (with and without container).
 3. Write script for downloading/running/configuring server.
 4. Check tests without 0.0.0.0 iptables rule(s).
+5. Add tail to ControlMessage.
+6. Use port number as user identifier.
+7. Port 255.255 reserved for user auth TCP; ports 0, 1, ... reserved for Surface TCP; all the other ports - user control TCPs; apply permutation on port number to find the correct user! UDP ports 0, 1, ..., 255.255 not used at all.
+8. Encryption: public ECIES key for service ports, chacha for user ports.
+9. Get from the same library (symm_encrypt/symm_decrypt).
 
 ### Further considerations
 

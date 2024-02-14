@@ -22,7 +22,7 @@ func testEncodeCycle(test *testing.T, aead cipher.AEAD) {
 	}
 	test.Logf("bytes generated: %v", message)
 
-	encoded, err := Encode(message, nil, aead)
+	encoded, err := Encode(message, aead)
 	if err != nil {
 		test.Fatalf("error encoding message: %v", err)
 	}
