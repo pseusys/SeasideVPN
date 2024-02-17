@@ -28,6 +28,7 @@ pyroute2 = "^0.7.9"
 python-iptables = "^1.0.1"
 betterproto = "^2.0.0b6"
 pycryptodome = "^3.18.0"
+eciespy = "^0.4.1"
 
 [tool.poetry.group.devel.dependencies]
 pytest = "^7.3.1"

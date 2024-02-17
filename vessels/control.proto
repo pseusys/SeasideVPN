@@ -55,6 +55,8 @@ message ControlRequest {
         ConnectionMessage connection = 2;
         HealthcheckMessage healthcheck = 3;
     }
+    // Tail bytes for message length randomness
+    bytes tail = 4;
 }
 
 // Whirlpool control responseto user
@@ -63,4 +65,6 @@ message ControlResponse {
     ControlResponseStatus status = 1;
     // Encoded error message or empty string
     string message = 2;
+    // Tail bytes for message length randomness
+    bytes tail = 3;
 }

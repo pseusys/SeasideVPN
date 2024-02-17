@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
 	"fmt"
 	"io"
 	"main/crypto"
@@ -13,6 +14,9 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
+
+// Maximum random bytes tail length.
+const MAX_TAIL_LENGTH = 64
 
 // Helper function, read protobuf message from HTTP request, decode it with public key and unmarshall.
 // Accept HTTP request and pointer to expected message container.
@@ -126,8 +130,15 @@ func sendMessageToSocket(status generated.ControlResponseStatus, message error, 
 		byteMessage = message.Error()
 	}
 
+	// Read random tail bytes
+	tail := make([]byte, MAX_TAIL_LENGTH)
+	if _, err := rand.Read(tail); err != nil {
+		logrus.Errorf("tail reading error: %v", err)
+		return
+	}
+
 	// Create ControlResponse protobuf message
-	controlMessage := generated.ControlResponse{Status: status, Message: byteMessage}
+	controlMessage := generated.ControlResponse{Status: status, Message: byteMessage, Tail: tail}
 	payload, err := proto.Marshal(&controlMessage)
 	if err != nil {
 		logrus.Errorf("Error serializing message: %v", err)

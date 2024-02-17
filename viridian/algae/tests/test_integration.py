@@ -9,7 +9,7 @@ import pytest
 from Crypto.Random import get_random_bytes
 
 from ..sources.control import Controller
-from ..sources.crypto import MAX_MESSAGE_SIZE
+from ..sources.crypto import MAX_TWO_BYTES_VALUE
 from ..sources.generated import ControlRequest, ControlRequestHealthcheckMessage, ControlRequestStatus, ControlResponse, ControlResponseStatus
 
 logger = getLogger(__name__)
@@ -61,7 +61,7 @@ def test_initialize_control(controller: Controller) -> None:
     logger.info("Testing initializing control sequence")
     controller._initialize_control()
     assert isinstance(controller._user_id, int), "User ID wasn't created!"
-    assert controller._user_id >= 1 and controller._user_id <= MAX_MESSAGE_SIZE, "User ID isn't in range!"
+    assert controller._user_id >= 1 and controller._user_id <= MAX_TWO_BYTES_VALUE, "User ID isn't in range!"
 
 
 @pytest.mark.dependency(depends=["test_initialize_control"])
@@ -92,7 +92,7 @@ def test_send_suspicious_message(controller: Controller) -> None:
         gate.connect((controller._interface._address, controller._ctrl_port))
         gate.sendall(get_random_bytes(64))
         gate.shutdown(SHUT_WR)
-        encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
+        encrypted_message = gate.recv(MAX_TWO_BYTES_VALUE)
         _, response = controller._obfuscator.decrypt(encrypted_message, controller._public_cipher, True)
         response_status = ControlResponse().parse(response).status
         assert response_status == ControlResponseStatus.ERROR, "Server reaction wasn't error!"
@@ -111,7 +111,7 @@ def test_send_healthcheck_message(controller: Controller) -> None:
             encrypted_message = controller._obfuscator.encrypt(bytes(control_message), controller._public_cipher, controller._user_id, True)
             gate.sendall(encrypted_message)
             gate.shutdown(SHUT_WR)
-            encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
+            encrypted_message = gate.recv(MAX_TWO_BYTES_VALUE)
 
             _, answer_message = controller._obfuscator.decrypt(encrypted_message, controller._public_cipher, True)
             status = ControlResponse().parse(answer_message).status
@@ -131,7 +131,7 @@ def test_healthcheck_overtime(controller: Controller) -> None:
         encrypted_message = controller._obfuscator.encrypt(bytes(control_message), controller._public_cipher, controller._user_id, True)
         gate.sendall(encrypted_message)
         gate.shutdown(SHUT_WR)
-        gate.recv(MAX_MESSAGE_SIZE)
+        gate.recv(MAX_TWO_BYTES_VALUE)
 
     sleep(controller._min_hc_time * 10)
     with socket(AF_INET, SOCK_STREAM) as gate:
@@ -143,7 +143,7 @@ def test_healthcheck_overtime(controller: Controller) -> None:
         gate.sendall(encrypted_message)
         gate.shutdown(SHUT_WR)
 
-        encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
+        encrypted_message = gate.recv(MAX_TWO_BYTES_VALUE)
         _, response = controller._obfuscator.decrypt(encrypted_message, controller._public_cipher, True)
         response_status = ControlResponse().parse(response).status
         assert response_status == ControlResponseStatus.ERROR, "Server reaction wasn't error!"

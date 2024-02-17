@@ -2,7 +2,7 @@ from multiprocessing import Process
 from os import read, write
 from socket import socket
 
-from .crypto import MAX_MESSAGE_SIZE, Cipher, Obfuscator
+from .crypto import MAX_TWO_BYTES_VALUE, Cipher, Obfuscator
 from .outputs import logger
 
 
@@ -52,7 +52,7 @@ class SeaClient:
         It reads packets from tunnel interface "file", encrypts them and sends to the VPN node.
         """
         while True:
-            packet = read(self._descriptor, MAX_MESSAGE_SIZE)
+            packet = read(self._descriptor, MAX_TWO_BYTES_VALUE)
             logger.debug(f"Sending {len(packet)} bytes to caerulean {self._address}:{self._port}")
             payload = self._obfuscator.encrypt(packet, self._cipher, self._user_id, False)
             self._socket.sendto(payload, (self._address, self._port))
@@ -63,7 +63,7 @@ class SeaClient:
         It receives packets from the VPN node, decrypts them and writes to tunnel interface "file".
         """
         while True:
-            packet = self._socket.recv(MAX_MESSAGE_SIZE)
+            packet = self._socket.recv(MAX_TWO_BYTES_VALUE)
             payload = self._obfuscator.decrypt(packet, self._cipher, False)[1]
             logger.debug(f"Receiving {len(payload)} bytes from caerulean {self._address}:{self._port}")
             write(self._descriptor, payload)
