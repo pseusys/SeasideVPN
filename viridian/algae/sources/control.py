@@ -1,14 +1,14 @@
-from ctypes import c_uint64
 from ipaddress import AddressValueError, IPv4Address
 from os import getenv
 from socket import AF_INET, SHUT_WR, SOCK_DGRAM, SOCK_STREAM, gethostbyname, inet_aton, socket
 from time import sleep
 
 from colorama import Fore
+from Crypto.Random import get_random_bytes
 from Crypto.Random.random import randint
 
 from .client import SeaClient
-from .crypto import MAX_MESSAGE_SIZE, Cipher, Obfuscator
+from .crypto import MAX_TAIL_LENGTH, MAX_TWO_BYTES_VALUE, Cipher, Obfuscator
 from .generated import ControlRequest, ControlRequestConnectionMessage, ControlRequestHealthcheckMessage, ControlRequestStatus, ControlResponse, ControlResponseStatus, UserCertificate, UserDataForWhirlpool
 from .outputs import logger
 from .requests import post
@@ -114,12 +114,12 @@ class Controller:
             logger.debug(f"Establishing connection to caerulean {self._address}:{self._ctrl_port}...")
 
             connection_message = ControlRequestConnectionMessage(token=self._session_token, address=inet_aton(self._interface.default_ip), port=self._gate_socket.getsockname()[1])
-            control_message = ControlRequest(status=ControlRequestStatus.CONNECTION, connection=connection_message)
+            control_message = ControlRequest(status=ControlRequestStatus.CONNECTION, connection=connection_message, tail=get_random_bytes(MAX_TAIL_LENGTH))
             encrypted_message = self._obfuscator.encrypt(bytes(control_message), self._public_cipher, None, True)
             gate.sendall(encrypted_message)
             gate.shutdown(SHUT_WR)
 
-            encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
+            encrypted_message = gate.recv(MAX_TWO_BYTES_VALUE)
             user_id, answer_message = self._obfuscator.decrypt(encrypted_message, self._public_cipher, True)
             if user_id is None:
                 raise RuntimeError("User ID is None in control server response!")
@@ -171,7 +171,7 @@ class Controller:
                     gate.sendall(encrypted_message)
                     gate.shutdown(SHUT_WR)
 
-                    encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
+                    encrypted_message = gate.recv(MAX_TWO_BYTES_VALUE)
                     _, answer_message = self._obfuscator.decrypt(encrypted_message, self._public_cipher, True)
                     answer = ControlResponse().parse(answer_message)
 
@@ -208,7 +208,7 @@ class Controller:
             gate.sendall(encrypted_message)
             gate.shutdown(SHUT_WR)
 
-            encrypted_message = gate.recv(MAX_MESSAGE_SIZE)
+            encrypted_message = gate.recv(MAX_TWO_BYTES_VALUE)
             _, answer_message = self._obfuscator.decrypt(encrypted_message, self._public_cipher, True)
             answer = ControlResponse().parse(answer_message)
 

@@ -7,10 +7,11 @@ from Crypto.Hash import Poly1305
 from Crypto.Random import get_random_bytes
 from Crypto.Random.random import randint
 
-from .outputs import logger
-
 # Maximum length of message - transport level packet.
-MAX_MESSAGE_SIZE = (1 << 16) - 1
+MAX_TWO_BYTES_VALUE = (1 << 16) - 1
+
+# Maximum random bytes tail length.
+MAX_TAIL_LENGTH = 64
 
 
 class Cipher:
@@ -69,10 +70,10 @@ class Obfuscator:
         self._public_cipher = public_cipher
 
     def encrypt(self, message: bytes, encoder: Cipher, user_id: Optional[int], add_tail: bool) -> bytes:
-        secret = randint(0, MAX_MESSAGE_SIZE)
+        secret = randint(0, MAX_TWO_BYTES_VALUE)
 
         user_id = 0 if user_id is None else user_id
-        identity = ((user_id + self._zero_user_id) % MAX_MESSAGE_SIZE) ^ secret
+        identity = ((user_id + self._zero_user_id) % MAX_TWO_BYTES_VALUE) ^ secret
         signature = secret.to_bytes(2, "big") + identity.to_bytes(2, "big")
 
         tail = get_random_bytes(secret % self._MAXIMAL_TAIL_LENGTH) if add_tail else bytes()
@@ -83,7 +84,7 @@ class Obfuscator:
         signature = self._public_cipher.decode(message[:signature_length])
         secret, identity = int.from_bytes(signature[:2], "big"), int.from_bytes(signature[2:4], "big")
 
-        user_id = ((secret ^ identity) + MAX_MESSAGE_SIZE - self._zero_user_id) % MAX_MESSAGE_SIZE
+        user_id = ((secret ^ identity) + MAX_TWO_BYTES_VALUE - self._zero_user_id) % MAX_TWO_BYTES_VALUE
         user_id = None if user_id == 0 else user_id
 
         tail_length = secret % self._MAXIMAL_TAIL_LENGTH if expect_tail else 0

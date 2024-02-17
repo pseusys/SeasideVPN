@@ -48,7 +48,7 @@ message UserDataForWhirlpool {
     string ownerKey = 3;
 }
 
-// TODO: user data surface
+// TODO: user data for surface
 
 // User authentication certificate
 message UserCertificate {
