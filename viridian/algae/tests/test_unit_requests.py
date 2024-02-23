@@ -1,53 +1,13 @@
-from base64 import urlsafe_b64decode, urlsafe_b64encode
-from json import loads
-
-import pytest
-from Crypto.Random import get_random_bytes
-
-from ..sources.requests import get, parse_connection_link, post
-
-HTTP_REQUEST_LENGTH = 16
-HTTP_REQUEST_LINK = "https://httpbin.org/anything"
+from ..sources.utils import parse_connection_link
 
 CONNECTION_NODETYPE = "whirlpool"
 CONNECTION_ADDRESS = "whirlpool_host"
 CONNECTION_NETPORT = 54321
 CONNECTION_ANCHOR = "anchor"
-CONNECTION_PUBLIC = "ffeeddccbbaa9988776655443322110000112233445566778899aabbccddeeff"
 CONNECTION_PAYLOAD = "super_secret_owner_payload_data"
-CONNECTION_LINK = f"seaside+{CONNECTION_NODETYPE}://{CONNECTION_ADDRESS}:{CONNECTION_NETPORT}/{CONNECTION_ANCHOR}?public={CONNECTION_PUBLIC}&payload={CONNECTION_PAYLOAD}"
-
-
-@pytest.mark.xfail(reason=f"Sometimes website {HTTP_REQUEST_LINK} fails answering GET requests")
-def test_get_request() -> None:
-    request_bytes = get_random_bytes(HTTP_REQUEST_LENGTH)
-    request = urlsafe_b64encode(request_bytes)
-    request_url = f"{HTTP_REQUEST_LINK}/{request.decode()}"
-
-    response = get(request_url).read()
-    response_dict = loads(response)
-    response_url = response_dict["url"]
-    assert request_url == response_url, "Request URL doesn't match response URL!"
-
-    response_args = response_url[len(HTTP_REQUEST_LINK) + 1 :]
-    response_decoded = urlsafe_b64decode(response_args)
-    assert response_decoded == request_bytes, "Response args don't match request args!"
-
-
-@pytest.mark.xfail(reason=f"Sometimes website {HTTP_REQUEST_LINK} fails answering POST requests")
-def test_post_request() -> None:
-    response_data_prefix = "data:application/octet-stream;base64,"
-    request_bytes = get_random_bytes(HTTP_REQUEST_LENGTH)
-
-    response = post(HTTP_REQUEST_LINK, request_bytes).read()
-    response_dict = loads(response)
-    response_raw = response_dict["data"]
-    response_encoded = response_raw[len(response_data_prefix) :]
-    response_bytes = urlsafe_b64decode(response_encoded)
-    assert response_bytes == request_bytes, "Response data doesn't match request data!"
-
+CONNECTION_LINK = f"seaside+{CONNECTION_NODETYPE}://{CONNECTION_ADDRESS}:{CONNECTION_NETPORT}/{CONNECTION_ANCHOR}?payload={CONNECTION_PAYLOAD}"
 
 def test_parse_connection_link() -> None:
-    params_expected = {"public_key": CONNECTION_PUBLIC, "payload": CONNECTION_PAYLOAD, "addr": CONNECTION_ADDRESS, "net_port": CONNECTION_NETPORT, "anchor": CONNECTION_ANCHOR}
+    params_expected = {"payload": CONNECTION_PAYLOAD, "addr": CONNECTION_ADDRESS, "net_port": CONNECTION_NETPORT, "anchor": CONNECTION_ANCHOR}
     params_dict = parse_connection_link(CONNECTION_LINK)
     assert all(item in params_expected.items() for item in params_dict.items()), "Some of the link parts are not parsed properly!"

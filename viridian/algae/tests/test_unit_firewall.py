@@ -104,7 +104,7 @@ def test_tunnel_down(tunnel: Tunnel) -> None:
 
 @pytest.mark.dependency(depends=["test_tunnel_down"])
 def test_tunnel_delete(tunnel: Tunnel) -> None:
-    tunnel.delete()
+    tunnel.__del__()
 
     ip_links = check_output(["ip", "link", "show"]).decode()
     ip_matches = [match for match in finditer(IP_LINK_ENTRY, ip_links)]

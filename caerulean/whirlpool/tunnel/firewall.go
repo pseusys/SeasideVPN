@@ -2,7 +2,6 @@ package tunnel
 
 import (
 	"fmt"
-	"main/users"
 	"main/utils"
 	"os/exec"
 	"strconv"
@@ -10,25 +9,6 @@ import (
 
 	"github.com/sirupsen/logrus"
 )
-
-// VPN packet limiting rules (as string arrays)
-var (
-	VPN_DATA_KBYTE_LIMIT_RULE []string
-	CONTROL_PACKET_LIMIT_RULE []string
-	HTTP_PACKET_LIMIT_RULE    []string
-	ICMP_PACKET_LIMIT_RULE    []string
-)
-
-// Initialize package variables from environment variables.
-func init() {
-	totalUserNumber := int(users.MAX_TOTAL)
-	burstMultiplier := utils.GetIntEnv("SEASIDE_BURST_LIMIT_MULTIPLIER")
-
-	VPN_DATA_KBYTE_LIMIT_RULE = readLimit("SEASIDE_VPN_DATA_LIMIT", "%dkb/s", totalUserNumber, burstMultiplier)
-	CONTROL_PACKET_LIMIT_RULE = readLimit("SEASIDE_CONTROL_PACKET_LIMIT", "%d/sec", totalUserNumber, burstMultiplier)
-	HTTP_PACKET_LIMIT_RULE = readLimit("SEASIDE_HTTP_PACKET_LIMIT", "%d/sec", totalUserNumber, burstMultiplier)
-	ICMP_PACKET_LIMIT_RULE = readLimit("SEASIDE_ICMP_PACKET_LIMIT", "%d/sec", totalUserNumber, burstMultiplier)
-}
 
 // Create "limit" iptable rule appendix (as a string array).
 // Accepts environment variable name and template string where the value will be inserted (packet/second or kbyte/second, etc.).
@@ -65,11 +45,9 @@ func (conf *TunnelConfig) storeForwarding() {
 // Then, setup forwarding from external to tunnel interface and back, also enabling masquerade for external interface outputs.
 // Accept internal and external IP addresses as strings, seaside, network and control ports as integers.
 // Return error if configuration was not successful, nil otherwise.
-func (conf *TunnelConfig) openForwarding(intIP, extIP string, seaPort, netPort, ctrlPort int) error {
+func (conf *TunnelConfig) openForwarding(intIP, extIP string, ctrlPort int) error {
 	// Prepare interface names and port numbers as strings
 	tunIface := conf.Tunnel.Name()
-	netStr := strconv.Itoa(netPort)
-	portStr := strconv.Itoa(seaPort)
 	ctrlStr := strconv.Itoa(ctrlPort)
 
 	// Find internal network interface name
@@ -92,10 +70,9 @@ func (conf *TunnelConfig) openForwarding(intIP, extIP string, seaPort, netPort, 
 	runCommand("iptables", "-t", "nat", "-F")
 	runCommand("iptables", "-t", "mangle", "-F")
 	// Accept packets to port network, control and whirlpool ports, also accept PING packets
-	runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "udp", "-d", intIP, "--dport", portStr, "-i", intName}, VPN_DATA_KBYTE_LIMIT_RULE)...)
-	runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "tcp", "-d", intIP, "--dport", ctrlStr, "-i", intName}, CONTROL_PACKET_LIMIT_RULE)...)
-	runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "tcp", "-d", intIP, "--dport", netStr, "-i", intName}, HTTP_PACKET_LIMIT_RULE)...)
-	runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "icmp", "-d", intIP, "-i", intName}, ICMP_PACKET_LIMIT_RULE)...)
+	runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "udp", "-d", intIP, "-i", intName}, conf.vpnDataKbyteLimitRule)...)
+	runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "tcp", "-d", intIP, "--dport", ctrlStr, "-i", intName}, conf.controlPacketLimitRule)...)
+	runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "icmp", "-d", intIP, "-i", intName}, conf.icmpPacketPACKETLimitRules)...)
 	// Else drop all input packets
 	runCommand("iptables", "-P", "INPUT", "DROP")
 	// Enable forwarding from tunnel interface to external interface (forward)

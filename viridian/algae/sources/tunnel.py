@@ -8,7 +8,7 @@ from colorama import Fore
 from iptc import Chain, Rule, Table, Target
 from pyroute2 import IPRoute
 
-from .outputs import logger
+from .utils import logger
 
 # Unix TUN device set name number.
 _UNIX_TUNSETIFF = 0x400454CA
@@ -139,6 +139,7 @@ class Tunnel:
         self._tunnel_cdr = 24
         self._def_iface, def_iface_name, self._mtu = _get_default_interface(self._address)
 
+        self._active = True
         self._operational = False
 
         self._descriptor, self._tunnel_dev = _create_tunnel(name)
@@ -243,12 +244,16 @@ class Tunnel:
             logger.info(f"Tunnel {Fore.GREEN}disabled{Fore.RESET}")
         self._operational = False
 
-    def delete(self) -> None:
+    def __del__(self) -> None:
         """
         Remove tunnel interface, bring it down if it's still running.
         """
         if self._operational:
             self.down()
-        with IPRoute() as ip:
-            ip.link("del", index=self._tunnel_dev)
+        if self._active:
+            with IPRoute() as ip:
+                ip.link("del", index=self._tunnel_dev)
             logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} deleted")
+            self._active = False
+        else:
+            logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} already deleted")

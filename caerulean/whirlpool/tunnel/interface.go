@@ -2,19 +2,10 @@ package tunnel
 
 import (
 	"fmt"
-	"main/utils"
 	"strconv"
 
 	"github.com/sirupsen/logrus"
 )
-
-// MTU value for tunnel network interface.
-var MTU int
-
-// Initialize package variables from environment variables.
-func init() {
-	MTU = utils.GetIntEnv("SEASIDE_TUNNEL_MTU")
-}
 
 // Create and open tunnel interface.
 // Use "ip" commands ("link" and "addr") to setup tunnel configuration.
@@ -29,8 +20,8 @@ func (conf *TunnelConfig) openInterface(extIP string) error {
 	tunnelCIDR, _ := conf.Network.Mask.Size()
 
 	// Receive MTU from environment or use MTU of external network interface and cast it to string
-	tunnelIntMTU := MTU
-	if MTU <= 0 {
+	tunnelIntMTU := int(conf.mtu)
+	if conf.mtu <= 0 {
 		tunnelInterface, err := findInterfaceByIP(extIP)
 		if err != nil {
 			return fmt.Errorf("error resolving network addresses: %v", err)

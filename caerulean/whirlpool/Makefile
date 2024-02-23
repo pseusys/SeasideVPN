@@ -12,7 +12,8 @@ RESET=\033[0m
 
 include example.conf.env
 
-EXEC_NAME = whirlpool.run
+EXEC_NAME := whirlpool.run
+PATH := $(PATH):$(shell go env GOPATH)/bin
 
 
 
@@ -38,7 +39,7 @@ help:
 
 build:
 	@ # Generate protobuf files, install dependencies and build executable
-	protoc -I=../../ --go_out=. ../../vessels/*.proto
+	protoc -I=../../ --go_out=. --go-grpc_out=. ../../vessels/*.proto
 	go mod tidy
 	go build -o build/$(EXEC_NAME) ./sources
 .PHONY: build

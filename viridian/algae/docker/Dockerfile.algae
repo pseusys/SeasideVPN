@@ -17,10 +17,10 @@ RUN pip install --upgrade --no-cache-dir pip poetry && poetry self add poetry-pl
 
 COPY viridian/algae/pyproject.toml ./
 RUN poetry export -f requirements.txt --with client,devel --without-hashes --output requirements.txt
-RUN pip install --no-cache-dir "betterproto[compiler]==$(sed -nr 's/betterproto==(\S*)/\1/p' requirements.txt)"
+RUN poetry install --without client,devel
 
 COPY vessels ./vessels
-RUN mkdir generated && protoc -I=vessels --python_betterproto_out=generated vessels/*.proto
+RUN mkdir generated && poetry run python -m grpc_tools.protoc -I=vessels --python_betterproto_out=generated vessels/*.proto
 
 
 FROM ubuntu:22.04 as default-sleeping
@@ -40,11 +40,9 @@ COPY viridian/algae/sources/*.py ./sources/
 COPY viridian/algae/tests/*.py ./tests/
 RUN touch __init__.py sources/__init__.py
 
-ENV SEASIDE_PUBLIC=
 ENV SEASIDE_PAYLOAD_OWNER=
 ENV SEASIDE_ADDRESS=
-ENV SEASIDE_NETPORT=
-ENV SEASIDE_ANCHOR=
+ENV SEASIDE_CTRLPORT=
 
 ENV SEASIDE_TUNNEL_NAME seatun
 ENV SEASIDE_MIN_HC_TIME 1
@@ -56,7 +54,7 @@ ENTRYPOINT sleep infinity
 
 FROM default-sleeping as default
 
-ENTRYPOINT python3 -m sources.main $SEASIDE_PUBLIC $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -n $SEASIDE_NETPORT -c $SEASIDE_ANCHOR -t $SEASIDE_TUNNEL_NAME
+ENTRYPOINT python3 -m sources.main $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -c $SEASIDE_CTRLPORT -t $SEASIDE_TUNNEL_NAME
 
 HEALTHCHECK --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s CMD ls /sys/class/net | grep $SEASIDE_TUNNEL_NAME
 
@@ -71,7 +69,7 @@ ENTRYPOINT ip route replace default via $ARG_NETWORK_GATEWAY && sleep infinity
 
 FROM smoke-sleeping as smoke
 
-ENTRYPOINT ip route replace default via $ARG_NETWORK_GATEWAY && \
-    python3 -m sources.main $SEASIDE_PUBLIC $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -n $SEASIDE_NETPORT -t $SEASIDE_TUNNEL_NAME
+ENTRYPOINT ip route replace default via $ARG_NETWORK_GATEWAY \
+    && python3 -m sources.main $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -c $SEASIDE_CTRLPORT -t $SEASIDE_TUNNEL_NAME
 
 HEALTHCHECK --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s CMD ls /sys/class/net | grep $SEASIDE_TUNNEL_NAME

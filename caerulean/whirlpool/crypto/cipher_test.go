@@ -9,12 +9,12 @@ import (
 )
 
 const (
-	ENCODE_CYCLE_MESSAGE_LENGTH = 8
+	ENCRYPTION_CYCLE_MESSAGE_LENGTH = 8
 
 	GENERATE_CIPHER_KEY_LENGTH = 32
 )
 
-func testEncodeCycle(test *testing.T, aead cipher.AEAD) {
+func testEncryptCycle(test *testing.T, aead cipher.AEAD) {
 	message := make([]byte, ENCRYPTION_CYCLE_MESSAGE_LENGTH)
 	err := binary.Read(rand.Reader, binary.BigEndian, &message)
 	if err != nil {
@@ -22,37 +22,31 @@ func testEncodeCycle(test *testing.T, aead cipher.AEAD) {
 	}
 	test.Logf("bytes generated: %v", message)
 
-	encoded, err := Encode(message, aead)
+	ciphertext, err := Encrypt(message, aead)
 	if err != nil {
-		test.Fatalf("error encoding message: %v", err)
+		test.Fatalf("error encrypting message: %v", err)
 	}
-	test.Logf("message encoded: %v", encoded)
+	test.Logf("message ciphertext: %v", ciphertext)
 
-	decoded, err := Decode(encoded, aead)
+	plaintext, err := Decrypt(ciphertext, aead)
 	if err != nil {
-		test.Fatalf("error decoding message: %v", err)
+		test.Fatalf("error decrypting message: %v", err)
 	}
-	test.Logf("bytes decoded: %v", decoded)
+	test.Logf("bytes plaintext: %v", plaintext)
 
-	if !bytes.Equal(decoded, message) {
-		test.Fatalf("encoded bytes (%v) don't match decoded bytes (%v)", decoded, message)
+	if !bytes.Equal(plaintext, message) {
+		test.Fatalf("encrypted bytes (%v) don't match decrypted bytes (%v)", plaintext, message)
 	}
 }
 
 func TestGenerateCipher(test *testing.T) {
-	aead, key, err := GenerateCipher()
+	aead, err := GenerateCipher()
 	if err != nil {
 		test.Fatalf("error generating cipher: %v", err)
 	}
-	test.Logf("key generated: %v", key)
+	test.Logf("cipher generated: %v", aead)
 
-	expectedKeyLength := GENERATE_CIPHER_KEY_LENGTH
-	if len(key) != expectedKeyLength {
-		test.Fatalf("key length mismatching: %d != %d", len(key), expectedKeyLength)
-	}
-	test.Logf("key length: %d", len(key))
-
-	testEncodeCycle(test, aead)
+	testEncryptCycle(test, aead)
 }
 
 func TestParseCipher(test *testing.T) {
@@ -69,5 +63,5 @@ func TestParseCipher(test *testing.T) {
 	}
 	test.Logf("aead parsed: nonce size: %d, overhead: %d", aead.NonceSize(), aead.Overhead())
 
-	testEncodeCycle(test, aead)
+	testEncryptCycle(test, aead)
 }

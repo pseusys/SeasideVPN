@@ -5,7 +5,6 @@ import "google/protobuf/timestamp.proto";
 option go_package = "/generated";
 
 
-
 // Required data for connection to a seaside node
 message SeasideConnectionCertificate {
     // Type of node for connection: "whirlpool" or "surface"
@@ -16,13 +15,9 @@ message SeasideConnectionCertificate {
     string netport = 3;
     // Node anhor endpoint
     string anchor = 4;
-    // Node public XChaCha20-Poly1305 cipher
-    bytes public = 5;
     // Node authentication payload
-    string payload = 6;
+    string payload = 5;
 }
-
-
 
 // Seaside user token used for connection
 message UserToken {
@@ -34,30 +29,4 @@ message UserToken {
     bool privileged = 3;
     // User subscription end timestamp
     optional google.protobuf.Timestamp subscription = 4;
-}
-
-
-
-// User data that is needed for administrator whirlpool node authentication
-message UserDataForWhirlpool {
-    // User unique identifier
-    string uid = 1;
-    // User session XChaCha20-Poly1305 key
-    bytes session = 2;
-    // Node authentication owner payload
-    string ownerKey = 3;
-}
-
-// TODO: user data for surface
-
-// User authentication certificate
-message UserCertificate {
-    // Encrypted user token
-    bytes token = 1;
-    // Zero user ID
-    int32 userZero = 2;
-    // Whirlpool seaside port
-    int32 seasidePort = 3;
-    // Whirlpool control port
-    int32 controlPort = 4;
 }

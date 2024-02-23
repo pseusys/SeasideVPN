@@ -1,44 +1,45 @@
 from logging import getLogger
 from os import environ, getenv
-from socket import AF_INET, SHUT_WR, SOCK_STREAM, socket
+from socket import AF_INET, SOCK_STREAM, socket
 from subprocess import check_output
 from time import sleep
-from typing import Generator, Optional
+from typing import AsyncGenerator, Optional
 
 import pytest
+import pytest_asyncio
 from Crypto.Random import get_random_bytes
 
-from ..sources.control import Controller
-from ..sources.crypto import MAX_TWO_BYTES_VALUE
-from ..sources.generated import ControlRequest, ControlRequestHealthcheckMessage, ControlRequestStatus, ControlResponse, ControlResponseStatus
+from ..sources.coordinator import Coordinator
+from ..sources.generated import ControlHealthcheck
+from ..sources.utils import MAX_TAIL_LENGTH, MAX_TWO_BYTES_VALUE
 
 logger = getLogger(__name__)
 
 
-def is_tcp_available(address: Optional[str] = None, port: int = 80) -> bool:
+def is_tcp_available(address: Optional[str] = None, port: int = 80, f = False) -> bool:
     address = environ["RESTRICTED_ADDRESS"] if address is None else address
     with socket(AF_INET, SOCK_STREAM) as sock:
         try:
             sock.settimeout(5.0)
             sock.connect((address, port))
             return True
-        except TimeoutError:
+        except TimeoutError as e:
+            if f:
+                raise e
             return False
 
 
-@pytest.fixture(scope="session")
-def controller() -> Generator[Controller, None, None]:
-    owner_key = environ["SEASIDE_PAYLOAD_OWNER"]
-    public_key = environ["SEASIDE_PUBLIC"]
+@pytest_asyncio.fixture(scope="session")
+async def controller() -> AsyncGenerator[Coordinator, None]:
+    payload = environ["SEASIDE_PAYLOAD_OWNER"]
     name = getenv("SEASIDE_TUNNEL_NAME", "sea-tun")
     addr = environ["SEASIDE_ADDRESS"]
-    net_port = int(getenv("SEASIDE_NETPORT", "8587"))
-    anchor = getenv("SEASIDE_ANCHOR", "auth")
-    yield Controller(public_key, owner_key, addr, net_port, anchor, name)
+    ctrl_port = int(getenv("SEASIDE_CTRLPORT", "8587"))
+    yield Coordinator(payload, addr, ctrl_port, name)
 
 
 @pytest.mark.dependency()
-def test_controller_initialization(controller: Controller) -> None:
+def test_controller_initialization(controller: Coordinator) -> None:
     routes = check_output(["ip", "link", "show"]).decode()
     assert controller._interface._name in routes, "Tunnel wasn't created!"
 
@@ -49,104 +50,65 @@ def test_no_vpn_request() -> None:
     assert not is_tcp_available(), "External website is already available!"
 
 
+@pytest.mark.asyncio(scope="session")
 @pytest.mark.dependency(depends=["test_no_vpn_request"])
-def test_receive_token(controller: Controller) -> None:
+async def test_receive_token(controller: Coordinator) -> None:
     logger.info("Testing receiving user token")
-    controller._receive_token()
-    assert len(controller._cipher.key) > 0, "Key was not received!"
+    await controller._receive_token()
+    assert len(controller._session_token) > 0, "Session token was not received!"
 
 
+@pytest.mark.asyncio(scope="session")
 @pytest.mark.dependency(depends=["test_receive_token"])
-def test_initialize_control(controller: Controller) -> None:
+async def test_initialize_control(controller: Coordinator) -> None:
     logger.info("Testing initializing control sequence")
-    controller._initialize_control()
+    await controller._initialize_control()
     assert isinstance(controller._user_id, int), "User ID wasn't created!"
     assert controller._user_id >= 1 and controller._user_id <= MAX_TWO_BYTES_VALUE, "User ID isn't in range!"
 
 
 @pytest.mark.dependency(depends=["test_initialize_control"])
-def test_open_tunnel(controller: Controller) -> None:
+def test_open_tunnel(controller: Coordinator) -> None:
     logger.info("Testing opening the tunnel")
     controller._interface.up()
     assert controller._interface._operational, "Tunnel interface isn't operational!"
 
 
 @pytest.mark.dependency(depends=["test_open_tunnel"])
-def test_open_client(controller: Controller) -> None:
-    logger.info("Testing opening the client")
-    controller._client.open()
-    assert controller._client._operational, "Client processes aren't operational!"
+def test_open_viridian(controller: Coordinator) -> None:
+    logger.info("Testing opening the viridian")
+    controller._viridian.open()
+    assert controller._viridian._operational, "Client processes aren't operational!"
 
 
-@pytest.mark.dependency(depends=["test_open_client"])
+@pytest.mark.dependency(depends=["test_open_viridian"])
 def test_validate_request() -> None:
     logger.info("Testing reachability with TCP example server")
-    assert is_tcp_available(), "External website isn't available!"
+    assert is_tcp_available(f=True), "External website isn't available!"
 
 
+@pytest.mark.asyncio(scope="session")
 @pytest.mark.dependency(depends=["test_validate_request"])
-def test_send_suspicious_message(controller: Controller) -> None:
-    logger.info("Testing sending a suspicious message to caerulean")
-    with socket(AF_INET, SOCK_STREAM) as gate:
-        gate.settimeout(5.0)
-        gate.connect((controller._interface._address, controller._ctrl_port))
-        gate.sendall(get_random_bytes(64))
-        gate.shutdown(SHUT_WR)
-        encrypted_message = gate.recv(MAX_TWO_BYTES_VALUE)
-        _, response = controller._obfuscator.decrypt(encrypted_message, controller._public_cipher, True)
-        response_status = ControlResponse().parse(response).status
-        assert response_status == ControlResponseStatus.ERROR, "Server reaction wasn't error!"
-
-
-@pytest.mark.dependency(depends=["test_send_suspicious_message"])
-def test_send_healthcheck_message(controller: Controller) -> None:
+async def test_send_healthcheck_message(controller: Coordinator) -> None:
     logger.info("Testing sending healthcheck to caerulean")
     for _ in range(3):
-        with socket(AF_INET, SOCK_STREAM) as gate:
-            gate.settimeout(5.0)
-            gate.connect((controller._interface._address, controller._ctrl_port))
-
-            healthcheck_message = ControlRequestHealthcheckMessage(next_in=controller._min_hc_time)
-            control_message = ControlRequest(status=ControlRequestStatus.HEALTHPING, healthcheck=healthcheck_message)
-            encrypted_message = controller._obfuscator.encrypt(bytes(control_message), controller._public_cipher, controller._user_id, True)
-            gate.sendall(encrypted_message)
-            gate.shutdown(SHUT_WR)
-            encrypted_message = gate.recv(MAX_TWO_BYTES_VALUE)
-
-            _, answer_message = controller._obfuscator.decrypt(encrypted_message, controller._public_cipher, True)
-            status = ControlResponse().parse(answer_message).status
-            assert status == ControlResponseStatus.HEALTHPONG, "Server reaction wasn't healthpong!"
-            sleep(1)
+        request = ControlHealthcheck(user_id=controller._user_id, next_in=controller._min_hc_time)
+        await controller._control.healthcheck(request, timeout=controller._max_timeout, metadata=(("tail", get_random_bytes(MAX_TAIL_LENGTH).hex()),))
+        sleep(controller._min_hc_time)
 
 
+@pytest.mark.asyncio(scope="session")
 @pytest.mark.dependency(depends=["test_send_healthcheck_message"])
-def test_healthcheck_overtime(controller: Controller) -> None:
+async def test_healthcheck_overtime(controller: Coordinator) -> None:
     logger.info("Testing exceeding healthcheck time with caerulean")
-    with socket(AF_INET, SOCK_STREAM) as gate:
-        gate.settimeout(5.0)
-        gate.connect((controller._interface._address, controller._ctrl_port))
 
-        healthcheck_message = ControlRequestHealthcheckMessage(next_in=controller._min_hc_time)
-        control_message = ControlRequest(status=ControlRequestStatus.HEALTHPING, healthcheck=healthcheck_message)
-        encrypted_message = controller._obfuscator.encrypt(bytes(control_message), controller._public_cipher, controller._user_id, True)
-        gate.sendall(encrypted_message)
-        gate.shutdown(SHUT_WR)
-        gate.recv(MAX_TWO_BYTES_VALUE)
+    request = ControlHealthcheck(user_id=controller._user_id, next_in=controller._min_hc_time)
+    await controller._control.healthcheck(request, timeout=controller._max_timeout, metadata=(("tail", get_random_bytes(MAX_TAIL_LENGTH).hex()),))
 
     sleep(controller._min_hc_time * 10)
-    with socket(AF_INET, SOCK_STREAM) as gate:
-        gate.connect((controller._interface._address, controller._ctrl_port))
-
-        healthcheck_message = ControlRequestHealthcheckMessage(next_in=controller._min_hc_time)
-        control_message = ControlRequest(status=ControlRequestStatus.HEALTHPING, healthcheck=healthcheck_message)
-        encrypted_message = controller._obfuscator.encrypt(bytes(control_message), controller._public_cipher, controller._user_id, True)
-        gate.sendall(encrypted_message)
-        gate.shutdown(SHUT_WR)
-
-        encrypted_message = gate.recv(MAX_TWO_BYTES_VALUE)
-        _, response = controller._obfuscator.decrypt(encrypted_message, controller._public_cipher, True)
-        response_status = ControlResponse().parse(response).status
-        assert response_status == ControlResponseStatus.ERROR, "Server reaction wasn't error!"
+    with pytest.raises(Exception):
+        request = ControlHealthcheck(user_id=controller._user_id, next_in=controller._min_hc_time)
+        await controller._control.healthcheck(request, timeout=controller._max_timeout, metadata=(("tail", get_random_bytes(MAX_TAIL_LENGTH).hex()),))
 
 
 @pytest.mark.dependency(depends=["test_healthcheck_overtime"])
@@ -155,17 +117,18 @@ def test_no_vpn_rerequest() -> None:
     assert not is_tcp_available(), "External website is still available!"
 
 
+@pytest.mark.asyncio(scope="session")
 @pytest.mark.dependency(depends=["test_no_vpn_rerequest"])
-def test_reconnect(controller: Controller) -> None:
+async def test_reconnect(controller: Coordinator) -> None:
     logger.info("Testing reconnecting to caerulean")
     logger.info("Closing client...")
-    controller._client.close()
+    controller._viridian.close()
     logger.info("Receiving user token...")
-    controller._receive_token()
+    await controller._receive_token()
     logger.info("Exchanging basic information...")
-    controller._initialize_control()
+    await controller._initialize_control()
     logger.info("Opening client back...")
-    controller._client.open()
+    controller._viridian.open()
 
 
 @pytest.mark.dependency(depends=["test_reconnect"])
@@ -174,7 +137,8 @@ def test_revalidate_request() -> None:
     assert is_tcp_available(), "External website isn't available!"
 
 
+@pytest.mark.asyncio(scope="session")
 @pytest.mark.dependency(depends=["test_revalidate_request"])
-def test_close_connection(controller: Controller) -> None:
+async def test_close_connection(controller: Coordinator) -> None:
     logger.info("Testing closing viridian connection")
-    controller.interrupt()
+    await controller.interrupt()
