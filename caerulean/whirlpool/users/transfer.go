@@ -1,11 +1,10 @@
-package main
+package users
 
 import (
 	"context"
 	"encoding/binary"
 	"fmt"
 	"main/crypto"
-	"main/users"
 	"math"
 	"net"
 
@@ -15,39 +14,19 @@ import (
 	"github.com/songgao/water"
 )
 
-// UDP connection for viridian messages accepting.
-var SEA_CONNECTION *net.UDPConn
-
 // Special type for checking IP packet layers - if they should use IP header in checksum calculation.
 type netSettableLayerType interface {
 	SetNetworkLayerForChecksum(gopacket.NetworkLayer) error
 }
 
-// Initialize UDP connection for viridian messages accepting.
-// Accept internal network address (as a string) and UDP port number.
-// Return error if the connection wasn't initialized.
-func InitializeSeasideConnection(internalAddress string, port int) error {
-	// Resolve UDP address
-	gateway, err := net.ResolveUDPAddr("udp4", fmt.Sprintf("%s:%d", internalAddress, port))
-	if err != nil {
-		logrus.Fatalf("Error resolving local address: %v", err)
-	}
-
-	// Create connection
-	SEA_CONNECTION, err = net.ListenUDP("udp4", gateway)
-	if err != nil {
-		logrus.Fatalf("Error resolving connection (%s): %v", gateway.String(), err)
-	}
-
-	// Return no error
-	return nil
-}
-
 // Start receiving UDP VPN packets from viridians (internal interface, seaside port) and sending them to the internet.
 // Accept Context for graceful termination, tunnel interface pointer and tunnel IP network address pointer.
 // NB! this method is blocking, so it should be run as goroutine.
-func ReceivePacketsFromViridian(ctx context.Context, tunnel *water.Interface, tunnetwork *net.IPNet) {
+func (dict *ViridianDict) ReceivePacketsFromViridian(ctx context.Context, userID uint16, connection *net.UDPConn, tunnel *water.Interface, tunnetwork *net.IPNet) {
 	buffer := make([]byte, math.MaxUint16)
+
+	viridianID := []byte{0, 0}
+	binary.BigEndian.PutUint16(viridianID, userID)
 
 	// Create buffer for packet decoding
 	serialBuffer := gopacket.NewSerializeBuffer()
@@ -66,31 +45,21 @@ func ReceivePacketsFromViridian(ctx context.Context, tunnel *water.Interface, tu
 		serialBuffer.Clear()
 
 		// Read packet from UDP connection
-		r, _, err := SEA_CONNECTION.ReadFromUDP(buffer)
+		r, _, err := connection.ReadFromUDP(buffer)
 		if err != nil || r == 0 {
 			logrus.Errorf("Error reading from viridian (%d bytes read): %v", r, err)
 			continue
 		}
 
-		// Read message subscription
-		userID, err := crypto.UnsubscribeMessage(buffer[:r])
-		if err != nil {
-			logrus.Errorf("Error deobfuscating packet: %v", err)
-			continue
-		}
-
 		// Get the viridian the packet belongs to
-		viridianID := []byte{0, 0}
-		binary.BigEndian.PutUint16(viridianID, *userID)
-		viridian := users.GetViridian(*userID)
-		if viridian == nil {
-			logrus.Errorf("Error: user %d not registered", viridianID)
+		viridian, ok := dict.Get(userID)
+		if !ok {
+			logrus.Errorf("Error: user %d not registered", userID)
 			continue
 		}
 
 		// Decode the packet
-		signatureLength := 4 + crypto.PUBLIC_NODE_AEAD.NonceSize() + crypto.PUBLIC_NODE_AEAD.Overhead()
-		raw, err := crypto.Decode(buffer[signatureLength:r], viridian.AEAD)
+		raw, err := crypto.Decrypt(buffer[:r], viridian.AEAD)
 		if err != nil {
 			logrus.Errorf("Error decrypting packet: %v", err)
 			continue
@@ -104,7 +73,7 @@ func ReceivePacketsFromViridian(ctx context.Context, tunnel *water.Interface, tu
 
 		// Get IP layer header and change source IP
 		netLayer, _ := packet.Layer(layers.LayerTypeIPv4).(*layers.IPv4)
-		logrus.Infof("Received %d bytes from viridian %d (src: %v, dst: %v)", netLayer.Length, *userID, netLayer.SrcIP, netLayer.DstIP)
+		logrus.Infof("Received %d bytes from viridian %d (src: %v, dst: %v)", netLayer.Length, userID, netLayer.SrcIP, netLayer.DstIP)
 		netLayer.SrcIP = net.IPv4(tunnetwork.IP[0], tunnetwork.IP[1], viridianID[0], viridianID[1])
 
 		// Set the network layer to all the layers that require a network layer
@@ -134,7 +103,7 @@ func ReceivePacketsFromViridian(ctx context.Context, tunnel *water.Interface, tu
 // Start receiving packets from the internet (external interface) and sending them to viridians.
 // Accept Context for graceful termination, tunnel interface pointer and tunnel IP network address pointer.
 // NB! this method is blocking, so it should be run as goroutine.
-func SendPacketsToViridian(ctx context.Context, tunnel *water.Interface, tunnetwork *net.IPNet) {
+func (dict *ViridianDict) SendPacketsToViridian(ctx context.Context, tunnel *water.Interface, tunnetwork *net.IPNet) {
 	buffer := make([]byte, math.MaxUint16)
 
 	// CCreate buffer for packet decoding
@@ -171,8 +140,8 @@ func SendPacketsToViridian(ctx context.Context, tunnel *water.Interface, tunnetw
 
 		// Get the viridian the packet was received from
 		viridianID := binary.BigEndian.Uint16([]byte{netLayer.DstIP[2], netLayer.DstIP[3]})
-		viridian := users.GetViridian(viridianID)
-		if viridian == nil {
+		viridian, ok := dict.Get(viridianID)
+		if !ok {
 			logrus.Errorf("Error: user %d not registered", viridianID)
 			continue
 		}
@@ -204,14 +173,14 @@ func SendPacketsToViridian(ctx context.Context, tunnel *water.Interface, tunnetw
 		}
 
 		// Encrypt packet
-		encrypted, err := crypto.Encrypt(serialBuffer.Bytes(), viridian.AEAD, &viridianID, false)
+		encrypted, err := crypto.Encrypt(serialBuffer.Bytes(), viridian.AEAD)
 		if err != nil {
 			logrus.Errorf("Error encrypting packet: %v", err)
 			continue
 		}
 
 		// Send packet to viridian
-		s, err := SEA_CONNECTION.WriteToUDP(encrypted, gateway)
+		s, err := viridian.SeaConn.WriteToUDP(encrypted, gateway)
 		if err != nil || s == 0 {
 			logrus.Errorf("Error writing to viridian (%d bytes written): %v", s, err)
 			continue

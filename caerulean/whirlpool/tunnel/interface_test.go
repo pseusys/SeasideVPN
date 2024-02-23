@@ -7,6 +7,8 @@ import (
 	"github.com/songgao/water"
 )
 
+const OPEN_INTERFACE_CYCLE_MTU = 1500
+
 func TestOpenInterfaceCycle(test *testing.T) {
 	tunIP, tunNetwork, err := net.ParseCIDR("10.0.0.25/24")
 	if err != nil {
@@ -22,6 +24,7 @@ func TestOpenInterfaceCycle(test *testing.T) {
 		Tunnel:  tun,
 		IP:      tunIP,
 		Network: tunNetwork,
+		mtu:     OPEN_INTERFACE_CYCLE_MTU,
 	}
 	conf.openInterface("127.0.0.1")
 	test.Logf("tunnel interface created: %s", conf.Tunnel.Name())
@@ -31,8 +34,9 @@ func TestOpenInterfaceCycle(test *testing.T) {
 		test.Fatalf("tunnel interface not found: %v", err)
 	}
 
-	if tunnelOpenedIface.MTU != MTU {
-		test.Fatalf("tunnel interface setup incorrectly: %d != %d", MTU, tunnelOpenedIface.MTU)
+	expectedMTU := OPEN_INTERFACE_CYCLE_MTU
+	if tunnelOpenedIface.MTU != expectedMTU {
+		test.Fatalf("tunnel interface setup incorrectly: %d != %d", expectedMTU, tunnelOpenedIface.MTU)
 	}
 
 	test.Logf("tunnel interface flags set: %s", tunnelOpenedIface.Flags.String())

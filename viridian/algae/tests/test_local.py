@@ -12,8 +12,8 @@ logger = getLogger(__name__)
 @pytest.mark.timeout(30.0)
 def test_local_echo(random_message: bytes) -> None:
     logger.info("Testing with local echo server")
-    echo_address, echo_port = environ["ECHO_ADDRESS"], int(environ["ECHO_PORT"])
-    local_address, vpn_port = environ["LOCAL_ADDRESS"], int(environ["SEASIDE_SEAPORT"])
+    echo_address, local_address = environ["ECHO_ADDRESS"], environ["LOCAL_ADDRESS"]
+    echo_port = int(environ["ECHO_PORT"])
     buffer = int(environ["BUFFER_SIZE"])
 
     start_time = perf_counter()
@@ -23,7 +23,6 @@ def test_local_echo(random_message: bytes) -> None:
         gate.send(random_message)
         tcp_echo = loads(gate.recv(buffer))
         assert tcp_echo["from"][0] != local_address, "Echo address doesn't match VPN address!"
-        assert tcp_echo["from"][1] != vpn_port, "Echo port does match VPN input port!"
         assert tcp_echo["message"] == random_message, "Echo message doesn't match!"
 
     end_time = perf_counter()

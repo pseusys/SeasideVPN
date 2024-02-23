@@ -5,7 +5,7 @@ package utils
 // Return a joined slice of all the input slices.
 func ConcatSlices[T any](slices ...[]T) []T {
 	// Calculate slice number
-	var totalLength int
+	totalLength := 0
 	for _, slice := range slices {
 		totalLength += len(slice)
 	}

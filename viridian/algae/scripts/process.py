@@ -1,8 +1,9 @@
+from asyncio import run as async_run
 from glob import glob
 from pathlib import Path
 from shutil import rmtree
 from subprocess import run as subprocess_run
-from sys import argv
+from sys import argv, executable
 from typing import List, Union
 
 from colorama import Fore, Style, just_fix_windows_console
@@ -23,7 +24,7 @@ def generate() -> None:
     Previous generation results will be removed.
     Library `betterproto` is used for generation.
     """
-    command = "protoc -I=vessels --python_betterproto_out=viridian/algae/sources/generated vessels/*.proto"
+    command = f"{executable} -m grpc_tools.protoc -I=vessels --python_betterproto_out=viridian/algae/sources/generated vessels/*.proto"
     generated_dir = ALGAE_ROOT / "sources" / "generated"
     rmtree(generated_dir, ignore_errors=True)
     generated_dir.mkdir(exist_ok=True)
@@ -47,7 +48,7 @@ def execute() -> None:
     """
     from sources.main import main
 
-    main(argv[1:])
+    async_run(main(argv[1:]))
 
 
 def clean() -> None:
@@ -97,7 +98,6 @@ def help() -> None:
     print(f"\t{Fore.BLUE}poetry run clean{Fore.RESET}: clean all the build files, executables, Docker images, containers and networks.")
     print(f"\t{Fore.BLUE}poetry run help{Fore.RESET}: print this message again.")
     print(f"{Style.BRIGHT}Arguments for algae executable (ARGS){Style.RESET_ALL}:")
-    print(f"\t{Fore.YELLOW}[PUBLIC_KEY]{Fore.RESET}: caerulean public key (required!).")
     print(f"\t{Fore.YELLOW}[PAYLOAD]{Fore.RESET}: caerulean payload string (required!).")
     print(f"\t{Fore.GREEN}-a --address [ADDRESS]{Fore.RESET}: caerulean remote IP address (default: 127.0.0.1).")
     print(f"\t{Fore.GREEN}-n --netport [NETPORT]{Fore.RESET}: caerulean network port number (default: 8587).")
@@ -105,4 +105,4 @@ def help() -> None:
     print(f"\t{Fore.GREEN}-t --tunnel [TUNNEL]{Fore.RESET}: tunnel interface name (default: seatun).")
     print(f"\t{Fore.GREEN}-l --link [LINK]{Fore.RESET}: connection link, will be used instead of other arguments if specified.")
     print(f"{Style.BRIGHT}Connection link format{Style.RESET_ALL}:")
-    print(f"\t{Fore.CYAN}seaside+[NODE_TYPE]://[ADDRESS]:[NETPORT]/[ANCHOR]?public=[PUBLIC_KEY]&payload=[PAYLOAD]{Fore.RESET}")
+    print(f"\t{Fore.CYAN}seaside+[NODE_TYPE]://[ADDRESS]:[NETPORT]/[ANCHOR]?payload=[PAYLOAD]{Fore.RESET}")

@@ -1,17 +1,10 @@
 from __future__ import annotations
 
-from typing import Optional, Tuple
+from typing import Optional
 
 from Crypto.Cipher import ChaCha20_Poly1305
 from Crypto.Hash import Poly1305
 from Crypto.Random import get_random_bytes
-from Crypto.Random.random import randint
-
-# Maximum length of message - transport level packet.
-MAX_TWO_BYTES_VALUE = (1 << 16) - 1
-
-# Maximum random bytes tail length.
-MAX_TAIL_LENGTH = 64
 
 
 class Cipher:
@@ -53,40 +46,3 @@ class Cipher:
         cipher = ChaCha20_Poly1305.new(key=self.key, nonce=nonce)
         encryption, tag = ciphertext[: -self._tag_length], ciphertext[-self._tag_length :]
         return cipher.decrypt_and_verify(encryption, tag)
-
-
-class Obfuscator:
-    """
-    Class represents obfuscator - cipher equipped with wavy protocol support.
-    Supports bytes encoding, decoding, subsribing and unsubscribing.
-    Encoding and decoding includes (un)subscription and (de)tailing.
-    Subscribing and unsubscribing doesn't alter message bytes only generates subscription or reads user ID.
-    """
-
-    _MAXIMAL_TAIL_LENGTH = 64
-
-    def __init__(self, zero_user: int, public_cipher: Cipher) -> None:
-        self._zero_user_id = zero_user
-        self._public_cipher = public_cipher
-
-    def encrypt(self, message: bytes, encoder: Cipher, user_id: Optional[int], add_tail: bool) -> bytes:
-        secret = randint(0, MAX_TWO_BYTES_VALUE)
-
-        user_id = 0 if user_id is None else user_id
-        identity = ((user_id + self._zero_user_id) % MAX_TWO_BYTES_VALUE) ^ secret
-        signature = secret.to_bytes(2, "big") + identity.to_bytes(2, "big")
-
-        tail = get_random_bytes(secret % self._MAXIMAL_TAIL_LENGTH) if add_tail else bytes()
-        return self._public_cipher.encode(signature) + encoder.encode(message) + tail
-
-    def decrypt(self, message: bytes, encoder: Cipher, expect_tail: bool) -> Tuple[Optional[int], bytes]:
-        signature_length = 4 + self._public_cipher._CHACHA_NONCE_LENGTH + self._public_cipher._tag_length
-        signature = self._public_cipher.decode(message[:signature_length])
-        secret, identity = int.from_bytes(signature[:2], "big"), int.from_bytes(signature[2:4], "big")
-
-        user_id = ((secret ^ identity) + MAX_TWO_BYTES_VALUE - self._zero_user_id) % MAX_TWO_BYTES_VALUE
-        user_id = None if user_id == 0 else user_id
-
-        tail_length = secret % self._MAXIMAL_TAIL_LENGTH if expect_tail else 0
-        plaintext = encoder.decode(message[signature_length:len(message)-tail_length])
-        return user_id, plaintext

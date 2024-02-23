@@ -2,11 +2,11 @@ from multiprocessing import Process
 from os import read, write
 from socket import socket
 
-from .crypto import MAX_TWO_BYTES_VALUE, Cipher, Obfuscator
-from .outputs import logger
+from .crypto import Cipher
+from .utils import MAX_TWO_BYTES_VALUE, logger
 
 
-class SeaClient:
+class Viridian:
     """
     Viridian "client" class: it is responsible for all the runtime packet forwarding.
     It creates and supports two processes: sender and receiver.
@@ -14,10 +14,8 @@ class SeaClient:
     Receiver process reads packets from VPN node and sends them further locally.
     """
 
-    def __init__(self, socket: socket, tunnel_descriptor: int, address: str, sea_port: int, cipher: Cipher, obfuscator: Obfuscator, user_id: int):
-        self._port = sea_port
-        self._cipher = cipher
-        self._obfuscator = obfuscator
+    def __init__(self, socket: socket, tunnel_descriptor: int, address: str, session_key: bytes, user_id: int):
+        self._cipher = Cipher(session_key)
         self._user_id = user_id
         self._descriptor = tunnel_descriptor
         self._address = address
@@ -53,9 +51,8 @@ class SeaClient:
         """
         while True:
             packet = read(self._descriptor, MAX_TWO_BYTES_VALUE)
-            logger.debug(f"Sending {len(packet)} bytes to caerulean {self._address}:{self._port}")
-            payload = self._obfuscator.encrypt(packet, self._cipher, self._user_id, False)
-            self._socket.sendto(payload, (self._address, self._port))
+            logger.debug(f"Sending {len(packet)} bytes to caerulean {self._address}:{self._user_id}")
+            self._socket.sendto(self._cipher.encode(packet), (self._address, self._user_id))
 
     def _receive_from_caerulean(self) -> None:
         """
@@ -63,10 +60,9 @@ class SeaClient:
         It receives packets from the VPN node, decrypts them and writes to tunnel interface "file".
         """
         while True:
-            packet = self._socket.recv(MAX_TWO_BYTES_VALUE)
-            payload = self._obfuscator.decrypt(packet, self._cipher, False)[1]
-            logger.debug(f"Receiving {len(payload)} bytes from caerulean {self._address}:{self._port}")
-            write(self._descriptor, payload)
+            packet = self._cipher.decode(self._socket.recv(MAX_TWO_BYTES_VALUE))
+            logger.debug(f"Receiving {len(packet)} bytes from caerulean {self._address}:{self._user_id}")
+            write(self._descriptor, packet)
 
     def close(self) -> None:
         """

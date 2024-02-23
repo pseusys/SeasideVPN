@@ -19,8 +19,7 @@ Whirlpool sends messages to UDP port 8542, encrypted.
   Installation guide example can be found [here](https://grpc.io/docs/protoc-installation/#install-pre-compiled-binaries-any-os).
 3. `protoc-gen-go` (code generator for golang) version >= 1.25
   Regularily can be installed with this command: `go install google.golang.org/protobuf/cmd/protoc-gen-go@latest`.
-4. `gmp-dev` (long math C library) version >= 6.2
-  Often can be installed from a package manager (named something like `libgmp-dev`) or downloaded from [the official webside](https://gmplib.org/).
+4. `go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest`
 
 ## Web API
 
