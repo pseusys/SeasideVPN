@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"main/generated"
 	"main/utils"
@@ -9,12 +10,29 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 type MetaServer struct {
 	whirlpoolServer *WhirlpoolServer
 	grpcServer      *grpc.Server
 	listener        net.Listener
+}
+
+func loadTLSCredentials() (credentials.TransportCredentials, error) {
+	// Load server's certificate and private key
+	serverCert, err := tls.LoadX509KeyPair("certificates/cert.crt", "certificates/cert.key")
+	if err != nil {
+		return nil, fmt.Errorf("error reading certificates: %v", err)
+	}
+
+	// Create the credentials and return it
+	config := &tls.Config{
+		Certificates: []tls.Certificate{serverCert},
+		ClientAuth:   tls.NoClientCert,
+	}
+
+	return credentials.NewTLS(config), nil
 }
 
 func start(base context.Context) *MetaServer {
@@ -28,7 +46,12 @@ func start(base context.Context) *MetaServer {
 		logrus.Fatalf("failed to listen: %v", err)
 	}
 
-	grpcServer := grpc.NewServer()
+	credentials, err := loadTLSCredentials()
+	if err != nil {
+		logrus.Fatalf("failed to read credentials: %v", err)
+	}
+
+	grpcServer := grpc.NewServer(grpc.Creds(credentials))
 	generated.RegisterWhirlpoolViridianServer(grpcServer, whirlpoolServer)
 
 	go runServer(grpcServer, listener)

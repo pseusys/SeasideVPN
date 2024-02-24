@@ -7,16 +7,10 @@ WORKDIR /seaside/caerulean
 
 # Protobuf development library are required for executable building.
 # Go lint and iptables are required for testing.
-RUN apk add --no-cache iptables protobuf protobuf-dev openssl \
+RUN apk add --no-cache iptables protobuf protobuf-dev \
     && go install google.golang.org/protobuf/cmd/protoc-gen-go@latest \
     && go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest \
     && go install golang.org/x/lint/golint@latest
-
-# Generate TSL certificates for the server
-# TODO: use volumes instead
-RUN mkdir secure/ \
-    && openssl ecparam -genkey -name prime256v1 -noout -out secure/cert.key \
-    && openssl req -new -x509 -sha256 -key secure/cert.key -out secure/cert.crt -days 365250 -subj "/C=FR/ST=France/L=Paris/O=seasidevpn/OU=seasidevpn-whirlpool/CN=pseusys"
 
 # Copy whirlpool go.mod, protobuf files and generate protobuf sources.
 COPY caerulean/whirlpool/go.mod ./
@@ -38,7 +32,6 @@ WORKDIR /seaside/caerulean
 
 # Install iptables package for whirlpool running.
 RUN apk add --no-cache iptables
-COPY --from=builder /seaside/caerulean/secure ./secure/
 COPY --from=builder /seaside/caerulean/whirlpool.run ./
 
 # Setup environmental variables.
@@ -60,6 +53,8 @@ ENV SEASIDE_ICMP_PACKET_LIMIT 5
 ENV SEASIDE_BURST_LIMIT_MULTIPLIER 3
 
 ENV SEASIDE_LOG_LEVEL WARNING
+
+VOLUME /seaside/caerulean/certificates
 
 # Expose ports and set entrypoint.
 EXPOSE $SEASIDE_CTRLPORT/tcp
