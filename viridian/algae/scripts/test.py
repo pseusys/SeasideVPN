@@ -1,33 +1,15 @@
-from contextlib import contextmanager
 from logging import getLogger
 from os import environ
 from pathlib import Path
-from typing import Iterator, Literal, Tuple, Union
+from typing import Literal, Union
 
 from colorama import Fore, Style, just_fix_windows_console
 from python_on_whales import DockerClient, DockerException
 
-from scripts._utils import ALGAE_ROOT
+from scripts.utils import docker_test, generate_certificates
 
 # Default logger instance.
 logger = getLogger(__name__)
-
-
-@contextmanager
-def docker_test() -> Iterator[Tuple[Path, bool]]:
-    """
-    Helper function. Build all base Docker images.
-    Also prepare Docker client.
-    Context manager, yields path to "algae/docker" directory and current docker client.
-    """
-    hosted = "CI" in environ
-    docker_path = ALGAE_ROOT / "docker"
-    docker = DockerClient(compose_files=[docker_path / "compose.default.yml"])
-    try:
-        docker.compose.build(quiet=hosted)
-        yield docker_path, hosted
-    finally:
-        docker.compose.rm(stop=True)
 
 
 def _print_container_logs(docker: DockerClient, container: str, last: int = 100) -> None:
@@ -104,7 +86,7 @@ def test_integration() -> int:
     :return: integer return code.
     """
     just_fix_windows_console()
-    with docker_test() as (docker_path, hosted):
+    with docker_test() as (docker_path, hosted), generate_certificates():
         return _test_set(docker_path, "integration", hosted)
 
 
@@ -115,7 +97,7 @@ def test_local() -> int:
     :return: integer return code.
     """
     just_fix_windows_console()
-    with docker_test() as (docker_path, hosted):
+    with docker_test() as (docker_path, hosted), generate_certificates():
         return _test_set(docker_path, "local", hosted)
 
 
@@ -126,7 +108,7 @@ def test_remote() -> int:
     :return: integer return code.
     """
     just_fix_windows_console()
-    with docker_test() as (docker_path, hosted):
+    with docker_test() as (docker_path, hosted), generate_certificates():
         return _test_set(docker_path, "remote", hosted)
 
 
@@ -136,7 +118,7 @@ def test_smoke() -> int:
     :return: integer return code.
     """
     just_fix_windows_console()
-    with docker_test() as (docker_path, hosted):
+    with docker_test() as (docker_path, hosted), generate_certificates():
         result = 0
         for test_set in ("local", "remote"):
             result = result or _test_set(docker_path, test_set, hosted)  # type: ignore[arg-type]
@@ -149,7 +131,7 @@ def test_all() -> int:
     :return: integer return code.
     """
     just_fix_windows_console()
-    with docker_test() as (docker_path, hosted):
+    with docker_test() as (docker_path, hosted), generate_certificates():
         result = 0
         for test_set in ("unit", "integration", "local", "remote"):
             result = result or _test_set(docker_path, test_set, hosted)  # type: ignore[arg-type]

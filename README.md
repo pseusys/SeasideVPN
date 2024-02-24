@@ -284,11 +284,10 @@ These are:
 2. Add shell build, generation, etc. script for easy `caerulean/whirlpool` deployment (with and without container).
 3. Write script for downloading/running/configuring server.
 4. Check tests without 0.0.0.0 iptables rule(s).
-5. Add tail to ControlMessage.
-6. Use port number as user identifier.
-7. Port 255.255 reserved for user auth TCP; ports 0, 1, ... reserved for Surface TCP; all the other ports - user control TCPs; apply permutation on port number to find the correct user! UDP ports 0, 1, ..., 255.255 not used at all.
-8. Encryption: public ECIES key for service ports, chacha for user ports.
-9. Get from the same library (symm_encrypt/symm_decrypt).
+5. Fix all docs and tests.
+6. Increase logging in caerulean.
+7. Rename: client, user -> viridian.
+8. Captcha for user registrations. Security: User TOKEN: should be shared with all users before connection, allows user API access. User CREDENTIALS: each user has his own, allow user connection. Admin TOKEN: node admins don't have credentials, they can connect using this token only.
 
 ### Further considerations
 

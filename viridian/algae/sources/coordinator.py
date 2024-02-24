@@ -7,11 +7,10 @@ from typing import Any, Dict
 from colorama import Fore
 from Crypto.Random import get_random_bytes
 from Crypto.Random.random import randint
-from grpclib.client import Channel
 
 from .viridian import Viridian
 from .generated import ControlConnectionRequest, ControlException, ControlExceptionStatus, ControlHealthcheck, WhirlpoolAuthenticationRequest, WhirlpoolViridianStub
-from .utils import MAX_TAIL_LENGTH, SYMM_KEY_LENGTH, logger
+from .utils import MAX_TAIL_LENGTH, SYMM_KEY_LENGTH, create_grpc_secure_channel, logger
 from .tunnel import Tunnel
 
 # Default algae user UID
@@ -54,8 +53,8 @@ class Coordinator:
         self._gate_socket = socket(AF_INET, SOCK_DGRAM)
         self._gate_socket.bind((self._interface.default_ip, 0))
 
-        channel = Channel(self._address, self._ctrl_port)
-        self._control = WhirlpoolViridianStub(channel)
+        self._channel = create_grpc_secure_channel(self._address, self._ctrl_port)
+        self._control = WhirlpoolViridianStub(self._channel)
 
         if self._min_hc_time < 1:
             raise ValueError("Minimal healthcheck time can't be less than 1 second!")
@@ -181,6 +180,7 @@ class Coordinator:
         logger.info(f"Disconnected from caerulean {self._address}:{self._ctrl_port} successfully!")
 
         self._clean_tunnel()
+        self._channel.close()
         logger.warning("Whirlpool connection terminated!")
 
     def __del__(self) -> None:
@@ -189,3 +189,4 @@ class Coordinator:
         Doesn't terminate caerulean connection gracefully.
         """
         self._clean_tunnel()
+        self._channel.close()

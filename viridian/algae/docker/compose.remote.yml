@@ -9,10 +9,12 @@ services:
       service: algae
     build:
       args:
-        NETWORK_GATEWAY: 10.65.0.100
+        NETWORK_GATEWAY: 10.0.0.100
+    environment:
+      SEASIDE_ADDRESS: 10.0.0.87
     networks:
-      sea-client:
-        ipv4_address: 10.65.0.65
+      sea-net:
+        ipv4_address: 10.0.0.65
     depends_on:
       whirlpool:
         condition: service_healthy
@@ -24,24 +26,20 @@ services:
       service: whirlpool
     build:
       args:
-        NETWORK_GATEWAY: 10.87.0.1
+        NETWORK_GATEWAY: 10.0.0.1
     environment:
-      SEASIDE_EXTERNAL: 10.87.0.87
+      SEASIDE_ADDRESS: 10.0.0.87
+      SEASIDE_EXTERNAL: 10.0.0.87
+    volumes:
+      - ./certificates:/seaside/caerulean/certificates
     networks:
-      sea-client:
-        ipv4_address: 10.65.0.87
-      sea-server:
-        ipv4_address: 10.87.0.87
+      sea-net:
+        ipv4_address: 10.0.0.87
 
 
 networks:
-  sea-client:
+  sea-net:
     ipam:
       config:
-        - subnet: 10.65.0.0/24
-          gateway: 10.65.0.1
-  sea-server:
-    ipam:
-      config:
-        - subnet: 10.87.0.0/24
-          gateway: 10.87.0.1
+        - subnet: 10.0.0.0/24
+          gateway: 10.0.0.1

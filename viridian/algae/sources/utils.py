@@ -1,8 +1,11 @@
 from logging import StreamHandler, getLogger
 from os import getenv
+from ssl import PROTOCOL_TLS_CLIENT, SSLContext, get_server_certificate
 from sys import stdout
 from typing import Any, Dict
 from urllib.parse import parse_qs, urlparse
+
+from grpclib.client import Channel
 
 # Logging level, read from environment variable or set to DEBUG by default.
 _level = getenv("SEASIDE_LOG_LEVEL", "DEBUG")
@@ -24,6 +27,13 @@ SYMM_KEY_LENGTH = 32
 
 # Maximum length of message - transport level packet.
 MAX_TWO_BYTES_VALUE = (1 << 16) - 1
+
+
+def create_grpc_secure_channel(host: str, port: int) -> Channel:
+    context = SSLContext(PROTOCOL_TLS_CLIENT)
+    certificate = get_server_certificate((host, port))
+    context.load_verify_locations(cadata=certificate)
+    return Channel(host, port, ssl=context)
 
 
 def parse_connection_link(link: str) -> Dict[str, Any]:
