@@ -288,6 +288,7 @@ These are:
 6. Increase logging in caerulean.
 7. Rename: client, user -> viridian.
 8. Captcha for user registrations. Security: User TOKEN: should be shared with all users before connection, allows user API access. User CREDENTIALS: each user has his own, allow user connection. Admin TOKEN: node admins don't have credentials, they can connect using this token only.
+9. Remove algae warnings (during tests).
 
 ### Further considerations
 

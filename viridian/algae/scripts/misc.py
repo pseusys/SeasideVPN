@@ -55,7 +55,7 @@ def generate_certificates(cert_file: str = "cert.crt", key_file: str = "cert.key
     cert.get_subject().ST = "LocalComputer"  # noqa: E741
     cert.get_subject().L = "PC"  # noqa: E741
     cert.get_subject().O = "SeasideVPN"  # noqa: E741
-    cert.get_subject().OU = "viridian/algae"  # noqa: E741
+    cert.get_subject().OU = "viridian-algae"  # noqa: E741
     cert.get_subject().CN = "Algae"  # noqa: E741
     cert.get_subject().emailAddress = "algae@seaside.vpn"
     cert.gmtime_adj_notBefore(0)
