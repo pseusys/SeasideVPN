@@ -53,7 +53,7 @@ func NewViridianDict(ctx context.Context) *ViridianDict {
 		maxOverhead:             uint(maxAdmins),
 		entries:                 make(map[uint16]*Viridian, maxTotal),
 	}
-	go dict.SendPacketsToViridian(ctx, tunnelConfig.Tunnel, tunnelConfig.Network)
+	go dict.SendPacketsToViridians(ctx, tunnelConfig.Tunnel, tunnelConfig.Network)
 
 	return &dict
 }

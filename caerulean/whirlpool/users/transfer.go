@@ -104,13 +104,13 @@ func (dict *ViridianDict) ReceivePacketsFromViridian(ctx context.Context, userID
 // Start receiving packets from the internet (external interface) and sending them to viridians.
 // Accept Context for graceful termination, tunnel interface pointer and tunnel IP network address pointer.
 // NB! this method is blocking, so it should be run as goroutine.
-func (dict *ViridianDict) SendPacketsToViridian(ctx context.Context, tunnel *water.Interface, tunnetwork *net.IPNet) {
+func (dict *ViridianDict) SendPacketsToViridians(ctx context.Context, tunnel *water.Interface, tunnetwork *net.IPNet) {
 	buffer := make([]byte, math.MaxUint16)
 
 	// CCreate buffer for packet decoding
 	serialBuffer := gopacket.NewSerializeBuffer()
 
-	logrus.Debug("Sending packets to viridian started")
+	logrus.Debug("Sending packets to viridians started")
 	for {
 		// Handle graceful termination
 		select {
