@@ -45,7 +45,7 @@ func (dict *ViridianDict) ReceivePacketsFromViridian(ctx context.Context, userID
 		serialBuffer.Clear()
 
 		// Read packet from UDP connection
-		r, _, err := connection.ReadFromUDP(buffer)
+		r, address, err := connection.ReadFromUDP(buffer)
 		if err != nil || r == 0 {
 			logrus.Errorf("Error reading from viridian (%d bytes read): %v", r, err)
 			continue
@@ -57,6 +57,9 @@ func (dict *ViridianDict) ReceivePacketsFromViridian(ctx context.Context, userID
 			logrus.Errorf("Error: user %d not registered", userID)
 			continue
 		}
+
+		viridian.Port = uint16(address.Port)
+		viridian.Gateway = address.IP
 
 		// Decode the packet
 		raw, err := crypto.Decrypt(buffer[:r], viridian.AEAD)
