@@ -23,6 +23,7 @@ jobs:
 
       - name: Install Dependencies 🔮
         run: |
+          apt-get install -y openssl
           pip3 install poetry
           poetry -C viridian/algae install --without client,devel
 

@@ -65,4 +65,3 @@ def parse_connection_link(link: str) -> Dict[str, Any]:
     result.update({"payload": query["payload"][0]})
 
     return result
-

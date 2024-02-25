@@ -5,7 +5,7 @@ from re import compile
 from shutil import rmtree
 from typing import Iterator, List, Tuple
 
-from OpenSSL.crypto import FILETYPE_PEM, TYPE_RSA, PKey, X509, X509Extension, dump_certificate, dump_privatekey
+from OpenSSL.crypto import FILETYPE_PEM, TYPE_RSA, X509, PKey, X509Extension, X509Name, dump_certificate, dump_privatekey
 from python_on_whales import DockerClient
 
 # Root of algae viridian source files.
@@ -41,7 +41,7 @@ def _get_test_whirlpool_addresses() -> List[str]:
     compose_searcher = compile(r"SEASIDE_ADDRESS: (\d+\.\d+\.\d+\.\d+)")
     for compose in docker_path.glob("compose.*.yml"):
         whirlpool_allowed_ips += compose_searcher.findall(compose.read_text())
-    
+
     return whirlpool_allowed_ips
 
 
