@@ -64,7 +64,7 @@ def generate_certificates(cert_file: str = "cert.crt", key_file: str = "cert.key
     cert.set_pubkey(key)
     cert.sign(key, "sha512")
 
-    addresses = ",".join([f"IP:{address}" for address in _get_test_whirlpool_addresses()])
+    addresses = ", ".join([f"IP:{address}" for address in _get_test_whirlpool_addresses()])
     cert.add_extensions([X509Extension(b"subjectAltName", False, addresses.encode())])
 
     files_path = Path("docker/certificates")
