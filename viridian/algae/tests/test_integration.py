@@ -16,7 +16,7 @@ from ..sources.utils import MAX_TAIL_LENGTH, MAX_TWO_BYTES_VALUE
 logger = getLogger(__name__)
 
 
-def is_tcp_available(address: Optional[str] = None, port: int = 80, f=False) -> bool:
+def is_tcp_available(address: Optional[str] = None, port: int = 80) -> bool:
     address = environ["RESTRICTED_ADDRESS"] if address is None else address
     with socket(AF_INET, SOCK_STREAM) as sock:
         try:
@@ -24,8 +24,6 @@ def is_tcp_available(address: Optional[str] = None, port: int = 80, f=False) -> 
             sock.connect((address, port))
             return True
         except TimeoutError as e:
-            if f:
-                raise e
             return False
 
 
@@ -84,7 +82,7 @@ def test_open_viridian(controller: Coordinator) -> None:
 @pytest.mark.dependency(depends=["test_open_viridian"])
 def test_validate_request() -> None:
     logger.info("Testing reachability with TCP example server")
-    assert is_tcp_available(f=True), "External website isn't available!"
+    assert is_tcp_available(), "External website isn't available!"
 
 
 @pytest.mark.asyncio(scope="session")

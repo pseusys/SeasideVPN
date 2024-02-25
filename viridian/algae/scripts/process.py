@@ -12,7 +12,7 @@ from python_on_whales import Container, DockerClient
 from python_on_whales.components.image.cli_wrapper import ValidImage
 from python_on_whales.utils import run as docker_run
 
-from scripts.utils import ALGAE_ROOT
+from scripts.misc import ALGAE_ROOT
 
 # Default algae executable file name.
 _EXECUTABLE_NAME = "algae.run"

@@ -6,7 +6,7 @@ from typing import Literal, Union
 from colorama import Fore, Style, just_fix_windows_console
 from python_on_whales import DockerClient, DockerException
 
-from scripts.utils import docker_test, generate_certificates
+from scripts.misc import docker_test, generate_certificates
 
 # Default logger instance.
 logger = getLogger(__name__)

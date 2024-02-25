@@ -5,7 +5,7 @@ from re import compile
 from shutil import rmtree
 from typing import Iterator, List, Tuple
 
-from OpenSSL.crypto import FILETYPE_PEM, TYPE_RSA, X509, PKey, X509Extension, X509Name, dump_certificate, dump_privatekey
+from OpenSSL.crypto import FILETYPE_PEM, TYPE_RSA, X509, PKey, X509Extension, dump_certificate, dump_privatekey
 from python_on_whales import DockerClient
 
 # Root of algae viridian source files.
