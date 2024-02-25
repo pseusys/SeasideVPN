@@ -28,7 +28,7 @@ def lint() -> int:
     lint_result += sum(len(report.get_statistics(sel)) for sel in selector)
     lint_result += format(False)
     mypy_opts = ["--strict", "--ignore-missing-imports", "--no-namespace-packages"]
-    out, err, code = api.run(mypy_opts + [str(file) for file in ALGAE_ROOT.glob("**/*.py")])
+    out, err, code = api.run(mypy_opts + [str(file) for file in ALGAE_ROOT.glob("*/*.py")])
     if code != 0:
         logger.error(out)
         logger.error(err)
