@@ -148,7 +148,7 @@ func (dict *ViridianDict) SendPacketsToViridians(ctx context.Context, tunnel *wa
 		}
 
 		// Resolve the viridian destination address
-		gateway, err := net.ResolveUDPAddr("udp4", fmt.Sprintf("%s:%v", viridian.Gateway.String(), viridian.Port))
+		gateway, err := net.ResolveUDPAddr("udp4", fmt.Sprintf("%s:%d", viridian.Gateway.String(), viridian.Port))
 		if err != nil {
 			logrus.Errorf("Error parsing return address: %v", err)
 			continue
