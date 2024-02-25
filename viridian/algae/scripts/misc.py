@@ -32,12 +32,12 @@ def docker_test() -> Iterator[Tuple[Path, bool]]:
 def _get_test_whirlpool_addresses() -> List[str]:
     whirlpool_allowed_ips = list()
 
-    env_var_file = Path("docker/test.conf.env")
+    env_var_file = ALGAE_ROOT / "docker/test.conf.env"
     if env_var_file.exists():
         env_var_searcher = compile(r"SEASIDE_ADDRESS=(\d+\.\d+\.\d+\.\d+)")
         whirlpool_allowed_ips += env_var_searcher.findall(env_var_file.read_text())
 
-    docker_path = Path("docker")
+    docker_path = ALGAE_ROOT / "docker"
     compose_searcher = compile(r"SEASIDE_ADDRESS: (\d+\.\d+\.\d+\.\d+)")
     for compose in docker_path.glob("compose.*.yml"):
         whirlpool_allowed_ips += compose_searcher.findall(compose.read_text())
@@ -64,11 +64,10 @@ def generate_certificates(cert_file: str = "cert.crt", key_file: str = "cert.key
     cert.set_pubkey(key)
     cert.sign(key, "sha512")
 
-    raise Exception(_get_test_whirlpool_addresses())
     addresses = ", ".join([f"IP:{address}" for address in _get_test_whirlpool_addresses()])
     cert.add_extensions([X509Extension(b"subjectAltName", False, addresses.encode())])
 
-    files_path = Path("docker/certificates")
+    files_path = ALGAE_ROOT / "docker/certificates"
     files_path.mkdir(exist_ok=True)
 
     cert_file_path = files_path / cert_file
