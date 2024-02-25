@@ -57,7 +57,7 @@ async def main(args: Sequence[str] = argv[1:]) -> None:
     await controller.start()
 
 
-async def finish() -> None:  # type: ignore[no-untyped-def]
+async def finish() -> None:
     """
     Terminate algae client.
     Will be executed only on main process, cleans all VPN client settings.

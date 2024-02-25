@@ -96,7 +96,7 @@ class Coordinator:
         Also initialize the session obfuscator.
         """
         self._session_key = get_random_bytes(SYMM_KEY_LENGTH)
-        logger.debug(f"Symmetric session cipher initialized ({self._user_name}): {self._session_key}!")
+        logger.debug(f"Symmetric session cipher initialized ({self._user_name}): {self._session_key!r}!")
         request = WhirlpoolAuthenticationRequest(self._user_name, self._session_key, self._node_payload)
 
         logger.debug("Requesting whirlpool token...")

@@ -5,7 +5,7 @@ from flake8.api.legacy import get_style_guide
 from isort import check_file, file
 from mypy import api
 
-from scripts.utils import ALGAE_ROOT
+from scripts.misc import ALGAE_ROOT
 
 # Maximum python sources line length.
 _MAX_LINE_LEN = 250
