@@ -8,10 +8,10 @@ from colorama import Fore
 from Crypto.Random import get_random_bytes
 from Crypto.Random.random import randint
 
-from .viridian import Viridian
 from .generated import ControlConnectionRequest, ControlException, ControlExceptionStatus, ControlHealthcheck, WhirlpoolAuthenticationRequest, WhirlpoolViridianStub
-from .utils import MAX_TAIL_LENGTH, SYMM_KEY_LENGTH, create_grpc_secure_channel, logger
 from .tunnel import Tunnel
+from .utils import MAX_TAIL_LENGTH, SYMM_KEY_LENGTH, create_grpc_secure_channel, logger
+from .viridian import Viridian
 
 # Default algae user UID
 _DEFAULT_USER_NAME = "default_algae_user"
@@ -87,10 +87,7 @@ class Coordinator:
             self._clean_tunnel()
 
     def _grpc_metadata(self) -> Dict[str, Any]:
-        return {
-            "timeout": self._max_timeout,
-            "metadata": (("tail", get_random_bytes(MAX_TAIL_LENGTH).hex()),)
-        }
+        return {"timeout": self._max_timeout, "metadata": (("tail", get_random_bytes(MAX_TAIL_LENGTH).hex()),)}
 
     async def _receive_token(self) -> None:
         """

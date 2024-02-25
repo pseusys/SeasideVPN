@@ -16,7 +16,7 @@ from ..sources.utils import MAX_TAIL_LENGTH, MAX_TWO_BYTES_VALUE
 logger = getLogger(__name__)
 
 
-def is_tcp_available(address: Optional[str] = None, port: int = 80, f = False) -> bool:
+def is_tcp_available(address: Optional[str] = None, port: int = 80, f=False) -> bool:
     address = environ["RESTRICTED_ADDRESS"] if address is None else address
     with socket(AF_INET, SOCK_STREAM) as sock:
         try:
