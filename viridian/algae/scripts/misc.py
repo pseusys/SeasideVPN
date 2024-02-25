@@ -51,12 +51,12 @@ def generate_certificates(cert_file: str = "cert.crt", key_file: str = "cert.key
     key.generate_key(TYPE_RSA, 4096)
 
     cert = X509()
-    cert.get_subject().C = "TS"
-    cert.get_subject().ST = "LocalComputer"
-    cert.get_subject().L = "PC"
-    cert.get_subject().O = "SeasideVPN"
-    cert.get_subject().OU = "viridian/algae"
-    cert.get_subject().CN = "Algae"
+    cert.get_subject().C = "TS"  # noqa: E741
+    cert.get_subject().ST = "LocalComputer"  # noqa: E741
+    cert.get_subject().L = "PC"  # noqa: E741
+    cert.get_subject().O = "SeasideVPN"  # noqa: E741
+    cert.get_subject().OU = "viridian/algae"  # noqa: E741
+    cert.get_subject().CN = "Algae"  # noqa: E741
     cert.get_subject().emailAddress = "algae@seaside.vpn"
     cert.gmtime_adj_notBefore(0)
     cert.gmtime_adj_notAfter(10 * 365 * 24 * 60 * 60)

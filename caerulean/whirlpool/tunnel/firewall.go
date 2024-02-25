@@ -93,6 +93,7 @@ func (conf *TunnelConfig) openForwarding(intIP, extIP string, ctrlPort int) erro
 // Use iptables-restore command to restore iptables configurations from bytes.
 // Should be applied for TunnelConf object, restore the configurations from .buffer field.
 func (conf *TunnelConfig) closeForwarding() {
+	runCommand("iptables", "-F")
 	command := exec.Command("iptables-restore", "--counters")
 	command.Stdin = &conf.buffer
 	err := command.Run()

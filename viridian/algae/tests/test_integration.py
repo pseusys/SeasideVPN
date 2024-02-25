@@ -23,7 +23,7 @@ def is_tcp_available(address: Optional[str] = None, port: int = 80) -> bool:
             sock.settimeout(5.0)
             sock.connect((address, port))
             return True
-        except TimeoutError as e:
+        except TimeoutError:
             return False
 
 
