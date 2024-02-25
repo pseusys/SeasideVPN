@@ -72,9 +72,12 @@ func (conf *TunnelConfig) openForwarding(intIP, extIP string, ctrlPort int) erro
 	// Accept localhost connections
 	runCommand("iptables", "-A", "INPUT", "-i", "lo", "-j", "ACCEPT")
 	runCommand("iptables", "-A", "OUTPUT", "-o", "lo", "-j", "ACCEPT")
+	// Allow all the connections that are already established
+	runCommand("iptables", "-A", "INPUT", "-m", "conntrack", "--ctstate", "ESTABLISHED,RELATED", "-j", "ACCEPT")
+	runCommand("iptables", "-A", "OUTPUT", "-m", "conntrack", "--ctstate", "ESTABLISHED", "-j", "ACCEPT")
 	// Accept SSH connections
-	runCommand("iptables", "-A", "INPUT", "-p", "tcp", "-m", "tcp", "--dport", "22", "-j", "ACCEPT")
-	runCommand("iptables", "-A", "OUTPUT", "-p", "tcp", "--sport", "22", "-m", "state", "--state", "ESTABLISHED", "-j", "ACCEPT")
+	runCommand("iptables", "-A", "INPUT", "-p", "tcp", "--dport", "22", "-m", "conntrack", "--ctstate", "NEW,ESTABLISHED", "-j", "ACCEPT")
+	runCommand("iptables", "-A", "OUTPUT", "-p", "tcp", "--sport", "22", "-m", "conntrack", "--ctstate", "ESTABLISHED", "-j", "ACCEPT")
 	// Accept packets to port network, control and whirlpool ports, also accept PING packets
 	runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "udp", "-d", intIP, "-i", intName}, conf.vpnDataKbyteLimitRule)...)
 	runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "tcp", "-d", intIP, "--dport", ctrlStr, "-i", intName}, conf.controlPacketLimitRule)...)
