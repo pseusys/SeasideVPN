@@ -76,7 +76,7 @@ func (conf *TunnelConfig) openForwarding(intIP, extIP string, ctrlPort int) erro
 	runCommand("iptables", "-A", "INPUT", "-m", "conntrack", "--ctstate", "ESTABLISHED,RELATED", "-j", "ACCEPT")
 	runCommand("iptables", "-A", "OUTPUT", "-m", "conntrack", "--ctstate", "ESTABLISHED", "-j", "ACCEPT")
 	// Accept SSH connections
-	runCommand("iptables", "-A", "INPUT", "-p", "tcp", "--dport", "22", "-m", "conntrack", "--ctstate", "NEW,ESTABLISHED", "-j", "ACCEPT")
+	runCommand("iptables", "-A", "INPUT", "-p", "tcp", "--dport", "22", "-m", "conntrack", "--ctstate", "NEW,ESTABLISHED,RELATED", "-j", "ACCEPT")
 	runCommand("iptables", "-A", "OUTPUT", "-p", "tcp", "--sport", "22", "-m", "conntrack", "--ctstate", "ESTABLISHED", "-j", "ACCEPT")
 	// Accept packets to port network, control and whirlpool ports, also accept PING packets
 	runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "udp", "-d", intIP, "-i", intName}, conf.vpnDataKbyteLimitRule)...)

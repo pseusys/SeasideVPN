@@ -69,6 +69,7 @@ func (dict *ViridianDict) ReceivePacketsFromViridian(ctx context.Context, userID
 		packet := gopacket.NewPacket(raw, layers.LayerTypeIPv4, gopacket.NoCopy)
 		if err := packet.ErrorLayer(); err != nil {
 			logrus.Errorf("Error decoding some part of the packet: %v", err)
+			continue
 		}
 
 		// Get IP layer header and change source IP
