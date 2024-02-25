@@ -109,6 +109,7 @@ func (dict *ViridianDict) Add(ctx context.Context, token *generated.UserToken, a
 	subscriptionTimeout := token.Subscription.AsTime()
 	deletionTimer := time.AfterFunc(time.Duration(dict.firstHealthcheckDelay), func() { dict.Delete(userID, true) })
 
+	logrus.Infof("Viridian with UID: %s, admin: %t, address: %v, gateway: %v, port: %d received...", token.Uid, token.Privileged, address, gateway, port)
 	viridian := &Viridian{
 		UID:           token.Uid,
 		AEAD:          aead,

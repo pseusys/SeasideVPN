@@ -20,6 +20,7 @@ Whirlpool sends messages to UDP port 8542, encrypted.
 3. `protoc-gen-go` (code generator for golang) version >= 1.25
   Regularily can be installed with this command: `go install google.golang.org/protobuf/cmd/protoc-gen-go@latest`.
 4. `go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest`
+5. https://linuxconfig.org/how-to-turn-on-off-ip-forwarding-in-linux
 
 ## Web API
 
