@@ -17,10 +17,16 @@ Whirlpool sends messages to UDP port 8542, encrypted.
   Installation guide can be found [here](https://go.dev/doc/install).
 2. `protobuf` (compiler) version >= 24.4
   Installation guide example can be found [here](https://grpc.io/docs/protoc-installation/#install-pre-compiled-binaries-any-os).
-3. `protoc-gen-go` (code generator for golang) version >= 1.25
+3. `protoc-gen-go` (`protobuf` code generator for golang) version >= 1.25
   Regularily can be installed with this command: `go install google.golang.org/protobuf/cmd/protoc-gen-go@latest`.
-4. `go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest`
-5. https://linuxconfig.org/how-to-turn-on-off-ip-forwarding-in-linux
+4. `protoc-gen-go-grpc` (`gRPC` code generator for golang)
+  Regularily can be installed with this command:
+  `go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest`
+5. Configure server
+  Disable IPv6 router solicitation (for tunnel interface):
+  `echo 0 > /proc/sys/net/ipv6/conf/default/accept_ra`
+  Enable IP packet forwarding:
+  `echo 1 > /proc/sys/net/ipv4/ip_forward`
 
 ## Web API
 

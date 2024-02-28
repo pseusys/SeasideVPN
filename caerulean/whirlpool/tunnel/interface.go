@@ -20,15 +20,14 @@ func (conf *TunnelConfig) openInterface(extIP string) error {
 	tunnelCIDR, _ := conf.Network.Mask.Size()
 
 	// Receive MTU from environment or use MTU of external network interface and cast it to string
-	tunnelIntMTU := int(conf.mtu)
 	if conf.mtu <= 0 {
 		tunnelInterface, err := findInterfaceByIP(extIP)
 		if err != nil {
 			return fmt.Errorf("error resolving network addresses: %v", err)
 		}
-		tunnelIntMTU = tunnelInterface.MTU
+		conf.mtu = tunnelInterface.MTU
 	}
-	tunnelMTU := strconv.Itoa(tunnelIntMTU)
+	tunnelMTU := strconv.Itoa(conf.mtu)
 
 	// Setup tunnel interface MTU
 	runCommand("ip", "link", "set", "dev", tunnelName, "mtu", tunnelMTU)
