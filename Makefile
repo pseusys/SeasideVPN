@@ -1,5 +1,6 @@
 .ONESHELL:
 .DEFAULT_GOAL := help
+SHELL = /bin/bash
 
 BOLD=\033[1m
 BLUE=\033[34m
@@ -76,7 +77,11 @@ lint-algae: install-algae-all
 	poetry -C viridian/algae run lint
 .PHONY: lint-algae
 
-lint: lint-whirlpool lint-algae
+lint-scripts:
+	shopt -s globstar && shellcheck -x -e SC2129,SC2002 **/*.sh
+.PHONY: lint-scripts
+
+lint: lint-whirlpool lint-algae lint-scripts
 	@ # Lint all the system parts
 .PHONY: lint
 

@@ -97,7 +97,10 @@ clean:
 	@ # Clean all the generated files, Docker images, containers and networks
 	rm -rf build
 	rm -rf generated
+	rm -rf certificates
+	rm -rf SeasideVPN
 	rm -f go.sum
+	rm -f conf.env
 	docker rm -f seaside-whirlpool-run seaside-whirlpool-lint seaside-whirlpool-test
 	docker rmi -f seaside-whirlpool-prod seaside-whirlpool-test
 .PHONY: clean

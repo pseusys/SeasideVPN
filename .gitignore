@@ -8,6 +8,9 @@
 **/logs
 **/*.log
 
+## Environment files
+**/conf.env
+
 
 
 # Python:
@@ -42,3 +45,7 @@ caerulean/whirlpool/build/*.run
 
 ## Go generated files:
 **/*.pb.go
+
+## Generated certificates:
+caerulean/whirlpool/SeasideVPN/
+caerulean/whirlpool/certificates/

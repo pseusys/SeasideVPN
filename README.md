@@ -262,6 +262,7 @@ These are:
   ```
 
   for linting all system components.
+  > NB! A special [`shellcheck`](https://github.com/koalaman/shellcheck) tool is required for bash script linting.
 
 - ```bash
   make clean

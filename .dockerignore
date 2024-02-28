@@ -4,13 +4,15 @@
 
 caerulean/whirlpool/build
 caerulean/whirlpool/generated
+caerulean/whirlpool/SeasideVPN
 caerulean/whirlpool/tests
-caerulean/whirlpool/scripts
 caerulean/whirlpool/Dockerfile.*
 caerulean/whirlpool/example.conf.env
 caerulean/whirlpool/go.sum
 caerulean/whirlpool/Makefile
 caerulean/whirlpool/README.md
+caerulean/whirlpool/whirlpool.sh
+caerulean/whirlpool/conf.env
 
 
 # Viridian

@@ -37,7 +37,7 @@ type TunnelConfig struct {
 	controlPacketLimitRule     []string
 	icmpPacketPACKETLimitRules []string
 
-	mtu uint
+	mtu int
 }
 
 // Preserve current iptables configuration in a TunnelConfig object.
@@ -55,7 +55,7 @@ func Preserve() *TunnelConfig {
 		vpnDataKbyteLimitRule:      vpnDataKbyteLimitRule,
 		controlPacketLimitRule:     controlPacketLimitRule,
 		icmpPacketPACKETLimitRules: icmpPacketPACKETLimitRules,
-		mtu:                        uint(mtu),
+		mtu:                        mtu,
 	}
 
 	conf.mutex.Lock()
