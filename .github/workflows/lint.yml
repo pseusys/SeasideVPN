@@ -8,6 +8,20 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  shell-scripts-lint:
+    name: Lint Shell Scripts Everywhere
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v3
+
+      - name: Install Dependencies 🔮
+        run: apt-get install shellcheck
+
+      - name: Lint Shell Scripts 🧪
+        run: make lint-scripts
+
   viridian-algae-lint:
     name: Lint Viridian Algae Client
     runs-on: ubuntu-latest

@@ -78,7 +78,9 @@ lint-algae: install-algae-all
 .PHONY: lint-algae
 
 lint-scripts:
-	shopt -s globstar && shellcheck -x -e SC2129,SC2002 **/*.sh
+	shopt -s globstar
+	shellcheck -x -e SC2129,SC2002 **/*.sh
+	shopt -u globstar
 .PHONY: lint-scripts
 
 lint: lint-whirlpool lint-algae lint-scripts
