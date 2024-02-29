@@ -13,6 +13,16 @@
 
 
 
+# JavaScript:
+
+## Node modules:
+.github/scripts/node_modules
+
+## Dependency lock file:
+.github/scripts/package-lock.json
+
+
+
 # Python:
 
 ## Poetry lock file:
@@ -47,5 +57,4 @@ caerulean/whirlpool/build/*.run
 **/*.pb.go
 
 ## Generated certificates:
-caerulean/whirlpool/SeasideVPN/
 caerulean/whirlpool/certificates/

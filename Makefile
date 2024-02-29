@@ -1,6 +1,8 @@
 .ONESHELL:
 .DEFAULT_GOAL := help
-SHELL = /bin/bash
+
+SHELL=/bin/bash
+.SHELLFLAGS=-O globstar -c
 
 BOLD=\033[1m
 BLUE=\033[34m
@@ -78,9 +80,8 @@ lint-algae: install-algae-all
 .PHONY: lint-algae
 
 lint-scripts:
-	shopt -s globstar
-	shellcheck -x -e SC2129,SC2002 **/*.sh
-	shopt -u globstar
+	shellcheck -x -e SC2129,SC2002,SC2091 **/*.sh
+	npm run --prefix .github/scripts lint-scripts
 .PHONY: lint-scripts
 
 lint: lint-whirlpool lint-algae lint-scripts
