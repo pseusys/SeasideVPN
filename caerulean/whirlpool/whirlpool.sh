@@ -87,7 +87,7 @@ PROTOC_VERSION="3.15.8"
 # #@: Commands to check.
 function check_command_exists() {
     for comm in "$@" ; do
-        if ! command -v "$comm" &> /dev/null ; then
+        if ! $(command -v "$comm" &> /dev/null) ; then
             echo "Command '$comm' is not found!"
             exit 1
         fi
@@ -98,7 +98,7 @@ function check_command_exists() {
 # Certificates will be valid for 1000 years, prime256v1 algorithm will be used.
 # #1: IP address to authorize the certificate for.
 function generate_certificates() {
-    check_command_exists openssl &> /dev/null || apt-get install -y --no-install-recommends openssl
+    $(check_command_exists openssl &> /dev/null) || apt-get install -y --no-install-recommends openssl
 
     if [[ $1 =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
         local ALTNAMES="subjectAltName = IP:$1"
@@ -119,9 +119,9 @@ function generate_certificates() {
 # Check if the GO dependencies are installed and install them.
 # Update $PATH and ~/.bashrc file during installation.
 function check_installation() {
-    check_command_exists wget tar unzip &> /dev/null || apt-get install -y --no-install-recommends wget tar zip
+    $(check_command_exists wget tar unzip &> /dev/null) || apt-get install -y --no-install-recommends wget tar zip
 
-    if ! check_command_exists go &> /dev/null ; then
+    if ! $(check_command_exists go &> /dev/null) ; then
         wget -q https://go.dev/dl/go$GO_VERSION.linux-amd64.tar.gz -O /tmp/golang.tar.gz
         rm -rf /usr/local/go
         tar -C /usr/local -xzf /tmp/golang.tar.gz
@@ -129,7 +129,7 @@ function check_installation() {
         export PATH=$PATH:/usr/local/go/bin
     fi
 
-    if ! check_command_exists protoc &> /dev/null ; then
+    if ! $(check_command_exists protoc &> /dev/null) ; then
         wget -q https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-linux-x86_64.zip -O /tmp/protoc.zip
         rm -rf /usr/local/protoc
         unzip -q /tmp/protoc.zip -d /usr/local/protoc
@@ -138,10 +138,10 @@ function check_installation() {
     fi
 
     local GEN_PROTOC="google.golang.org/protobuf/cmd/protoc-gen-go"
-    go list "$GEN_PROTOC" &> /dev/null || go install "$GEN_PROTOC@latest"
+    $(go list "$GEN_PROTOC" &> /dev/null) || go install "$GEN_PROTOC@latest"
 
     local GEN_GRPC="google.golang.org/grpc/cmd/protoc-gen-go-grpc"
-    go list "$GEN_GRPC" &> /dev/null || go install "$GEN_GRPC@latest"
+    $(go list "$GEN_GRPC" &> /dev/null) || go install "$GEN_GRPC@latest"
 }
 
 # Configure linux system to support node execution.
@@ -180,7 +180,7 @@ function generate_env_file() {
 # Code will be stored in ./SeasideVPN sirectory.
 # #1: git branch to clone.
 function download_whirlpool_distribution() {
-    check_command_exists git make &> /dev/null || apt-get install -y --no-install-recommends git make
+    $(check_command_exists git make &> /dev/null) || apt-get install -y --no-install-recommends git make
 
     git clone -n --branch "$1" --depth=1 --filter=tree:0 https://github.com/pseusys/SeasideVPN
     cd SeasideVPN
@@ -312,7 +312,7 @@ fi
 
 if [ "$RUN_IN_DOCKER" = true ] ; then
     echo -e "Running whirlpool node in Docker..."
-    check_command_exists docker &> /dev/null || echo -e "${RED}Docker not available!${RESET}" && exit 1
+    $(check_command_exists docker &> /dev/null) || echo -e "${RED}Docker not available!${RESET}" && exit 1
     COMMAND="docker run --env-file=conf.env --network=host --privileged ghcr.io/pseusys/seasidevpn/caerulean-whirlpool:$WHIRLPOOL_DOCKER_LABEL"
 else
     echo -e "Running whirlpool node locally..."
