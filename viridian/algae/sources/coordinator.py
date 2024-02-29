@@ -13,6 +13,8 @@ from .tunnel import Tunnel
 from .utils import MAX_TAIL_LENGTH, SYMM_KEY_LENGTH, create_grpc_secure_channel, logger
 from .viridian import Viridian
 
+VERSION = "0.0.1"
+
 # Default algae user UID
 _DEFAULT_USER_NAME = "default_algae_user"
 
@@ -111,7 +113,7 @@ class Coordinator:
         Only proceed if valid user ID and successful control response status is received.
         """
         logger.debug(f"Establishing connection to caerulean {self._address}:{self._ctrl_port}...")
-        request = ControlConnectionRequest(self._session_token, self._node_payload, inet_aton(self._interface.default_ip), self._gate_socket.getsockname()[1])
+        request = ControlConnectionRequest(self._session_token, VERSION, self._node_payload, inet_aton(self._interface.default_ip), self._gate_socket.getsockname()[1])
         response = await self._control.connect(request, **self._grpc_metadata())
 
         if response.user_id is None:

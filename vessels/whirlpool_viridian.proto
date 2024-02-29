@@ -28,12 +28,14 @@ message WhirlpoolAuthenticationResponse {
 message ControlConnectionRequest {
     // Encrypted user token
     bytes token = 1;
+    // User client version
+    string version = 2;
     // Node authentication owner payload
-    optional string payload = 2;
+    optional string payload = 3;
     // User local IP address
-    bytes address = 3;
+    bytes address = 4;
     // User seaside port number
-    int32 port = 4;
+    int32 port = 5;
 }
 
 message ControlConnectionResponse {

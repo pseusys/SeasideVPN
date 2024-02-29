@@ -2,9 +2,7 @@
 
 A simple PPTP UDP and VPN system
 
-> Inspired by [this](https://github.com/habibiefaried/vpn-protocol-udp-pptp) project and tutorial.
-
-My first program in `Go`, written with assistance of multiple tutorials and ChatGPT.
+> Current project version: **"0.0.1"**
 
 ## General info
 
@@ -235,6 +233,10 @@ Caerulean is server side of Seaside VPN, it consists of several parts:
 🚧 Under construction! 🚧
 
 #### Whirlpool
+
+> Inspired by [this](https://github.com/habibiefaried/vpn-protocol-udp-pptp) project and tutorial.
+
+My first program in `Go`, written with assistance of multiple tutorials and ChatGPT.
 
 See detailed documentation [here](./caerulean/whirlpool/README.md).
 

@@ -63,7 +63,7 @@ func start(base context.Context) *MetaServer {
 }
 
 func runServer(server *grpc.Server, listener net.Listener) {
-	logrus.Infof("starting gRPC server on address: %v", listener.Addr())
+	logrus.Infof("Starting gRPC server on address: %v", listener.Addr())
 	if err := server.Serve(listener); err != nil {
 		logrus.Fatalf("failed to serve: %v", err)
 	}

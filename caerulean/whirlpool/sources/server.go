@@ -8,6 +8,7 @@ import (
 	"main/generated"
 	"main/users"
 	"main/utils"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -18,6 +19,8 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
+
+const VERSION = "0.0.1"
 
 type WhirlpoolServer struct {
 	generated.UnimplementedWhirlpoolViridianServer
@@ -91,6 +94,11 @@ func (server *WhirlpoolServer) Connect(ctx context.Context, request *generated.C
 	remoteAddress, _, err := utils.GetIPAndPortFromAddress(address.Addr)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error parsing gateway IP address: %v", err)
+	}
+
+	// Check viridian version
+	if strings.Split(VERSION, ".")[0] != strings.Split(request.Version, ".")[0] {
+		return nil, status.Error(codes.FailedPrecondition, "major versions do not match")
 	}
 
 	// Check if token is not null

@@ -194,7 +194,7 @@ function download_whirlpool_distribution() {
 # Print configuration of the node that will be applied upon running.
 function print_server_info() {
     echo -e "\n\n>> ================================================ >>"
-    echo -e "${BOLD}${GREEN}Seaside Whirlpool node successfully configured!${RESET}"
+    echo -e "${BOLD}${GREEN}Seaside Whirlpool node version "0.0.1" successfully configured!${RESET}"
     echo -e "The node address is: ${BLUE}$SEASIDE_ADDRESS:$SEASIDE_CTRLPORT${RESET}"
     echo -e "The administrator payload is: ${BLUE}$SEASIDE_PAYLOAD_OWNER${RESET}"
     echo -e "\tConnection link: ${YELLOW}${UNDER}seaside+whirlpool://$SEASIDE_ADDRESS:$SEASIDE_CTRLPORT?payload=$SEASIDE_PAYLOAD_OWNER${RESET}"
