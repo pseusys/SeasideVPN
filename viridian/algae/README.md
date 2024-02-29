@@ -1,10 +1,12 @@
 # Viridian Algae
 
-> Target platform: _linux_ only
+> Current version: **"0.0.1"**
 
 Small CLI-based client application, written in Python3.
 It can be run on linux (in for- and background), it's highly customizable.
 Created mainly for development and testing purposes.
+
+> Target platform: _linux_ only
 
 ## Dependencies
 

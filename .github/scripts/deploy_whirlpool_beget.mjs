@@ -1,10 +1,10 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
+import { execSync } from "node:child_process";
 
 import fetch from "node-fetch";
 import { NodeSSH } from "node-ssh";
-import { execSync } from "node:child_process";
 
 const BOLD = "\x1b[1m";
 const BLUE = "\x1b[34m";
@@ -17,7 +17,7 @@ const SLEEP_TIME = 15;
 // Ubuntu version to reinstall on the server
 const UBUNTU_VERISON = "22.04";
 // Local path to the 'whirlpool.sh' Whirlpool node installation script
-const SEASIDE_ROOT = fileURLToPath(join(dirname(import.meta.url), "..", "..", "caerulean", "whirlpool", "whirlpool.sh"));
+const INSTALL_SCRIPT = fileURLToPath(join(dirname(import.meta.url), "..", "..", "caerulean", "whirlpool", "whirlpool.sh"));
 
 /**
  * Make HTTP request and return results parsed as JSON.
@@ -170,7 +170,7 @@ async function getUbuntuAppID(version, token) {
 	console.log("Receiving beget Ubuntu app ID...");
 	const { software } = await get("https://api.beget.com/v1/vps/marketplace/software/list?display_name=Ubuntu", token);
 	const application = software.find((x) => x.version === version);
-	if (application == undefined) throw new Error(`No Ubuntu version ${version} found!`);
+	if (application === undefined) throw new Error(`No Ubuntu version ${version} found!`);
 	return application.id;
 }
 
@@ -224,7 +224,7 @@ async function waitForServer(ip, key, waitTimes, sleepTime) {
  */
 async function runDeployCommand(sshConn, runInDocker = false) {
 	console.log("Copying whirlpool installation script to beget test server...");
-	await sshConn.putFile(SEASIDE_ROOT, "exec.sh");
+	await sshConn.putFile(INSTALL_SCRIPT, "exec.sh");
 	console.log("Running whirlpool installation script on beget test server...");
 	const installFlags = runInDocker ? "-kgst" : "-gst";
 	const currentBranch = execSync("git rev-parse --abbrev-ref HEAD");

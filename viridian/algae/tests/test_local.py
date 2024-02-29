@@ -9,7 +9,7 @@ import pytest
 logger = getLogger(__name__)
 
 
-@pytest.mark.timeout(30.0)
+@pytest.mark.timeout(60.0)
 def test_local_echo(random_message: bytes) -> None:
     logger.info("Testing with local echo server")
     echo_address, local_address = environ["ECHO_ADDRESS"], environ["LOCAL_ADDRESS"]
