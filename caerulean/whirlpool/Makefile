@@ -2,6 +2,9 @@
 .EXPORT_ALL_VARIABLES:
 .DEFAULT_GOAL := help
 
+SHELL=/bin/bash
+.SHELLFLAGS=-e
+
 DOCKER_BUILDKIT = 1
 
 BOLD=\033[1m
@@ -19,20 +22,20 @@ PATH := $(PATH):$(shell go env GOPATH)/bin
 
 help:
 	@ # Print available make target information
-	echo -e "${BOLD}Available make targets${RESET}:"
-	echo -e "\t${BLUE}make build-docker-prod${RESET}: build Docker production image."
-	echo -e "\t${BLUE}make build-docker-test${RESET}: build Docker testing image."
-	echo -e "\t${BLUE}make build${RESET}: build whirlpool executable binary."
-	echo -e "\t${BLUE}make run${RESET}: run whirlpool executable locally."
-	echo -e "\t${BLUE}make run-docker${RESET}: run whirlpool executable in a Docker container."
-	echo -e "\t${BLUE}make test${RESET}: run tests in a Docker container."
-	echo -e "\t${BLUE}make lint${RESET}: run Go code linting in a Docker container."
-	echo -e "\t${BLUE}make format${RESET}: run Go code formatting locally."
-	echo -e "\t${BLUE}make clean${RESET}: clean all the build files, executables, Docker images, containers and networks."
-	echo -e "\t${BLUE}make help${RESET}: print this message again."
-	echo -e "${BOLD}Available environment variables${RESET}:"
-	echo -e "\t${GREEN}EXEC_NAME${RESET}: the name of the generated whirlpool executable."
-	echo -e "\t${YELLOW}example.conf.env${RESET}: contains environmental variables for executable running."
+	echo -e "$(BOLD)Available make targets$(RESET):"
+	echo -e "\t$(BLUE)make build-docker-prod$(RESET): build Docker production image."
+	echo -e "\t$(BLUE)make build-docker-test$(RESET): build Docker testing image."
+	echo -e "\t$(BLUE)make build$(RESET): build whirlpool executable binary."
+	echo -e "\t$(BLUE)make run$(RESET): run whirlpool executable locally."
+	echo -e "\t$(BLUE)make run-docker$(RESET): run whirlpool executable in a Docker container."
+	echo -e "\t$(BLUE)make test$(RESET): run tests in a Docker container."
+	echo -e "\t$(BLUE)make lint$(RESET): run Go code linting in a Docker container."
+	echo -e "\t$(BLUE)make format$(RESET): run Go code formatting locally."
+	echo -e "\t$(BLUE)make clean$(RESET): clean all the build files, executables, Docker images, containers and networks."
+	echo -e "\t$(BLUE)make help$(RESET): print this message again."
+	echo -e "$(BOLD)Available environment variables$(RESET):"
+	echo -e "\t$(GREEN)EXEC_NAME$(RESET): the name of the generated whirlpool executable."
+	echo -e "\t$(YELLOW)example.conf.env$(RESET): contains environmental variables for executable running."
 .PHONY: help
 
 

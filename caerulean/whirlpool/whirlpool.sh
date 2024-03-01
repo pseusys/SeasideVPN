@@ -100,7 +100,7 @@ function check_command_exists() {
 function generate_certificates() {
     $(check_command_exists openssl &> /dev/null) || apt-get install -y --no-install-recommends openssl
 
-    if [[ $1 =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    if [[ $1 =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] ; then
         local ALTNAMES="subjectAltName = IP:$1"
     else
         local ALTNAMES="subjectAltName = DNS:$1"
@@ -193,8 +193,9 @@ function download_whirlpool_distribution() {
 
 # Print configuration of the node that will be applied upon running.
 function print_server_info() {
+    VERSION='"0.0.1"'
     echo -e "\n\n>> ================================================ >>"
-    echo -e "${BOLD}${GREEN}Seaside Whirlpool node version "0.0.1" successfully configured!${RESET}"
+    echo -e "${BOLD}${GREEN}Seaside Whirlpool node version ${VERSION} successfully configured!${RESET}"
     echo -e "The node address is: ${BLUE}$SEASIDE_ADDRESS:$SEASIDE_CTRLPORT${RESET}"
     echo -e "The administrator payload is: ${BLUE}$SEASIDE_PAYLOAD_OWNER${RESET}"
     echo -e "\tConnection link: ${YELLOW}${UNDER}seaside+whirlpool://$SEASIDE_ADDRESS:$SEASIDE_CTRLPORT?payload=$SEASIDE_PAYLOAD_OWNER${RESET}"
@@ -289,6 +290,11 @@ if [ "$INVALID_OPTIONS_FOUND" = true ] ; then
     exit 1
 fi
 
+if [ "$EUID" -ne 0 ] ; then
+    echo "${RED}Installation should be done with superuser privileges (sudo ...)!${RESET}"
+    exit 1
+fi
+
 
 
 # Script body:
@@ -307,12 +313,18 @@ if [ "$GENERATE_CERTS" = true ] ; then
     echo -e "${GREEN}Certificates generated successfully!${RESET}"
 else
     echo -e "${GREEN}Certificate generation skipped!${RESET}"
-    [[ -f certificates/cert.key && -f certificates/cert.crt ]] || echo -e "${RED}One of the certificate files not found!${RESET}" && exit 1
+    if ! [[ -f certificates/cert.key && -f certificates/cert.crt ]] ; then
+        echo -e "${RED}One of the certificate files not found!${RESET}"
+        exit 1
+    fi
 fi
 
 if [ "$RUN_IN_DOCKER" = true ] ; then
     echo -e "Running whirlpool node in Docker..."
-    $(check_command_exists docker &> /dev/null) || echo -e "${RED}Docker not available!${RESET}" && exit 1
+    if $(check_command_exists docker &> /dev/null) ; then
+        echo -e "${RED}Docker not available!${RESET}"
+        exit 1
+    fi
     COMMAND="docker run --env-file=conf.env --network=host --privileged ghcr.io/pseusys/seasidevpn/caerulean-whirlpool:$WHIRLPOOL_DOCKER_LABEL"
 else
     echo -e "Running whirlpool node locally..."
