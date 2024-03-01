@@ -284,14 +284,13 @@ These are:
 ### TODOs
 
 1. Write documentation for `viridian/algae` (including Dockerfiles).
-2. Add shell build, generation, etc. script for easy `caerulean/whirlpool` deployment (with and without container).
-3. Write script for downloading/running/configuring server.
-4. Check tests without 0.0.0.0 iptables rule(s).
-5. Fix all docs and tests.
-6. Increase logging in caerulean.
-7. Rename: client, user -> viridian.
-8. Captcha for user registrations. Security: User TOKEN: should be shared with all users before connection, allows user API access. User CREDENTIALS: each user has his own, allow user connection. Admin TOKEN: node admins don't have credentials, they can connect using this token only.
-9. Remove algae warnings (during tests).
+2. Check tests without 0.0.0.0 iptables rule(s).
+3. Fix all inline docs and READMEs.
+4. Increase logging in caerulean.
+5. Rename: client, user -> viridian.
+6. Captcha for user registrations. Security: User TOKEN: should be shared with all users before connection, allows user API access. User CREDENTIALS: each user has his own, allow user connection. Admin TOKEN: node admins don't have credentials, they can connect using this token only.
+7. Remove algae warnings (during tests).
+8. Fix GitHub actions.
 
 ### Further considerations
 

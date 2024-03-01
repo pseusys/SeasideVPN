@@ -20,7 +20,7 @@ class Cipher:
         self.key = get_random_bytes(ChaCha20_Poly1305.key_size) if key is None else key
         self._tag_length = Poly1305.Poly1305_MAC.digest_size
 
-    def encode(self, plaintext: bytes) -> bytes:
+    def encrypt(self, plaintext: bytes) -> bytes:
         """
         Encode bytes with given XChaCha20-Poly1305 key.
         NB! Encoding (unlike encrypting) doesn't include neither entailing nor signing.
@@ -34,7 +34,7 @@ class Cipher:
         encryption, tag = cipher.encrypt_and_digest(plaintext)
         return nonce + encryption + tag
 
-    def decode(self, ciphertext: bytes) -> bytes:
+    def decrypt(self, ciphertext: bytes) -> bytes:
         """
         Decode bytes with given XChaCha20-Poly1305 key.
         NB! Decoding (unlike decrypting) doesn't include neither detailing nor unsigning.

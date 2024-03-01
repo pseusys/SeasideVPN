@@ -52,7 +52,7 @@ class Viridian:
         while True:
             packet = read(self._descriptor, MAX_TWO_BYTES_VALUE)
             logger.debug(f"Sending {len(packet)} bytes to caerulean {self._address}:{self._user_id}")
-            self._socket.sendto(self._cipher.encode(packet), (self._address, self._user_id))
+            self._socket.sendto(self._cipher.encrypt(packet), (self._address, self._user_id))
 
     def _receive_from_caerulean(self) -> None:
         """
@@ -60,7 +60,7 @@ class Viridian:
         It receives packets from the VPN node, decrypts them and writes to tunnel interface "file".
         """
         while True:
-            packet = self._cipher.decode(self._socket.recv(MAX_TWO_BYTES_VALUE))
+            packet = self._cipher.decrypt(self._socket.recv(MAX_TWO_BYTES_VALUE))
             logger.debug(f"Receiving {len(packet)} bytes from caerulean {self._address}:{self._user_id}")
             write(self._descriptor, packet)
 

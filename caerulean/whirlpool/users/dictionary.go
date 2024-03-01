@@ -89,7 +89,7 @@ func (dict *ViridianDict) Add(ctx context.Context, token *generated.UserToken, a
 	seaConn, err := net.ListenUDP("udp4", localAddress)
 	if err != nil {
 		dict.mutex.Unlock()
-		return nil, status.Errorf(codes.Internal, "Error resolving connection (%s): %v", localAddress.String(), err)
+		return nil, status.Errorf(codes.Internal, "error resolving connection (%s): %v", localAddress.String(), err)
 	}
 
 	_, userID, err := utils.GetIPAndPortFromAddress(seaConn.LocalAddr())
