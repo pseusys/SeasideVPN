@@ -49,7 +49,8 @@ def _create_tunnel(name: str) -> Tuple[int, str]:
     ioctl(descriptor, _UNIX_TUNSETOWNER, geteuid())
     ioctl(descriptor, _UNIX_TUNSETGROUP, getegid())
     with IPRoute() as ip:
-        tunnel_dev = ip.link_lookup(ifname=name)[0]
+        tunnels = ip.link_lookup(ifname=name)
+        tunnel_dev = tunnels[0] if tunnels is not None else str(tunnels)
     return descriptor, tunnel_dev
 
 
@@ -60,8 +61,8 @@ def _get_default_interface(seaside_address: str) -> Tuple[IPv4Interface, str, in
     :return: tuple of tunnel interface (network address and CIDR), default interface name and MTU.
     """
     with IPRoute() as ip:
-        caerulean_dev = ip.route("get", dst=seaside_address)[0].get_attr("RTA_OIF")
-        addr_iface = ip.get_addr(index=caerulean_dev)[0]
+        caerulean_dev = list(ip.route("get", dst=seaside_address))[0].get_attr("RTA_OIF")
+        addr_iface = list(ip.get_addr(index=caerulean_dev))[0]
         default_cidr = addr_iface["prefixlen"]
         default_iface = addr_iface.get_attr("IFA_LABEL")
         default_ip = addr_iface.get_attr("IFA_ADDRESS")
@@ -215,7 +216,7 @@ class Tunnel:
             logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} is created")
             ip.link("set", index=self._tunnel_dev, mtu=self._mtu)
             logger.info(f"Tunnel MTU set to {Fore.BLUE}{self._mtu}{Fore.RESET}")
-            ip.addr("replace", index=self._tunnel_dev, address=self._tunnel_ip, mask=self._tunnel_cdr)
+            ip.addr("replace", index=self._tunnel_dev, address=self._tunnel_ip, prefixlen=self._tunnel_cdr)
             logger.info(f"Tunnel IP address set to {Fore.BLUE}{self._tunnel_ip}{Fore.RESET}")
             ip.link("set", index=self._tunnel_dev, state="up")
             logger.info(f"Tunnel {Fore.GREEN}enabled{Fore.RESET}")
