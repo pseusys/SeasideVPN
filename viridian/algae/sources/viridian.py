@@ -1,9 +1,8 @@
-from multiprocessing import Process
-from os import read, write
+from asyncio import Task, create_task, get_running_loop
 from socket import socket
 
 from .crypto import Cipher
-from .utils import MAX_TWO_BYTES_VALUE, logger
+from .utils import MAX_TWO_BYTES_VALUE, logger, os_read, os_write, sock_read, sock_write
 
 
 class Viridian:
@@ -22,8 +21,8 @@ class Viridian:
         self._socket = socket
         self._operational = False
 
-        self._sender_process: Process
-        self._receiver_process: Process
+        self._receiver: Task
+        self._sender: Task
 
     @property
     def operational(self) -> bool:
@@ -38,31 +37,31 @@ class Viridian:
         Create and start both sender and receiver processes.
         Also set operational flag to true.
         """
-        self._sender_process = Process(target=self._send_to_caerulean, name="sender")
-        self._receiver_process = Process(target=self._receive_from_caerulean, name="receiver")
-        self._sender_process.start()
-        self._receiver_process.start()
+        self._receiver = create_task(self._send_to_caerulean(), name="sender_task")
+        self._sender = create_task(self._receive_from_caerulean(), name="receiver_task")
         self._operational = True
 
-    def _send_to_caerulean(self) -> None:
+    async def _send_to_caerulean(self) -> None:
         """
         Sender process body.
         It reads packets from tunnel interface "file", encrypts them and sends to the VPN node.
         """
+        loop = get_running_loop()
         while True:
-            packet = read(self._descriptor, MAX_TWO_BYTES_VALUE)
+            packet = await os_read(loop, self._descriptor, MAX_TWO_BYTES_VALUE)
             logger.debug(f"Sending {len(packet)} bytes to caerulean {self._address}:{self._user_id}")
-            self._socket.sendto(self._cipher.encrypt(packet), (self._address, self._user_id))
+            await sock_write(loop, self._socket, self._cipher.encrypt(packet), (self._address, self._user_id))
 
-    def _receive_from_caerulean(self) -> None:
+    async def _receive_from_caerulean(self) -> None:
         """
         Receiver process body.
         It receives packets from the VPN node, decrypts them and writes to tunnel interface "file".
         """
+        loop = get_running_loop()
         while True:
-            packet = self._cipher.decrypt(self._socket.recv(MAX_TWO_BYTES_VALUE))
+            packet = self._cipher.decrypt(await sock_read(loop, self._socket, MAX_TWO_BYTES_VALUE))
             logger.debug(f"Receiving {len(packet)} bytes from caerulean {self._address}:{self._user_id}")
-            write(self._descriptor, packet)
+            await os_write(loop, self._descriptor, packet)
 
     def close(self) -> None:
         """
@@ -71,5 +70,5 @@ class Viridian:
         """
         logger.info("Whirlpool connection closed")
         self._operational = False
-        self._sender_process.terminate()
-        self._receiver_process.terminate()
+        self._sender.cancel()
+        self._receiver.cancel()

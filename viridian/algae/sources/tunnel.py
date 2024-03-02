@@ -244,7 +244,7 @@ class Tunnel:
             logger.info(f"Tunnel {Fore.GREEN}disabled{Fore.RESET}")
         self._operational = False
 
-    def __del__(self) -> None:
+    def delete(self) -> None:
         """
         Remove tunnel interface, bring it down if it's still running.
         """

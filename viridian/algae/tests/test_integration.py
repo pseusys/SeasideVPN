@@ -1,8 +1,7 @@
+from asyncio import TimeoutError, open_connection, sleep, wait_for
 from logging import getLogger
 from os import environ, getenv
-from socket import AF_INET, SOCK_STREAM, socket
 from subprocess import check_output
-from time import sleep
 from typing import AsyncGenerator, Optional
 
 import pytest
@@ -16,17 +15,17 @@ from ..sources.utils import MAX_TAIL_LENGTH, MAX_TWO_BYTES_VALUE
 logger = getLogger(__name__)
 
 
-def is_tcp_available(address: Optional[str] = None, port: int = 80) -> bool:
+async def is_tcp_available(address: Optional[str] = None, port: int = 443) -> bool:
     address = environ["RESTRICTED_ADDRESS"] if address is None else address
-    with socket(AF_INET, SOCK_STREAM) as sock:
-        try:
-            sock.settimeout(5.0)
-            sock.connect((address, port))
-            return True
-        except TimeoutError:
-            return False
+    try:
+        _, writer = await wait_for(open_connection(address, port, ssl=True), timeout=5.0)
+        writer.close()
+        return True
+    except TimeoutError:
+        return False
 
 
+@pytest.mark.asyncio(scope="session")
 @pytest_asyncio.fixture(scope="session")
 async def controller() -> AsyncGenerator[Coordinator, None]:
     payload = environ["SEASIDE_PAYLOAD_OWNER"]
@@ -36,16 +35,18 @@ async def controller() -> AsyncGenerator[Coordinator, None]:
     yield Coordinator(payload, addr, ctrl_port, name)
 
 
+@pytest.mark.asyncio(scope="session")
 @pytest.mark.dependency()
-def test_controller_initialization(controller: Coordinator) -> None:
+async def test_controller_initialization(controller: Coordinator) -> None:
     routes = check_output(["ip", "link", "show"]).decode()
     assert controller._interface._name in routes, "Tunnel wasn't created!"
 
 
+@pytest.mark.asyncio(scope="session")
 @pytest.mark.dependency(depends=["test_controller_initialization"])
-def test_no_vpn_request() -> None:
+async def test_no_vpn_request() -> None:
     logger.info("Testing unreachability with TCP echo server")
-    assert not is_tcp_available(), "External website is already available!"
+    assert not await is_tcp_available(), "External website is already available!"
 
 
 @pytest.mark.asyncio(scope="session")
@@ -65,24 +66,27 @@ async def test_initialize_control(controller: Coordinator) -> None:
     assert controller._user_id >= 1 and controller._user_id <= MAX_TWO_BYTES_VALUE, "User ID isn't in range!"
 
 
+@pytest.mark.asyncio(scope="session")
 @pytest.mark.dependency(depends=["test_initialize_control"])
-def test_open_tunnel(controller: Coordinator) -> None:
+async def test_open_tunnel(controller: Coordinator) -> None:
     logger.info("Testing opening the tunnel")
     controller._interface.up()
     assert controller._interface._operational, "Tunnel interface isn't operational!"
 
 
+@pytest.mark.asyncio(scope="session")
 @pytest.mark.dependency(depends=["test_open_tunnel"])
-def test_open_viridian(controller: Coordinator) -> None:
+async def test_open_viridian(controller: Coordinator) -> None:
     logger.info("Testing opening the viridian")
     controller._viridian.open()
     assert controller._viridian._operational, "Client processes aren't operational!"
 
 
+@pytest.mark.asyncio(scope="session")
 @pytest.mark.dependency(depends=["test_open_viridian"])
-def test_validate_request() -> None:
+async def test_validate_request() -> None:
     logger.info("Testing reachability with TCP example server")
-    assert is_tcp_available(), "External website isn't available!"
+    assert await is_tcp_available(), "External website isn't available!"
 
 
 @pytest.mark.asyncio(scope="session")
@@ -92,7 +96,7 @@ async def test_send_healthcheck_message(controller: Coordinator) -> None:
     for _ in range(3):
         request = ControlHealthcheck(user_id=controller._user_id, next_in=controller._min_hc_time)
         await controller._control.healthcheck(request, timeout=controller._max_timeout, metadata=(("tail", get_random_bytes(MAX_TAIL_LENGTH).hex()),))
-        sleep(controller._min_hc_time)
+        await sleep(controller._min_hc_time)
 
 
 @pytest.mark.asyncio(scope="session")
@@ -103,16 +107,17 @@ async def test_healthcheck_overtime(controller: Coordinator) -> None:
     request = ControlHealthcheck(user_id=controller._user_id, next_in=controller._min_hc_time)
     await controller._control.healthcheck(request, timeout=controller._max_timeout, metadata=(("tail", get_random_bytes(MAX_TAIL_LENGTH).hex()),))
 
-    sleep(controller._min_hc_time * 10)
+    await sleep(controller._min_hc_time * 10)
     with pytest.raises(Exception):
         request = ControlHealthcheck(user_id=controller._user_id, next_in=controller._min_hc_time)
         await controller._control.healthcheck(request, timeout=controller._max_timeout, metadata=(("tail", get_random_bytes(MAX_TAIL_LENGTH).hex()),))
 
 
+@pytest.mark.asyncio(scope="session")
 @pytest.mark.dependency(depends=["test_healthcheck_overtime"])
-def test_no_vpn_rerequest() -> None:
+async def test_no_vpn_rerequest() -> None:
     logger.info("Testing unreachability with TCP echo server again")
-    assert not is_tcp_available(), "External website is still available!"
+    assert not await is_tcp_available(), "External website is still available!"
 
 
 @pytest.mark.asyncio(scope="session")
@@ -129,10 +134,11 @@ async def test_reconnect(controller: Coordinator) -> None:
     controller._viridian.open()
 
 
+@pytest.mark.asyncio(scope="session")
 @pytest.mark.dependency(depends=["test_reconnect"])
-def test_revalidate_request() -> None:
+async def test_revalidate_request() -> None:
     logger.info("Testing reachability with TCP example server again")
-    assert is_tcp_available(), "External website isn't available!"
+    assert await is_tcp_available(), "External website isn't available!"
 
 
 @pytest.mark.asyncio(scope="session")
