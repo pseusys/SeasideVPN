@@ -1,6 +1,5 @@
 from argparse import ArgumentParser
 from asyncio import create_task, get_event_loop, run
-from multiprocessing import current_process
 from signal import SIGINT, SIGTERM
 from sys import argv, exit
 from typing import Sequence
@@ -63,8 +62,7 @@ async def finish() -> None:
     Will be executed only on main process, cleans all VPN client settings.
     """
     global controller
-    if current_process().name == "MainProcess":
-        await controller.interrupt()
+    await controller.interrupt()
     exit(0)
 
 

@@ -1,7 +1,7 @@
+from asyncio import sleep
 from ipaddress import AddressValueError, IPv4Address
 from os import getenv
 from socket import AF_INET, SOCK_DGRAM, gethostbyname, inet_aton, socket
-from time import sleep
 from typing import Any, Dict
 
 from colorama import Fore
@@ -54,6 +54,7 @@ class Coordinator:
 
         self._gate_socket = socket(AF_INET, SOCK_DGRAM)
         self._gate_socket.bind((self._interface.default_ip, 0))
+        self._gate_socket.setblocking(False)
 
         self._channel = create_grpc_secure_channel(self._address, self._ctrl_port)
         self._control = WhirlpoolViridianStub(self._channel)
@@ -152,7 +153,7 @@ class Coordinator:
                 next_in = randint(self._min_hc_time, self._max_hc_time)
                 request = ControlHealthcheck(user_id=self._user_id, next_in=next_in)
                 await self._control.healthcheck(request, **self._grpc_metadata())
-                sleep(next_in)
+                await sleep(next_in)
 
             except BaseException:
                 logger.info("Server lost session key!")
@@ -182,10 +183,6 @@ class Coordinator:
         self._channel.close()
         logger.warning("Whirlpool connection terminated!")
 
-    def __del__(self) -> None:
-        """
-        Remove all the local changes made on current device upon deletion of this class.
-        Doesn't terminate caerulean connection gracefully.
-        """
-        self._clean_tunnel()
-        self._channel.close()
+        self._viridian.close()
+        self._interface.delete()
+        logger.warning("Local viridian interface removed!!")

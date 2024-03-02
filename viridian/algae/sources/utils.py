@@ -1,8 +1,10 @@
+from asyncio import AbstractEventLoop, Future
 from logging import StreamHandler, getLogger
-from os import getenv
+from os import getenv, read, write
+from socket import socket
 from ssl import PROTOCOL_TLS_CLIENT, SSLContext, get_server_certificate
 from sys import stdout
-from typing import Any, Dict
+from typing import Any, Callable, Dict, Tuple
 from urllib.parse import parse_qs, urlparse
 
 from grpclib.client import Channel
@@ -34,6 +36,50 @@ def create_grpc_secure_channel(host: str, port: int) -> Channel:
     certificate = get_server_certificate((host, port))
     context.load_verify_locations(cadata=certificate)
     return Channel(host, port, ssl=context)
+
+
+def _async_read_callback(loop: AbstractEventLoop, descriptor: int, reader: Callable[[], bytes]) -> Future[bytes]:
+    def reader_func(future: Future) -> None:
+        try:
+            future.set_result(reader())
+        except OSError:
+            future.cancel()
+        finally:
+            loop.remove_reader(descriptor)
+
+    future = Future(loop=loop)
+    loop.add_reader(descriptor, reader_func, future)
+    return future
+
+
+def _async_write_callback(loop: AbstractEventLoop, descriptor: int, writer: Callable[[], int]) -> Future[int]:
+    def writer_func(future: Future) -> None:
+        try:
+            future.set_result(writer())
+        except OSError:
+            future.cancel()
+        finally:
+            loop.remove_writer(descriptor)
+
+    future = Future(loop=loop)
+    loop.add_writer(descriptor, writer_func, future)
+    return future
+
+
+def os_read(loop: AbstractEventLoop, fd: int, number: int) -> Future[bytes]:
+    return _async_read_callback(loop, fd, lambda: read(fd, number))
+
+
+def sock_read(loop: AbstractEventLoop, sock: socket, number: int) -> Future[bytes]:
+    return _async_read_callback(loop, sock.fileno(), lambda: sock.recv(number))
+
+
+def os_write(loop: AbstractEventLoop, fd: int, data: bytes) -> Future[int]:
+    return _async_write_callback(loop, fd, lambda: write(fd, data))
+
+
+def sock_write(loop: AbstractEventLoop, sock: socket, data: bytes, address: Tuple[str, int]) -> Future[int]:
+    return _async_write_callback(loop, sock.fileno(), lambda: sock.sendto(data, address))
 
 
 def parse_connection_link(link: str) -> Dict[str, Any]:
