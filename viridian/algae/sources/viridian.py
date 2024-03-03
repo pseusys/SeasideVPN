@@ -29,8 +29,8 @@ class Viridian:
         self._socket = socket
         self._operational = False
 
-        self._receiver: Task
-        self._sender: Task
+        self._receiver: Task[None]
+        self._sender: Task[None]
 
     @property
     def operational(self) -> bool:

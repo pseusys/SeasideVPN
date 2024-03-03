@@ -55,7 +55,8 @@ def _async_read_callback(loop: AbstractEventLoop, descriptor: int, reader: Calla
     :param reader: callable for reading data from source.
     :return: future that will be resolved in successful read.
     """
-    def reader_func(future: Future) -> None:
+
+    def reader_func(future: Future[bytes]) -> None:
         try:
             future.set_result(reader())
         except OSError:
@@ -63,7 +64,7 @@ def _async_read_callback(loop: AbstractEventLoop, descriptor: int, reader: Calla
         finally:
             loop.remove_reader(descriptor)
 
-    future = Future(loop=loop)
+    future: Future[bytes] = Future(loop=loop)
     loop.add_reader(descriptor, reader_func, future)
     return future
 
@@ -78,7 +79,8 @@ def _async_write_callback(loop: AbstractEventLoop, descriptor: int, writer: Call
     :param writer: callable for writing data to destination.
     :return: future that will be resolved in successful write.
     """
-    def writer_func(future: Future) -> None:
+
+    def writer_func(future: Future[int]) -> None:
         try:
             future.set_result(writer())
         except OSError:
@@ -86,7 +88,7 @@ def _async_write_callback(loop: AbstractEventLoop, descriptor: int, writer: Call
         finally:
             loop.remove_writer(descriptor)
 
-    future = Future(loop=loop)
+    future: Future[int] = Future(loop=loop)
     loop.add_writer(descriptor, writer_func, future)
     return future
 
