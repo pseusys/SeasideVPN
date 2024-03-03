@@ -72,4 +72,8 @@ jobs:
         run: npm install --prefix .github/scripts
 
       - name: Deploy
+        env:
+          BEGET_API_LOGIN: ${{ secrets.BEGET_API_LOGIN }}
+          BEGET_API_PASSWORD: ${{ secrets.BEGET_API_PASSWORD }}
+          BEGET_SERVER_KEY: ${{ secrets.BEGET_SERVER_KEY }}
         run: npm run --prefix .github/scripts deploy-whirlpool-beget

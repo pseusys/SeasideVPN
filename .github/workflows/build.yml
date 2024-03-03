@@ -104,6 +104,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: whirlpool-executable
-          path: caerulean/whirlpool/build/
+          path: |
+            caerulean/whirlpool/build/
+            caerulean/whirlpool/whirlpool.sh
           retention-days: 3
           if-no-files-found: error
