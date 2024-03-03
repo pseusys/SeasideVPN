@@ -27,9 +27,8 @@ jobs:
         id: download-algae-artifact
         uses: dawidd6/action-download-artifact@v3
         with:
-          workflow: build.yml
+          workflow: publish.yml
           run_id: ${{ github.run_id }}
-          workflow_conclusion: success
           skip_unpack: true
           allow_forks: false
           name: algae-executable
@@ -38,9 +37,8 @@ jobs:
         id: download-whirlpool-artifact
         uses: dawidd6/action-download-artifact@v3
         with:
-          workflow: build.yml
+          workflow: publish.yml
           run_id: ${{ github.run_id }}
-          workflow_conclusion: success
           skip_unpack: true
           allow_forks: false
           name: whirlpool-executable
@@ -69,7 +67,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 18
-          cache: npm
 
       - name: Install Dependencies
         run: npm install --prefix .github/scripts

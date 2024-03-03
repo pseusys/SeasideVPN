@@ -20,12 +20,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Python 3.10 🐍
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
       - name: Install Protoc 💾
-        uses: arduino/setup-protoc@v2
+        uses: arduino/setup-protoc@v3
         with:
           version: "24.4"
 
@@ -53,7 +53,7 @@ jobs:
         run: poetry -C viridian/algae run compile ${{ env.EXEC_NAME }}.run
 
       - name: Save Artifact 🏺
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: algae-executable
           path: viridian/algae/dist/
@@ -69,12 +69,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Go 1.20 🦫
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: "^1.20.4"
 
       - name: Install Protoc 💾
-        uses: arduino/setup-protoc@v2
+        uses: arduino/setup-protoc@v3
         with:
           version: "24.4"
 
@@ -101,7 +101,7 @@ jobs:
         run: EXEC_NAME=${{ env.EXEC_NAME }}.run make -C caerulean/whirlpool build
 
       - name: Save Artifact 🏺
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: whirlpool-executable
           path: caerulean/whirlpool/build/
