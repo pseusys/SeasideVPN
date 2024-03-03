@@ -283,14 +283,9 @@ These are:
 
 ### TODOs
 
-1. Write documentation for `viridian/algae` (including Dockerfiles).
-2. Check tests without 0.0.0.0 iptables rule(s).
-3. Fix all inline docs and READMEs.
-4. Increase logging in caerulean.
-5. Rename: client, user -> viridian.
-6. Captcha for user registrations. Security: User TOKEN: should be shared with all users before connection, allows user API access. User CREDENTIALS: each user has his own, allow user connection. Admin TOKEN: node admins don't have credentials, they can connect using this token only.
-7. Remove algae warnings (during tests).
-8. Fix GitHub actions.
+1. Check tests without 0.0.0.0 iptables rule(s).
+2. Fix GitHub actions.
+3. Rename all "user" and "cleint" to viridian (for consistency).
 
 ### Further considerations
 
@@ -298,3 +293,6 @@ These are:
 - Control healthcheck times by cosine function, increase max delay to smth like 360 seconds, add random response delay.
 - Advice on traffic distribution (proxy nodes), all routes and ports masking, on caerulean side: switch to 172.x.x.x tunnel IP, 1st X will be the number of PROXY the packet has been received from.
 - Add RTP protocol disguise option (to obfuscation, sent by client).
+- Use Captcha for user registrations.
+- Track [GitHub issue](https://github.com/ldx/python-iptables/pull/340) for viridian algae warnings removal.
+- Add different cipher options (XChaCha20-Poly1305, AES-256-GCM, etc.).

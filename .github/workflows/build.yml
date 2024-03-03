@@ -1,7 +1,10 @@
 name: BUILD
 
 on:
-  push:
+  workflow_call:
+  #push:
+  #  branches:
+  #    - "**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

@@ -3,7 +3,7 @@
 .DEFAULT_GOAL := help
 
 SHELL=/bin/bash
-.SHELLFLAGS=-e
+.SHELLFLAGS=-c -e
 
 DOCKER_BUILDKIT = 1
 
