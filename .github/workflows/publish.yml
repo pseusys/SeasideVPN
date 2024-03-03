@@ -28,9 +28,10 @@ jobs:
         uses: dawidd6/action-download-artifact@v3
         with:
           workflow: build.yml
-          event: ${{ github.event.workflow_run.id }}
+          run_id: ${{ github.event.workflow_run.id }}
           workflow_conclusion: success
           skip_unpack: true
+          allow_forks: false
           name: algae-executable
   
       - name: Download whirlpool artifact
@@ -38,9 +39,10 @@ jobs:
         uses: dawidd6/action-download-artifact@v3
         with:
           workflow: build.yml
-          event: ${{ github.event.workflow_run.id }}
+          run_id: ${{ github.event.workflow_run.id }}
           workflow_conclusion: success
           skip_unpack: true
+          allow_forks: false
           name: whirlpool-executable
 
       - name: Create release
