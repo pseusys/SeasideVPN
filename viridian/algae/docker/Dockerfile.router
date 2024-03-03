@@ -6,7 +6,7 @@ ARG RESTRICTED_ADDRESS=0.0.0.0
 ENV ARG_RESTRICTED_ADDRESS $RESTRICTED_ADDRESS
 
 # Setup packet forwarding and sleep.
-RUN apk add --no-cache iptables
+RUN apk add --no-cache iptables iproute2-tc
 ENTRYPOINT echo 1 > /proc/sys/net/ipv4/ip_forward && \
     iptables -t mangle -A PREROUTING -d $ARG_RESTRICTED_ADDRESS -j DROP && \
     iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE && \
