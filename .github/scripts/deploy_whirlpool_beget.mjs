@@ -105,11 +105,11 @@ function parseArguments() {
 	const { values } = parseArgs({ options, tokens: true });
 	if (values.help) printHelpMessage();
 	if (process.env.BEGET_API_LOGIN === undefined) throw new Error("Parameter 'login' is missing!");
-	else options["login"] = process.env.BEGET_API_LOGIN;
+	else values["login"] = process.env.BEGET_API_LOGIN;
 	if (process.env.BEGET_API_PASSWORD === undefined) throw new Error("Parameter 'password' is missing!");
-	else options["password"] = process.env.BEGET_API_PASSWORD;
+	else values["password"] = process.env.BEGET_API_PASSWORD;
 	if (process.env.BEGET_SERVER_KEY === undefined) throw new Error("Parameter 'key' is missing!");
-	else options["key"] = process.env.BEGET_SERVER_KEY;
+	else values["key"] = process.env.BEGET_SERVER_KEY;
 	return values;
 }
 
