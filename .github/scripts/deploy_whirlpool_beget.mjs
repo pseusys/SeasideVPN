@@ -8,6 +8,7 @@ import { NodeSSH } from "node-ssh";
 
 const BOLD = "\x1b[1m";
 const BLUE = "\x1b[34m";
+const GREEN = "\x1b[32m";
 const RESET = "\x1b[0m";
 
 // Number of SSH connection attempts to the newly recreated server
@@ -73,16 +74,17 @@ async function sleep(seconds) {
  */
 function printHelpMessage() {
 	console.log(`${BOLD}Beget deployment script usage${RESET}:`);
-	console.log(`\t${BLUE}-l --login${RESET}: Beget account owner login.`);
-	console.log(`\t${BLUE}-p --password${RESET}: Beget account owner password.`);
-	console.log(`\t${BLUE}-k --key${RESET}: Password of the deployment server root user.`);
 	console.log(`\t${BLUE}-d --docker${RESET}: Run deployed script inside of a Docker container (default: false).`);
 	console.log(`\t${BLUE}-h --help${RESET}: Print this message again and exit.`);
+	console.log(`${BOLD}Required environment variables${RESET}:`);
+	console.log(`\t${GREEN}BEGET_API_LOGIN${RESET}: Beget account owner login.`);
+	console.log(`\t${GREEN}BEGET_API_PASSWORD${RESET}: Beget account owner password.`);
+	console.log(`\t${GREEN}BEGET_SERVER_KEY${RESET}:  Password of the deployment server root user.`);
 	process.exit(1);
 }
 
 /**
- * Parse CLI flags and arguments.
+ * Parse CLI and environment flags and arguments.
  * Throw an error if one of the required arguments is missing.
  * The required arguments are: login, password, key.
  * @returns {object} object, containing all the arguments parsed
@@ -94,18 +96,6 @@ function parseArguments() {
 			short: "d",
 			default: false
 		},
-		login: {
-			type: "string",
-			short: "l"
-		},
-		password: {
-			type: "string",
-			short: "p"
-		},
-		key: {
-			type: "string",
-			short: "k"
-		},
 		help: {
 			type: "boolean",
 			short: "h",
@@ -114,9 +104,12 @@ function parseArguments() {
 	};
 	const { values } = parseArgs({ options, tokens: true });
 	if (values.help) printHelpMessage();
-	if (!("login" in values)) throw new Error("Parameter 'login' is missing!");
-	if (!("password" in values)) throw new Error("Parameter 'password' is missing!");
-	if (!("key" in values)) throw new Error("Parameter 'key' is missing!");
+	if (process.env.BEGET_API_LOGIN === undefined) throw new Error("Parameter 'login' is missing!");
+	else options["login"] = process.env.BEGET_API_LOGIN;
+	if (process.env.BEGET_API_PASSWORD === undefined) throw new Error("Parameter 'password' is missing!");
+	else options["password"] = process.env.BEGET_API_PASSWORD;
+	if (process.env.BEGET_SERVER_KEY === undefined) throw new Error("Parameter 'key' is missing!");
+	else options["key"] = process.env.BEGET_SERVER_KEY;
 	return values;
 }
 

@@ -104,7 +104,7 @@ class Coordinator:
         Generate gRPC tail metadata.
         It consists of random number of random bytes.
         """
-        tail_metadata = ("tail", get_random_bytes(randint(0, MAX_TAIL_LENGTH)).hex())
+        tail_metadata = ("tail", get_random_bytes(randint(1, MAX_TAIL_LENGTH)).hex())
         return {"timeout": self._max_timeout, "metadata": (tail_metadata,)}
 
     async def _receive_token(self) -> None:

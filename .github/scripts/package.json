@@ -3,7 +3,7 @@
 	"version": "0.0.1",
 	"description": "Scripts for SeasideVPN GitHub Actions",
 	"scripts": {
-		"deploy-whirlpool-beget": "node deploy_whirlpool_beget.mjs -l '$BEGET_API_LOGIN' -p '$BEGET_API_PASSWORD' -k '$BEGET_SERVER_KEY'",
+		"deploy-whirlpool-beget": "node deploy_whirlpool_beget.mjs",
 		"lint-scripts": "npx prettier . --check",
 		"format-scripts": "npx prettier . --write"
 	},
