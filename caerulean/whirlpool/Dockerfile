@@ -53,6 +53,7 @@ ENV SEASIDE_BURST_LIMIT_MULTIPLIER 3
 
 ENV SEASIDE_LOG_LEVEL WARNING
 
+# Certificates volume.
 VOLUME /seaside/caerulean/certificates
 
 # Expose ports and set entrypoint.

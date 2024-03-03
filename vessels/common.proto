@@ -23,7 +23,7 @@ message SeasideConnectionCertificate {
 message UserToken {
     // User unique identifier
     string uid = 1;
-    // User session XChaCha20-Poly1305 key
+    // User session cipher key
     bytes session = 2;
     // Flag if user is privileged
     bool privileged = 3;

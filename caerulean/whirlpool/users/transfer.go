@@ -20,11 +20,13 @@ type netSettableLayerType interface {
 }
 
 // Start receiving UDP VPN packets from viridians (internal interface, seaside port) and sending them to the internet.
+// Should be applied for ViridianDict object.
 // Accept Context for graceful termination, tunnel interface pointer and tunnel IP network address pointer.
 // NB! this method is blocking, so it should be run as goroutine.
 func (dict *ViridianDict) ReceivePacketsFromViridian(ctx context.Context, userID uint16, connection *net.UDPConn, tunnel *water.Interface, tunnetwork *net.IPNet) {
 	buffer := make([]byte, math.MaxUint16)
 
+	// Convert viridian ID into byte array
 	viridianID := []byte{0, 0}
 	binary.BigEndian.PutUint16(viridianID, userID)
 
@@ -58,6 +60,7 @@ func (dict *ViridianDict) ReceivePacketsFromViridian(ctx context.Context, userID
 			continue
 		}
 
+		// Update viridian gateway port and address
 		viridian.Port = uint16(address.Port)
 		viridian.Gateway = address.IP
 
@@ -105,12 +108,13 @@ func (dict *ViridianDict) ReceivePacketsFromViridian(ctx context.Context, userID
 }
 
 // Start receiving packets from the internet (external interface) and sending them to viridians.
+// Should be applied for ViridianDict object.
 // Accept Context for graceful termination, tunnel interface pointer and tunnel IP network address pointer.
 // NB! this method is blocking, so it should be run as goroutine.
 func (dict *ViridianDict) SendPacketsToViridians(ctx context.Context, tunnel *water.Interface, tunnetwork *net.IPNet) {
 	buffer := make([]byte, math.MaxUint16)
 
-	// CCreate buffer for packet decoding
+	// Create buffer for packet decoding
 	serialBuffer := gopacket.NewSerializeBuffer()
 
 	logrus.Debug("Sending packets to viridians started")

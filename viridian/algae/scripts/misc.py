@@ -15,9 +15,9 @@ ALGAE_ROOT = Path(__file__).parent.parent
 @contextmanager
 def docker_test() -> Iterator[Tuple[Path, bool]]:
     """
-    Helper function. Build all base Docker images.
-    Also prepare Docker client.
+    Build all base Docker images and prepare Docker client.
     Context manager, yields path to "algae/docker" directory and current docker client.
+    :return: iterator of tuples: path to docker directory and flag if currently in CI environment.
     """
     hosted = "CI" in environ
     docker_path = ALGAE_ROOT / "docker"
@@ -30,6 +30,10 @@ def docker_test() -> Iterator[Tuple[Path, bool]]:
 
 
 def _get_test_whirlpool_addresses() -> List[str]:
+    """
+    Get all the `SEASIDE_ADDRESS` variables from environmental files and docker compose files.
+    :return: list of internal IP addresses (strings).
+    """
     whirlpool_allowed_ips = list()
 
     env_var_file = ALGAE_ROOT / "docker/test.conf.env"
@@ -47,6 +51,12 @@ def _get_test_whirlpool_addresses() -> List[str]:
 
 @contextmanager
 def generate_certificates(cert_file: str = "cert.crt", key_file: str = "cert.key") -> Iterator[None]:
+    """
+    Generate self-subscribed SSL certificates for gRPC encrypted connection.
+    :param cert_file: certificate file name (default: cert.crt).
+    :param key_file: key file name (default: cert.key).
+    :return: iterator of None (in order to use with context manager).
+    """
     key = PKey()
     key.generate_key(TYPE_RSA, 4096)
 

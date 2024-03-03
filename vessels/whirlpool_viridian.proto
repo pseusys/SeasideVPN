@@ -10,7 +10,7 @@ option go_package = "/generated";
 message WhirlpoolAuthenticationRequest {
     // User unique identifier
     string uid = 1;
-    // User session XChaCha20-Poly1305 key
+    // User session cipher key
     bytes session = 2;
     // Node authentication owner payload
     string payload = 3;

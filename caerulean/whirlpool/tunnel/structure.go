@@ -33,10 +33,16 @@ type TunnelConfig struct {
 	// Buffer for storing iptables saved configuration.
 	buffer bytes.Buffer
 
-	vpnDataKbyteLimitRule      []string
-	controlPacketLimitRule     []string
+	// Limit rules for VPN data transfer.
+	vpnDataKbyteLimitRule []string
+
+	// Limit rules for control (TCP, gRPC) data transfer.
+	controlPacketLimitRule []string
+
+	// Limit rules for ICPM (Ping) data transfer.
 	icmpPacketPACKETLimitRules []string
 
+	// Tunnel MTU.
 	mtu int
 }
 
@@ -72,9 +78,9 @@ func Preserve() *TunnelConfig {
 func (conf *TunnelConfig) Open() (err error) {
 	conf.mutex.Lock()
 
+	// Parse IPs and control port number from environment variables
 	intIP := utils.GetEnv("SEASIDE_ADDRESS")
 	extIP := utils.GetEnv("SEASIDE_EXTERNAL")
-
 	ctrlPort := utils.GetIntEnv("SEASIDE_CTRLPORT")
 
 	// Parse and initialize tunnel IP and network fields

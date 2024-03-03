@@ -32,6 +32,13 @@ MAX_TWO_BYTES_VALUE = (1 << 16) - 1
 
 
 def create_grpc_secure_channel(host: str, port: int) -> Channel:
+    """
+    Create secure gRPC channel.
+    Retrieve and add certificated to avoid probkems with self-signed connection.
+    :param host: caerulean host name.
+    :param port: caerulean control port number.
+    :return: gRPC secure channel.
+    """
     context = SSLContext(PROTOCOL_TLS_CLIENT)
     certificate = get_server_certificate((host, port))
     context.load_verify_locations(cadata=certificate)
@@ -39,6 +46,15 @@ def create_grpc_secure_channel(host: str, port: int) -> Channel:
 
 
 def _async_read_callback(loop: AbstractEventLoop, descriptor: int, reader: Callable[[], bytes]) -> Future[bytes]:
+    """
+    Synchronous source read wrapper.
+    Wraps synchrounous read (from file, socket, pipe, etc.) into asynchronous future.
+    Handles reading OSErrors (in case source descriptor was closed).
+    :param loop: asyncio running event loop.
+    :param descriptor: integer source descriptor of the reading source.
+    :param reader: callable for reading data from source.
+    :return: future that will be resolved in successful read.
+    """
     def reader_func(future: Future) -> None:
         try:
             future.set_result(reader())
@@ -53,6 +69,15 @@ def _async_read_callback(loop: AbstractEventLoop, descriptor: int, reader: Calla
 
 
 def _async_write_callback(loop: AbstractEventLoop, descriptor: int, writer: Callable[[], int]) -> Future[int]:
+    """
+    Synchronous destination write wrapper.
+    Wraps synchrounous write (to file, socket, pipe, etc.) into asynchronous future.
+    Handles writing OSErrors (in case source descriptor was closed).
+    :param loop: asyncio running event loop.
+    :param descriptor: integer source descriptor of the writing destination.
+    :param writer: callable for writing data to destination.
+    :return: future that will be resolved in successful write.
+    """
     def writer_func(future: Future) -> None:
         try:
             future.set_result(writer())
@@ -67,18 +92,47 @@ def _async_write_callback(loop: AbstractEventLoop, descriptor: int, writer: Call
 
 
 def os_read(loop: AbstractEventLoop, fd: int, number: int) -> Future[bytes]:
+    """
+    Synchronous file read wrapper.
+    :param loop: asyncio running event loop.
+    :param fd: integer file descriptor.
+    :param number: number of bytes to read from file.
+    :return: future that will be resolved in successful read.
+    """
     return _async_read_callback(loop, fd, lambda: read(fd, number))
 
 
 def sock_read(loop: AbstractEventLoop, sock: socket, number: int) -> Future[bytes]:
+    """
+    Synchronous socket read wrapper.
+    :param loop: asyncio running event loop.
+    :param sock: socket to read from.
+    :param number: number of bytes to read from socket.
+    :return: future that will be resolved in successful read.
+    """
     return _async_read_callback(loop, sock.fileno(), lambda: sock.recv(number))
 
 
 def os_write(loop: AbstractEventLoop, fd: int, data: bytes) -> Future[int]:
+    """
+    Synchronous file write wrapper.
+    :param loop: asyncio running event loop.
+    :param fd: integer file descriptor.
+    :param data: bytes to write to file.
+    :return: future that will be resolved in successful read.
+    """
     return _async_write_callback(loop, fd, lambda: write(fd, data))
 
 
 def sock_write(loop: AbstractEventLoop, sock: socket, data: bytes, address: Tuple[str, int]) -> Future[int]:
+    """
+    Synchronous socket write wrapper.
+    :param loop: asyncio running event loop.
+    :param sock: socket to write to.
+    :param data: bytes to write to socket.
+    :param address: address to send data to.
+    :return: future that will be resolved in successful write.
+    """
     return _async_write_callback(loop, sock.fileno(), lambda: sock.sendto(data, address))
 
 

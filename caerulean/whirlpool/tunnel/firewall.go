@@ -11,11 +11,11 @@ import (
 )
 
 // Create "limit" iptable rule appendix (as a string array).
-// Accepts environment variable name and template string where the value will be inserted (packet/second or kbyte/second, etc.).
-// Also accepts maximum number of user supported by VPN and burst multiplier (integers).
+// Accept environment variable name and template string where the value will be inserted (packet/second or kbyte/second, etc.).
+// Also accept maximum number of user supported by VPN and burst multiplier (integers).
 // Burst multiplier is applied when large amount of data comes at the same time, doesn't last for long.
 // At that time, packet limit is getting multiplied by this multiplier.
-// Returns rule appendix string array.
+// Return rule appendix string array.
 func readLimit(envVar, template string, userNumber, burstMultiplier int) []string {
 	acceptRuleTemplate := []string{"-j", "ACCEPT"}
 	hashlimitRuleTemplate := []string{"-m", "hashlimit", "--hashlimit-mode", "dstip,dstport"}
@@ -43,6 +43,7 @@ func (conf *TunnelConfig) storeForwarding() {
 // Setup iptables configuration for VPN usage.
 // First, flush all iptables rules, setup allowed incoming packet patters and drop all the other packets.
 // Then, setup forwarding from external to tunnel interface and back, also enabling masquerade for external interface outputs.
+// Should be applied for TunnelConf object.
 // Accept internal and external IP addresses as strings, seaside, network and control ports as integers.
 // Return error if configuration was not successful, nil otherwise.
 func (conf *TunnelConfig) openForwarding(intIP, extIP string, ctrlPort int) error {
