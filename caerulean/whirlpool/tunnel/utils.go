@@ -56,12 +56,19 @@ func findInterfaceByIP(address string) (*net.Interface, error) {
 	return nil, errors.New("error finding suitable interface")
 }
 
+// An empty type that would be stored for keeping TunnelConfig object in context.
 type tunnelConfigKey struct{}
 
+// Copy context, appending TunnelConfig to it.
+// Accept context to copy and config to insert.
+// Return an updated context.
 func NewContext(ctx context.Context, config *TunnelConfig) context.Context {
 	return context.WithValue(ctx, tunnelConfigKey{}, config)
 }
 
+// Retrieve TunnelConfig from context.
+// Accept context.
+// Return TunnelConfig and True if successul, nil and False otherwise.
 func FromContext(ctx context.Context) (*TunnelConfig, bool) {
 	config, ok := ctx.Value(tunnelConfigKey{}).(*TunnelConfig)
 	return config, ok

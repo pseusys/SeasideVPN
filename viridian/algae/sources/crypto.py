@@ -9,7 +9,7 @@ from Crypto.Random import get_random_bytes
 
 class Cipher:
     """
-    Class represents XChaCha20-Poly1305 cipher that will be used for VPN message encoding.
+    Class represents cipher that will be used for VPN message encoding.
     Supports bytes encoding and decoding.
     """
 
@@ -17,12 +17,17 @@ class Cipher:
     _CHACHA_NONCE_LENGTH = 24
 
     def __init__(self, key: Optional[bytes] = None):
+        """
+        Cipher constructor.
+        :param self: instance of Cipher.
+        :param key: optional cipher key bytes.
+        """
         self.key = get_random_bytes(ChaCha20_Poly1305.key_size) if key is None else key
         self._tag_length = Poly1305.Poly1305_MAC.digest_size
 
     def encrypt(self, plaintext: bytes) -> bytes:
         """
-        Encode bytes with given XChaCha20-Poly1305 key.
+        Encode bytes with given key.
         NB! Encoding (unlike encrypting) doesn't include neither entailing nor signing.
         Generate random nonce, concatenate with optional signature and encode plaintext.
         :param plaintext: message bytes to encode.
@@ -36,7 +41,7 @@ class Cipher:
 
     def decrypt(self, ciphertext: bytes) -> bytes:
         """
-        Decode bytes with given XChaCha20-Poly1305 key.
+        Decode bytes with given key.
         NB! Decoding (unlike decrypting) doesn't include neither detailing nor unsigning.
         Read nonce (first 24 bytes of ciphertext), then decode ciphertext.
         :param ciphertext: message bytes to decode (including nonce).

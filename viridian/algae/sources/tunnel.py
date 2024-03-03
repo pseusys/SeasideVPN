@@ -133,6 +133,12 @@ class Tunnel:
     """
 
     def __init__(self, name: str, addr: IPv4Address):
+        """
+        Tunnel constructor.
+        :param self: instance of Tunnel.
+        :param name: tunnel interface name.
+        :param addr: tunnel interface IP address.
+        """
         self._name = name
         self._address = str(addr)
 

@@ -27,8 +27,8 @@ parser.add_argument("-c", "--ctrl-port", dest="ctrl_port", default=_DEFAULT_CTRL
 parser.add_argument("-t", "--tunnel", dest="name", default=_DEFAULT_NAME, help=f"Tunnel interface name (default: {_DEFAULT_NAME})")
 parser.add_argument("-l", "--link", dest="link", default=None, help="Connection link, will be used instead of other arguments if specified")
 
-# Viridian VPN controller.
-controller: Coordinator
+# Viridian VPN coordinator.
+coordinator: Coordinator
 
 
 async def main(args: Sequence[str] = argv[1:]) -> None:
@@ -37,7 +37,7 @@ async def main(args: Sequence[str] = argv[1:]) -> None:
     Setup graceful termination handler on SIGTERM and SIGINT signals.
     :param args: CLI arguments list.
     """
-    global controller
+    global coordinator
     just_fix_windows_console()
 
     arguments = vars(parser.parse_args(args))
@@ -45,15 +45,15 @@ async def main(args: Sequence[str] = argv[1:]) -> None:
     if connection_link is not None:
         arguments.update(parse_connection_link(connection_link))
 
-    logger.debug(f"Initializing controller with parameters: {arguments}")
-    controller = Coordinator(**arguments)
+    logger.debug(f"Initializing coordinator with parameters: {arguments}")
+    coordinator = Coordinator(**arguments)
 
     loop = get_event_loop()
     loop.add_signal_handler(SIGTERM, lambda: create_task(finish()))
     loop.add_signal_handler(SIGINT, lambda: create_task(finish()))
 
-    logger.warning("Starting algae client controller...")
-    await controller.start()
+    logger.warning("Starting algae client coordinator...")
+    await coordinator.start()
 
 
 async def finish() -> None:
@@ -61,8 +61,8 @@ async def finish() -> None:
     Terminate algae client.
     Will be executed only on main process, cleans all VPN client settings.
     """
-    global controller
-    await controller.interrupt()
+    global coordinator
+    await coordinator.interrupt()
     exit(0)
 
 

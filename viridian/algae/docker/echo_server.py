@@ -14,11 +14,13 @@ logger.setLevel(LOG_LEVEL)
 logger.addHandler(handler)
 
 
+# Create listener TCP socket and listen to all network interfaces.
 sock = socket(AF_INET, SOCK_STREAM)
 buffer = int(environ["BUFFER_SIZE"])
 sock.bind(("0.0.0.0", int(environ["ECHO_PORT"])))
 sock.listen(1)
 
+# Accept connections and return payload and incoming address in a loop.
 while True:
     try:
         client, address = sock.accept()

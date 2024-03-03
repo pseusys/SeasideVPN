@@ -13,6 +13,7 @@ from .tunnel import Tunnel
 from .utils import MAX_TAIL_LENGTH, SYMM_KEY_LENGTH, create_grpc_secure_channel, logger
 from .viridian import Viridian
 
+# Current algae distribution version.
 VERSION = "0.0.1"
 
 # Default algae user UID
@@ -24,6 +25,7 @@ _DEFAULT_HEALTHCHECK_MIN_TIME = 1
 # Maximal time between two healthpings, in seconds.
 _DEFAULT_HEALTHCHECK_MAX_TIME = 5
 
+# Default gRPC maximal request timeout.
 _DEFAULT_MAX_TIMEOUT = 10
 
 
@@ -39,6 +41,14 @@ class Coordinator:
     """
 
     def __init__(self, payload: str, addr: str, ctrl_port: int, name: str):
+        """
+        Coordinator constructor.
+        :param self: instance of Coordinator.
+        :param payload: payload value string.
+        :param addr: caerulean internal address.
+        :param ctrl_port: caerulean gRPC control port.
+        :param name: tunnel interface name.
+        """
         try:
             self._address = str(IPv4Address(addr))
         except AddressValueError:
@@ -72,7 +82,7 @@ class Coordinator:
         Create VPN connection.
         Receive viridian connection token, initializes and manages control.
         It also opens and starts "interface" and "client" objects.
-        Upon system exit, it stops the controller.
+        Upon system exit, it stops the coordinator.
         """
         try:
             logger.info("Receiving user token...")
@@ -90,7 +100,12 @@ class Coordinator:
             self._clean_tunnel()
 
     def _grpc_metadata(self) -> Dict[str, Any]:
-        return {"timeout": self._max_timeout, "metadata": (("tail", get_random_bytes(MAX_TAIL_LENGTH).hex()),)}
+        """
+        Generate gRPC tail metadata.
+        It consists of random number of random bytes.
+        """
+        tail_metadata = ("tail", get_random_bytes(randint(0, MAX_TAIL_LENGTH)).hex())
+        return {"timeout": self._max_timeout, "metadata": (tail_metadata,)}
 
     async def _receive_token(self) -> None:
         """
@@ -110,7 +125,7 @@ class Coordinator:
     async def _initialize_control(self) -> None:
         """
         Connect to VPN node and initialize connection control.
-        Initialize "client" object.
+        Initialize "viridian" object.
         Only proceed if valid user ID and successful control response status is received.
         """
         logger.debug(f"Establishing connection to caerulean {self._address}:{self._ctrl_port}...")
@@ -170,7 +185,8 @@ class Coordinator:
     async def interrupt(self) -> None:
         """
         Interrupt VPN connection gracefully.
-        Includes not only tunnel closing ("interface", "client" and seaside socket), but also sending termination request to caerulean.
+        Includes not only tunnel closing ("interface", "viridian" and seaside socket), but also sending termination request to caerulean.
+        Finall, removes tunnel interface.
         """
         logger.debug(f"Interrupting connection to caerulean {self._address}:{self._ctrl_port}...")
         request = ControlException(ControlExceptionStatus.TERMINATION, self._user_id)

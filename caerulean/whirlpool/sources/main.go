@@ -28,14 +28,14 @@ func init() {
 }
 
 func main() {
-	// Create and get IP for tunnel interface
+	// Initialize tunnel interface and firewall rules
 	tunnelConfig := tunnel.Preserve()
 	err := tunnelConfig.Open()
 	if err != nil {
 		logrus.Fatalf("Error establishing network connections: %v", err)
 	}
 
-	// Initialize context for goroutines stopping
+	// Initialize context and start metaserver
 	ctx, cancel := context.WithCancel(context.Background())
 	server := start(tunnel.NewContext(ctx, tunnelConfig))
 
@@ -44,10 +44,10 @@ func main() {
 	signal.Notify(exitSignal, syscall.SIGINT, syscall.SIGTERM)
 	<-exitSignal
 
-	// Send termination signal to goroutines and close VPN connection
+	// Send termination signal to metaserver
 	cancel()
 	server.stop()
 
-	// Disable tunnel and restore firewall config
+	// Disable tunnel and restore firewall configs
 	tunnelConfig.Close()
 }

@@ -34,18 +34,23 @@ type Viridian struct {
 	// User port number, integer.
 	Port uint16
 
+	// Cancellation function for viridian connection.
 	CancelContext context.CancelFunc
 
+	// Viridian connection - VPN packets will be retrieved from it.
 	SeaConn *net.UDPConn
 }
 
-// Helper function, determine whether viridian should be removed.
+// Determine whether viridian should be removed.
 // Viridian is removed if it is NOT privileged AND if viridian subscription has expired.
+// Should be applied for Viridian object.
 // Accept viridian pointer, return flag if the viridian should be deleted.
 func (viridian *Viridian) isViridianOvertime() bool {
 	return !viridian.admin && viridian.timeout != nil && viridian.timeout.Before(time.Now().UTC())
 }
 
+// Stop viridian connection and remove deletion timer.
+// Should be applied for Viridian object.
 func (viridian *Viridian) stop() {
 	viridian.reset.Stop()
 	viridian.CancelContext()
