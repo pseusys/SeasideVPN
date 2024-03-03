@@ -27,8 +27,8 @@ jobs:
         id: download-algae-artifact
         uses: dawidd6/action-download-artifact@v3
         with:
-          workflow: publish.yml
-          run_id: ${{ github.event.workflow_run.id }}
+          workflow: build.yml
+          run_id: ${{ github.run_id }}
           workflow_conclusion: success
           skip_unpack: true
           allow_forks: false
@@ -38,8 +38,8 @@ jobs:
         id: download-whirlpool-artifact
         uses: dawidd6/action-download-artifact@v3
         with:
-          workflow: publish.yml
-          run_id: ${{ github.event.workflow_run.id }}
+          workflow: build.yml
+          run_id: ${{ github.run_id }}
           workflow_conclusion: success
           skip_unpack: true
           allow_forks: false
