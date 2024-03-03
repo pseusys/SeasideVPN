@@ -27,8 +27,8 @@ jobs:
         id: download-algae-artifact
         uses: dawidd6/action-download-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          workflow: BUILD
+          workflow: build.yml
+          event: ${{ github.event.workflow_run.id }}
           workflow_conclusion: success
           skip_unpack: true
           name: algae-executable
@@ -37,8 +37,8 @@ jobs:
         id: download-whirlpool-artifact
         uses: dawidd6/action-download-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          workflow: BUILD
+          workflow: build.yml
+          event: ${{ github.event.workflow_run.id }}
           workflow_conclusion: success
           skip_unpack: true
           name: whirlpool-executable
@@ -63,6 +63,14 @@ jobs:
     steps:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+
+      - name: Install Dependencies
+        run: npm install --prefix .github/scripts
 
       - name: Deploy
         run: npm run --prefix .github/scripts deploy-whirlpool-beget
