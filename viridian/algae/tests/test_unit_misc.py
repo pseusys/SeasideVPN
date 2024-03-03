@@ -34,4 +34,4 @@ def test_encrypt_cycle() -> None:
     plaintext = cipher.decrypt(ciphertext)
     logger.info(f"message plaintext: {plaintext}")
 
-    assert plaintext == message, f"encrypted bytes ({message}) don't match decrypted bytes ({plaintext})"
+    assert plaintext == message, f"encrypted bytes ({message!r}) don't match decrypted bytes ({plaintext!r})"

@@ -36,6 +36,7 @@ async def coordinator() -> AsyncGenerator[Coordinator, None]:
     yield Coordinator(payload, addr, ctrl_port, name)
 
 
+@pytest.fixture(scope="function")
 def tail() -> Generator[Tuple[str, str], None, None]:
     yield ("tail", get_random_bytes(randint(0, MAX_TAIL_LENGTH)).hex())
 
