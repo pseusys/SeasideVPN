@@ -2,8 +2,8 @@ name: PUBLISH
 
 on:
   push:
-#    tags:
-#      - "**"
+    tags:
+      - "**"
 
 jobs:
   all-build:
@@ -44,14 +44,13 @@ jobs:
           name: whirlpool-executable
 
       - name: Create release
-        run: ls .
-        #uses: marvinpinto/action-automatic-releases@v1.2
-        #with:
-        #  repo_token: ${{ secrets.GITHUB_TOKEN }}
-        #  prerelease: false
-        #  files: |
-        #    viridian-algae-executable-*.run
-        #    caerulean-whirlpool-executable-*.run
+        uses: marvinpinto/action-automatic-releases@v1.2.1
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          prerelease: false
+          files: |
+            viridian-algae-executable-*.run
+            caerulean-whirlpool-executable-*.run
 
   caerulean-whirlpool-deploy:
     name: Deploy caerulean whirlpool to a dedicated test server

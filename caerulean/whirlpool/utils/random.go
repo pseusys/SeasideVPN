@@ -7,14 +7,14 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// Zero tail length - will be applied in case of random generation error.
-var NO_TAIL_LENGTH = big.NewInt(0)
+// Single tail length - will be applied in case of random generation error.
+var NO_TAIL_LENGTH = big.NewInt(1)
 
 // Maximal tail length (in bytes).
 var MAX_TAIL_LENGTH = big.NewInt(64)
 
 // Generate tail of random bytes.
-// Tail length will be between 0 and MAX_TAIL_LENGTH, return empty size tail if an error occurs.
+// Tail length will be between 1 and MAX_TAIL_LENGTH, return empty size tail if an error occurs.
 // Return byte array - tail.
 func GenerateReliableTail() []byte {
 	// Read random tail length
