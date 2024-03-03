@@ -2,13 +2,16 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { execSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
 
 import fetch from "node-fetch";
 import { NodeSSH } from "node-ssh";
 
 const BOLD = "\x1b[1m";
+const UNDER = "\x1b[4m";
 const BLUE = "\x1b[34m";
 const GREEN = "\x1b[32m";
+const YELLOW = "\x1b[33m";
 const RESET = "\x1b[0m";
 
 // Number of SSH connection attempts to the newly recreated server
@@ -19,6 +22,8 @@ const SLEEP_TIME = 15;
 const UBUNTU_VERISON = "22.04";
 // Local path to the 'whirlpool.sh' Whirlpool node installation script
 const INSTALL_SCRIPT = fileURLToPath(join(dirname(import.meta.url), "..", "..", "caerulean", "whirlpool", "whirlpool.sh"));
+// Default ctrlport for whirlpool.
+const DEFAULT_CTRLPORT = 8587;
 
 /**
  * Make HTTP request and return results parsed as JSON.
@@ -79,7 +84,10 @@ function printHelpMessage() {
 	console.log(`${BOLD}Required environment variables${RESET}:`);
 	console.log(`\t${GREEN}BEGET_API_LOGIN${RESET}: Beget account owner login.`);
 	console.log(`\t${GREEN}BEGET_API_PASSWORD${RESET}: Beget account owner password.`);
-	console.log(`\t${GREEN}BEGET_SERVER_KEY${RESET}:  Password of the deployment server root user.`);
+	console.log(`\t${GREEN}BEGET_SERVER_KEY${RESET}: Password of the deployment server root user (also admin payload).`);
+	console.log(`${BOLD}Optional environment variables${RESET}:`);
+	console.log(`\t${GREEN}WHIRLPOOL_PAYLOAD${RESET}: Whirlpool viridian poyload (default: will be generated).`);
+	console.log(`\t${GREEN}WHIRLPOOL_CTRLPORT${RESET}: Whirlpool control port (default: ${DEFAULT_CTRLPORT}).`);
 	process.exit(1);
 }
 
@@ -110,6 +118,10 @@ function parseArguments() {
 	else values["password"] = process.env.BEGET_API_PASSWORD;
 	if (process.env.BEGET_SERVER_KEY === undefined) throw new Error("Parameter 'key' is missing!");
 	else values["key"] = process.env.BEGET_SERVER_KEY;
+	if (process.env.WHIRLPOOL_PAYLOAD === undefined) values["payload"] = randomBytes(16).toString("hex");
+	else values["payload"] = process.env.WHIRLPOOL_PAYLOAD;
+	if (process.env.WHIRLPOOL_CTRLPORT === undefined) values["ctrlport"] = DEFAULT_CTRLPORT;
+	else values["ctrlport"] = parseInt(process.env.WHIRLPOOL_CTRLPORT);
 	return values;
 }
 
@@ -213,15 +225,18 @@ async function waitForServer(ip, key, waitTimes, sleepTime) {
  * Run the script and prepare environment (generate 'conf.env' file and certificates).
  * Run the node in the background and close SSH connection.
  * @param {NodeSSH} sshConn SSH connection to use
+ * @param {string} ownerPayload deployment server owner payload
+ * @param {string} viridianPayload deployment server viridian payload
+ * @param {string} ctrlport whirlpool ctrlport
  * @param {boolean} runInDocker whether whirlpool should be run in a Docker container
  */
-async function runDeployCommand(sshConn, runInDocker = false) {
+async function runDeployCommand(sshConn, ownerPayload, viridianPayload, ctrlport, runInDocker = false) {
 	console.log("Copying whirlpool installation script to beget test server...");
 	await sshConn.putFile(INSTALL_SCRIPT, "exec.sh");
 	console.log("Running whirlpool installation script on beget test server...");
 	const installFlags = runInDocker ? "-kgst" : "-gst";
-	const currentBranch = execSync("git rev-parse --abbrev-ref HEAD");
-	const installRes = await sshConn.execCommand(`bash exec.sh ${installFlags} -u ${currentBranch}`);
+	const currentBranch = execSync("git rev-parse --abbrev-ref HEAD").subarray(0, -1);
+	const installRes = await sshConn.execCommand(`bash exec.sh ${installFlags} -u ${currentBranch} -o ${ownerPayload} -v ${viridianPayload} -c ${ctrlport}`);
 	if (installRes.code != 0) throw new Error(`Installation script failed, error code: ${installRes.code}`);
 	console.log("Running whirlpool executable on beget test server...");
 	const execRes = await sshConn.execCommand('set -a && source conf.env && bash -c "nohup SeasideVPN/caerulean/whirlpool/build/whirlpool.run &" &>/dev/null </dev/null');
@@ -241,4 +256,5 @@ const ubuntuID = await getUbuntuAppID(UBUNTU_VERISON, token);
 
 const vps = await reinstallServer(serverID, ssh, args.key, ubuntuID, token);
 const conn = await waitForServer(vps.ip_address, args.key, WAIT_TIMES, SLEEP_TIME);
-await runDeployCommand(conn, args.docker);
+await runDeployCommand(conn, args.key, args.payload, args.ctrlport, args.docker);
+console.log(`Viridian connection link is: ${YELLOW}${UNDER}seaside+whirlpool://${vps.ip_address}:${args.ctrlport}?payload=${args.payload}${RESET}`)
