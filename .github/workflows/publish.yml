@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: all-build
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
+      group: DEPLOY-${{ github.ref }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
     steps:
@@ -28,7 +28,7 @@ jobs:
         uses: dawidd6/action-download-artifact@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          workflow: build.yml
+          workflow: BUILD
           workflow_conclusion: success
           skip_unpack: true
           name: algae-executable
@@ -38,7 +38,7 @@ jobs:
         uses: dawidd6/action-download-artifact@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          workflow: build.yml
+          workflow: BUILD
           workflow_conclusion: success
           skip_unpack: true
           name: whirlpool-executable
@@ -57,7 +57,7 @@ jobs:
     name: Deploy caerulean whirlpool to a dedicated test server
     runs-on: ubuntu-latest
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
+      group: DEPLOY-${{ github.ref }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
     steps:
