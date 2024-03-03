@@ -7,7 +7,7 @@ on:
 
 jobs:
   all-build:
-    name: Build all artifacts
+    name: Build All Artifacts
     uses: ./.github/workflows/build.yml
     secrets: inherit
     concurrency:
@@ -15,7 +15,7 @@ jobs:
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
   all-release-publish:
-    name: Create release for all files
+    name: Create Release For All Files
     runs-on: ubuntu-latest
     needs: all-build
     concurrency:
@@ -23,8 +23,7 @@ jobs:
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
     steps:
-      - name: Download algae artifact
-        id: download-algae-artifact
+      - name: Download Viridian Algae Artifact 🌿
         uses: dawidd6/action-download-artifact@v3
         with:
           workflow: publish.yml
@@ -33,8 +32,7 @@ jobs:
           allow_forks: false
           name: algae-executable
   
-      - name: Download whirlpool artifact
-        id: download-whirlpool-artifact
+      - name: Download Caerulean Whirlpool Artifact 🌌
         uses: dawidd6/action-download-artifact@v3
         with:
           workflow: publish.yml
@@ -43,7 +41,7 @@ jobs:
           allow_forks: false
           name: whirlpool-executable
 
-      - name: Create release
+      - name: Create Release 🪅
         uses: marvinpinto/action-automatic-releases@v1.2.1
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
@@ -53,7 +51,7 @@ jobs:
             caerulean-whirlpool-executable-*.run
 
   caerulean-whirlpool-deploy:
-    name: Deploy caerulean whirlpool to a dedicated test server
+    name: Deploy Caerulean Whirlpool To Dedicated Test Server
     runs-on: ubuntu-latest
     concurrency:
       group: DEPLOY-${{ github.ref }}
@@ -63,16 +61,18 @@ jobs:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Install NodeJS 🪢
+        uses: actions/setup-node@v4
         with:
           node-version: 18
 
-      - name: Install Dependencies
+      - name: Install Dependencies 🔮
         run: npm install --prefix .github/scripts
 
-      - name: Deploy
+      - name: Deploy Caerulean Whirlpool 🚀
         env:
           BEGET_API_LOGIN: ${{ secrets.BEGET_API_LOGIN }}
           BEGET_API_PASSWORD: ${{ secrets.BEGET_API_PASSWORD }}
           BEGET_SERVER_KEY: ${{ secrets.BEGET_SERVER_KEY }}
+          WHIRLPOOL_PAYLOAD: TestWhirlpoolViridianPayload
         run: npm run --prefix .github/scripts deploy-whirlpool-beget
