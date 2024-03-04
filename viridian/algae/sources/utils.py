@@ -142,7 +142,7 @@ def parse_connection_link(link: str) -> Dict[str, Any]:
     """
     Parse connection link and return contained data as dict.
     Connection link has the following format:
-    seaside+{nodetype}://{address}:{netport}/{anchor}?payload={payload}
+    seaside+{nodetype}://{address}:{ctrlport}/{anchor}?payload={payload}
     All the link parts are included into output dictionary.
     :param link: connection link for parsing.
     :return: parameters dictionary, string keys are mapped to values.
@@ -159,7 +159,7 @@ def parse_connection_link(link: str) -> Dict[str, Any]:
     if parsed.port is None:
         raise RuntimeError(f"Unknown connection address: {parsed.netloc}")
     else:
-        result.update({"addr": str(parsed.hostname), "net_port": parsed.port})
+        result.update({"addr": str(parsed.hostname), "ctrl_port": parsed.port})
 
     result.update({"anchor": parsed.path[1:]})
 

@@ -26,7 +26,7 @@ help-algae:
 help:
 	@ # Print general help message
 	echo -e "$(BOLD)Welcome to SeasideVPN project version $(VERSION)!$(RESET)"
-	echo -e "SeasideVPN is a simple PPTP UDP and VPN system, designed for speed, security and undetectability."
+	echo -e "SeasideVPN is a simple PPTP UDP and VPN system, focused on undetectability."
 	echo -e "$(BOLD)Available test targets$(RESET):"
 	echo -e "\t$(BLUE)make test$(RESET): test all system parts."
 	echo -e "\t$(BLUE)make test-whirlpool$(RESET): test caerulean whirlpool."
