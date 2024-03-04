@@ -257,4 +257,4 @@ const ubuntuID = await getUbuntuAppID(UBUNTU_VERISON, token);
 const vps = await reinstallServer(serverID, ssh, args.key, ubuntuID, token);
 const conn = await waitForServer(vps.ip_address, args.key, WAIT_TIMES, SLEEP_TIME);
 await runDeployCommand(conn, args.key, args.payload, args.ctrlport, args.docker);
-console.log(`Viridian connection link is: ${YELLOW}${UNDER}seaside+whirlpool://${vps.ip_address}:${args.ctrlport}?payload=${args.payload}${RESET}`)
+console.log(`Viridian connection link is: ${YELLOW}${UNDER}seaside+whirlpool://${vps.ip_address}:${args.ctrlport}?payload=${args.payload}${RESET}`);
