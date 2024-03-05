@@ -42,7 +42,7 @@ async def main(args: Sequence[str] = argv[1:]) -> None:
     just_fix_windows_console()
 
     arguments = vars(parser.parse_args(args))
-    if arguments["version"]:
+    if arguments.pop("version"):
         print(f"Seaside Viridian Algae version {VERSION}")
         exit(0)
 

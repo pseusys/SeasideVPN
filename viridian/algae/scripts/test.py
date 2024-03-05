@@ -53,8 +53,13 @@ def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remot
         logger.error(f"Testing {profile}: {Style.BRIGHT}{Fore.RED}failed{Fore.RESET}!{Style.RESET_ALL}")
         logger.error(f"Error message: {exc}")
 
+        _print_container_logs(docker, "algae")
         _print_container_logs(docker, "whirlpool")
-        _print_container_logs(docker, "seaside-echo")
+        if profile == "local":
+            _print_container_logs(docker, "seaside-echo")
+            _print_container_logs(docker, "network-disruptor")
+            for i in range(3):
+                _print_container_logs(docker, f"docker-algae-copy-{i}")
 
         docker.compose.kill()
         exit_code = 1
