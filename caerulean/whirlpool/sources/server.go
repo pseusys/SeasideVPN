@@ -20,9 +20,6 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-// Current Whirlpool distribution version.
-const VERSION = "0.0.1"
-
 // Whirlpool server structure.
 // Extends from generated gRPC Whirlpool server API.
 // Contains all the data required for server execution.
