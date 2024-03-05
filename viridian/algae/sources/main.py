@@ -44,6 +44,7 @@ async def main(args: Sequence[str] = argv[1:]) -> None:
     arguments = vars(parser.parse_args(args))
     if arguments["version"]:
         print(f"Seaside Viridian Algae version {VERSION}")
+        exit(0)
 
     connection_link = arguments.pop("link")
     if connection_link is not None:
