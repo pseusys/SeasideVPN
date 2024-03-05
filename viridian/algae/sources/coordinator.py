@@ -55,9 +55,11 @@ class Coordinator:
         except AddressValueError:
             self._address = gethostbyname(addr)
 
+        self._viridian: Optional[Viridian] = None
+        self._interface = Tunnel(name, IPv4Address(self._address))
+
         self._node_payload = payload
         self._ctrl_port = ctrl_port
-        self._interface = Tunnel(name, IPv4Address(self._address))
         self._user_name = getenv("SEASIDE_USER_NAME", _DEFAULT_USER_NAME)
         self._min_hc_time = int(getenv("SEASIDE_MIN_HC_TIME", _DEFAULT_HEALTHCHECK_MIN_TIME))
         self._max_hc_time = int(getenv("SEASIDE_MAX_HC_TIME", _DEFAULT_HEALTHCHECK_MAX_TIME))
@@ -76,7 +78,6 @@ class Coordinator:
         self._user_id: int
         self._session_token: bytes
         self._session_key: bytes
-        self._viridian: Viridian
 
     async def _initialize_connection(self) -> None:
         """
@@ -85,7 +86,7 @@ class Coordinator:
         Clean tunnel interface in case of any error.
         """
         try:
-            if self._viridian.operational:
+            if self._viridian is not None and self._viridian.operational:
                 logger.info("Closing the seaside client...")
                 self._viridian.close()
             logger.info("Receiving user token...")
@@ -95,8 +96,9 @@ class Coordinator:
             if not self._interface.operational:
                 logger.info("Opening the tunnel...")
                 self._interface.up()
-            logger.info("Opening the seaside client...")
-            self._viridian.open()
+            if self._viridian is not None:
+                logger.info("Opening the seaside client...")
+                self._viridian.open()
         except BaseException:
             self._clean_tunnel()
             raise
@@ -173,7 +175,7 @@ class Coordinator:
         Also close the seaside socket and delete "interface".
         """
         logger.info("Terminating whirlpool connection...")
-        if self._viridian.operational:
+        if self._viridian is not None and self._viridian.operational:
             logger.info("Closing the seaside client...")
             self._viridian.close()
         if self._interface.operational:
