@@ -27,13 +27,13 @@ jobs:
           poetry -C viridian/algae install --without client,devel
 
       - name: Test Viridian Algae (unit) 🧪
-        run: poetry -C viridian/algae run test_unit
+        run: poetry -C viridian/algae run test-unit
 
       - name: Test Viridian Algae (integration) 📇
-        run: poetry -C viridian/algae run test_integration
+        run: poetry -C viridian/algae run test-integration
 
       - name: Test Viridian Algae (smoke) 😶‍🌫️
-        run: poetry -C viridian/algae run test_smoke
+        run: poetry -C viridian/algae run test-smoke
 
   caerulean-whirlpool-test:
     name: Test Caerulean Whirlpool
