@@ -74,5 +74,5 @@ jobs:
           BEGET_API_LOGIN: ${{ secrets.BEGET_API_LOGIN }}
           BEGET_API_PASSWORD: ${{ secrets.BEGET_API_PASSWORD }}
           BEGET_SERVER_KEY: ${{ secrets.BEGET_SERVER_KEY }}
-          WHIRLPOOL_PAYLOAD: TestWhirlpoolViridianPayload
-        run: npm run --prefix .github/scripts deploy-whirlpool-beget
+          WHIRLPOOL_PAYLOAD: ${{ secrets.WHIRLPOOL_DEPLOYMENT_PAYLOAD }}
+        run: npm run --prefix .github/scripts deploy-whirlpool-beget -v

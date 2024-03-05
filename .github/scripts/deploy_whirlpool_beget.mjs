@@ -81,6 +81,7 @@ function printHelpMessage() {
 	console.log(`${BOLD}Beget deployment script usage${RESET}:`);
 	console.log(`\t${BLUE}-d --docker${RESET}: Run deployed script inside of a Docker container (default: false).`);
 	console.log(`\t${BLUE}-h --help${RESET}: Print this message again and exit.`);
+	console.log(`\t${BLUE}-v --verbose${RESET}: Print viridian connection link in the end.`);
 	console.log(`${BOLD}Required environment variables${RESET}:`);
 	console.log(`\t${GREEN}BEGET_API_LOGIN${RESET}: Beget account owner login.`);
 	console.log(`\t${GREEN}BEGET_API_PASSWORD${RESET}: Beget account owner password.`);
@@ -108,6 +109,11 @@ function parseArguments() {
 			type: "boolean",
 			short: "h",
 			default: false
+		},
+		verbose: {
+			type: "boolean",
+			short: "v",
+			default: true
 		}
 	};
 	const { values } = parseArgs({ options, tokens: true });
@@ -257,4 +263,6 @@ const ubuntuID = await getUbuntuAppID(UBUNTU_VERISON, token);
 const vps = await reinstallServer(serverID, ssh, args.key, ubuntuID, token);
 const conn = await waitForServer(vps.ip_address, args.key, WAIT_TIMES, SLEEP_TIME);
 await runDeployCommand(conn, args.key, args.payload, args.ctrlport, args.docker);
-console.log(`Viridian connection link is: ${YELLOW}${UNDER}seaside+whirlpool://${vps.ip_address}:${args.ctrlport}?payload=${args.payload}${RESET}`);
+
+if (args.verbose)
+	console.log(`Viridian connection link is: ${YELLOW}${UNDER}seaside+whirlpool://${vps.ip_address}:${args.ctrlport}?payload=${args.payload}${RESET}`);
