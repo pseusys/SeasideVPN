@@ -21,6 +21,9 @@ jobs:
     concurrency:
       group: DEPLOY-${{ github.ref }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+    permissions:
+      contents: write
+      pull-requests: write
 
     steps:
       - name: Download Viridian Algae Artifact 🌿
