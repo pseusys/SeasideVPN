@@ -74,7 +74,7 @@ test-whirlpool:
 
 test-algae: install-algae
 	@ # Run caerulean algae tests (in a docker container)
-	poetry -C viridian/algae run test_all
+	poetry -C viridian/algae run test-all
 .PHONY: test-algae
 
 test: test-whirlpool test-algae

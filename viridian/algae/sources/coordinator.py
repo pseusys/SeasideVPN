@@ -173,12 +173,12 @@ class Coordinator:
         Also close the seaside socket and delete "interface".
         """
         logger.info("Terminating whirlpool connection...")
-        if self._interface.operational:
-            logger.info("Closing the tunnel...")
-            self._interface.down()
         if self._viridian.operational:
             logger.info("Closing the seaside client...")
             self._viridian.close()
+        if self._interface.operational:
+            logger.info("Closing the tunnel...")
+            self._interface.down()
         logger.info("Closing the seaside socket...")
         self._gate_socket.close()
 
