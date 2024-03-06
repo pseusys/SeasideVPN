@@ -12,7 +12,7 @@ message SeasideConnectionCertificate {
     // Node IP address
     string address = 2;
     // Node HTTP port
-    string netport = 3;
+    string ctrlport = 3;
     // Node anhor endpoint
     string anchor = 4;
     // Node authentication payload
