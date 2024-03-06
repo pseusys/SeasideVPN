@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 from colorama import Fore
 from Crypto.Random import get_random_bytes
 from Crypto.Random.random import randint
-from grpc import RpcError
+from grpclib.exceptions import GRPCError
 
 from .generated import ControlConnectionRequest, ControlException, ControlExceptionStatus, ControlHealthcheck, WhirlpoolAuthenticationRequest, WhirlpoolViridianStub
 from .tunnel import Tunnel
@@ -116,7 +116,7 @@ class Coordinator:
                 logger.info("Starting controller process...")
                 await self._perform_control()
                 logger.info("Connection established!")
-            except RpcError:
+            except GRPCError:
                 logger.info("Control error occurs, trying to reconnect!")
                 logger.info("Re-initializing connection...")
                 await self._initialize_connection()
