@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: all-build
     concurrency:
-      group: DEPLOY-${{ github.ref }}
+      group: PUBLISH-${{ github.ref }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
     permissions:
       contents: write
