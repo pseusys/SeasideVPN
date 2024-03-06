@@ -8,6 +8,19 @@
 **/logs
 **/*.log
 
+## Environment files
+**/conf.env
+
+
+
+# JavaScript:
+
+## Node modules:
+.github/scripts/node_modules
+
+## Dependency lock file:
+.github/scripts/package-lock.json
+
 
 
 # Python:
@@ -23,14 +36,18 @@ viridian/algae/dist/
 ## Python (and test) cache:
 **/__pycache__/
 **/.mypy_cache/
-**/pytest-cache/
+**/.pytest-cache/
+
+## Python generated files:
+viridian/algae/docker/certificates/
+viridian/algae/sources/generated/
 
 
 
 # Golang:
 
 ## Go build:
-caerulean/whirlpool/build/
+caerulean/whirlpool/build/*.run
 
 ## Go module files:
 **/go.work
@@ -38,3 +55,6 @@ caerulean/whirlpool/build/
 
 ## Go generated files:
 **/*.pb.go
+
+## Generated certificates:
+caerulean/whirlpool/certificates/

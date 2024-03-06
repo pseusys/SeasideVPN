@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "/generated";
+
+
+// Required data for connection to a seaside node
+message SeasideConnectionCertificate {
+    // Type of node for connection: "whirlpool" or "surface"
+    string nodetype = 1;
+    // Node IP address
+    string address = 2;
+    // Node HTTP port
+    string ctrlport = 3;
+    // Node anhor endpoint
+    string anchor = 4;
+    // Node authentication payload
+    string payload = 5;
+}
+
+// Seaside user token used for connection
+message UserToken {
+    // User unique identifier
+    string uid = 1;
+    // User session cipher key
+    bytes session = 2;
+    // Flag if user is privileged
+    bool privileged = 3;
+    // User subscription end timestamp
+    optional google.protobuf.Timestamp subscription = 4;
+}

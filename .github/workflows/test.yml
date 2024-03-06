@@ -9,20 +9,39 @@ concurrency:
 
 jobs:
   viridian-algae-test:
-    name: Test Viridian Algae Client
+    name: Test Viridian Algae
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout 🛎️
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Python 3.10 🐍
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
       - name: Install Dependencies 🔮
-        run: pip3 install poetry
+        run: |
+          pip3 install poetry
+          poetry -C viridian/algae install --without client,devel
 
-      - name: Test Viridian Algae 🧪
-        run: make test-algae
+      - name: Test Viridian Algae (unit) 🧪
+        run: poetry -C viridian/algae run test-unit
+
+      - name: Test Viridian Algae (integration) 📇
+        run: poetry -C viridian/algae run test-integration
+
+      - name: Test Viridian Algae (smoke) 😶‍🌫️
+        run: poetry -C viridian/algae run test-smoke
+
+  caerulean-whirlpool-test:
+    name: Test Caerulean Whirlpool
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v4
+
+      - name: Test Caerulean Whirlpool 🧪
+        run: make test-whirlpool

@@ -1,0 +1,45 @@
+version: "3.9"
+
+services:
+  algae:
+    image: seaside-algae-smoke-remote
+    container_name: seaside-algae
+    extends:
+      file: compose.base.yml
+      service: algae
+    build:
+      args:
+        NETWORK_GATEWAY: 10.0.0.100
+    environment:
+      SEASIDE_ADDRESS: 10.0.0.87
+    networks:
+      sea-net:
+        ipv4_address: 10.0.0.65
+    depends_on:
+      whirlpool:
+        condition: service_healthy
+
+  whirlpool:
+    image: seaside-whirlpool-smoke-remote
+    extends:
+      file: compose.base.yml
+      service: whirlpool
+    build:
+      args:
+        NETWORK_GATEWAY: 10.0.0.1
+    environment:
+      SEASIDE_ADDRESS: 10.0.0.87
+      SEASIDE_EXTERNAL: 10.0.0.87
+    volumes:
+      - ./certificates:/seaside/caerulean/certificates
+    networks:
+      sea-net:
+        ipv4_address: 10.0.0.87
+
+
+networks:
+  sea-net:
+    ipam:
+      config:
+        - subnet: 10.0.0.0/24
+          gateway: 10.0.0.1

@@ -1,7 +1,10 @@
 name: BUILD
 
 on:
+  workflow_call:
   push:
+    branches:
+      - "**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -14,17 +17,25 @@ jobs:
 
     steps:
       - name: Checkout 🛎️
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Python 3.10 🐍
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.10"
+
+      - name: Install Protoc 💾
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "24.4"
 
       - name: Install Dependencies 🔮
         run: |
           pip3 install poetry
-          poetry -C viridian/algae install --all-extras
+          poetry -C viridian/algae install --without devel
+
+      - name: Generate Code 🚧
+        run: poetry -C viridian/algae run generate
 
       - name: Create Executable ID 📛
         id: id-creator
@@ -38,12 +49,63 @@ jobs:
 
       - name: Build Algae Executable 🏗️
         env:
-          EXEC_NAME: ${{ format('algae-executable-{0}', env.ID) }}
-        run: poetry -C viridian/algae run build ${{ env.EXEC_NAME }}.run
+          EXEC_NAME: ${{ format('viridian-algae-executable-{0}', env.ID) }}
+        run: poetry -C viridian/algae run compile ${{ env.EXEC_NAME }}.run
 
       - name: Save Artifact 🏺
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: algae-executable
-          path: dist/
+          path: viridian/algae/dist/
           retention-days: 3
+          if-no-files-found: error
+
+  caerulean-whirlpool-build:
+    name: Build Caerulean Whirlpool Server Executable
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v4
+
+      - name: Setup Go 1.20 🦫
+        uses: actions/setup-go@v5
+        with:
+          go-version: "^1.20.4"
+
+      - name: Install Protoc 💾
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "24.4"
+
+      - name: Install Dependencies 🔮
+        run: |
+          sudo apt-get install -y --no-install-recommends protobuf-compiler
+          go install golang.org/x/lint/golint@latest
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+
+      - name: Create Executable ID 📛
+        id: id-creator
+        env:
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+        run: |
+          BRANCH_NAME="${{ env.BRANCH_NAME }}"
+          BRANCH_NAME=${BRANCH_NAME////-}
+          BRANCH_NAME=${BRANCH_NAME/_/-}
+          echo ID=${BRANCH_NAME} >> $GITHUB_ENV
+
+      - name: Build Caerulean Whirlpool 🏗️
+        env:
+          EXEC_NAME: ${{ format('caerulean-whirlpool-executable-{0}', env.ID) }}
+        run: EXEC_NAME=${{ env.EXEC_NAME }}.run make -C caerulean/whirlpool build
+
+      - name: Save Artifact 🏺
+        uses: actions/upload-artifact@v4
+        with:
+          name: whirlpool-executable
+          path: |
+            caerulean/whirlpool/build/
+            caerulean/whirlpool/whirlpool.sh
+          retention-days: 3
+          if-no-files-found: error

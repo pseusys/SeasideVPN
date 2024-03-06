@@ -13,39 +13,56 @@ keywords = ["open-source", "udp", "distributed", "vpn", "client-server", "pptp",
 
 packages = [
     { include = "sources" },
-    { include = "script.py" },
+    { include = "scripts" },
+    { include = "tests" },
 ]
 
 
 
 [tool.poetry.dependencies]
-python = ">=3.7,<3.12"
+python = ">=3.8,<3.12"
 colorama = "^0.4.6"
+
+[tool.poetry.group.client.dependencies]
 pyroute2 = "^0.7.9"
+python-iptables = "^1.0.1"
+betterproto = "^2.0.0b6"
 pycryptodome = "^3.18.0"
-mypy = { version = "^1.3.0", optional = true }
-flake8 = { version = "^3.9.2", optional = true }
-black = { version = "^20.8b1", optional = true }
-isort = { version = "^5.11.0", optional = true }
-pytest = { version = "^7.3.1", optional = true }
-docker = { version = "^6.1.2", optional = true }
-icmplib = { version = "^3.0.3", optional = true }
-pyinstaller = { version = "^5.11.0", optional = true }
 
-[tool.poetry.extras]
-build = ["pyinstaller"]
-test = ["pytest", "docker", "icmplib"]
-devel = ["flake8", "black", "isort", "mypy"]
+[tool.poetry.group.devel.dependencies]
+pytest = "^7.3.1"
+pythonping = "^1.1.4"
+pytest-asyncio = "^0.23.5"
+pytest-timeout = "^2.2.0"
+pytest-dependency = "^0.5.1"
 
+[tool.poetry.group.script.dependencies]
+mypy = "^1.3.0"
+flake8 = "^3.9.2"
+black = "^20.8b1"
+isort = "^5.11.0"
+pyinstaller = "^5.11.0"
+python-on-whales = "^0.65.0"
+grpcio-tools = "^1.62.0"
+pyOpenSSL = "^24.0.0"
+types-pyOpenSSL = "^24.0.0.20240130"
+betterproto = { version = "^2.0.0b6", extras = ["compiler"] }
 
 
 [tool.poetry.scripts]
-execute = { callable = "script:execute" }
-lint = { callable = "script:lint", extras = ["devel"] }
-format = { callable = "script:format", extras = ["devel"] }
-test = { callable = "script:test", extras = ["test"] }
-build = { callable = "script:build", extras = ["build"] }
-clean = { callable = "script:clean" }
+generate = "scripts.process:generate"
+lint = "scripts.codestyle:lint"
+format = "scripts.codestyle:format"
+test-unit = "scripts.test:test_unit"
+test-integration = "scripts.test:test_integration"
+test-smoke = "scripts.test:test_smoke"
+test-local = "scripts.test:test_local"
+test-remote = "scripts.test:test_remote"
+test-all = "scripts.test:test_all"
+compile = "scripts.process:compile"
+execute = "scripts.process:execute"
+clean = "scripts.process:clean"
+help = "scripts.process:help"
 
 
 

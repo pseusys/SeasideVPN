@@ -1,0 +1,139 @@
+version: "3.9"
+
+services:
+  algae:
+    image: seaside-algae-smoke-local
+    container_name: seaside-algae
+    extends:
+      file: compose.base.yml
+      service: algae
+    build:
+      args:
+        NETWORK_GATEWAY: 10.65.0.100
+    environment:
+      SEASIDE_ADDRESS: 10.87.65.87
+      LOCAL_ADDRESS: 10.65.0.65
+      ECHO_ADDRESS: 10.42.0.42
+      SEASIDE_CONNECTION_TIMEOUT: 30
+    networks:
+      sea-cli-int:
+        ipv4_address: 10.65.0.65
+    depends_on:
+      algae-copy:
+        condition: service_healthy
+      disruptor:
+        condition: service_started
+
+  algae-copy:
+    image: seaside-algae-smoke-local
+    extends:
+      file: compose.base.yml
+      service: algae
+    deploy:
+      mode: replicated
+      replicas: 3
+    build:
+      args:
+        NETWORK_GATEWAY: 10.65.0.100
+    environment:
+      SEASIDE_ADDRESS: 10.87.65.87
+      SEASIDE_CONNECTION_TIMEOUT: 30
+    networks:
+      - sea-cli-int
+    depends_on:
+      whirlpool:
+        condition: service_healthy
+      int-router:
+        condition: service_started
+      ext-router:
+        condition: service_started
+      echo:
+        condition: service_healthy
+
+  int-router:
+    extends:
+      file: compose.base.yml
+      service: router
+    container_name: seaside-internal-router
+    networks:
+      sea-cli-int:
+        ipv4_address: 10.65.0.100
+      sea-rout-int:
+        ipv4_address: 10.87.65.100
+
+  whirlpool:
+    image: seaside-algae-whirlpool-local
+    extends:
+      file: compose.base.yml
+      service: whirlpool
+    build:
+      args:
+        NETWORK_GATEWAY: 10.87.42.100
+    environment:
+      SEASIDE_ADDRESS: 10.87.65.87
+      SEASIDE_EXTERNAL: 10.87.42.87
+    volumes:
+      - ./certificates:/seaside/caerulean/certificates
+    networks:
+      sea-rout-int:
+        ipv4_address: 10.87.65.87
+      sea-rout-ext:
+        ipv4_address: 10.87.42.87
+
+  ext-router:
+    extends:
+      file: compose.base.yml
+      service: router
+    container_name: seaside-external-router
+    networks:
+      sea-rout-ext:
+        ipv4_address: 10.87.42.100
+      sea-serv-ext:
+        ipv4_address: 10.42.0.100
+
+  echo:
+    image: seaside-echo
+    extends:
+      file: compose.base.yml
+      service: echo
+    build:
+      args:
+        NETWORK_GATEWAY: 10.42.0.100
+    networks:
+      sea-serv-ext:
+        ipv4_address: 10.42.0.42
+
+  disruptor:
+    image: gaiaadm/pumba
+    container_name: network-disruptor
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: "-l info netem -d 1h loss -p 25 seaside-internal-router seaside-external-router"
+    depends_on:
+      int-router:
+        condition: service_started
+      ext-router:
+        condition: service_started
+
+
+networks:
+  sea-cli-int:
+    ipam:
+      config:
+        - subnet: 10.65.0.0/24
+          gateway: 10.65.0.1
+  sea-rout-int:
+    ipam:
+      config:
+        - subnet: 10.87.65.0/24
+          gateway: 10.87.65.1
+  sea-rout-ext:
+    ipam:
+      config:
+        - subnet: 10.87.42.0/24
+          gateway: 10.87.42.1
+  sea-serv-ext:
+    ipam:
+      config:
+        - subnet: 10.42.0.0/24
+          gateway: 10.42.0.1

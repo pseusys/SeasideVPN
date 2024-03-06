@@ -1,0 +1,48 @@
+# This file defines basic Docker images for integration testing.
+# They will not be destroyed and recreated during tests - for speedup.
+# They are also reused in other Dockerfile targets in this directory.
+
+version: "3.9"
+
+services:
+  algae:
+    image: seaside-algae-smoke
+    privileged: true
+    build:
+      dockerfile: viridian/algae/docker/Dockerfile.algae
+      context: ../../..
+      target: smoke
+    env_file:
+      - test.conf.env
+    environment:
+      BUFFER_SIZE: 8192  # Buffer for echo server message storing
+      ECHO_PORT: 5000  # Port for echo server accessing
+
+  whirlpool:
+    image: seaside-whirlpool-smoke
+    container_name: seaside-whirlpool
+    privileged: true
+    build:
+      dockerfile: Dockerfile.whirlpool
+      target: smoke
+    env_file:
+      - test.conf.env
+
+  echo:
+    image: seaside-echo-smoke
+    container_name: seaside-echo
+    privileged: true
+    build:
+      dockerfile: Dockerfile.echo
+      target: smoke
+    environment:
+      LOG_LEVEL: DEBUG
+      BUFFER_SIZE: 8192  # Buffer for echo server message storing
+      ECHO_PORT: 5000  # Port for echo server accessing
+
+  router:
+    image: seaside-router-smoke
+    privileged: true
+    build:
+      dockerfile: Dockerfile.router
+      target: smoke

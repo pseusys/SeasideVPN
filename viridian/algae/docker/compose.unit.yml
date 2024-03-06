@@ -1,0 +1,10 @@
+version: "3.9"
+
+services:
+  algae:
+    image: seaside-algae-default-sleeping
+    privileged: true
+    build:
+      dockerfile: viridian/algae/docker/Dockerfile.algae
+      context: ../../..
+      target: default-sleeping

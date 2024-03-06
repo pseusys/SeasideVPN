@@ -1,109 +1,58 @@
+// Whirlpool represents a simple Seaside VPN "worker" node.
+// It accepts packages from Seaside viridians and transfers them to the internet.
+// It is only supposed to be run on Linux as it uses unix-only TUN devices.
+// The node can be run either freestanding (for users with admin permissions) or as a part of seaside network.
+// It is not supposed to perform any "demanding" operations, such as database connections, etc.
+// For any additional functionality, seaside network should be used.
 package main
 
 import (
-	"flag"
-	"fmt"
-	"net"
+	"context"
+	"main/tunnel"
+	"main/utils"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/sirupsen/logrus"
-	"github.com/songgao/water"
 )
 
-const (
-	NONE_ADDRESS  = "none"
-	TUNNEL_IP     = "192.168.0.87/24"
-	UDP           = "udp4"
-	TCP           = "tcp4"
-	SEA_PORT      = 8542
-	CONTROL_PORT  = 8543
-	NET_PORT      = 8587
-	USER_TTL      = 300
-	MAX_USERS     = 16
-	DEF_LOG_LEVEL = "WARNING"
-)
+// Current Whirlpool distribution version.
+const VERSION = "0.0.1"
 
-var (
-	iIP       = flag.String("a", NONE_ADDRESS, "Internal whirlpool IP - towards viridian (required)")
-	eIP       = flag.String("e", NONE_ADDRESS, "External whirlpool IP - towards outside world (default: same as internal address)")
-	surfaceIP = flag.String("s", NONE_ADDRESS, "Network surface address (required for network usage)")
-	port      = flag.Int("p", SEA_PORT, fmt.Sprintf("UDP port for receiving UDP packets (default: %d)", SEA_PORT))
-	control   = flag.Int("c", CONTROL_PORT, fmt.Sprintf("TCP port for communication with viridian (default: %d)", CONTROL_PORT))
-	network   = flag.Int("n", NET_PORT, fmt.Sprintf("Network API port (default: %d)", NET_PORT))
-	user_ttl  = flag.Int("t", USER_TTL, fmt.Sprintf("Time system keeps user password for without interaction, in minutes (default: %d hours)", USER_TTL/60))
-	max_users = flag.Int("u", MAX_USERS, fmt.Sprintf("Maximum number of users, that are able to connect to this whirlpool node (default: %d)", MAX_USERS))
-	help      = flag.Bool("h", false, "Print this message again and exit")
-)
-
+// Initialize package variables from environment variables and setup logging level.
 func init() {
-	level, err := logrus.ParseLevel(getEnv("LOG_LEVEL", DEF_LOG_LEVEL))
+	unparsedLevel := utils.GetEnv("SEASIDE_LOG_LEVEL")
+	level, err := logrus.ParseLevel(unparsedLevel)
 	if err != nil {
-		logrus.Fatalln("Couldn't parse log level environmental variable!")
+		logrus.Fatalf("Error parsing log level environmental variable: %v", unparsedLevel)
 	}
 	logrus.SetLevel(level)
 }
 
 func main() {
-	// Parse CLI args
-	flag.Parse()
-	if *help {
-		flag.Usage()
-		return
-	}
+	logrus.Infof("Running Caerulean Whirlpool version %s...", VERSION)
 
-	if *iIP == NONE_ADDRESS {
-		logrus.Fatalln("Internal whirlpool IP (towards viridian) is not specified (but required)!")
-	}
-
-	if *eIP == NONE_ADDRESS {
-		*eIP = *iIP
-	}
-
-	// Create and get IP for tunnel interface
-	tunnelAddress, tunnelNetwork, err := net.ParseCIDR(TUNNEL_IP)
+	// Initialize tunnel interface and firewall rules
+	tunnelConfig := tunnel.Preserve()
+	err := tunnelConfig.Open()
 	if err != nil {
-		logrus.Fatalf("Couldn't parse tunnel network address (%s): %v", TUNNEL_IP, err)
+		logrus.Fatalf("Error establishing network connections: %v", err)
 	}
 
-	tunnel, err := water.New(water.Config{DeviceType: water.TUN})
-	if err != nil {
-		logrus.Fatalln("Unable to allocate TUN interface:", err)
-	}
-
-	// Find interface names for give IP addresses
-	internalInterface, err := FindAddress(*iIP)
-	if err != nil {
-		logrus.Fatalf("Couldn't find any interface for IP %s: %v", *iIP, err)
-	}
-
-	externalInterface, err := FindAddress(*eIP)
-	if err != nil {
-		logrus.Fatalf("Couldn't find any interface for IP %s: %v", *eIP, err)
-	}
-
-	// Create and configure tunnel interface
-	iname := tunnel.Name()
-	AllocateInterface(iname, &tunnelAddress, tunnelNetwork)
-	ConfigureForwarding(internalInterface, externalInterface, iname, &tunnelAddress)
-
-	// Start goroutines for packet forwarding
-	go ListenControlPort(*iIP, *control)
-	go ReceivePacketsFromViridian(tunnel)
-	go SendPacketsToViridian(tunnel)
-
-	// Start web API, connect to surface if available
-	go InitNetAPI(*eIP, *network)
-	RetrieveNodeKey()
+	// Initialize context and start metaserver
+	ctx, cancel := context.WithCancel(context.Background())
+	server := start(tunnel.NewContext(ctx, tunnelConfig))
 
 	// Prepare termination signal
 	exitSignal := make(chan os.Signal, 1)
 	signal.Notify(exitSignal, syscall.SIGINT, syscall.SIGTERM)
 	<-exitSignal
 
-	// Send disconnection status to all connected users
-	for k := range VIRIDIANS {
-		SendStatusToUser(TERMIN, net.ParseIP(k), nil)
-	}
+	// Send termination signal to metaserver
+	cancel()
+	server.stop()
+
+	// Disable tunnel and restore firewall configs
+	tunnelConfig.Close()
 }

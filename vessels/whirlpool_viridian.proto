@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+
+option go_package = "/generated";
+
+
+
+// User data that is needed for administrator whirlpool node authentication
+message WhirlpoolAuthenticationRequest {
+    // User unique identifier
+    string uid = 1;
+    // User session cipher key
+    bytes session = 2;
+    // Node authentication owner payload
+    string payload = 3;
+}
+
+// User authentication certificate
+message WhirlpoolAuthenticationResponse {
+    // Encrypted user token
+    bytes token = 1;
+}
+
+
+
+// User control request to whirlpool node
+message ControlConnectionRequest {
+    // Encrypted user token
+    bytes token = 1;
+    // User client version
+    string version = 2;
+    // Node authentication owner payload
+    optional string payload = 3;
+    // User local IP address
+    bytes address = 4;
+    // User seaside port number
+    int32 port = 5;
+}
+
+message ControlConnectionResponse {
+    // Optional user ID (will be sent after authentication)
+    int32 userID = 1;
+}
+
+
+
+// User control request to whirlpool node
+message ControlHealthcheck {
+    // Optional user ID (will be sent after authentication)
+    int32 userID = 1;
+    // Next healthping request timeout
+    int32 nextIn = 2;
+}
+
+
+
+enum ControlExceptionStatus {
+    // Control operation success
+    EXCEPTION = 0;
+    // Control operation error
+    TERMINATION = 1;
+}
+
+// Whirlpool control responseto user
+message ControlException {
+    // Control response status
+    ControlExceptionStatus status = 1;
+    // Optional user ID (will be sent after authentication)
+    int32 userID = 2;
+    // Encrypted error message or empty string
+    optional string message = 3;
+}
+
+
+
+service WhirlpoolViridian {
+    rpc Authenticate(WhirlpoolAuthenticationRequest) returns (WhirlpoolAuthenticationResponse) {}
+
+    rpc Connect(ControlConnectionRequest) returns (ControlConnectionResponse) {}
+
+    rpc Healthcheck(ControlHealthcheck) returns (google.protobuf.Empty) {}
+
+    rpc Exception(ControlException) returns (google.protobuf.Empty) {}
+}

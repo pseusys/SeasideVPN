@@ -8,30 +8,19 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  caerulean-whirlpool-lint:
-    name: Lint Caerulean Whirlpool Server
+  shell-scripts-lint:
+    name: Lint Shell Scripts Everywhere
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout 🛎️
-        uses: actions/checkout@v3
-
-      - name: Setup Go 1.20 🦫
-        uses: actions/setup-go@v4
-        with:
-          go-version: "^1.20.4"
+        uses: actions/checkout@v4
 
       - name: Install Dependencies 🔮
-        run: |
-          sudo apt-get install -y protobuf-compiler
-          go install golang.org/x/lint/golint@latest
-          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+        run: sudo apt-get install shellcheck
 
-      - name: Generate Code 🗜
-        run: protoc -I=. --go_out=caerulean/whirlpool --experimental_allow_proto3_optional vessels/*.proto
-
-      - name: Lint Caerulean Whirlpool 🧪
-        run: make lint-whirlpool
+      - name: Lint Shell Scripts 🧪
+        run: make lint-scripts
 
   viridian-algae-lint:
     name: Lint Viridian Algae Client
@@ -39,10 +28,10 @@ jobs:
 
     steps:
       - name: Checkout 🛎️
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Python 3.10 🐍
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
@@ -51,3 +40,14 @@ jobs:
 
       - name: Lint Viridian Algae 🧪
         run: make lint-algae
+
+  caerulean-whirlpool-lint:
+    name: Lint Caerulean Whirlpool Server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v4
+
+      - name: Lint Caerulean Whirlpool 🧪
+        run: make lint-whirlpool
