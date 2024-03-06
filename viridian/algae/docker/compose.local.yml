@@ -108,7 +108,7 @@ services:
     container_name: network-disruptor
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    command: "-l info netem -d 1h loss -p 25 seaside-internal-router seaside-external-router"
+    command: "-l info netem -d 1h loss -p 10 seaside-internal-router seaside-external-router"
     depends_on:
       int-router:
         condition: service_started
