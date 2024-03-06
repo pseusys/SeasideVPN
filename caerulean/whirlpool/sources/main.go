@@ -17,6 +17,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Current Whirlpool distribution version.
+const VERSION = "0.0.1"
+
 // Initialize package variables from environment variables and setup logging level.
 func init() {
 	unparsedLevel := utils.GetEnv("SEASIDE_LOG_LEVEL")
@@ -28,6 +31,8 @@ func init() {
 }
 
 func main() {
+	logrus.Infof("Running Caerulean Whirlpool version %s...", VERSION)
+
 	// Initialize tunnel interface and firewall rules
 	tunnelConfig := tunnel.Preserve()
 	err := tunnelConfig.Open()

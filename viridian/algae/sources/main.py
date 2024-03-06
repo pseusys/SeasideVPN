@@ -6,7 +6,7 @@ from typing import Sequence
 
 from colorama import just_fix_windows_console
 
-from .coordinator import Coordinator
+from .coordinator import VERSION, Coordinator
 from .utils import logger, parse_connection_link
 
 # Default tunnel interface name.
@@ -26,6 +26,7 @@ parser.add_argument("-a", "--address", dest="addr", default=_DEFAULT_ADDRESS, ty
 parser.add_argument("-c", "--ctrl-port", dest="ctrl_port", default=_DEFAULT_CTRL_PORT, type=int, help=f"Caerulean control port number (default: {_DEFAULT_CTRL_PORT})")
 parser.add_argument("-t", "--tunnel", dest="name", default=_DEFAULT_NAME, help=f"Tunnel interface name (default: {_DEFAULT_NAME})")
 parser.add_argument("-l", "--link", dest="link", default=None, help="Connection link, will be used instead of other arguments if specified")
+parser.add_argument("-v", "--version", action="store_true", default=False, help="Print algae version number and exit.")
 
 # Viridian VPN coordinator.
 coordinator: Coordinator
@@ -41,6 +42,9 @@ async def main(args: Sequence[str] = argv[1:]) -> None:
     just_fix_windows_console()
 
     arguments = vars(parser.parse_args(args))
+    if arguments["version"]:
+        print(f"Seaside Viridian Algae version {VERSION}")
+
     connection_link = arguments.pop("link")
     if connection_link is not None:
         arguments.update(parse_connection_link(connection_link))
