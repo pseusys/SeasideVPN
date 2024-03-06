@@ -21,6 +21,9 @@ jobs:
     concurrency:
       group: DEPLOY-${{ github.ref }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+    permissions:
+      contents: write
+      pull-requests: write
 
     steps:
       - name: Download Viridian Algae Artifact 🌿
@@ -75,4 +78,4 @@ jobs:
           BEGET_API_PASSWORD: ${{ secrets.BEGET_API_PASSWORD }}
           BEGET_SERVER_KEY: ${{ secrets.BEGET_SERVER_KEY }}
           WHIRLPOOL_PAYLOAD: ${{ secrets.WHIRLPOOL_DEPLOYMENT_PAYLOAD }}
-        run: npm run --prefix .github/scripts deploy-whirlpool-beget -v
+        run: npm run --prefix .github/scripts deploy-whirlpool-beget -- -v
