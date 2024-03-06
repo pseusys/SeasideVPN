@@ -27,7 +27,7 @@ _DEFAULT_HEALTHCHECK_MIN_TIME = 1
 _DEFAULT_HEALTHCHECK_MAX_TIME = 5
 
 # Default gRPC maximal request timeout.
-_DEFAULT_MAX_TIMEOUT = 10
+_DEFAULT_CONNECTION_TIMEOUT = 3
 
 
 class Coordinator:
@@ -61,7 +61,7 @@ class Coordinator:
         self._user_name = getenv("SEASIDE_USER_NAME", _DEFAULT_USER_NAME)
         self._min_hc_time = int(getenv("SEASIDE_MIN_HC_TIME", _DEFAULT_HEALTHCHECK_MIN_TIME))
         self._max_hc_time = int(getenv("SEASIDE_MAX_HC_TIME", _DEFAULT_HEALTHCHECK_MAX_TIME))
-        self._max_timeout = int(getenv("SEASIDE_MAX_TIMEOUT", _DEFAULT_MAX_TIMEOUT))
+        self._max_timeout = int(getenv("SEASIDE_CONNECTION_TIMEOUT", _DEFAULT_CONNECTION_TIMEOUT))
 
         self._gate_socket = socket(AF_INET, SOCK_DGRAM)
         self._gate_socket.bind((self._interface.default_ip, 0))
