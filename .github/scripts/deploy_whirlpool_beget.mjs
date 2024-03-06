@@ -241,8 +241,7 @@ async function runDeployCommand(sshConn, ownerPayload, viridianPayload, ctrlport
 	await sshConn.putFile(INSTALL_SCRIPT, "exec.sh");
 	console.log("Running whirlpool installation script on beget test server...");
 	const installFlags = runInDocker ? "-kgst" : "-gst";
-	const currentBranch = execSync("git rev-parse --abbrev-ref HEAD").subarray(0, -1);
-	const installRes = await sshConn.execCommand(`bash exec.sh ${installFlags} -u ${currentBranch} -o ${ownerPayload} -v ${viridianPayload} -c ${ctrlport}`);
+	const installRes = await sshConn.execCommand(`bash exec.sh ${installFlags} -o ${ownerPayload} -v ${viridianPayload} -c ${ctrlport}`);
 	if (installRes.code != 0) throw new Error(`Installation script failed, error code: ${installRes.code}`);
 	console.log("Running whirlpool executable on beget test server...");
 	const execRes = await sshConn.execCommand('set -a && source conf.env && bash -c "nohup SeasideVPN/caerulean/whirlpool/build/whirlpool.run &" &>/dev/null </dev/null');

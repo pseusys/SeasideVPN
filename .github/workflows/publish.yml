@@ -47,8 +47,8 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           prerelease: false
           files: |
-            viridian-algae-executable-*.run
-            caerulean-whirlpool-executable-*.run
+            algae-executable.zip
+            whirlpool-executable.zip
 
   caerulean-whirlpool-deploy:
     name: Deploy Caerulean Whirlpool To Dedicated Test Server
