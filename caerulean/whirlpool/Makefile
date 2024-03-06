@@ -66,7 +66,7 @@ build-docker-prod:
 
 run-docker: build-docker-prod
 	@ # Run executable inside of the production Docker image
-	docker run --privileged -it --rm --name seaside-whirlpool-run --env-file example.conf.env seaside-whirlpool-prod ../..
+	docker run --privileged -it --rm --name seaside-whirlpool-run --env-file conf.env seaside-whirlpool-prod --network host ../..
 .PHONY: run-docker
 
 
