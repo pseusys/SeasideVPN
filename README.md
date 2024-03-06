@@ -106,7 +106,7 @@ Seaside VPN offers several ways to handle all these cases:
 
 Following ways are yet to be implemented:
 
-1. VPN packets sending via several "gateway" servers with different IPs, simulating `BitTorrent` protocol.
+1. VPN packets sending via several "gateway" servers with different IPs, simulating [`UDP tracker`](https://en.wikipedia.org/wiki/UDP_tracker) protocol.
 2. All ports and endpoint names are randomized.
 
 An encrypted viridian packet arriving to a whirlpool is authenticated by its port destination.
@@ -225,8 +225,16 @@ These are the most important of them:
 
 - Addresses for VPN connection: black and white list (limit addresses to use VPN with) <- add traffic analysis tool to client.
 - Control healthcheck times by cosine function, increase max delay to smth like 360 seconds, add random response delay.
-- Advice on traffic distribution (proxy nodes), all routes and ports masking, on caerulean side: switch to 172.x.x.x tunnel IP, 1st X will be the number of PROXY the packet has been received from.
+- Advice on traffic distribution (proxy nodes), all routes and ports masking, on caerulean side: switch to 172.x.x.x tunnel IP, 1st X will be the number of PROXY the packet has been received from (each proxy has its own port map, viridian also dedicates a separate port for each proxy).
 - Add RTP protocol disguise option (to obfuscation, sent by client).
 - Use Captcha for user registrations.
 - Track [GitHub issue](https://github.com/ldx/python-iptables/pull/340) for viridian algae warnings removal.
 - Add different cipher options (XChaCha20-Poly1305, AES-256-GCM, etc.).
+- Implement No-TLS solution (for countries like China).
+- Create an installation configuration whirlpool + proxy on the same host.
+
+### Similar projects
+
+- [Claimed-to-be undetectable VPN](https://github.com/vpnhood/VpnHood)
+- [Simple Golang VPN](https://github.com/skx/simple-vpn)
+- [Chinese-grade VPN](https://github.com/bigeagle/gohop) and [article about it](https://www.researchgate.net/publication/269310871_GoHop_Personal_VPN_to_defend_from_censorship)

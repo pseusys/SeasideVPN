@@ -28,7 +28,7 @@ Right before the connection, the algae `coordinator` opens gRPC channel to caeru
 Then it connects to caerulean `whirlpool`.
 
 Just after the connection, the algae `tunnel` uses `iptables-legacy` firewall to configure traffic.
-The following rules are created (in order):
+The following rules are prepended to the existing chains (in order):
 
 1. `iptables -t mangle -A OUTPUT --src: [LOCAL_DEFAULT_NETWORK_INTERFACE_IP] -o [LOCAL_DEFAULT_NETWORK_INTERFACE] --dst [CAERULEAN_INTERNAL_IP] -j ACCEPT`
 2. `iptables -t mangle -A OUTPUT -o [LOCAL_DEFAULT_NETWORK_INTERFACE] ! --dst [LOCAL_DEFAULT_NETWORK] -j MARK --set-mark 65`
