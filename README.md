@@ -1,15 +1,19 @@
 # SeasideVPN
 
-A simple PPTP UDP and VPN system
+A simple PPTP UDP and VPN system, focused on undetectability.
+The system is based on a new header-less completely encrypted communication protocol.
 
 > Current project version: **"0.0.1"**
 
 ## General info
 
-Seaside is a VPN and distributed system, focused on making final user traffic not easily detectable so that the whole system access blocking becomes not cost-effective.
+Here are few things that make Seaside VPN unique, fast and secure:
 
-For user traffic encryption `XChaCha20-Poly1305` encryption is used.
-For protocol obfuscation special [`wavy messages`](#wavy-messages) protocol is used.
+1. Seaside VPN operates on transport network level, being able to control the traffic on IP packet level. This allows simple and fast algorithms for packet processing.
+2. VPN data packets in Seaside VPN contain no header at all, that makes it harder to detect the VPN traffic.
+3. Seaside VPN uses encrypted gRPC channels for control packet exchange. Channels are not recreated while the connection is active.
+4. Seaside VPN control packets contain random length tail metadata and are exchanged at random time intervals, making any assumptions about their nature harder.
+5. Seaside VPN has no centralized infrastructure (servers, IP addresses, etc.) that means that detecting and blocking a single VPN node will never bring the whole system down.
 
 Target users of the system are **groups** of people (companies, communities, etc.), residing in different countries and wishing to create their own VPN network.
 System deployment and integration is designed to be easy even for not very familiar with networking people, so that each system instance will consist of several connected individually managed nodes.
@@ -22,16 +26,19 @@ System deployment and integration is designed to be easy even for not very famil
 Below, you can see the system structure.
 Following naming is used:
 
-- [`Surface`](#surface) is the main node of the system instance.
+- [`Seaside Network`](#system-structure) is one instance of Seaside VPN system, managed and used by a group of people.
+  It consists of several server nodes and client apps connected to it.
+  Each seaside network can have its own entry requirements, subscription conditions, prices, etc.
+- [`Surface`](#surface) is the main node of the system instance (also called the network center).
   It keeps track of actual worker nodes, collects statistics, performs load-balancing and user distribution.
   It also manages user authentication and payments, distributes incomes among VPN node owners.
-  Basically, the owner of the `surface` node owns (and is responsible) for the whole system instance.
+  Basically, the owner of the `surface` node owns (and is responsible) for the whole network.
 - [`Whirlpool`](#whirlpool) is a worker node.
   It allows user traffic forwarding, encryption, etc.
-  Several `whirlpool` nodes in different locations and of different performance can be included into a single system instance.
-  In order to make the sytem truly P2P, all system instance users are encouraged to manage their own `whirlpool` node and though contribute to the system.
-- [`Viridian`](#viridian-client) is a user application (desctop, mobile, browser, etc.).
-  One `viridian` can be connected to one seaside system instance at a time, but is allowed to choose between different `whirlpool`s in it.
+  Several `whirlpool` nodes in different locations and of different performance can be included into a single network.
+  In order to make the sytem truly P2P, all network users are encouraged to manage their own `whirlpool` node and though contribute to the system.
+- [`Viridian`](#viridian-client) is a user application (desktop, mobile, etc.).
+  One `viridian` can be connected to one Seaside network at a time, but is allowed to choose between different `whirlpool`s in it.
 
 ```mermaid
 graph LR
@@ -61,10 +68,10 @@ graph LR
   V6{{Viridian 6}} ---> W3([Whirlpool 3])
 ```
 
-On this diagram, an example SeaSide system is shown.
+In this diagram, an example Seaside network is shown.
 Three `viridian`s are connected to the internet via `whirlpool` №1 and two other `viridian`s via `whirlpool` №2.
 All of them are also connected to `surface` node.
-The last `viridian` №6 is connected only to `whirlpool` №3 and not to `surface` node, that is only possible if `viridian` №6 is the administrator of `whirlpool` №3.
+The last `viridian` №6 is connected only to `whirlpool` №3 and not to `surface` node, (that is only e.g. if `viridian` №6 is the administrator of `whirlpool` №3).
 
 ### Conventions
 
@@ -80,6 +87,7 @@ The numeric identification table can be found below:
 There are some important notes and conditions that must be fulfilled in order for system to work as expected:
 
 - Viridian packets must not exceed 65495 bytes (that is max UDP packet size minus overflow for encryption).
+- Whirlpool nodes can't maintain more than 65533 viridians (due to the whirlpool node architecture).
 
 ## Data, connections and protocols
 
@@ -90,7 +98,7 @@ Indeed, according to several articles ([this](https://ieeexplore.ieee.org/docume
 - Packet content analysis.
 - Packet exchange time analysis.
 
-SeaSide VPN offers several ways to handle all these cases:
+Seaside VPN offers several ways to handle all these cases:
 
 1. All VPN and control packets are encrypted and don't have any unencrypted header.
 2. Control packet lengths are randomized with random length tail.
@@ -101,124 +109,34 @@ Following ways are yet to be implemented:
 1. VPN packets sending via several "gateway" servers with different IPs, simulating `BitTorrent` protocol.
 2. All ports and endpoint names are randomized.
 
-The typical packet structure corresponds to special "wavy protocol" (described [right below](#wavy-messages)).
-The only way to decrypt a packet is guessing `XChaCha20-Poly1305` key (32 bytes).
-The only way to prove two messages use "wavy protocol" and belong to one user is either becoming a client of the same system as the user or intercepting 2 packets and guessing packet signature multiplier (8 bytes).
-
-### Wavy messages
-
-All the raw IP packets sent and received by the system (except for initial data exchange packets) have the following structure:
-
-| Addition | Signature | Payload | Tail |
-| --- | --- | --- | --- |
-| 8 bytes | 8 bytes | (random) | (random) |
-
-Packets can be `signed` and `unsigned`, `tailed` and `untailed`.
-In order to encrypt the message, two 8-byte integers are required: `multiplier` and `zero_user_id`.
-One important number is `max_prime` prime number, that is equal to $2^{64} - 59$.
-For every packet, `addition` is a random number.
-
-User ID is a 2-byte integer.
-If packet is signed, `signature` can be calculated:
-
-```math
-((multiplier \cdot ((user\_id + zero\_user\_id) \bmod max\_prime)) + addition) \bmod max\_prime
-```
-
-For calculation of user ID having `signature` and `addition`, the following value is required: `unmultiplier`, that is modular multiplicative inverse of `multiplier`.
-User ID can be calculated:
-
-```math
-(((unmultiplier \cdot (signature - addition)) \bmod max\_prime) - zero\_user\_id + max\_prime) \bmod max\_prime
-```
-
-Tail is expected only for control messages (because they usually have equal length that can be detected).
-A special function has to be defined for tail length calculation: `bit_count`, that maps 64-bit integers to numbers of `1` in their binary representation.
-Tail length can be calculated:
-
-```math
-bit\_count(zero\_user\_id \oplus addition) \bmod 64
-```
-
-> NB! For `XChaCha20-Poly1305` cipher, `addition` and `signature` bytes are included into nonce.
-
-### Viridian to whirlpool connection
-
-```mermaid
-sequenceDiagram
-  participant S as Surface
-  actor V as Viridian
-  participant W as Whirlpool
-
-  alt Viridian is whirlpool admin
-    V ->> W: UserDataForWhirlpool (unsig, untail)
-    W ->> V: UserCertificate (unsig, untail)
-  else Viridian is whirlpool user
-    V ->> S: UserDataSurface (unsig, untail)
-    S ->> V: UserCertificate (unsig, untail)
-  end
-
-  V ->> W: ControlRequest+ConnectionMessage (unsig, tail)
-  W ->> V: ControlResponse (sig, tail)
-
-  par On "control" port
-    loop With random time intervals
-      V ->> W: ControlRequest+HealthcheckMessage (sig, tail)
-      W ->> V: ControlResponse (sig, tail)
-    end
-  and On "seaside" port
-    loop On every user packet
-      V ->> W: [Encrypted packet (request)] (sig, untail)
-      W ->> V: [Encrypted packet (response)] (sig, untail)
-    end
-  end
-
-  opt Connection interrupted gracefully
-    V ->> W: ControlRequest (sig, tail)
-    W ->> V: ControlResponse (sig, tail)
-  end
-```
-
-On this diagram, a typical correct VPN connection is shown.
-For every message, `sig`/`unsig` means that the message is expected to be `signed`/`unsigned` and `tail`/`untail` means that the message is expected to be `tailed`/`untailed`.
-All the messages are expected to be exchanged on `control` port (unless specified).
-Message names reflect corresponding `protobuf` object names (see [message descriptions](./vessels/)).
-
-During connection, after some initial HTTP requests, two ports are used:
-
-1. "Control Port": TCP port for control message exchange.
-2. "Sea Port": UDP port for VPN data packets exchange.
-
-After the initial control message exchange is done, control port is used for healthcheck message exchange.
-Healthcheck control messages are sent at random time intervals, losing several healthcheck messages in a row leads to user disconnection.
-
-> **NB!** Although the protocol is stateful, the current state is not really important:
-> viridian can re-connect to caerulean _any_ time it wants!
+An encrypted viridian packet arriving to a whirlpool is authenticated by its port destination.
+I.e. alongside with a TCP gRPC contol channel a similar dedicated UDP port is assigned to every viridian and the VPN packets from that viridian should arrive to that port.
 
 ## Connection certificate
 
-Connection to all seaside system nodes can be done using a special **connection certificate** only.
-If it wouldn't be the case, at least some system nodes should've provided some public interface for user connections (e.g. sending unencrypted public key on request or showing login page).
-That could've potentially compromise the system and provide an intruder a way to automatically create an account or login and receive necessary information for efficient packet signature resolution.
+Connection to all Seaside network nodes can be done using a special **connection certificate** only.
+That ensures no unauthorized access to any network internal interfaces.
+Even knowing all the outgoing viridian traffic (e.g. capturing all its packets, including IP addresses and port numbers), an intruder still can't be sure it's a Seaside network and not something else.
 
 **Connection certificate** for all the nodes have common structure:
 
-- **nodetype**: type of node the certificate describes.
-- **address**: (IP or domain name) where the node HTTP server is hosted.
-- **netport**: port number where the node HTTP server is hosted.
-- **anchor**: endpoint name, sending a request to this endpoint will initiate login sequence.
-- **public**: `XChaCha20-Poly1305` key (hex string), 32 bytes long.
-- **payload**: string for user type determination and **public** encryption checking.
+- **nodetype**: type of node the certificate describes (`whirlpool` or `surface`).
+- **address**: (IP or domain name) where the node gRPC server is hosted.
+- **ctrlport**: port number where the node gRPC server is hosted.
+- **payload**: a secret string, unique for this node and shared to the network users only.
+
+Connection certificate is a secret Seaside network address and should be shared via a third-party channel (e.g. email, messengers, printed, etc.).
+
+> NB! In case of non-digital connection certificate transmission, QR-code usage is advised.
 
 Each node can support multiple **payload** options, e.g. for users with differen privelege levels or for users from different origins.
 All the connection certificate can be expressed in a form of an URL:
 
 ```text
-seaside+{nodetype}://{address}:{netport}/{anchor}?public={public}&payload={payload}
+seaside+{nodetype}://{address}:{ctrlport}/{anchor}?public={public}&payload={payload}
 ```
 
 > NB! Some of the nodes (the ones that can be run in Docker) usually accept the certificate in form of environmental variables.
-> In that case, the certificate field names are ptepended with `seaside_` prefix in order to avoid potential clashes with other variables.
 
 ## System parts
 
@@ -237,21 +155,30 @@ Caerulean is server side of Seaside VPN, it consists of several parts:
 > Inspired by [this](https://github.com/habibiefaried/vpn-protocol-udp-pptp) project and tutorial.
 
 My first program in `Go`, written with assistance of multiple tutorials and ChatGPT.
-
 See detailed documentation [here](./caerulean/whirlpool/README.md).
 
 ### Viridian (client)
 
-Viridian is client side of Seaside VPN, there are several client options:
+Viridian is client side of Seaside VPN.
+See detailed documentation [here](./viridian/README.md).
+There are several client options:
 
 #### Algae
+
+A client in `Python` written for development and integration testing purposes.
 
 See detailed documentation [here](./viridian/algae/README.md).
 
 ## General launching commands
 
 Commands for all projects testing and linting are defined in root `Makefile`.
-These are:
+These are the most important of them:
+
+- ```bash
+  make help
+  ```
+
+  for receiving the list of available `make` commands with detailed descriptions.
 
 - ```bash
   make test
@@ -264,7 +191,6 @@ These are:
   ```
 
   for linting all system components.
-  > NB! A special [`shellcheck`](https://github.com/koalaman/shellcheck) tool is required for bash script linting.
 
 - ```bash
   make clean
@@ -272,14 +198,22 @@ These are:
 
   for cleaning all building artifacts and Docker containers/images/networks.
 
+  > NB! Several tools are required for the `make` command execution.
+  > They include but might not be limited to the following (search for installation tutorials in the dedicated READMEs):
+  > - [`make`](https://www.gnu.org/software/make/) and [`bash`](https://www.gnu.org/software/bash/) for shell scripts execution.
+  > - [`shellcheck`](https://github.com/koalaman/shellcheck) for `shell` script linting.
+  > - [`protoc`](https://grpc.io/docs/protoc-installation/) for protobuf code generation.
+  > - Dependencies for `algae` running, testing and linting are listed in the [dedicated README](./viridian/algae/README.md#dependencies).
+  > - Dependencies for `whirlpool` code generation and running are listed in the [dedicated README](./caerulean/whirlpool/README.md#dependencies).
+  > - [`NodeJS18+`](https://nodejs.org/en) for scripts (in `./github/scripts`) execution.
+
 ## Future development
 
 ### Roadmap
 
-- descriptions + tests for `whirlpool` and `algae`
-- `viridian/...` - windows and linux GUI client ([wintun](https://git.zx2c4.com/wintun/about/) + rust + electron)
-- `caerulean/surface` - distributed node manager
-- `viridian/...` - android / ios clients
+- `viridian/...` - windows and linux GUI client ([wintun](https://git.zx2c4.com/wintun/about/) + rust + electron).
+- `caerulean/surface` - distributed node manager.
+- `viridian/...` - android / ios clients.
 
 ### TODOs
 
