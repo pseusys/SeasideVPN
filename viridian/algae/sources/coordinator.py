@@ -2,11 +2,12 @@ from asyncio import sleep
 from ipaddress import AddressValueError, IPv4Address
 from os import getenv
 from socket import AF_INET, SOCK_DGRAM, gethostbyname, inet_aton, socket
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from colorama import Fore
 from Crypto.Random import get_random_bytes
 from Crypto.Random.random import randint
+from grpc import RpcError
 
 from .generated import ControlConnectionRequest, ControlException, ControlExceptionStatus, ControlHealthcheck, WhirlpoolAuthenticationRequest, WhirlpoolViridianStub
 from .tunnel import Tunnel
@@ -77,27 +78,52 @@ class Coordinator:
         self._session_key: bytes
         self._viridian: Viridian
 
-    async def start(self) -> None:
+    async def _initialize_connection(self) -> None:
         """
-        Create VPN connection.
-        Receive viridian connection token, initializes and manages control.
-        It also opens and starts "interface" and "client" objects.
-        Upon system exit, it stops the coordinator.
+        Open and start "interface" and "viridian" objects.
+        Also receive connection token and connect to caerulean.
+        Clean tunnel interface in case of any error.
         """
         try:
+            if self._viridian.operational:
+                logger.info("Closing the seaside client...")
+                self._viridian.close()
             logger.info("Receiving user token...")
             await self._receive_token()
             logger.info("Exchanging basic information...")
             await self._initialize_control()
-            logger.info("Opening the tunnel...")
-            self._interface.up()
+            if not self._interface.operational:
+                logger.info("Opening the tunnel...")
+                self._interface.up()
             logger.info("Opening the seaside client...")
             self._viridian.open()
-            logger.info("Starting controller process...")
-            await self._perform_control()
-            logger.info("Connection established!")
-        except SystemExit:
+        except BaseException:
             self._clean_tunnel()
+            raise
+
+    async def start(self) -> None:
+        """
+        Create VPN connection.
+        Receive viridian connection token, initialize and manage control.
+        Upon receiving an error message, client is re-initialized, token is received once again and control is re-initialized.
+        NB! This method is blocking, should be run while VPN is active.
+        """
+        logger.info("Initializing connection...")
+        await self._initialize_connection()
+
+        while self._interface.operational:
+            try:
+                logger.info("Starting controller process...")
+                await self._perform_control()
+                logger.info("Connection established!")
+            except RpcError:
+                logger.info("Control error occurs, trying to reconnect!")
+                logger.info("Re-initializing connection...")
+                await self._initialize_connection()
+            except BaseException as exc:
+                logger.debug(f"Interrupting connection to caerulean {self._address}:{self._ctrl_port}...")
+                await self.interrupt(str(exc))
+                raise exc
 
     def _grpc_metadata(self) -> Dict[str, Any]:
         """
@@ -158,47 +184,30 @@ class Coordinator:
 
     async def _perform_control(self) -> None:
         """
-        Exchange healthping messages and process receiving all error messages.
-        NB! This method is blocking, should be run while VPN is active.
-        Upon receiving an error message, client is re-initialized, token is received once again and control is re-initialized.
+        Exchange healthping messages and sleep until the next healthping message is ready.
         """
-        logger.debug(f"Performing connection control to caerulean {self._address}:{self._ctrl_port}")
-        while self._interface.operational:
-            try:
-                next_in = randint(self._min_hc_time, self._max_hc_time)
-                request = ControlHealthcheck(user_id=self._user_id, next_in=next_in)
-                await self._control.healthcheck(request, **self._grpc_metadata())
-                await sleep(next_in)
+        next_in = randint(self._min_hc_time, self._max_hc_time)
+        request = ControlHealthcheck(user_id=self._user_id, next_in=next_in)
+        await self._control.healthcheck(request, **self._grpc_metadata())
+        await sleep(next_in)
 
-            except BaseException:
-                logger.info("Server lost session key!")
-                logger.info("Closing the seaside client...")
-                self._viridian.close()
-                logger.info("Re-fetching token...")
-                await self._receive_token()
-                logger.info("Re-initializing control...")
-                await self._initialize_control()
-                logger.info("Re-opening the seaside client...")
-                self._viridian.open()
-                logger.info("Connection re-establiched!")
-
-    async def interrupt(self) -> None:
+    async def interrupt(self, exception: Optional[str] = None) -> None:
         """
         Interrupt VPN connection gracefully.
         Includes not only tunnel closing ("interface", "viridian" and seaside socket), but also sending termination request to caerulean.
-        Finall, removes tunnel interface.
+        Finally, removes tunnel interface.
+        :param exception: optional exception, if not terminating successfully.
         """
         logger.debug(f"Interrupting connection to caerulean {self._address}:{self._ctrl_port}...")
-        request = ControlException(ControlExceptionStatus.TERMINATION, self._user_id)
+        request = ControlException(ControlExceptionStatus.TERMINATION, self._user_id, exception)
 
         logger.info("Interrupting caerulean connection...")
         await self._control.exception(request, **self._grpc_metadata())
         logger.info(f"Disconnected from caerulean {self._address}:{self._ctrl_port} successfully!")
 
-        self._clean_tunnel()
         self._channel.close()
+        self._clean_tunnel()
         logger.warning("Whirlpool connection terminated!")
 
-        self._viridian.close()
         self._interface.delete()
         logger.warning("Local viridian interface removed!!")
