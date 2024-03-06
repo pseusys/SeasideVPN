@@ -208,11 +208,30 @@ These are the most important of them:
 
 ## Future development
 
+## Connection short descriptions
+
+Whirlpool to Surface connection:
+
+1. Whirlpool applies for connection, suggests the fee.
+2. Surface refuses OR server advices a new fee OR server registers payment contract on blockchain + approves.
+3. Whirlpool sends another application OR checks blockchain data over the LATEST request and sends connection info.
+
+Proxy to Surface connection:
+
+1. Proxy applies.
+2. Surface approves.
+3. Upon assignment, surface sends update to proxy first, to whirlpool later.
+
 ### Roadmap
 
-- `viridian/...` - windows and linux GUI client ([wintun](https://git.zx2c4.com/wintun/about/) + rust + electron).
-- `caerulean/surface` - distributed node manager.
-- `viridian/...` - android / ios clients.
+- `viridian/submerged`: Rust crate viridian client.
+- `caerulean/foam`: Proxy for whirlpool.
+- `viridian/...`: Windows and Linux GUI client ([wintun](https://git.zx2c4.com/wintun/about/) + `submerged` + electron).
+- `viridian/...`: Android and iOS client (flutter + NDK + `submerged`).
+- `caerulean/surface`: Linux distributed node manager (java + springboot + thymeleaf).
+- `...`: TRON API smart contract for payments.
+- `viridian/...`: Linux router app (rust + CLI).
+- `caerulean/...`: Web `caerulean` explorer - pulls info from TRON, displays public servers, allows qr codes generation (static + github hosting + kotlin WEB).
 
 ### TODOs
 
@@ -231,6 +250,7 @@ These are the most important of them:
 - Add different cipher options (XChaCha20-Poly1305, AES-256-GCM, etc.).
 - Implement No-TLS solution (for countries like China).
 - Create an installation configuration whirlpool + proxy on the same host.
+- Create CONTRIBUTING.md and USING.md tutorials.
 
 ### Similar projects
 
