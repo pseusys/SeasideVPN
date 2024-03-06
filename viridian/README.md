@@ -58,6 +58,10 @@ In this diagram common viridian structure is shown.
 
 For now, only one algorithm for packet encryption is available, that is `XChaCha20-Poly1305`.
 
+> NB! VPN packets are encrypted and then transmitted via UDP (1 VPN packet = 1 UDP packet).
+> That implies that packet size is limited by UDP maximum packet size + encryption overhead.
+> UDP packet size limit is 2^16 - 1, encryption nonce is 24 bytes and encryption tag is 16 bytes, that makes maximum VPN packet size equal to 65495 bytes.
+
 ## Viridian to whirlpool connection
 
 ```mermaid
