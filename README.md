@@ -1,7 +1,7 @@
 # SeasideVPN
 
 A simple PPTP UDP and VPN system, focused on undetectability.
-The system is based on a new header-less completely encrypted communication protocol.
+The system is based on a new headerless completely encrypted communication protocol.
 
 > Current project version: **"0.0.1"**
 
@@ -202,7 +202,6 @@ These are the most important of them:
   > They include but might not be limited to the following (search for installation tutorials in the dedicated READMEs):
   > - [`make`](https://www.gnu.org/software/make/) and [`bash`](https://www.gnu.org/software/bash/) for shell scripts execution.
   > - [`shellcheck`](https://github.com/koalaman/shellcheck) for `shell` script linting.
-  > - [`protoc`](https://grpc.io/docs/protoc-installation/) for protobuf code generation.
   > - Dependencies for `algae` running, testing and linting are listed in the [dedicated README](./viridian/algae/README.md#dependencies).
   > - Dependencies for `whirlpool` code generation and running are listed in the [dedicated README](./caerulean/whirlpool/README.md#dependencies).
   > - [`NodeJS18+`](https://nodejs.org/en) for scripts (in `./github/scripts`) execution.
