@@ -1,15 +1,13 @@
 # SeasideVPN
 
+<img align="left" width="100" height="100" alt="Seaside VPN logo" src="./view/logo.png">
+
 [![TEST](https://github.com/pseusys/SeasideVPN/actions/workflows/test.yml/badge.svg)](https://github.com/pseusys/SeasideVPN/actions/workflows/test.yml)
 
 A simple PPTP UDP and VPN system, focused on undetectability.
 The system is based on a new headerless completely encrypted communication protocol.
 
 Current project version: **"0.0.1"**
-
-<kbd>
-  <img align="right" src="./view/logo.png" alt="Seaside VPN logo" width="200"/>
-</kbd>
 
 ## General info
 
