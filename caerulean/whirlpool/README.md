@@ -35,7 +35,7 @@ Whirlpool consists of several modules:
 
 The VPN worker node operates as follows:
 
-1. It creates a [private network](https://en.wikipedia.org/wiki/Private_network) with default address set to "*.*.0.1/16".
+1. It creates a [private network](https://en.wikipedia.org/wiki/Private_network) with default address set to "\*.\*.0.1/16".
 2. It creates a tunnel device connected to that network with IP equal to the default IP.
 3. It sets up firewall policy as follows:
    1. All the local packets are allowed.

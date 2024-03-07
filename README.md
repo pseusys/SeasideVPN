@@ -222,7 +222,8 @@ These are the most important of them:
   > NB! Several tools are required for the `make` command execution.
   > They include but might not be limited to the following:
   > - [`make`](https://www.gnu.org/software/make/) and [`bash`](https://www.gnu.org/software/bash/) for shell scripts execution.
-  > - [`shellcheck`](https://github.com/koalaman/shellcheck) for `shell` script linting.
+  > - [`shellcheck`](https://github.com/koalaman/shellcheck) for `shell` scripts linting.
+  > - [`markdownlint`](https://github.com/igorshubovych/markdownlint-cli) for `markdown` files linting.
   > - Dependencies for `algae` running, testing and linting are listed in the [dedicated README](./viridian/algae/README.md#dependencies).
   > - Dependencies for `whirlpool` code generation and running are listed in the [dedicated README](./caerulean/whirlpool/README.md#dependencies).
   > - [`NodeJS18+`](https://nodejs.org/en) for scripts (in `./github/scripts`) execution.

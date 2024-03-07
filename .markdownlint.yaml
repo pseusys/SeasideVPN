@@ -1,0 +1,9 @@
+default: true
+extends: null
+
+MD013:  # Source line length
+  line_length: 300
+
+MD033:  # Inline HTML tags
+  allowed_elements:
+    - img
