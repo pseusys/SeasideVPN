@@ -1,6 +1,6 @@
 # SeasideVPN
 
-<img align="left" width="200" height="200" alt="Seaside VPN logo" src="./view/logo.png">
+<img align="left" width="175" height="175" alt="Seaside VPN logo" src="./view/logo.png">
 
 [![TEST](https://github.com/pseusys/SeasideVPN/actions/workflows/test.yml/badge.svg)](https://github.com/pseusys/SeasideVPN/actions/workflows/test.yml)
 
