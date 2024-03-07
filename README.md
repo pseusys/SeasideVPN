@@ -3,9 +3,7 @@
 <img align="left" width="175" height="175" alt="Seaside VPN logo" src="./view/logo.png">
 
 [![BUILD](https://github.com/pseusys/SeasideVPN/actions/workflows/build.yml/badge.svg)](https://github.com/pseusys/SeasideVPN/actions/workflows/build.yml)
-
 [![TEST](https://github.com/pseusys/SeasideVPN/actions/workflows/test.yml/badge.svg)](https://github.com/pseusys/SeasideVPN/actions/workflows/test.yml)
-
 [![LINT](https://github.com/pseusys/SeasideVPN/actions/workflows/lint.yml/badge.svg)](https://github.com/pseusys/SeasideVPN/actions/workflows/lint.yml)
 
 A simple PPTP UDP and VPN system, focused on undetectability.
