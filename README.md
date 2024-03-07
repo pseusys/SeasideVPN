@@ -7,7 +7,7 @@
 A simple PPTP UDP and VPN system, focused on undetectability.
 The system is based on a new headerless completely encrypted communication protocol.
 
-Current project version: **"0.0.1"**
+> Current project version: **"0.0.2"**
 
 ## General info
 

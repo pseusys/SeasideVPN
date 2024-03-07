@@ -4,7 +4,7 @@
 SHELL=/bin/bash
 .SHELLFLAGS=-O globstar -c -e
 
-VERSION="0.0.1"
+VERSION="0.0.2"
 
 BOLD=\033[1m
 BLUE=\033[34m
