@@ -7,7 +7,9 @@ The system is based on a new headerless completely encrypted communication proto
 
 Current project version: **"0.0.1"**
 
-![Seaside VPN logo](./view/logo.png)
+<kbd>
+  <img align="right" src="./view/logo.png" alt="Seaside VPN logo" width="200"/>
+</kbd>
 
 ## General info
 
