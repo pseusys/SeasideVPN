@@ -100,7 +100,7 @@ There are some important notes and conditions that must be fulfilled in order fo
 This repository contains **all** Seaside VPN components and parts.
 That's what you can find inside:
 
-- `.github`: Resources used by GitHub Actions CD/CI.
+- `.github`: Resources used by GitHub Actions CI/CD.
   - `scripts`: Automatization scripts.
   - `workflows`: GitHub actions workflows.
 - `caerulean`: Caerulean system components.
