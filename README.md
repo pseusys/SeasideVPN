@@ -1,9 +1,15 @@
 # SeasideVPN
 
+<kbd>
+  <img src="./view/logo.png" alt="Seaside VPN logo" width="200"/>
+</kbd>
+
+[![TEST](https://github.com/pseusys/SeasideVPN/actions/workflows/test.yml/badge.svg)](https://github.com/pseusys/SeasideVPN/actions/workflows/test.yml)
+
 A simple PPTP UDP and VPN system, focused on undetectability.
 The system is based on a new headerless completely encrypted communication protocol.
 
-> Current project version: **"0.0.1"**
+Current project version: **"0.0.1"**
 
 ## General info
 
@@ -88,6 +94,21 @@ There are some important notes and conditions that must be fulfilled in order fo
 
 - Viridian packets must not exceed 65495 bytes (that is max UDP packet size minus overflow for encryption).
 - Whirlpool nodes can't maintain more than 65533 viridians (due to the whirlpool node architecture).
+
+### Repository structure
+
+This repository contains **all** Seaside VPN components and parts.
+That's what you can find inside:
+
+- `.github`: Resources used by GitHub Actions CD/CI.
+  - `scripts`: Automatization scripts.
+  - `workflows`: GitHub actions workflows.
+- `caerulean`: Caerulean system components.
+  - `whirlpool`: Caerulean whirlpool node (see [README](./caerulean/whirlpool/README.md)).
+- `vessels`: Protobuf schemas used in various protocols.
+- `view`: Project branding, images, etc.
+- `viridian`: Viridian system components.
+  - `algae`: Viridian algae node (see [README](./viridian/algae/README.md)).
 
 ## Data, connections and protocols
 
@@ -199,7 +220,7 @@ These are the most important of them:
   for cleaning all building artifacts and Docker containers/images/networks.
 
   > NB! Several tools are required for the `make` command execution.
-  > They include but might not be limited to the following (search for installation tutorials in the dedicated READMEs):
+  > They include but might not be limited to the following:
   > - [`make`](https://www.gnu.org/software/make/) and [`bash`](https://www.gnu.org/software/bash/) for shell scripts execution.
   > - [`shellcheck`](https://github.com/koalaman/shellcheck) for `shell` script linting.
   > - Dependencies for `algae` running, testing and linting are listed in the [dedicated README](./viridian/algae/README.md#dependencies).
@@ -251,6 +272,7 @@ Proxy to Surface connection:
 - Implement No-TLS solution (for countries like China).
 - Create an installation configuration whirlpool + proxy on the same host.
 - Create CONTRIBUTING.md and USING.md tutorials.
+- Fix release artiface algorithm: add different installation scripts **only** (whirlpool-standalone, whirlpool-foam, whirlpool-surface (with compose.yml), ...).
 
 ### Similar projects
 
