@@ -1,7 +1,7 @@
 # SeasideVPN
 
 <kbd>
-  <img src="./view/logo.png" alt="Seaside VPN logo" width="200"/>
+  <img align="left" src="./view/logo.png" alt="Seaside VPN logo" width="200"/>
 </kbd>
 
 [![TEST](https://github.com/pseusys/SeasideVPN/actions/workflows/test.yml/badge.svg)](https://github.com/pseusys/SeasideVPN/actions/workflows/test.yml)
