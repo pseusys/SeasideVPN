@@ -15,7 +15,7 @@ from .utils import MAX_TAIL_LENGTH, SYMM_KEY_LENGTH, create_grpc_secure_channel,
 from .viridian import Viridian
 
 # Current algae distribution version.
-VERSION = "0.0.1"
+VERSION = "0.0.2"
 
 # Default algae user UID
 _DEFAULT_USER_NAME = "default_algae_user"

@@ -22,6 +22,20 @@ jobs:
       - name: Lint Shell Scripts 🧪
         run: make lint-scripts
 
+  misc-scripts-lint:
+    name: Lint Shell Scripts Everywhere
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies 🔮
+        run: sudo npm install -g markdownlint-cli
+
+      - name: Lint Markdown Files 👇
+        run: make lint-markdown
+
   viridian-algae-lint:
     name: Lint Viridian Algae Client
     runs-on: ubuntu-latest
