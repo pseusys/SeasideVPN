@@ -4,7 +4,7 @@
 SHELL=/bin/bash
 .SHELLFLAGS=-O globstar -c -e
 
-VERSION="0.0.1"
+VERSION="0.0.2"
 
 BOLD=\033[1m
 BLUE=\033[34m
@@ -35,7 +35,8 @@ help:
 	echo -e "\t$(BLUE)make lint$(RESET): test all system parts."
 	echo -e "\t$(BLUE)make lint-whirlpool$(RESET): lint caerulean whirlpool."
 	echo -e "\t$(BLUE)make lint-algae$(RESET): lint viridian algae."
-	echo -e "\t$(BLUE)make lint-scripts$(RESET): lint JavaScript and Bash scripts in the project."
+	echo -e "\t$(BLUE)make lint-scripts$(RESET): lint all JavaScript and Bash scripts in the project."
+	echo -e "\t$(BLUE)make lint-markdown$(RESET): lint all Markdown files in the project."
 	echo -e "$(BOLD)Available clean targets$(RESET):"
 	echo -e "\t$(BLUE)make clean$(RESET): clean all system part build and Docker artifacts."
 	echo -e "\t$(BLUE)make clean-whirlpool$(RESET): clean caerulean whirlpool."
@@ -99,7 +100,12 @@ lint-scripts:
 	npm run --prefix .github/scripts lint-scripts
 .PHONY: lint-scripts
 
-lint: lint-whirlpool lint-algae lint-scripts
+lint-markdown:
+	@ # Lint all the markdown files in project
+	markdownlint -d **/*.md
+.PHONY: lint-markdown
+
+lint: lint-whirlpool lint-algae lint-scripts lint-markdown
 	@ # Lint all the system parts
 .PHONY: lint
 

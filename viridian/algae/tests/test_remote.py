@@ -59,7 +59,9 @@ def test_ftp_protocol() -> None:
     address = "https://picsum.photos/800/600"
     logger.info("Testing with FTP protocol")
     file, message = urlretrieve(address)
-    assert int(message["Content-Length"]) == stat(file).st_size != 0, "Received file length doesn't match header!"
+    content_length = message["Content-Length"]
+    assert content_length is not None, "Header 'Context-Length' is not present!"
+    assert int(content_length) == stat(file).st_size != 0, "Received file length doesn't match header!"
     logger.info(f"Downloaded image of size {message['Content-Length']}")
 
 
