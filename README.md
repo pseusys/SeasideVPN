@@ -128,7 +128,6 @@ Seaside VPN offers several ways to handle all these cases:
 Following ways are yet to be implemented:
 
 1. VPN packets sending via several "gateway" servers with different IPs, simulating [`UDP tracker`](https://en.wikipedia.org/wiki/UDP_tracker) protocol.
-2. All ports and endpoint names are randomized.
 
 An encrypted viridian packet arriving to a whirlpool is authenticated by its port destination.
 I.e. alongside with a TCP gRPC contol channel a similar dedicated UDP port is assigned to every viridian and the VPN packets from that viridian should arrive to that port.
@@ -230,7 +229,9 @@ These are the most important of them:
 
 ## Future development
 
-## Connection short descriptions
+The steps of expected system development and not-yet-implemented features are described below.
+
+### Connection short descriptions
 
 Whirlpool to Surface connection:
 
@@ -275,7 +276,7 @@ Proxy to Surface connection:
 - Create CONTRIBUTING.md and USING.md tutorials.
 - Fix release artiface algorithm: add different installation scripts **only** (whirlpool-standalone, whirlpool-foam, whirlpool-surface (with compose.yml), ...).
 
-### Similar projects
+## Similar projects
 
 - [Claimed-to-be undetectable VPN](https://github.com/vpnhood/VpnHood)
 - [Simple Golang VPN](https://github.com/skx/simple-vpn)
