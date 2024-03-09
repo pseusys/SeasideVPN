@@ -86,20 +86,18 @@ func NewViridianDict(ctx context.Context) *ViridianDict {
 // Return viridian number and nil if added successfully and nil and error otherwise.
 func (dict *ViridianDict) Add(ctx context.Context, token *generated.UserToken, address, gateway net.IP, port uint16) (*uint16, error) {
 	dict.mutex.Lock()
+	defer dict.mutex.Unlock()
 
 	// Check if there are slots available
 	if !token.Privileged && len(dict.entries) >= int(dict.maxViridians) {
-		dict.mutex.Unlock()
 		return nil, status.Error(codes.ResourceExhausted, "can not connect any more viridians")
 	} else if len(dict.entries) == int(dict.maxViridians+dict.maxOverhead) {
-		dict.mutex.Unlock()
 		return nil, status.Error(codes.ResourceExhausted, "can not connect any more admins")
 	}
 
 	// Create viridian session cipher
 	aead, err := crypto.ParseCipher(token.Session)
 	if err != nil {
-		dict.mutex.Unlock()
 		return nil, status.Errorf(codes.InvalidArgument, "error parsing encryption algorithm for user: %v", err)
 	}
 
@@ -109,27 +107,23 @@ func (dict *ViridianDict) Add(ctx context.Context, token *generated.UserToken, a
 	// Resolve UDP address
 	localAddress, err := net.ResolveUDPAddr("udp4", fmt.Sprintf("%s:0", internalAddress))
 	if err != nil {
-		dict.mutex.Unlock()
 		return nil, status.Errorf(codes.Internal, "error resolving local address: %v", err)
 	}
 
 	// Create VPN connection
 	seaConn, err := net.ListenUDP("udp4", localAddress)
 	if err != nil {
-		dict.mutex.Unlock()
 		return nil, status.Errorf(codes.Internal, "error resolving connection (%s): %v", localAddress.String(), err)
 	}
 
 	// Get connection port number
 	_, userID, err := utils.GetIPAndPortFromAddress(seaConn.LocalAddr())
 	if err != nil {
-		dict.mutex.Unlock()
 		return nil, status.Errorf(codes.Internal, "error resolving user sea port: %v", err)
 	}
 
 	// Check if user number combined with tunnel IP create special IP address
 	if utils.IsSpecialIPAddress(userID) {
-		dict.mutex.Unlock()
 		return nil, status.Errorf(codes.Internal, "error opening UDP listener, port: %d", userID)
 	}
 
@@ -156,14 +150,12 @@ func (dict *ViridianDict) Add(ctx context.Context, token *generated.UserToken, a
 
 	// If viridian subscription is expired, throw error, otherwise insert the viridian and return its' ID
 	if viridian.isViridianOvertime() {
-		dict.mutex.Unlock()
 		return nil, status.Error(codes.DeadlineExceeded, "viridian subscription outdated")
 	}
 
 	// Retrieve tunnel config from context
 	tunnelConfig, ok := tunnel.FromContext(ctx)
 	if !ok {
-		dict.mutex.Unlock()
 		return nil, status.Error(codes.Internal, "tunnel config not found in context")
 	}
 
@@ -172,7 +164,6 @@ func (dict *ViridianDict) Add(ctx context.Context, token *generated.UserToken, a
 	go dict.ReceivePacketsFromViridian(seaCtx, userID, seaConn, tunnelConfig.Tunnel, tunnelConfig.Network)
 
 	// Return viridian ID and no error
-	dict.mutex.Unlock()
 	return &userID, nil
 }
 
@@ -192,22 +183,20 @@ func (dict *ViridianDict) Get(userID uint16) (*Viridian, bool) {
 // Return control response success status and nil if viridian is updated successfully, otherwise error status and error.
 func (dict *ViridianDict) Update(userID uint16, nextIn int32) error {
 	dict.mutex.Lock()
+	defer dict.mutex.Unlock()
 
 	// Retrieve viridian from the dictionary
 	viridian, ok := dict.entries[userID]
 	if !ok {
-		dict.mutex.Unlock()
 		return status.Errorf(codes.InvalidArgument, "requested viridian %d doesn't exist", userID)
 	}
 
 	// Update viridian if not overtime, throw error otherwise
 	if viridian.isViridianOvertime() {
 		dict.Delete(userID, false)
-		dict.mutex.Unlock()
 		return status.Errorf(codes.DeadlineExceeded, "viridian %d subscription outdated", userID)
 	} else {
 		viridian.reset.Reset(time.Duration(nextIn*int32(dict.viridianWaitingOvertime)) * time.Second)
-		dict.mutex.Unlock()
 		return nil
 	}
 }
@@ -218,11 +207,11 @@ func (dict *ViridianDict) Update(userID uint16, nextIn int32) error {
 // Accept viridian ID (unsigned 16-bit integer) and flag if viridian was deleted by timeout.
 func (dict *ViridianDict) Delete(userID uint16, timeout bool) {
 	dict.mutex.Lock()
+	defer dict.mutex.Unlock()
 
 	// Retrieve viridian from the dictionary
 	viridian, ok := dict.entries[userID]
 	if !ok {
-		dict.mutex.Unlock()
 		return
 	}
 
@@ -236,7 +225,6 @@ func (dict *ViridianDict) Delete(userID uint16, timeout bool) {
 	} else {
 		logrus.Infof("User %d deleted successfully", userID)
 	}
-	dict.mutex.Unlock()
 }
 
 // Clear viridan dictionary.
@@ -244,9 +232,9 @@ func (dict *ViridianDict) Delete(userID uint16, timeout bool) {
 // Should be applied for ViridianDict object.
 func (dict *ViridianDict) Clear() {
 	dict.mutex.Lock()
+	defer dict.mutex.Unlock()
 	for key, viridian := range dict.entries {
 		viridian.stop()
 		delete(dict.entries, key)
 	}
-	dict.mutex.Unlock()
 }
