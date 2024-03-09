@@ -45,7 +45,7 @@ def format(modify: bool = True) -> int:
     result = True
     report = Report(check=not modify, quiet=False)
     write = WriteBack.YES if modify else WriteBack.CHECK
-    for path in ALGAE_ROOT.glob("**/*.py"):
+    for path in ALGAE_ROOT.glob("**/[!_]*.py"):
         mode = Mode(line_length=_MAX_LINE_LEN)
         reformat_one(path, False, write, mode, report)
         edited = file(path, line_length=_MAX_LINE_LEN) if modify else check_file(path, True, line_length=_MAX_LINE_LEN)

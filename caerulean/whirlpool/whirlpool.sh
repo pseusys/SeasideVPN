@@ -193,7 +193,7 @@ function download_whirlpool_distribution() {
 
 # Print configuration of the node that will be applied upon running.
 function print_server_info() {
-    VERSION='"0.0.1"'
+    VERSION='"0.0.2"'
     echo -e "\n\n>> ================================================ >>"
     echo -e "${BOLD}${GREEN}Seaside Whirlpool node version ${VERSION} successfully configured!${RESET}"
     echo -e "The node address is: ${BLUE}$SEASIDE_ADDRESS:$SEASIDE_CTRLPORT${RESET}"
