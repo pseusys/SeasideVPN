@@ -1,6 +1,6 @@
 # Viridian Algae
 
-> Current version: **"0.0.1"**
+> Current version: **"0.0.2"**
 
 Small CLI-based client application, written in `Python`.
 It can be run on linux (in for- and background), it's highly customizable.
@@ -89,7 +89,7 @@ It also sensitive to the following environmental variable:
 - `SEASIDE_USER_NAME`: User name that will be used during connection (default: `default_algae_user`).
 - `SEASIDE_MIN_HC_TIME`: Minimal time between two healthcheck control messages, in seconds (default: `1`).
 - `SEASIDE_MAX_HC_TIME`: Maximal time between two healthcheck control messages, in seconds (default: `5`).
-- `SEASIDE_CONNECTION_TIMEOUT`: Timeout for gRPC control connection, in seconds (default: `3`).
+- `SEASIDE_CONNECTION_TIMEOUT`: Timeout for gRPC control connection, in seconds (default: `3.0`).
 - `SEASIDE_LOG_LEVEL`: Output verbosity logging level, can be "error", "warning", "info", "debug" (default: `DEBUG`).
 
 ## Other commands

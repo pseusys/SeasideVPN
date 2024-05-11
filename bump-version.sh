@@ -18,7 +18,7 @@ RESET="\033[0m"
 # Global arguments:
 
 # Curremt project version
-CURRENT_VERSION="0.0.1"
+CURRENT_VERSION="0.0.2"
 # New project version (same as current by default)
 NEW_VERSION="$CURRENT_VERSION"
 # Files that require versioning
@@ -30,6 +30,7 @@ VERSIONED_FILES=(
     "viridian/algae/pyproject.toml" \
     "viridian/algae/README.md" \
     "viridian/algae/sources/coordinator.py" \
+    "viridian/submerged/Cargo.toml" \
     "caerulean/whirlpool/README.md" \
     "caerulean/whirlpool/whirlpool.sh" \
     "caerulean/whirlpool/sources/server.go"

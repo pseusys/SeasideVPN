@@ -1,9 +1,15 @@
 # SeasideVPN
 
-A simple PPTP UDP and VPN system, focused on undetectability.
-The system is based on a new header-less completely encrypted communication protocol.
+<img align="left" width="175" height="175" alt="Seaside VPN logo" src="./view/icon-light.svg">
 
-> Current project version: **"0.0.1"**
+[![BUILD](https://github.com/pseusys/SeasideVPN/actions/workflows/build.yml/badge.svg)](https://github.com/pseusys/SeasideVPN/actions/workflows/build.yml)
+[![TEST](https://github.com/pseusys/SeasideVPN/actions/workflows/test.yml/badge.svg)](https://github.com/pseusys/SeasideVPN/actions/workflows/test.yml)
+[![LINT](https://github.com/pseusys/SeasideVPN/actions/workflows/lint.yml/badge.svg)](https://github.com/pseusys/SeasideVPN/actions/workflows/lint.yml)
+
+A simple PPTP UDP and VPN system, focused on undetectability.
+The system is based on a new headerless completely encrypted communication protocol.
+
+> Current project version: **"0.0.2"**
 
 ## General info
 
@@ -88,6 +94,21 @@ There are some important notes and conditions that must be fulfilled in order fo
 
 - Viridian packets must not exceed 65495 bytes (that is max UDP packet size minus overflow for encryption).
 - Whirlpool nodes can't maintain more than 65533 viridians (due to the whirlpool node architecture).
+
+### Repository structure
+
+This repository contains **all** Seaside VPN components and parts.
+That's what you can find inside:
+
+- `.github`: Resources used by GitHub Actions CI/CD.
+  - `scripts`: Automatization scripts.
+  - `workflows`: GitHub actions workflows.
+- `caerulean`: Caerulean system components.
+  - `whirlpool`: Caerulean whirlpool node (see [README](./caerulean/whirlpool/README.md)).
+- `vessels`: Protobuf schemas used in various protocols.
+- `view`: Project branding, images, etc.
+- `viridian`: Viridian system components.
+  - `algae`: Viridian algae node (see [README](./viridian/algae/README.md)).
 
 ## Data, connections and protocols
 
@@ -199,21 +220,40 @@ These are the most important of them:
   for cleaning all building artifacts and Docker containers/images/networks.
 
   > NB! Several tools are required for the `make` command execution.
-  > They include but might not be limited to the following (search for installation tutorials in the dedicated READMEs):
+  > They include but might not be limited to the following:
   > - [`make`](https://www.gnu.org/software/make/) and [`bash`](https://www.gnu.org/software/bash/) for shell scripts execution.
-  > - [`shellcheck`](https://github.com/koalaman/shellcheck) for `shell` script linting.
-  > - [`protoc`](https://grpc.io/docs/protoc-installation/) for protobuf code generation.
+  > - [`shellcheck`](https://github.com/koalaman/shellcheck) for `shell` scripts linting.
+  > - [`markdownlint`](https://github.com/igorshubovych/markdownlint-cli) for `markdown` files linting.
   > - Dependencies for `algae` running, testing and linting are listed in the [dedicated README](./viridian/algae/README.md#dependencies).
   > - Dependencies for `whirlpool` code generation and running are listed in the [dedicated README](./caerulean/whirlpool/README.md#dependencies).
   > - [`NodeJS18+`](https://nodejs.org/en) for scripts (in `./github/scripts`) execution.
 
 ## Future development
 
+### Connection short descriptions
+
+Whirlpool to Surface connection:
+
+1. Whirlpool applies for connection, suggests the fee.
+2. Surface refuses OR server advices a new fee OR server registers payment contract on blockchain + approves.
+3. Whirlpool sends another application OR checks blockchain data over the LATEST request and sends connection info.
+
+Proxy to Surface connection:
+
+1. Proxy applies.
+2. Surface approves.
+3. Upon assignment, surface sends update to proxy first, to whirlpool later.
+
 ### Roadmap
 
-- `viridian/...` - windows and linux GUI client ([wintun](https://git.zx2c4.com/wintun/about/) + rust + electron).
-- `caerulean/surface` - distributed node manager.
-- `viridian/...` - android / ios clients.
+- `viridian/submerged`: Rust crate viridian client.
+- `caerulean/foam`: Proxy for whirlpool.
+- `viridian/...`: Windows and Linux GUI client ([wintun](https://git.zx2c4.com/wintun/about/) + `submerged` + electron).
+- `viridian/...`: Android and iOS client (flutter + NDK + `submerged`).
+- `caerulean/surface`: Linux distributed node manager (java + springboot + thymeleaf).
+- `...`: TRON API smart contract for payments.
+- `viridian/...`: Linux router app (rust + CLI).
+- `caerulean/...`: Web `caerulean` explorer - pulls info from TRON, displays public servers, allows qr codes generation (static + github hosting + kotlin WEB).
 
 ### TODOs
 
@@ -232,6 +272,8 @@ These are the most important of them:
 - Add different cipher options (XChaCha20-Poly1305, AES-256-GCM, etc.).
 - Implement No-TLS solution (for countries like China).
 - Create an installation configuration whirlpool + proxy on the same host.
+- Create CONTRIBUTING.md and USING.md tutorials.
+- Fix release artiface algorithm: add different installation scripts **only** (whirlpool-standalone, whirlpool-foam, whirlpool-surface (with compose.yml), ...).
 
 ### Similar projects
 

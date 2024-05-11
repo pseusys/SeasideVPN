@@ -77,6 +77,7 @@ func Preserve() *TunnelConfig {
 // Returns nil if everything is setup successfully, error otherwise.
 func (conf *TunnelConfig) Open() (err error) {
 	conf.mutex.Lock()
+	defer conf.mutex.Unlock()
 
 	// Parse IPs and control port number from environment variables
 	intIP := utils.GetEnv("SEASIDE_ADDRESS")
@@ -108,7 +109,6 @@ func (conf *TunnelConfig) Open() (err error) {
 	}
 
 	// Return no error
-	conf.mutex.Unlock()
 	return nil
 }
 
@@ -116,8 +116,9 @@ func (conf *TunnelConfig) Open() (err error) {
 // Should be applied for TunnelConf object for tunnel and iptables configuration restoration.
 func (conf *TunnelConfig) Close() {
 	conf.mutex.Lock()
+	defer conf.mutex.Unlock()
+
 	conf.closeForwarding()
 	conf.closeInterface()
 	conf.Tunnel.Close()
-	conf.mutex.Unlock()
 }
