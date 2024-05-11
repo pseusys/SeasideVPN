@@ -26,7 +26,7 @@
 # Python:
 
 ## Poetry lock file:
-**/poetry.lock
+viridian/algae/poetry.lock
 
 ## Pyinstaller build:
 viridian/algae/build/
@@ -58,3 +58,16 @@ caerulean/whirlpool/build/*.run
 
 ## Generated certificates:
 caerulean/whirlpool/certificates/
+
+
+
+# Rust:
+
+## Rust lock file:
+viridian/submerged/Cargo.lock
+
+## Rust build:
+viridian/submerged/target
+
+## Rust generated files:
+viridian/submerged/src/generated
