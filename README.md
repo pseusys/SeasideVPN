@@ -110,21 +110,6 @@ That's what you can find inside:
 - `viridian`: Viridian system components.
   - `algae`: Viridian algae node (see [README](./viridian/algae/README.md)).
 
-### Repository structure
-
-This repository contains **all** Seaside VPN components and parts.
-That's what you can find inside:
-
-- `.github`: Resources used by GitHub Actions CI/CD.
-  - `scripts`: Automatization scripts.
-  - `workflows`: GitHub actions workflows.
-- `caerulean`: Caerulean system components.
-  - `whirlpool`: Caerulean whirlpool node (see [README](./caerulean/whirlpool/README.md)).
-- `vessels`: Protobuf schemas used in various protocols.
-- `view`: Project branding, images, etc.
-- `viridian`: Viridian system components.
-  - `algae`: Viridian algae node (see [README](./viridian/algae/README.md)).
-
 ## Data, connections and protocols
 
 The key difference of SeaSide VPN from other VPN systems is it's undetectability.
@@ -236,10 +221,7 @@ These are the most important of them:
 
   > NB! Several tools are required for the `make` command execution.
   > They include but might not be limited to the following:
-  > They include but might not be limited to the following:
   > - [`make`](https://www.gnu.org/software/make/) and [`bash`](https://www.gnu.org/software/bash/) for shell scripts execution.
-  > - [`shellcheck`](https://github.com/koalaman/shellcheck) for `shell` scripts linting.
-  > - [`markdownlint`](https://github.com/igorshubovych/markdownlint-cli) for `markdown` files linting.
   > - [`shellcheck`](https://github.com/koalaman/shellcheck) for `shell` scripts linting.
   > - [`markdownlint`](https://github.com/igorshubovych/markdownlint-cli) for `markdown` files linting.
   > - Dependencies for `algae` running, testing and linting are listed in the [dedicated README](./viridian/algae/README.md#dependencies).
@@ -272,14 +254,6 @@ Proxy to Surface connection:
 - `...`: TRON API smart contract for payments.
 - `viridian/...`: Linux router app (rust + CLI).
 - `caerulean/...`: Web `caerulean` explorer - pulls info from TRON, displays public servers, allows qr codes generation (static + github hosting + kotlin WEB).
-- `viridian/submerged`: Rust crate viridian client.
-- `caerulean/foam`: Proxy for whirlpool.
-- `viridian/...`: Windows and Linux GUI client ([wintun](https://git.zx2c4.com/wintun/about/) + `submerged` + electron).
-- `viridian/...`: Android and iOS client (flutter + NDK + `submerged`).
-- `caerulean/surface`: Linux distributed node manager (java + springboot + thymeleaf).
-- `...`: TRON API smart contract for payments.
-- `viridian/...`: Linux router app (rust + CLI).
-- `caerulean/...`: Web `caerulean` explorer - pulls info from TRON, displays public servers, allows qr codes generation (static + github hosting + kotlin WEB).
 
 ### TODOs
 
@@ -298,8 +272,6 @@ Proxy to Surface connection:
 - Add different cipher options (XChaCha20-Poly1305, AES-256-GCM, etc.).
 - Implement No-TLS solution (for countries like China).
 - Create an installation configuration whirlpool + proxy on the same host.
-- Create CONTRIBUTING.md and USING.md tutorials.
-- Fix release artiface algorithm: add different installation scripts **only** (whirlpool-standalone, whirlpool-foam, whirlpool-surface (with compose.yml), ...).
 - Create CONTRIBUTING.md and USING.md tutorials.
 - Fix release artiface algorithm: add different installation scripts **only** (whirlpool-standalone, whirlpool-foam, whirlpool-surface (with compose.yml), ...).
 
