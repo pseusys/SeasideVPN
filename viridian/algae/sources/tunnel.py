@@ -54,14 +54,14 @@ def _create_tunnel(name: str) -> Tuple[int, str]:
     return descriptor, tunnel_dev
 
 
-def _get_default_interface() -> Tuple[IPv4Interface, str, int]:
+def _get_default_interface(seaside_address: str) -> Tuple[IPv4Interface, str, int]:
     """
     Get current default network interface, its IP, CIDR and MTU.
     :param seaside_address: address of the seaside VPN node to connect.
     :return: tuple of tunnel interface (network address and CIDR), default interface name and MTU.
     """
     with IPRoute() as ip:
-        caerulean_dev = ip.routes["default"]["OIF"]
+        caerulean_dev = list(ip.route("get", dst=seaside_address))[0].get_attr("RTA_OIF")
         addr_iface = list(ip.get_addr(index=caerulean_dev))[0]
         default_cidr = addr_iface["prefixlen"]
         default_iface = addr_iface.get_attr("IFA_LABEL")

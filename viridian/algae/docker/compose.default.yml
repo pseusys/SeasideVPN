@@ -3,8 +3,6 @@
 # These images also will not be destroyed and recreated during tests - for speedup.
 # These images will also reused in other Dockerfile targets in this directory.
 
-version: "3.9"
-
 services:
   algae:
     image: seaside-algae-default
