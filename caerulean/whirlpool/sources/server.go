@@ -106,7 +106,7 @@ func (server *WhirlpoolServer) Authenticate(ctx context.Context, request *genera
 	}
 
 	// Create and marshall response
-	grpc.SetTrailer(ctx, metadata.Pairs("tail", hex.EncodeToString(utils.GenerateReliableTail())))
+	grpc.SetTrailer(ctx, metadata.Pairs("seaside-tail-bin", hex.EncodeToString(utils.GenerateReliableTail())))
 	return &generated.WhirlpoolAuthenticationResponse{
 		Token: tokenData,
 	}, nil
@@ -167,7 +167,7 @@ func (server *WhirlpoolServer) Handshake(ctx context.Context, request *generated
 
 	// Log and return connection response
 	logrus.Infof("User %d (uid: %s, privileged: %t) connected", *userID, token.Uid, token.Privileged)
-	grpc.SetTrailer(ctx, metadata.Pairs("tail", hex.EncodeToString(utils.GenerateReliableTail())))
+	grpc.SetTrailer(ctx, metadata.Pairs("seaside-tail-bin", hex.EncodeToString(utils.GenerateReliableTail())))
 	return &generated.ControlHandshakeResponse{
 		UserID: int32(*userID),
 	}, nil
@@ -198,7 +198,7 @@ func (server *WhirlpoolServer) Healthcheck(ctx context.Context, request *generat
 	}
 
 	// Return empty response
-	grpc.SetTrailer(ctx, metadata.Pairs("tail", hex.EncodeToString(utils.GenerateReliableTail())))
+	grpc.SetTrailer(ctx, metadata.Pairs("seaside-tail-bin", hex.EncodeToString(utils.GenerateReliableTail())))
 	return &emptypb.Empty{}, nil
 }
 
@@ -227,6 +227,6 @@ func (server *WhirlpoolServer) Exception(ctx context.Context, request *generated
 
 	// Remove viridian and return empty response
 	server.viridians.Delete(userID, false)
-	grpc.SetTrailer(ctx, metadata.Pairs("tail", hex.EncodeToString(utils.GenerateReliableTail())))
+	grpc.SetTrailer(ctx, metadata.Pairs("seaside-tail-bin", hex.EncodeToString(utils.GenerateReliableTail())))
 	return &emptypb.Empty{}, nil
 }
