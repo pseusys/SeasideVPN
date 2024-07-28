@@ -12,6 +12,8 @@ tonic = "0.12.1"
 prost-types = "0.13.1"
 dns-lookup = "2.0.4"
 tokio = { version = "1.37.0", features = ["macros", "rt-multi-thread"] }
+
+[target.'cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))'.dependencies]
 tun2 = { version = "2.0.5", features = ["async"] }
 
 [target.'cfg(target_os="linux")'.dependencies]
