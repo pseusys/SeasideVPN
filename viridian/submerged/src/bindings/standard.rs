@@ -5,6 +5,7 @@ use submerged::init;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let coordinator = init("payload", "8.8.8.8", 42, "user", 1, 1, 1.0, "tun0").await?;
+    let mut coordinator = init("payload", "5.35.95.99", 8587, "user", 1, 1, 1.0, "tun0").await?;
+    coordinator.start().await?;
     Ok(())
 }

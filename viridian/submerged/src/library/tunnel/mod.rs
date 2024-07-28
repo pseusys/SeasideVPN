@@ -18,6 +18,8 @@ use self::linux::LinuxTunnel;
 pub trait Tunnel {
     fn new(name: &str, address: Ipv4Addr) -> impl Future<Output = Result<Self, Box<dyn Error>>> where Self: Sized;
     fn default_interface(&self) -> (Ipv4Addr, u8);
+    fn read_bytes(&mut self, bytes: &mut Vec<u8>);
+    fn write_bytes(&mut self, bytes: &Vec<u8>);
 }
 
 #[cfg(target_os = "windows")]

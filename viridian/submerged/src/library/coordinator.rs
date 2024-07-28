@@ -6,7 +6,7 @@ use dns_lookup::lookup_host;
 use rand::prelude::{thread_rng, RngCore, Rng};
 use tokio::net::UdpSocket;
 use tokio::time::sleep;
-use tonic::metadata::MetadataValue;
+use tonic::metadata::{AsciiMetadataKey, MetadataValue};
 use tonic::transport::{Channel, Endpoint};
 use tonic::Request;
 
@@ -135,7 +135,7 @@ impl Coordinator {
         randomizer.fill_bytes(&mut tail);
 
         let mut request = Request::new(message);
-        request.metadata_mut().append_bin("tail", MetadataValue::from_bytes(&tail));
+        request.metadata_mut().append_bin("seaside-tail-bin", MetadataValue::from_bytes(&tail));
         request
     }
 
@@ -189,15 +189,5 @@ impl Coordinator {
         let response = self.client.exception(self.make_grpc_request(message)).await;
 
         Ok(())
-    }
-}
-
-impl Drop for Coordinator {
-    fn drop(&mut self) -> () {
-        if let Some(ref viridian) = self.viridian {
-            if viridian.is_operational() {
-                viridian.close()
-            }
-        }
     }
 }

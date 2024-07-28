@@ -18,3 +18,11 @@ impl Viridian {
         self.operational
     }
 }
+
+impl Drop for Viridian {
+    fn drop(&mut self) -> () {
+        if self.is_operational() {
+            self.close()
+        }
+    }
+}
