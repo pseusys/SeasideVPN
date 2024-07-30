@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   algae:
     image: seaside-algae-smoke-sleeping

@@ -2,8 +2,6 @@
 # They will not be destroyed and recreated during tests - for speedup.
 # They are also reused in other Dockerfile targets in this directory.
 
-version: "3.9"
-
 services:
   algae:
     image: seaside-algae-smoke

@@ -1,12 +1,12 @@
 from asyncio import TimeoutError, open_connection, sleep, wait_for
 from logging import getLogger
 from os import environ, getenv
-from random import randint
 from subprocess import check_output
 from typing import AsyncGenerator, Generator, Optional, Tuple
 
 import pytest
 import pytest_asyncio
+from Crypto.Random.random import randint
 from Crypto.Random import get_random_bytes
 
 from ..sources.coordinator import Coordinator
@@ -26,7 +26,6 @@ async def is_tcp_available(address: Optional[str] = None, port: int = 443) -> bo
         return False
 
 
-@pytest.mark.asyncio(scope="session")
 @pytest_asyncio.fixture(scope="session")
 async def coordinator() -> AsyncGenerator[Coordinator, None]:
     payload = environ["SEASIDE_PAYLOAD_OWNER"]

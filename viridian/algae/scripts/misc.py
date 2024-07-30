@@ -1,11 +1,17 @@
 from contextlib import contextmanager
+from datetime import datetime, timezone, timedelta
+from ipaddress import ip_address
 from os import environ
 from pathlib import Path
 from re import compile
 from shutil import rmtree
 from typing import Iterator, List, Tuple
 
-from OpenSSL.crypto import FILETYPE_PEM, TYPE_RSA, X509, PKey, X509Extension, dump_certificate, dump_privatekey
+from cryptography.x509 import CertificateBuilder, IPAddress, Name, NameAttribute, SubjectAlternativeName, random_serial_number
+from cryptography.x509.oid import NameOID
+from cryptography.hazmat.primitives.asymmetric.rsa import generate_private_key
+from cryptography.hazmat.primitives.hashes import SHA512
+from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, NoEncryption
 from python_on_whales import DockerClient
 
 # Root of algae viridian source files.
@@ -36,7 +42,7 @@ def _get_test_whirlpool_addresses() -> List[str]:
     """
     whirlpool_allowed_ips = list()
 
-    env_var_file = ALGAE_ROOT / "docker/test.conf.env"
+    env_var_file = ALGAE_ROOT / "docker" / "test.conf.env"
     if env_var_file.exists():
         env_var_searcher = compile(r"SEASIDE_ADDRESS=(\d+\.\d+\.\d+\.\d+)")
         whirlpool_allowed_ips += env_var_searcher.findall(env_var_file.read_text())
@@ -57,34 +63,35 @@ def generate_certificates(cert_file: str = "cert.crt", key_file: str = "cert.key
     :param key_file: key file name (default: cert.key).
     :return: iterator of None (in order to use with context manager).
     """
-    key = PKey()
-    key.generate_key(TYPE_RSA, 4096)
+    key = generate_private_key(65537, 4096)
+    subj = Name([
+        NameAttribute(NameOID.COUNTRY_NAME, "TS"),
+        NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "LocalComputer"),
+        NameAttribute(NameOID.LOCALITY_NAME, "PC"),
+        NameAttribute(NameOID.ORGANIZATION_NAME, "SeasideVPN"),
+        NameAttribute(NameOID.ORGANIZATIONAL_UNIT_NAME, "viridian-algae"),
+        NameAttribute(NameOID.COMMON_NAME, "Algae"),
+        NameAttribute(NameOID.EMAIL_ADDRESS, "algae@seaside.vpn"),
+    ])
+    san = SubjectAlternativeName([IPAddress(ip_address(address)) for address in _get_test_whirlpool_addresses()])
 
-    cert = X509()
-    cert.get_subject().C = "TS"  # noqa: E741
-    cert.get_subject().ST = "LocalComputer"  # noqa: E741
-    cert.get_subject().L = "PC"  # noqa: E741
-    cert.get_subject().O = "SeasideVPN"  # noqa: E741
-    cert.get_subject().OU = "viridian-algae"  # noqa: E741
-    cert.get_subject().CN = "Algae"  # noqa: E741
-    cert.get_subject().emailAddress = "algae@seaside.vpn"
-    cert.gmtime_adj_notBefore(0)
-    cert.gmtime_adj_notAfter(10 * 365 * 24 * 60 * 60)
-    cert.set_issuer(cert.get_subject())
-    cert.set_pubkey(key)
-    cert.sign(key, "sha512")
+    cert = CertificateBuilder(
+        issuer_name=subj,
+        subject_name=subj,
+        not_valid_before=datetime.now(timezone.utc),
+        not_valid_after=datetime.now(timezone.utc) + timedelta(days=10 * 365),
+        public_key=key.public_key(),
+        serial_number=random_serial_number()
+    ).add_extension(san, False).sign(key, SHA512())
 
-    addresses = ", ".join([f"IP:{address}" for address in _get_test_whirlpool_addresses()])
-    cert.add_extensions([X509Extension(b"subjectAltName", False, addresses.encode())])
-
-    files_path = ALGAE_ROOT / "docker/certificates"
+    files_path = ALGAE_ROOT / "docker" / "certificates"
     files_path.mkdir(exist_ok=True)
 
-    cert_file_path = files_path / cert_file
     key_file_path = files_path / key_file
+    cert_file_path = files_path / cert_file
     try:
-        cert_file_path.write_bytes(dump_certificate(FILETYPE_PEM, cert))
-        key_file_path.write_bytes(dump_privatekey(FILETYPE_PEM, key))
+        key_file_path.write_bytes(key.private_bytes(encoding=Encoding.PEM, format=PrivateFormat.TraditionalOpenSSL, encryption_algorithm=NoEncryption()))
+        cert_file_path.write_bytes(cert.public_bytes(encoding=Encoding.PEM))
         yield None
     finally:
         rmtree(files_path, ignore_errors=True)

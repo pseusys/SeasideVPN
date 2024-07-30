@@ -44,7 +44,7 @@ RUN pip install --upgrade --no-cache-dir pip -r requirements.txt
 COPY --from=builder /seaside/algae/generated ./sources/generated/
 COPY viridian/algae/sources/*.py ./sources/
 COPY viridian/algae/tests/*.py ./tests/
-RUN touch __init__.py sources/__init__.py
+RUN touch __init__.py sources/__init__.py tests/__init__.py
 
 ENV SEASIDE_PAYLOAD_OWNER=
 ENV SEASIDE_ADDRESS=
