@@ -49,6 +49,9 @@ build:
 
 run: build
 	@ # Run executable
+	if [ ! -d "certificates" ]; then
+		${SHELL} whirlpool.sh -z
+	fi
 	sudo build/$(EXEC_NAME)
 .PHONY: run
 
@@ -66,6 +69,9 @@ build-docker-prod:
 
 run-docker: build-docker-prod
 	@ # Run executable inside of the production Docker image
+	if [ ! -d "certificates" ]; then
+		${SHELL} whirlpool.sh -z
+	fi
 	docker run --privileged -it --rm --name seaside-whirlpool-run --env-file example.conf.env --network host seaside-whirlpool-prod ../..
 .PHONY: run-docker
 

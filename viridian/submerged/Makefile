@@ -37,8 +37,11 @@ run:
 
 sandbox:
 	@ # Run submerged in Docker sandbox image
-	docker build --tag ${SANDBOX_IMAGE} --file Dockerfile ../..
-	docker run --privileged -it --rm --network=host --name ${SANDBOX_CONTAINER} --volume ./src:/seaside/viridian/submerged/src ${SANDBOX_IMAGE}
+	if [ ! -d "../../caerulean/whirlpool/certificates" ]; then
+		cd ../../caerulean/whirlpool && ${SHELL} whirlpool.sh -z -a 8.8.8.8 && cd ../../viridian/submerged
+	fi
+	# docker build --tag ${SANDBOX_IMAGE} --file Dockerfile ../..
+	# docker run --privileged -it --rm --network=host --name ${SANDBOX_CONTAINER} --volume ./src:/seaside/viridian/submerged/src ${SANDBOX_IMAGE}
 .PHONY: sandbox
 
 

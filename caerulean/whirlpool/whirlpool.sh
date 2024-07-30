@@ -65,6 +65,8 @@ GENERATE_CERTS=false
 RUN_NODE=false
 # Use no ASCII text formatting
 TEXT_MODE=false
+# Just generate the certificates and exit
+CERTIFY_AND_EXIT=false
 # Just print script help and exit
 HELP_AND_EXIT=false
 # Invalid option flags found
@@ -240,7 +242,7 @@ function help() {
 
 # CLI flags and options:
 
-while getopts "o:v:a:e:c:n:x:w:f:m:d:p:i:b:l:u:y:kgsrth" flag
+while getopts "o:v:a:e:c:n:x:w:f:m:d:p:i:b:l:u:y:kgsrtzh" flag
 do
     case "${flag}" in
         o) SEASIDE_PAYLOAD_OWNER=${OPTARG};;
@@ -265,6 +267,7 @@ do
         s) GENERATE_CERTS=true;;
         r) RUN_NODE=true;;
         t) TEXT_MODE=true;;
+        z) CERTIFY_AND_EXIT=true;;
         h) HELP_AND_EXIT=true;;
         *) INVALID_OPTIONS_FOUND=true;;
     esac
@@ -278,6 +281,12 @@ if [ "$TEXT_MODE" = true ] ; then
     YELLOW=""
     RED=""
     RESET=""
+fi
+
+if [ "$CERTIFY_AND_EXIT" = true ] ; then
+    generate_certificates "$SEASIDE_ADDRESS"
+    echo -e "Certificates generated successfully for ${SEASIDE_ADDRESS}"
+    exit 0
 fi
 
 if [ "$HELP_AND_EXIT" = true ] ; then

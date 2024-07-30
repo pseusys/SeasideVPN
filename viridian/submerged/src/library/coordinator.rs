@@ -5,6 +5,8 @@ use std::time::Duration;
 use dns_lookup::lookup_host;
 use rand::prelude::{thread_rng, RngCore, Rng};
 use tokio::net::UdpSocket;
+use tokio::runtime::Handle;
+use tokio::task::block_in_place;
 use tokio::time::sleep;
 use tonic::metadata::{AsciiMetadataKey, MetadataValue};
 use tonic::transport::{Channel, Endpoint};
@@ -24,6 +26,7 @@ mod generated {
 const GRPC_PROTOCOL: &str = "https";
 const MAX_TAIL_LENGTH: usize = 64;
 const SYMM_KEY_LENGTH: usize = 32;
+const NONE_USER_ID: u16 = 0;
 
 
 pub struct Coordinator {
@@ -35,6 +38,7 @@ pub struct Coordinator {
     address: String,
     node_payload: String,
     user_name: String,
+    user_id: u16,
     min_hc_time: u16,
     max_hc_time: u16,
 
@@ -86,6 +90,7 @@ impl Coordinator {
             address: viridian_host,
             node_payload: payload.to_string(),
             user_name: user_name.to_string(),
+            user_id: NONE_USER_ID,
             min_hc_time,
             max_hc_time,
             session_token: None,
@@ -119,12 +124,12 @@ impl Coordinator {
     }
 
     pub async fn start(&mut self) -> Result<(), Box<dyn Error>> {
-        let mut user_id = self.initialize_connection().await?;
+        self.user_id = self.initialize_connection().await?;
         loop {
-            let control = self.perform_control(user_id).await;
+            let control = self.perform_control(self.user_id).await;
             if let Err(ctrl) = control {
                 println!("log error status: {ctrl}");
-                user_id = self.initialize_connection().await?;
+                self.user_id = self.initialize_connection().await?;
             }
         }
     }
@@ -180,14 +185,29 @@ impl Coordinator {
         response
     }
 
-    pub async fn interrupt(&mut self, user_id: u16, exception: Option<String>) -> Result<(), Box<dyn Error>> {
+    async fn interrupt(&mut self, exception: Option<String>) -> Result<(), Box<dyn Error>> {
         let message = ControlException {
             status: i32::from(ControlExceptionStatus::Termination),
-            user_id: i32::from(user_id),
+            user_id: i32::from(self.user_id),
             message: exception
         };
         let response = self.client.exception(self.make_grpc_request(message)).await;
+        match response {
+            Ok(_) => Ok(()),
+            Err(resp) => Err(Box::from(resp))
+        }
+    }
+}
 
-        Ok(())
+impl Drop for Coordinator {
+    fn drop(&mut self) -> () {
+        if self.user_id != NONE_USER_ID {
+            block_in_place(move || {
+                Handle::current().block_on(async move {
+                    // TODO: log message!
+                    self.interrupt(None).await.expect("...");
+                });
+            });
+        }
     }
 }

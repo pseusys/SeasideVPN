@@ -2,7 +2,6 @@ use std::io::{Read, Write};
 use std::str;
 use std::error::Error;
 use std::net::Ipv4Addr;
-use std::time::Duration;
 
 use neli::consts::nl::{NlTypeWrapper, NlmF, NlmFFlags};
 use neli::consts::rtnl::{Arphrd, Ifa, IfaFFlags, IffFlags, Ifla, RtAddrFamily, RtScope, RtTable, Rta, Rtm, RtmFFlags, Rtn, Rtprot};
@@ -11,7 +10,6 @@ use neli::nl::{NlPayload, Nlmsghdr};
 use neli::rtnl::{Ifaddrmsg, Ifinfomsg, Rtattr, Rtmsg};
 use neli::socket::NlSocketHandle;
 use neli::types::RtBuffer;
-use tokio::time::sleep;
 use tun2::platform::Device;
 use tun2::{create, Configuration};
 
@@ -100,8 +98,6 @@ fn flush_svs_table(receiver_socket: &mut NlSocketHandle) -> Result<(), Box<dyn E
             if recv_payload.rtm_table == svs_table {
                 let rm_msg = Nlmsghdr::new(None,  Rtm::Delroute, NlmFFlags::new(&[NlmF::Request]), None, None, header.nl_payload);
                 sender_socket.send(rm_msg).unwrap();
-                let recv_msg = sender_socket.recv::<NlTypeWrapper, Rtmsg>().unwrap().unwrap();
-                let recv_payload = recv_msg.get_payload().unwrap();
             }
         }
     }
@@ -120,16 +116,12 @@ fn enable_routing(tunnel_interface: &str) -> Result<(), Box<dyn Error>> {
     let route_send_payload = Rtmsg {rtm_family: RtAddrFamily::Inet, rtm_dst_len: 32, rtm_src_len: 0, rtm_tos: 0, rtm_table: RtTable::UnrecognizedConst(SVS_CODE), rtm_protocol: Rtprot::Static, rtm_scope: RtScope::Universe, rtm_type: Rtn::Unicast, rtm_flags: RtmFFlags::empty(), rtattrs: route_rtbuff};
     let route_send_msg = Nlmsghdr::new(None,  Rtm::Newroute, NlmFFlags::new(&[NlmF::Request, NlmF::Create]), None, None, NlPayload::Payload(route_send_payload));
     socket.send(route_send_msg).unwrap();
-    //let route_recv_msg = socket.recv::<NlTypeWrapper, Rtmsg>().unwrap().unwrap();
-    //let route_recv_payload = route_recv_msg.get_payload().unwrap();
 
     let mut rule_rtbuff = RtBuffer::new();
     rule_rtbuff.push(Rtattr::new(None, Rta::Mark, SVS_CODE).ok().unwrap());
     let rule_send_payload = Rtmsg {rtm_family: RtAddrFamily::Inet, rtm_dst_len: 0, rtm_src_len: 0, rtm_tos: 0, rtm_table: RtTable::Unspec, rtm_protocol: Rtprot::Static, rtm_scope: RtScope::Universe, rtm_type: Rtn::Unicast, rtm_flags: RtmFFlags::empty(), rtattrs: rule_rtbuff};
     let rule_send_msg = Nlmsghdr::new(None,  Rtm::Newrule, NlmFFlags::new(&[NlmF::Request, NlmF::Create]), None, None, NlPayload::Payload(rule_send_payload));
     socket.send(rule_send_msg).unwrap();
-    //let rule_recv_msg = socket.recv::<NlTypeWrapper, Rtmsg>().unwrap().unwrap();
-    //let rule_recv_payload = rule_recv_msg.get_payload().unwrap();
 
     Ok(())
 }
@@ -143,8 +135,6 @@ fn disable_routing() -> Result<(), Box<dyn Error>> {
     let send_payload = Rtmsg {rtm_family: RtAddrFamily::Inet, rtm_dst_len: 0, rtm_src_len: 0, rtm_tos: 0, rtm_table: RtTable::Unspec, rtm_protocol: Rtprot::Unspec, rtm_scope: RtScope::Universe, rtm_type: Rtn::Unspec, rtm_flags: RtmFFlags::empty(), rtattrs: rtbuff};
     let send_msg = Nlmsghdr::new(None,  Rtm::Delrule, NlmFFlags::new(&[NlmF::Request]), None, None, NlPayload::Payload(send_payload));
     socket.send(send_msg).unwrap();
-    //let recv_msg = socket.recv::<NlTypeWrapper, Rtmsg>().unwrap().unwrap();
-    //let recv_payload = recv_msg.get_payload().unwrap();
 
     Ok(())
 }
