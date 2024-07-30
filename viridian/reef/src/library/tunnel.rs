@@ -18,7 +18,7 @@ use super::Tunnel;
 const TUNNEL_ADDRESS: Ipv4Addr = Ipv4Addr::new(192, 168, 0, 65);
 const TUNNEL_NETMASK: Ipv4Addr = Ipv4Addr::new(255, 255, 255, 0);
 
-const SVS_CODE: u8 = 83;
+const SVS_CODE: u8 = 82;
 
 
 fn asciiz_to_string(slice_str: &str) -> String {
@@ -88,7 +88,6 @@ fn flush_svs_table(receiver_socket: &mut NlSocketHandle) -> Result<(), Box<dyn E
     let svs_table = RtTable::UnrecognizedConst(SVS_CODE);
     let mut sender_socket = NlSocketHandle::connect(NlFamily::Route, None, &[]).unwrap();
 
-    // TODO: run "Rtmsg" request to retrieve single message.
     let send_payload = Rtmsg {rtm_family: RtAddrFamily::Inet, rtm_dst_len: 0, rtm_src_len: 0, rtm_tos: 0, rtm_table: svs_table, rtm_protocol: Rtprot::Unspec, rtm_scope: RtScope::Universe, rtm_type: Rtn::Unspec, rtm_flags: RtmFFlags::empty(), rtattrs: RtBuffer::new()};
     let send_msg = Nlmsghdr::new(None,  Rtm::Getroute, NlmFFlags::new(&[NlmF::Request, NlmF::Dump]), None, None, NlPayload::Payload(send_payload));
     receiver_socket.send(send_msg).unwrap();
@@ -133,7 +132,7 @@ fn disable_routing() -> Result<(), Box<dyn Error>> {
     let mut rtbuff = RtBuffer::new();
     rtbuff.push(Rtattr::new(None, Rta::Mark, SVS_CODE).ok().unwrap());
     let send_payload = Rtmsg {rtm_family: RtAddrFamily::Inet, rtm_dst_len: 0, rtm_src_len: 0, rtm_tos: 0, rtm_table: RtTable::Unspec, rtm_protocol: Rtprot::Unspec, rtm_scope: RtScope::Universe, rtm_type: Rtn::Unspec, rtm_flags: RtmFFlags::empty(), rtattrs: rtbuff};
-    let send_msg = Nlmsghdr::new(None,  Rtm::Delrule, NlmFFlags::new(&[NlmF::Request]), None, None, NlPayload::Payload(send_payload));
+    let send_msg = Nlmsghdr::new(None, Rtm::Delrule, NlmFFlags::new(&[NlmF::Request]), None, None, NlPayload::Payload(send_payload));
     socket.send(send_msg).unwrap();
 
     Ok(())
@@ -161,7 +160,7 @@ fn disable_firewall(sia: &str, sim: &str, sc: &str) -> Result<(), Box<dyn Error>
 }
 
 
-pub struct LinuxTunnel {
+pub struct Tunnel {
     def_ip: Ipv4Addr,
     def_cidr: u8,
     tun_device: Device,
@@ -171,8 +170,8 @@ pub struct LinuxTunnel {
     sc: String
 }
 
-impl Tunnel for LinuxTunnel {
-    async fn new(name: &str, address: Ipv4Addr) -> Result<LinuxTunnel, Box<dyn Error>> {
+impl Tunnel {
+    pub async fn new(name: &str, address: Ipv4Addr) -> Result<LinuxTunnel, Box<dyn Error>> {
         let (default_address, default_cidr, default_name, default_mtu) = get_default_interface(address).unwrap();
         let tunnel_device = create_tunnel(&name, default_mtu as u16)?;
         enable_routing(name).ok().unwrap();
@@ -198,7 +197,7 @@ impl Tunnel for LinuxTunnel {
     }
 }
 
-impl Drop for LinuxTunnel {
+impl Drop for Tunnel {
     fn drop(&mut self) {
         disable_firewall(&self.sia, &self.sim, &self.sc).ok().unwrap();
         disable_routing().ok().unwrap();

@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use submerged::init;
+use reef::init;
 
 
 #[tokio::main]

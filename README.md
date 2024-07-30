@@ -88,7 +88,7 @@ The numeric identification table can be found below:
 | --- | :-: |
 | Caerulean Whirlpool | 87 |
 | Viridian Algae | 65 |
-| Viridian Submerged | 83 |
+| Viridian Reef | 82 |
 | Seaside VPN | 83 |
 
 There are some important notes and conditions that must be fulfilled in order for system to work as expected:
@@ -191,6 +191,13 @@ A client in `Python` written for development and integration testing purposes.
 
 See detailed documentation [here](./viridian/algae/README.md).
 
+#### Reef
+
+A client in `Rust` written for production.
+My first program in `Rust` written after I have finished all the [rustanomicon](https://doc.rust-lang.org/nomicon/).
+
+See detailed documentation [here](./viridian/reef/README.md).
+
 ## General launching commands
 
 Commands for all projects testing and linting are defined in root `Makefile`.
@@ -247,10 +254,10 @@ Proxy to Surface connection:
 
 ### Roadmap
 
-- `viridian/submerged`: Rust crate viridian client.
+- `viridian/reef`: Rust crate viridian client.
 - `caerulean/foam`: Proxy for whirlpool.
-- `viridian/...`: Windows and Linux GUI client ([wintun](https://git.zx2c4.com/wintun/about/) + `submerged` + electron).
-- `viridian/...`: Android and iOS client (flutter + NDK + `submerged`).
+- `viridian/...`: Windows and Linux GUI client ([wintun](https://git.zx2c4.com/wintun/about/) + `reef` + electron).
+- `viridian/...`: Android and iOS client (flutter + NDK + `reef`).
 - `caerulean/surface`: Linux distributed node manager (java + springboot + thymeleaf).
 - `...`: TRON API smart contract for payments.
 - `viridian/...`: Linux router app (rust + CLI).

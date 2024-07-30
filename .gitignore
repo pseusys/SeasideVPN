@@ -65,10 +65,13 @@ caerulean/whirlpool/certificates/
 # Rust:
 
 ## Rust lock file:
-viridian/submerged/Cargo.lock
+viridian/reef/Cargo.lock
 
 ## Rust build:
-viridian/submerged/target
+viridian/reef/target
 
 ## Rust generated files:
-viridian/submerged/src/generated
+viridian/reef/src/generated
+
+## Test files:
+viridian/reef/certificates/

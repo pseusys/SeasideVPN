@@ -1,0 +1,33 @@
+[package]
+name = "reef"
+version = "0.0.2"
+edition = "2021"
+description = "A production-ready SeasideVPN client for Linux"
+authors = [
+    "Alexander Sergeev <alexander.sergeev@onmail.com>"
+]
+
+[dependencies]
+rand = "0.8.5"
+prost = "0.13.1"
+tonic = "0.12.1"
+prost-types = "0.13.1"
+dns-lookup = "2.0.4"
+neli = "0.6.4"
+iptables = "0.5.1"
+tun2 = { version = "2.0.5", features = ["async"] }
+tokio = { version = "1.37.0", features = ["macros", "rt-multi-thread"] }
+
+[build-dependencies]
+tonic-build = "0.12.1"
+
+[dev-dependencies]
+bollard = "0.17.0"
+compose-rs = "0.0.3"
+rcgen = "0.13.1"
+test-context = "0.3.0"
+
+
+[[bin]]
+name = "standard"
+path = "src/bindings/standard.rs"

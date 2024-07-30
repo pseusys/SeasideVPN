@@ -15,7 +15,7 @@ use tonic::Request;
 use generated::whirlpool_viridian_client::WhirlpoolViridianClient;
 use generated::{WhirlpoolAuthenticationRequest, WhirlpoolAuthenticationResponse, ControlHandshakeRequest, ControlHandshakeResponse, ControlHealthcheck, ControlException, ControlExceptionStatus};
 
-use super::tunnel::{new_tunnel, Tunnel};
+use super::tunnel::Tunnel;
 use super::viridian::Viridian;
 use super::super::VERSION;
 
@@ -68,7 +68,7 @@ impl Coordinator {
             None => return Err(Box::from(format!("Address {address} can't be resolved!")))
         };
 
-        let tunnel = new_tunnel(tunnel_name, resolved_ip).await?;
+        let tunnel = Tunnel::new(tunnel_name, resolved_ip).await?;
         let socket = UdpSocket::bind((tunnel.default_interface().0, 0)).await?;
 
         let caerulean_max_timeout = Duration::from_secs_f32(max_timeout);
