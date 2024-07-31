@@ -6,7 +6,7 @@ from typing import Literal, Union
 from colorama import Fore, Style, just_fix_windows_console
 from python_on_whales import DockerClient, DockerException
 
-from scripts.misc import docker_test, generate_certificates
+from scripts.misc import docker_test
 
 # Default logger instance.
 logger = getLogger(__name__)
@@ -91,7 +91,7 @@ def test_integration() -> int:
     :return: integer return code.
     """
     just_fix_windows_console()
-    with docker_test() as (docker_path, hosted), generate_certificates():
+    with docker_test() as (docker_path, hosted):
         return _test_set(docker_path, "integration", hosted)
 
 
@@ -102,7 +102,7 @@ def test_local() -> int:
     :return: integer return code.
     """
     just_fix_windows_console()
-    with docker_test() as (docker_path, hosted), generate_certificates():
+    with docker_test() as (docker_path, hosted):
         return _test_set(docker_path, "local", hosted)
 
 
@@ -113,7 +113,7 @@ def test_remote() -> int:
     :return: integer return code.
     """
     just_fix_windows_console()
-    with docker_test() as (docker_path, hosted), generate_certificates():
+    with docker_test() as (docker_path, hosted):
         return _test_set(docker_path, "remote", hosted)
 
 
@@ -123,7 +123,7 @@ def test_smoke() -> int:
     :return: integer return code.
     """
     just_fix_windows_console()
-    with docker_test() as (docker_path, hosted), generate_certificates():
+    with docker_test() as (docker_path, hosted):
         result = 0
         for test_set in ("local", "remote"):
             result = result or _test_set(docker_path, test_set, hosted)  # type: ignore[arg-type]
@@ -136,7 +136,7 @@ def test_all() -> int:
     :return: integer return code.
     """
     just_fix_windows_console()
-    with docker_test() as (docker_path, hosted), generate_certificates():
+    with docker_test() as (docker_path, hosted):
         result = 0
         for test_set in ("unit", "integration", "local", "remote"):
             result = result or _test_set(docker_path, test_set, hosted)  # type: ignore[arg-type]
