@@ -66,7 +66,7 @@ build-docker-prod:
 
 run-docker: build-docker-prod
 	@ # Run executable inside of the production Docker image
-	docker run --privileged -it --rm --name seaside-whirlpool-run --env-file conf.env seaside-whirlpool-prod --network host ../..
+	docker run --privileged -it --rm --name seaside-whirlpool-run --env-file example.conf.env --network host seaside-whirlpool-prod ../..
 .PHONY: run-docker
 
 
@@ -98,12 +98,8 @@ endif
 
 clean:
 	@ # Clean all the generated files, Docker images, containers and networks
-	rm -rf build
-	rm -rf generated
-	rm -rf certificates
-	rm -rf SeasideVPN
-	rm -f go.sum
-	rm -f conf.env
+	rm -rf build generated certificates SeasideVPN
+	rm -f go.sum conf.env
 	docker rm -f seaside-whirlpool-run seaside-whirlpool-lint seaside-whirlpool-test
 	docker rmi -f seaside-whirlpool-prod seaside-whirlpool-test
 .PHONY: clean

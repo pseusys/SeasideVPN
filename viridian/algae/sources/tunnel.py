@@ -140,11 +140,11 @@ class Tunnel:
         :param addr: tunnel interface IP address.
         """
         self._name = name
-        self._address = str(addr)
+        address = str(addr)
 
         self._tunnel_ip = "192.168.0.65"
         self._tunnel_cdr = 24
-        self._def_iface, def_iface_name, self._mtu = _get_default_interface(self._address)
+        self._def_iface, def_iface_name, self._mtu = _get_default_interface(address)
 
         self._active = True
         self._operational = False
@@ -152,7 +152,7 @@ class Tunnel:
         self._descriptor, self._tunnel_dev = _create_tunnel(name)
         logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} created")
 
-        self._send_to_caerulean_rule = _create_caerulean_rule(self._def_iface, self._address, def_iface_name)
+        self._send_to_caerulean_rule = _create_caerulean_rule(self._def_iface, address, def_iface_name)
         self._send_to_internet_rule_mark = _create_internet_rule_mark(self._def_iface, def_iface_name)
         self._send_to_internet_rule_accept = _create_internet_rule_accept(self._def_iface, def_iface_name)
         logger.info(f"Packet capturing rules {Fore.GREEN}created{Fore.RESET}")

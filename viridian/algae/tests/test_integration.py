@@ -44,7 +44,7 @@ def tail() -> Generator[Tuple[str, str], None, None]:
 @pytest.mark.dependency()
 async def test_controller_initialization(coordinator: Coordinator) -> None:
     routes = check_output(["ip", "link", "show"]).decode()
-    assert coordinator._interface._name in routes, "Tunnel wasn't created!"
+    assert coordinator._tunnel._name in routes, "Tunnel wasn't created!"
 
 
 @pytest.mark.asyncio(scope="session")
@@ -75,8 +75,8 @@ async def test_initialize_control(coordinator: Coordinator) -> None:
 @pytest.mark.dependency(depends=["test_initialize_control"])
 async def test_open_tunnel(coordinator: Coordinator) -> None:
     logger.info("Testing opening the tunnel")
-    coordinator._interface.up()
-    assert coordinator._interface._operational, "Tunnel interface isn't operational!"
+    coordinator._tunnel.up()
+    assert coordinator._tunnel._operational, "Tunnel interface isn't operational!"
 
 
 @pytest.mark.asyncio(scope="session")

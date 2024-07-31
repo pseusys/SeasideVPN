@@ -106,19 +106,19 @@ func (server *WhirlpoolServer) Authenticate(ctx context.Context, request *genera
 	}
 
 	// Create and marshall response
-	grpc.SetTrailer(ctx, metadata.Pairs("tail", hex.EncodeToString(utils.GenerateReliableTail())))
+	grpc.SetTrailer(ctx, metadata.Pairs("seaside-tail-bin", hex.EncodeToString(utils.GenerateReliableTail())))
 	return &generated.WhirlpoolAuthenticationResponse{
 		Token: tokenData,
 	}, nil
 }
 
-// Connect viridian.
+// Handshake with viridian.
 // Receive all the request parameters required, check version, decrypt and parse token.
 // Add viridian to the viridian dictionary if everything went fine.
 // Should be applied for WhirlpoolServer object.
-// Accept context and connection request.
-// Return connection response and nil if connection successful, otherwise nil and error.
-func (server *WhirlpoolServer) Connect(ctx context.Context, request *generated.ControlConnectionRequest) (*generated.ControlConnectionResponse, error) {
+// Accept context and handshake request.
+// Return handshake response and nil if handshake successful, otherwise nil and error.
+func (server *WhirlpoolServer) Handshake(ctx context.Context, request *generated.ControlHandshakeRequest) (*generated.ControlConnectionResponse, error) {
 	// Get viridian "gateway": the IP address the packages can be forwarded through
 	address, ok := peer.FromContext(ctx)
 	if !ok {
@@ -165,10 +165,10 @@ func (server *WhirlpoolServer) Connect(ctx context.Context, request *generated.C
 		return nil, err
 	}
 
-	// Log and return connection response
+	// Log and return handshake response
 	logrus.Infof("User %d (uid: %s, privileged: %t) connected", *userID, token.Uid, token.Privileged)
-	grpc.SetTrailer(ctx, metadata.Pairs("tail", hex.EncodeToString(utils.GenerateReliableTail())))
-	return &generated.ControlConnectionResponse{
+	grpc.SetTrailer(ctx, metadata.Pairs("seaside-tail-bin", hex.EncodeToString(utils.GenerateReliableTail())))
+	return &generated.ControlHandshakeResponse{
 		UserID: int32(*userID),
 	}, nil
 }
@@ -198,7 +198,7 @@ func (server *WhirlpoolServer) Healthcheck(ctx context.Context, request *generat
 	}
 
 	// Return empty response
-	grpc.SetTrailer(ctx, metadata.Pairs("tail", hex.EncodeToString(utils.GenerateReliableTail())))
+	grpc.SetTrailer(ctx, metadata.Pairs("seaside-tail-bin", hex.EncodeToString(utils.GenerateReliableTail())))
 	return &emptypb.Empty{}, nil
 }
 
@@ -227,6 +227,6 @@ func (server *WhirlpoolServer) Exception(ctx context.Context, request *generated
 
 	// Remove viridian and return empty response
 	server.viridians.Delete(userID, false)
-	grpc.SetTrailer(ctx, metadata.Pairs("tail", hex.EncodeToString(utils.GenerateReliableTail())))
+	grpc.SetTrailer(ctx, metadata.Pairs("seaside-tail-bin", hex.EncodeToString(utils.GenerateReliableTail())))
 	return &emptypb.Empty{}, nil
 }

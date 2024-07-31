@@ -247,20 +247,19 @@ Proxy to Surface connection:
 
 ### Roadmap
 
-- `viridian/submerged`: Rust crate viridian client.
+- `viridian/reef`: Rust CLI and GUI crate viridian client and router app for Linux.
 - `caerulean/foam`: Proxy for whirlpool.
-- `viridian/...`: Windows and Linux GUI client ([wintun](https://git.zx2c4.com/wintun/about/) + `submerged` + electron).
-- `viridian/...`: Android and iOS client (flutter + NDK + `submerged`).
+- `viridian/...`: Windows GUI client (by [this](https://github.com/microsoft/UwpVpnPluginSample) example).
+- `viridian/...`: Apple (MacOS + iOS) GUI client (by [this](https://kean.blog/post/vpn-configuration-manager) example).
+- `viridian/...`: Android (Kotlin + SDK) GUI client (by [this](https://developer.android.com/reference/android/net/VpnService) example).
 - `caerulean/surface`: Linux distributed node manager (java + springboot + thymeleaf).
 - `...`: TRON API smart contract for payments.
-- `viridian/...`: Linux router app (rust + CLI).
-- `caerulean/...`: Web `caerulean` explorer - pulls info from TRON, displays public servers, allows qr codes generation (static + github hosting + kotlin WEB).
+- `caerulean/...`: Web `caerulean` explorer - pulls info from TRON, displays public servers, allows QR codes generation (static + github hosting + TypeScript + React/Angular).
 
 ### TODOs
 
 1. Check tests without 0.0.0.0 iptables rule(s).
 2. Rename all "user" and "cleint" to viridian (for consistency).
-3. Fix all READMEs.
 
 ### Further considerations
 

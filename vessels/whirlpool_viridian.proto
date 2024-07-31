@@ -1,4 +1,5 @@
 syntax = "proto3";
+package generated;
 
 import "google/protobuf/empty.proto";
 
@@ -24,8 +25,8 @@ message WhirlpoolAuthenticationResponse {
 
 
 
-// User control request to whirlpool node
-message ControlConnectionRequest {
+// User control request for handshake to whirlpool node
+message ControlHandshakeRequest {
     // Encrypted user token
     bytes token = 1;
     // User client version
@@ -38,7 +39,8 @@ message ControlConnectionRequest {
     int32 port = 5;
 }
 
-message ControlConnectionResponse {
+// Handshake response, containing user ID
+message ControlHandshakeResponse {
     // Optional user ID (will be sent after authentication)
     int32 userID = 1;
 }
@@ -77,7 +79,7 @@ message ControlException {
 service WhirlpoolViridian {
     rpc Authenticate(WhirlpoolAuthenticationRequest) returns (WhirlpoolAuthenticationResponse) {}
 
-    rpc Connect(ControlConnectionRequest) returns (ControlConnectionResponse) {}
+    rpc Handshake(ControlHandshakeRequest) returns (ControlHandshakeResponse) {}
 
     rpc Healthcheck(ControlHealthcheck) returns (google.protobuf.Empty) {}
 

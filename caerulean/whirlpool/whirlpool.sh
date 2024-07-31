@@ -125,7 +125,7 @@ function check_installation() {
         wget -q https://go.dev/dl/go$GO_VERSION.linux-amd64.tar.gz -O /tmp/golang.tar.gz
         rm -rf /usr/local/go
         tar -C /usr/local -xzf /tmp/golang.tar.gz
-        echo "export PATH=$PATH:/usr/local/go/bin" >> ~/.bashrc
+        echo "export PATH=\$PATH:/usr/local/go/bin" >> ~/.bashrc
         export PATH=$PATH:/usr/local/go/bin
     fi
 
@@ -133,7 +133,7 @@ function check_installation() {
         wget -q https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-linux-x86_64.zip -O /tmp/protoc.zip
         rm -rf /usr/local/protoc
         unzip -q /tmp/protoc.zip -d /usr/local/protoc
-        echo "export PATH=$PATH:/usr/local/protoc/bin" >> ~/.bashrc
+        echo "export PATH=\$PATH:/usr/local/protoc/bin" >> ~/.bashrc
         export PATH=$PATH:/usr/local/protoc/bin
     fi
 
