@@ -118,7 +118,7 @@ func (server *WhirlpoolServer) Authenticate(ctx context.Context, request *genera
 // Should be applied for WhirlpoolServer object.
 // Accept context and handshake request.
 // Return handshake response and nil if handshake successful, otherwise nil and error.
-func (server *WhirlpoolServer) Handshake(ctx context.Context, request *generated.ControlHandshakeRequest) (*generated.ControlConnectionResponse, error) {
+func (server *WhirlpoolServer) Handshake(ctx context.Context, request *generated.ControlHandshakeRequest) (*generated.ControlHandshakeResponse, error) {
 	// Get viridian "gateway": the IP address the packages can be forwarded through
 	address, ok := peer.FromContext(ctx)
 	if !ok {
