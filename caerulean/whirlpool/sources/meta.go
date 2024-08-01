@@ -98,7 +98,7 @@ func loadTLSCredentials() (credentials.TransportCredentials, error) {
 	// Load server's certificate and private key
 	serverCert, err := tls.LoadX509KeyPair("certificates/cert.crt", "certificates/cert.key")
 	if err != nil {
-		logrus.Errorf("error reading certificates, creating new ones: %v", err)
+		logrus.Errorf("Error reading certificates, creating new ones: %v", err)
 		serverCert, err = createTLSCredentials()
 		if err != nil {
 			return nil, fmt.Errorf("error creating certificates: %v", err)

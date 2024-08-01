@@ -18,7 +18,7 @@ import (
 )
 
 // Current Whirlpool distribution version.
-const VERSION = "0.0.1"
+const VERSION = "0.0.2"
 
 // Initialize package variables from environment variables and setup logging level.
 func init() {

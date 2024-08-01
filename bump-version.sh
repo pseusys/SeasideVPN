@@ -32,7 +32,7 @@ VERSIONED_FILES=(
     "viridian/algae/sources/coordinator.py" \
     "caerulean/whirlpool/README.md" \
     "caerulean/whirlpool/whirlpool.sh" \
-    "caerulean/whirlpool/sources/server.go"
+    "caerulean/whirlpool/sources/main.go"
 )
 
 
