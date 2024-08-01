@@ -4,11 +4,12 @@ use std::time::Duration;
 
 use dns_lookup::lookup_host;
 use rand::prelude::{thread_rng, RngCore, Rng};
+use rand::rngs::ThreadRng;
 use tokio::net::UdpSocket;
 use tokio::runtime::Handle;
 use tokio::task::block_in_place;
 use tokio::time::sleep;
-use tonic::metadata::{AsciiMetadataKey, MetadataValue};
+use tonic::metadata::MetadataValue;
 use tonic::transport::{Channel, Endpoint};
 use tonic::Request;
 
@@ -17,7 +18,7 @@ use generated::{WhirlpoolAuthenticationRequest, WhirlpoolAuthenticationResponse,
 
 use super::tunnel::Tunnel;
 use super::viridian::Viridian;
-use super::super::VERSION;
+use super::VERSION;
 
 mod generated {
     tonic::include_proto!("generated");
@@ -30,12 +31,11 @@ const NONE_USER_ID: u16 = 0;
 
 
 pub struct Coordinator {
-    tunnel: Box<dyn Tunnel>,
+    tunnel: Tunnel,
     viridian: Option<Viridian>,
     socket: UdpSocket,
     client: WhirlpoolViridianClient<Channel>,
 
-    address: String,
     node_payload: String,
     user_name: String,
     user_id: u16,
@@ -43,7 +43,8 @@ pub struct Coordinator {
     max_hc_time: u16,
 
     session_token: Option<Vec<u8>>,
-    session_key: Option<Vec<u8>>
+    session_key: Option<Vec<u8>>,
+    randomizer: ThreadRng
 }
 
 
@@ -72,7 +73,7 @@ impl Coordinator {
         let socket = UdpSocket::bind((tunnel.default_interface().0, 0)).await?;
 
         let caerulean_max_timeout = Duration::from_secs_f32(max_timeout);
-        let endpoint = Endpoint::from_shared(viridian_host.clone()).ok().unwrap().timeout(caerulean_max_timeout).connect_timeout(caerulean_max_timeout);
+        let endpoint = Endpoint::from_shared(viridian_host).ok().unwrap().timeout(caerulean_max_timeout).connect_timeout(caerulean_max_timeout);
         let client = WhirlpoolViridianClient::connect(endpoint).await?;
 
         if min_hc_time < 1 {
@@ -87,14 +88,14 @@ impl Coordinator {
             viridian: None,
             socket,
             client,
-            address: viridian_host,
             node_payload: payload.to_string(),
             user_name: user_name.to_string(),
             user_id: NONE_USER_ID,
             min_hc_time,
             max_hc_time,
             session_token: None,
-            session_key: None
+            session_key: None,
+            randomizer: thread_rng()
         })
     }
 
@@ -134,10 +135,9 @@ impl Coordinator {
         }
     }
 
-    fn make_grpc_request<T>(&self, message: T) -> Request<T> {
-        let mut randomizer = thread_rng();
-        let mut tail = Vec::with_capacity(randomizer.gen_range(1..MAX_TAIL_LENGTH));
-        randomizer.fill_bytes(&mut tail);
+    fn make_grpc_request<T>(&mut self, message: T) -> Request<T> {
+        let mut tail = Vec::with_capacity(self.randomizer.gen_range(1..MAX_TAIL_LENGTH));
+        self.randomizer.fill_bytes(&mut tail);
 
         let mut request = Request::new(message);
         request.metadata_mut().append_bin("seaside-tail-bin", MetadataValue::from_bytes(&tail));
@@ -146,10 +146,11 @@ impl Coordinator {
 
     async fn receive_token(&mut self) -> Result<(), tonic::Status> {
         let mut session_key = Vec::with_capacity(SYMM_KEY_LENGTH);
-        thread_rng().fill_bytes(&mut session_key);
+        self.randomizer.fill_bytes(&mut session_key);
 
         let message = WhirlpoolAuthenticationRequest {uid: self.user_name.clone(), session: session_key.clone(), payload: self.node_payload.clone()};
-        let response = self.client.authenticate(self.make_grpc_request(message)).await;
+        let request = self.make_grpc_request(message);
+        let response = self.client.authenticate(request).await;
 
         match response {
             Ok(resp) => {
@@ -168,7 +169,8 @@ impl Coordinator {
             address: self.tunnel.default_interface().0.octets().to_vec(),
             port: i32::from(self.socket.local_addr().ok().unwrap().port())
         };
-        let response = self.client.handshake(self.make_grpc_request(message)).await;
+        let request = self.make_grpc_request(message);
+        let response = self.client.handshake(request).await;
 
         self.viridian = Some(Viridian::new());
         match response {
@@ -178,9 +180,10 @@ impl Coordinator {
     }
 
     async fn perform_control(&mut self, user_id: u16) -> Result<tonic::Response<()>, tonic::Status> {
-        let next_in = thread_rng().gen_range(self.min_hc_time..self.max_hc_time);
+        let next_in = self.randomizer.gen_range(self.min_hc_time..self.max_hc_time);
         let message = ControlHealthcheck {user_id: i32::from(user_id), next_in: i32::from(next_in)};
-        let response = self.client.healthcheck(self.make_grpc_request(message)).await;
+        let request = self.make_grpc_request(message);
+        let response = self.client.healthcheck(request).await;
         sleep(Duration::from_secs(u64::from(next_in))).await;
         response
     }
@@ -191,7 +194,8 @@ impl Coordinator {
             user_id: i32::from(self.user_id),
             message: exception
         };
-        let response = self.client.exception(self.make_grpc_request(message)).await;
+        let request = self.make_grpc_request(message);
+        let response = self.client.exception(request).await;
         match response {
             Ok(_) => Ok(()),
             Err(resp) => Err(Box::from(resp))

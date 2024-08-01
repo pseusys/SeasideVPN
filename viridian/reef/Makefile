@@ -32,14 +32,18 @@ build:
 
 run:
 	@ # Run reef locally
-	cargo run --bin standard
+	cargo run --bin cli
 .PHONY: run
 
-sandbox:
-	@ # Run reef in Docker sandbox image
-	# docker build --tag ${SANDBOX_IMAGE} --file Dockerfile ../..
-	# docker run --privileged -it --rm --network=host --name ${SANDBOX_CONTAINER} --volume ./src:/seaside/viridian/reef/src ${SANDBOX_IMAGE}
-.PHONY: sandbox
+
+
+test-integration:
+	@ # Run reef integration tests in Docker
+	docker compose -f docker/compose.yml up --build
+.PHONY: test-integration
+
+test: test-integration
+.PHONY: test
 
 
 

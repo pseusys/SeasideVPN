@@ -1,36 +1,39 @@
 services:
   reef:
     container_name: seaside-reef
+    privileged: true
     build:
-      context: ../..
+      context: ../../..
       dockerfile: viridian/reef/docker/Dockerfile
+      target: test
       args:
-        NETWORK_GATEWAY: 10.65.0.100
+        NETWORK_GATEWAY: 10.82.0.100
     environment:
-      SEASIDE_ADDRESS: 10.87.65.87
-      LOCAL_ADDRESS: 10.65.0.65
+      SEASIDE_ADDRESS: 10.87.82.87
+      LOCAL_ADDRESS: 10.82.0.82
       ECHO_ADDRESS: 10.42.0.42
-      SEASIDE_CONNECTION_TIMEOUT: 30.0
+      SEASIDE_CONNECTION_TIMEOUT: 3.0
     networks:
       sea-cli-int:
-        ipv4_address: 10.65.0.65
+        ipv4_address: 10.82.0.82
+    depends_on:
+      whirlpool:
+        condition: service_healthy
 
   int-router:
-    image: seaside-router-smoke
+    container_name: seaside-internal-router
     privileged: true
     build:
       context: ../../..
       dockerfile: viridian/algae/docker/Dockerfile.router
       target: smoke
-    container_name: seaside-internal-router
     networks:
       sea-cli-int:
-        ipv4_address: 10.65.0.100
+        ipv4_address: 10.82.0.100
       sea-rout-int:
-        ipv4_address: 10.87.65.100
+        ipv4_address: 10.87.82.100
 
   whirlpool:
-    image: seaside-reef-whirlpool-local
     container_name: seaside-whirlpool
     privileged: true
     build:
@@ -42,26 +45,23 @@ services:
     environment:
       SEASIDE_PAYLOAD_OWNER: super_secret_owner_payload_data
       SEASIDE_PAYLOAD_VIRIDIAN: super_secret_user_payload_data
-      SEASIDE_ADDRESS: 10.87.65.87
+      SEASIDE_ADDRESS: 10.87.82.87
       SEASIDE_EXTERNAL: 10.87.42.87
       SEASIDE_CTRLPORT: 8587
       SEASIDE_LOG_LEVEL: DEBUG
-    volumes:
-      - ./certificates:/seaside/caerulean/certificates
     networks:
       sea-rout-int:
-        ipv4_address: 10.87.65.87
+        ipv4_address: 10.87.82.87
       sea-rout-ext:
         ipv4_address: 10.87.42.87
 
   ext-router:
-    image: seaside-router-smoke
+    container_name: seaside-external-router
     privileged: true
     build:
       context: ../../..
       dockerfile: viridian/algae/docker/Dockerfile.router
       target: smoke
-    container_name: seaside-external-router
     networks:
       sea-rout-ext:
         ipv4_address: 10.87.42.100
@@ -69,7 +69,6 @@ services:
         ipv4_address: 10.42.0.100
 
   echo:
-    image: seaside-echo-smoke
     container_name: seaside-echo
     privileged: true
     build:
@@ -91,13 +90,13 @@ networks:
   sea-cli-int:
     ipam:
       config:
-        - subnet: 10.65.0.0/24
-          gateway: 10.65.0.1
+        - subnet: 10.82.0.0/24
+          gateway: 10.82.0.1
   sea-rout-int:
     ipam:
       config:
-        - subnet: 10.87.65.0/24
-          gateway: 10.87.65.1
+        - subnet: 10.87.82.0/24
+          gateway: 10.87.82.1
   sea-rout-ext:
     ipam:
       config:

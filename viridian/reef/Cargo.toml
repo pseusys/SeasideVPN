@@ -7,6 +7,7 @@ authors = [
     "Alexander Sergeev <alexander.sergeev@onmail.com>"
 ]
 
+
 [dependencies]
 rand = "0.8.5"
 prost = "0.13.1"
@@ -28,6 +29,10 @@ rcgen = "0.13.1"
 test-context = "0.3.0"
 
 
+[lib]
+name = "reeflib"
+path = "src/lib/mod.rs"
+
 [[bin]]
-name = "standard"
-path = "src/bindings/standard.rs"
+name = "cli"
+path = "src/cli.rs"

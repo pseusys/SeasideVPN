@@ -13,9 +13,7 @@ use neli::types::RtBuffer;
 use tun2::platform::Device;
 use tun2::{create, Configuration};
 
-use super::Tunnel;
-
-const TUNNEL_ADDRESS: Ipv4Addr = Ipv4Addr::new(192, 168, 0, 65);
+const TUNNEL_ADDRESS: Ipv4Addr = Ipv4Addr::new(192, 168, 0, 82);
 const TUNNEL_NETMASK: Ipv4Addr = Ipv4Addr::new(255, 255, 255, 0);
 
 const SVS_CODE: u8 = 82;
@@ -32,7 +30,7 @@ fn get_default_interface(seaside_address: Ipv4Addr) -> Result<(Ipv4Addr, u8, Str
         let mut rtbuff = RtBuffer::new();
         rtbuff.push(Rtattr::new(None, Rta::Dst, Vec::from(seaside_address.octets())).ok().unwrap());
         let send_payload = Rtmsg {rtm_family: RtAddrFamily::Inet, rtm_dst_len: 32, rtm_src_len: 0, rtm_tos: 0, rtm_table: RtTable::Unspec, rtm_protocol: Rtprot::Unspec, rtm_scope: RtScope::Universe, rtm_type: Rtn::Unspec, rtm_flags: RtmFFlags::empty(), rtattrs: rtbuff};
-        let send_msg = Nlmsghdr::new(None,  Rtm::Getroute, NlmFFlags::new(&[NlmF::Request]), None, None, NlPayload::Payload(send_payload));
+        let send_msg = Nlmsghdr::new(None, Rtm::Getroute, NlmFFlags::new(&[NlmF::Request]), None, None, NlPayload::Payload(send_payload));
         socket.send(send_msg).unwrap();
         let recv_msg = socket.recv::<NlTypeWrapper, Rtmsg>().unwrap().unwrap();
         let recv_payload = recv_msg.get_payload().unwrap();
@@ -43,7 +41,7 @@ fn get_default_interface(seaside_address: Ipv4Addr) -> Result<(Ipv4Addr, u8, Str
 
     let (default_name, default_cidr) = {
         let send_payload = Ifaddrmsg {ifa_family: RtAddrFamily::Inet, ifa_flags: IfaFFlags::empty(), ifa_index: default_dev.unwrap(), ifa_prefixlen: 0, ifa_scope: RtScope::Host.into(), rtattrs: RtBuffer::new()};
-        let send_msg = Nlmsghdr::new(None,  Rtm::Getaddr, NlmFFlags::new(&[NlmF::Request, NlmF::Dump]), None, None, NlPayload::Payload(send_payload));
+        let send_msg = Nlmsghdr::new(None, Rtm::Getaddr, NlmFFlags::new(&[NlmF::Request, NlmF::Dump]), None, None, NlPayload::Payload(send_payload));
         socket.send(send_msg).unwrap();
         let mut default_name: Option<String> = None;
         let mut default_cidr: Option<u8> = None;
@@ -54,7 +52,6 @@ fn get_default_interface(seaside_address: Ipv4Addr) -> Result<(Ipv4Addr, u8, Str
                     let name = recv_payload.rtattrs.iter().find(|a| a.rta_type == Ifa::Label).and_then(|a| Some(str::from_utf8(a.rta_payload.as_ref())));
                     default_name = Some(asciiz_to_string(name.unwrap().ok().unwrap()));
                     default_cidr = Some(recv_payload.ifa_prefixlen);
-                    break;
                 }
             }
         }
@@ -62,8 +59,8 @@ fn get_default_interface(seaside_address: Ipv4Addr) -> Result<(Ipv4Addr, u8, Str
     };
 
     let default_mtu = {
-        let send_payload = Ifinfomsg::new(RtAddrFamily::Inet, Arphrd::None, default_dev.unwrap(), IffFlags::empty(), IffFlags::empty(), RtBuffer::new());
-        let send_msg = Nlmsghdr::new(None,  Rtm::Getlink, NlmFFlags::new(&[NlmF::Request]), None, None, NlPayload::Payload(send_payload));
+        let send_payload = Ifinfomsg::new(RtAddrFamily::Unspecified, Arphrd::None, default_dev.unwrap(), IffFlags::empty(), IffFlags::empty(), RtBuffer::new());
+        let send_msg = Nlmsghdr::new(None, Rtm::Getlink, NlmFFlags::new(&[NlmF::Request]), None, None, NlPayload::Payload(send_payload));
         socket.send(send_msg).unwrap();
         let recv_msg = socket.recv::<NlTypeWrapper, Ifinfomsg>().unwrap().unwrap();
         let recv_payload = recv_msg.get_payload().unwrap();
@@ -89,13 +86,14 @@ fn flush_svs_table(receiver_socket: &mut NlSocketHandle) -> Result<(), Box<dyn E
     let mut sender_socket = NlSocketHandle::connect(NlFamily::Route, None, &[]).unwrap();
 
     let send_payload = Rtmsg {rtm_family: RtAddrFamily::Inet, rtm_dst_len: 0, rtm_src_len: 0, rtm_tos: 0, rtm_table: svs_table, rtm_protocol: Rtprot::Unspec, rtm_scope: RtScope::Universe, rtm_type: Rtn::Unspec, rtm_flags: RtmFFlags::empty(), rtattrs: RtBuffer::new()};
-    let send_msg = Nlmsghdr::new(None,  Rtm::Getroute, NlmFFlags::new(&[NlmF::Request, NlmF::Dump]), None, None, NlPayload::Payload(send_payload));
+    let send_msg = Nlmsghdr::new(None, Rtm::Getroute, NlmFFlags::new(&[NlmF::Request, NlmF::Dump]), None, None, NlPayload::Payload(send_payload));
     receiver_socket.send(send_msg).unwrap();
     for response in receiver_socket.iter(false) {
         let header: Nlmsghdr<Rtm, Rtmsg> = response.unwrap();
         if let Ok(ref recv_payload) = header.get_payload() {
             if recv_payload.rtm_table == svs_table {
-                let rm_msg = Nlmsghdr::new(None,  Rtm::Delroute, NlmFFlags::new(&[NlmF::Request]), None, None, header.nl_payload);
+                // TODO: store and restore
+                let rm_msg = Nlmsghdr::new(None, Rtm::Delroute, NlmFFlags::new(&[NlmF::Request]), None, None, header.nl_payload);
                 sender_socket.send(rm_msg).unwrap();
             }
         }
@@ -113,13 +111,13 @@ fn enable_routing(tunnel_interface: &str) -> Result<(), Box<dyn Error>> {
     route_rtbuff.push(Rtattr::new(None, Rta::Gateway, Vec::from(TUNNEL_ADDRESS.octets())).ok().unwrap());
     route_rtbuff.push(Rtattr::new(None, Rta::Oif, tunnel_interface.as_bytes()).ok().unwrap());
     let route_send_payload = Rtmsg {rtm_family: RtAddrFamily::Inet, rtm_dst_len: 32, rtm_src_len: 0, rtm_tos: 0, rtm_table: RtTable::UnrecognizedConst(SVS_CODE), rtm_protocol: Rtprot::Static, rtm_scope: RtScope::Universe, rtm_type: Rtn::Unicast, rtm_flags: RtmFFlags::empty(), rtattrs: route_rtbuff};
-    let route_send_msg = Nlmsghdr::new(None,  Rtm::Newroute, NlmFFlags::new(&[NlmF::Request, NlmF::Create]), None, None, NlPayload::Payload(route_send_payload));
+    let route_send_msg = Nlmsghdr::new(None, Rtm::Newroute, NlmFFlags::new(&[NlmF::Request, NlmF::Create]), None, None, NlPayload::Payload(route_send_payload));
     socket.send(route_send_msg).unwrap();
 
     let mut rule_rtbuff = RtBuffer::new();
     rule_rtbuff.push(Rtattr::new(None, Rta::Mark, SVS_CODE).ok().unwrap());
     let rule_send_payload = Rtmsg {rtm_family: RtAddrFamily::Inet, rtm_dst_len: 0, rtm_src_len: 0, rtm_tos: 0, rtm_table: RtTable::Unspec, rtm_protocol: Rtprot::Static, rtm_scope: RtScope::Universe, rtm_type: Rtn::Unicast, rtm_flags: RtmFFlags::empty(), rtattrs: rule_rtbuff};
-    let rule_send_msg = Nlmsghdr::new(None,  Rtm::Newrule, NlmFFlags::new(&[NlmF::Request, NlmF::Create]), None, None, NlPayload::Payload(rule_send_payload));
+    let rule_send_msg = Nlmsghdr::new(None, Rtm::Newrule, NlmFFlags::new(&[NlmF::Request, NlmF::Create]), None, None, NlPayload::Payload(rule_send_payload));
     socket.send(rule_send_msg).unwrap();
 
     Ok(())
@@ -171,7 +169,7 @@ pub struct Tunnel {
 }
 
 impl Tunnel {
-    pub async fn new(name: &str, address: Ipv4Addr) -> Result<LinuxTunnel, Box<dyn Error>> {
+    pub async fn new(name: &str, address: Ipv4Addr) -> Result<Tunnel, Box<dyn Error>> {
         let (default_address, default_cidr, default_name, default_mtu) = get_default_interface(address).unwrap();
         let tunnel_device = create_tunnel(&name, default_mtu as u16)?;
         enable_routing(name).ok().unwrap();
@@ -181,10 +179,10 @@ impl Tunnel {
         let sc = format!("-o {default_name} --src {default_address} --dst {address} -j ACCEPT");
         enable_firewall(&sia, &sim, &sc).ok().unwrap();
 
-        Ok(LinuxTunnel {def_ip: default_address, def_cidr: default_cidr, tun_device: tunnel_device, sia, sim, sc})
+        Ok(Tunnel {def_ip: default_address, def_cidr: default_cidr, tun_device: tunnel_device, sia, sim, sc})
     }
 
-    fn default_interface(&self) -> (Ipv4Addr, u8) {
+    pub fn default_interface(&self) -> (Ipv4Addr, u8) {
         (self.def_ip, self.def_cidr)
     }
 
