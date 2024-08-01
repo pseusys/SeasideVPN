@@ -24,7 +24,6 @@ viridian/algae/*.spec
 viridian/algae/.pytest_cache
 viridian/algae/build
 viridian/algae/dist
-viridian/algae/docker/certificates
 viridian/algae/docker/compose.*.yml
 viridian/algae/docker/Dockerfile.*
 viridian/algae/docker/test.conf.env

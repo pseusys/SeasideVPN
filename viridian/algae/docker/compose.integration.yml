@@ -48,8 +48,6 @@ services:
     environment:
       SEASIDE_ADDRESS: 10.87.65.87
       SEASIDE_EXTERNAL: 10.87.42.87
-    volumes:
-      - ./certificates:/seaside/caerulean/certificates
     networks:
       sea-router:
         ipv4_address: 10.87.65.87

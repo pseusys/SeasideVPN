@@ -39,7 +39,6 @@ viridian/algae/**/.mypy_cache/
 viridian/algae/**/.pytest-cache/
 
 ## Python generated files:
-viridian/algae/docker/certificates/
 viridian/algae/sources/__init__.py
 viridian/algae/sources/generated/
 
