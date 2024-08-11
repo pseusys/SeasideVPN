@@ -1,3 +1,13 @@
+# General
+
+.github/
+.markdownlint.yaml
+bump-version.sh
+LICENCE
+Makefile
+README
+
+
 # Caerulean
 
 ## Whirlpool
@@ -11,7 +21,6 @@ caerulean/whirlpool/example.conf.env
 caerulean/whirlpool/go.sum
 caerulean/whirlpool/Makefile
 caerulean/whirlpool/README.md
-caerulean/whirlpool/whirlpool.sh
 caerulean/whirlpool/conf.env
 
 
@@ -24,11 +33,11 @@ viridian/algae/*.spec
 viridian/algae/.pytest_cache
 viridian/algae/build
 viridian/algae/dist
-viridian/algae/docker/certificates
 viridian/algae/docker/compose.*.yml
 viridian/algae/docker/Dockerfile.*
 viridian/algae/docker/test.conf.env
 viridian/algae/scripts
 viridian/algae/sources/generated
+viridian/algae/sources/__init__.py
 viridian/algae/poetry.lock
 viridian/algae/README.md

@@ -33,7 +33,7 @@ VERSIONED_FILES=(
     "viridian/reef/Cargo.toml" \
     "caerulean/whirlpool/README.md" \
     "caerulean/whirlpool/whirlpool.sh" \
-    "caerulean/whirlpool/sources/server.go"
+    "caerulean/whirlpool/sources/main.go"
 )
 
 

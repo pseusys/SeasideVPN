@@ -116,8 +116,8 @@ func (server *WhirlpoolServer) Authenticate(ctx context.Context, request *genera
 // Receive all the request parameters required, check version, decrypt and parse token.
 // Add viridian to the viridian dictionary if everything went fine.
 // Should be applied for WhirlpoolServer object.
-// Accept context and connection request.
-// Return connection response and nil if connection successful, otherwise nil and error.
+// Accept context and handshake request.
+// Return handshake response and nil if handshake successful, otherwise nil and error.
 func (server *WhirlpoolServer) Handshake(ctx context.Context, request *generated.ControlHandshakeRequest) (*generated.ControlHandshakeResponse, error) {
 	// Get viridian "gateway": the IP address the packages can be forwarded through
 	address, ok := peer.FromContext(ctx)
@@ -165,7 +165,7 @@ func (server *WhirlpoolServer) Handshake(ctx context.Context, request *generated
 		return nil, err
 	}
 
-	// Log and return connection response
+	// Log and return handshake response
 	logrus.Infof("User %d (uid: %s, privileged: %t) connected", *userID, token.Uid, token.Privileged)
 	grpc.SetTrailer(ctx, metadata.Pairs("seaside-tail-bin", hex.EncodeToString(utils.GenerateReliableTail())))
 	return &generated.ControlHandshakeResponse{

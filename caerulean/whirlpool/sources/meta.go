@@ -13,6 +13,12 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
+const (
+	GENERATE_CERT_LENGTH = 4096
+	GENERATE_CERT_SERIAL = 8 * 20
+	GENERATE_CERT_YEARS  = 10
+)
+
 // Metaserver structure.
 // Contains gRPC server and whirlpool server, also includes connection listener.
 type MetaServer struct {
@@ -33,7 +39,7 @@ func loadTLSCredentials() (credentials.TransportCredentials, error) {
 	// Load server's certificate and private key
 	serverCert, err := tls.LoadX509KeyPair("certificates/cert.crt", "certificates/cert.key")
 	if err != nil {
-		return nil, fmt.Errorf("error reading certificates: %v", err)
+		return nil, fmt.Errorf("Error reading certificates: %v", err)
 	}
 
 	// Create the credentials and return it

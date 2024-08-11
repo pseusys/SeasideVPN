@@ -154,11 +154,11 @@ class Coordinator:
 
     async def _initialize_control(self) -> None:
         """
-        Connect to VPN node and initialize connection control.
+        Handshake with VPN node and initialize connection control.
         Initialize "viridian" object.
         Only proceed if valid user ID and successful control response status is received.
         """
-        logger.debug(f"Establishing connection to caerulean {self._address}:{self._ctrl_port}...")
+        logger.debug(f"Making handshake caerulean {self._address}:{self._ctrl_port}...")
         request = ControlHandshakeRequest(self._session_token, VERSION, self._node_payload, inet_aton(self._tunnel.default_ip), self._gate_socket.getsockname()[1])
         response = await self._control.handshake(request, **self._grpc_metadata())
 
@@ -169,7 +169,7 @@ class Coordinator:
             self._user_id = response.user_id
 
         self._viridian = Viridian(self._gate_socket, self._tunnel.descriptor, self._address, self._session_key, self._user_id)
-        logger.info(f"Connected to caerulean {self._address}:{self._ctrl_port} successfully!")
+        logger.info(f"Handshake with caerulean {self._address}:{self._ctrl_port} completed successfully!")
 
     def _clean_tunnel(self) -> None:
         """

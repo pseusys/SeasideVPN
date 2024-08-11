@@ -65,8 +65,8 @@ GENERATE_CERTS=false
 RUN_NODE=false
 # Use no ASCII text formatting
 TEXT_MODE=false
-# Just generate the certificates and exit
-CERTIFY_AND_EXIT=false
+# Just generate self-signed certificates and exit
+GENERATE_CERTIFICATES_AND_EXIT=false
 # Just print script help and exit
 HELP_AND_EXIT=false
 # Invalid option flags found
@@ -112,8 +112,7 @@ function generate_certificates() {
     local VALIDITY=365250
     local ALGORITHM=prime256v1
 
-    rm -rf certificates/
-    mkdir certificates/
+    rm -rf certificates/*
     openssl ecparam -genkey -name "$ALGORITHM" -noout -out certificates/cert.key
     openssl req -new -x509 -sha256 -key certificates/cert.key -out certificates/cert.crt -days "$VALIDITY" -addext "$ALTNAMES" -subj "$SUBJECT"
 }
@@ -127,7 +126,7 @@ function check_installation() {
         wget -q https://go.dev/dl/go$GO_VERSION.linux-amd64.tar.gz -O /tmp/golang.tar.gz
         rm -rf /usr/local/go
         tar -C /usr/local -xzf /tmp/golang.tar.gz
-        echo "export PATH=$PATH:/usr/local/go/bin" >> ~/.bashrc
+        echo "export PATH=\$PATH:/usr/local/go/bin" >> ~/.bashrc
         export PATH=$PATH:/usr/local/go/bin
     fi
 
@@ -267,7 +266,7 @@ do
         s) GENERATE_CERTS=true;;
         r) RUN_NODE=true;;
         t) TEXT_MODE=true;;
-        z) CERTIFY_AND_EXIT=true;;
+        z) GENERATE_CERTIFICATES_AND_EXIT=true;;
         h) HELP_AND_EXIT=true;;
         *) INVALID_OPTIONS_FOUND=true;;
     esac
@@ -283,9 +282,10 @@ if [ "$TEXT_MODE" = true ] ; then
     RESET=""
 fi
 
-if [ "$CERTIFY_AND_EXIT" = true ] ; then
+if [ "$GENERATE_CERTIFICATES_AND_EXIT" = true ] ; then
+    echo -e "Just generating certificates for $SEASIDE_ADDRESS..."
     generate_certificates "$SEASIDE_ADDRESS"
-    echo -e "Certificates generated successfully for ${SEASIDE_ADDRESS}"
+    echo -e "${GREEN}Certificates generated successfully!${RESET}"
     exit 0
 fi
 

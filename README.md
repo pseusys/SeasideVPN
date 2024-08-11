@@ -129,7 +129,6 @@ Seaside VPN offers several ways to handle all these cases:
 Following ways are yet to be implemented:
 
 1. VPN packets sending via several "gateway" servers with different IPs, simulating [`UDP tracker`](https://en.wikipedia.org/wiki/UDP_tracker) protocol.
-2. All ports and endpoint names are randomized.
 
 An encrypted viridian packet arriving to a whirlpool is authenticated by its port destination.
 I.e. alongside with a TCP gRPC contol channel a similar dedicated UDP port is assigned to every viridian and the VPN packets from that viridian should arrive to that port.
@@ -238,6 +237,8 @@ These are the most important of them:
 
 ## Future development
 
+The steps of expected system development and not-yet-implemented features are described below.
+
 ### Connection short descriptions
 
 Whirlpool to Surface connection:
@@ -260,14 +261,12 @@ Proxy to Surface connection:
 - `viridian/...`: Android and iOS client (flutter + NDK + `reef`).
 - `caerulean/surface`: Linux distributed node manager (java + springboot + thymeleaf).
 - `...`: TRON API smart contract for payments.
-- `viridian/...`: Linux router app (rust + CLI).
-- `caerulean/...`: Web `caerulean` explorer - pulls info from TRON, displays public servers, allows qr codes generation (static + github hosting + kotlin WEB).
+- `caerulean/...`: Web `caerulean` explorer - pulls info from TRON, displays public servers, allows QR codes generation (static + github hosting + TypeScript + React/Angular).
 
 ### TODOs
 
 1. Check tests without 0.0.0.0 iptables rule(s).
 2. Rename all "user" and "cleint" to viridian (for consistency).
-3. Fix all READMEs.
 
 ### Further considerations
 
@@ -283,7 +282,7 @@ Proxy to Surface connection:
 - Create CONTRIBUTING.md and USING.md tutorials.
 - Fix release artiface algorithm: add different installation scripts **only** (whirlpool-standalone, whirlpool-foam, whirlpool-surface (with compose.yml), ...).
 
-### Similar projects
+## Similar projects
 
 - [Claimed-to-be undetectable VPN](https://github.com/vpnhood/VpnHood)
 - [Simple Golang VPN](https://github.com/skx/simple-vpn)

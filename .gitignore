@@ -31,15 +31,14 @@ viridian/algae/poetry.lock
 ## Pyinstaller build:
 viridian/algae/build/
 viridian/algae/dist/
-**/*.spec
+viridian/algae/**/*.spec
 
 ## Python (and test) cache:
-**/__pycache__/
-**/.mypy_cache/
-**/.pytest-cache/
+viridian/algae/**/__pycache__/
+viridian/algae/**/.mypy_cache/
+viridian/algae/**/.pytest-cache/
 
 ## Python generated files:
-viridian/algae/docker/certificates/
 viridian/algae/sources/__init__.py
 viridian/algae/sources/generated/
 
@@ -51,14 +50,11 @@ viridian/algae/sources/generated/
 caerulean/whirlpool/build/*.run
 
 ## Go module files:
-**/go.work
-**/go.sum
+caerulean/whirlpool/**/go.work
+caerulean/whirlpool/**/go.sum
 
 ## Go generated files:
-**/*.pb.go
-
-## Generated certificates:
-caerulean/whirlpool/certificates/
+caerulean/whirlpool/**/*.pb.go
 
 
 

@@ -25,7 +25,7 @@ message WhirlpoolAuthenticationResponse {
 
 
 
-// User control request for connection to whirlpool node
+// User control request for handshake to whirlpool node
 message ControlHandshakeRequest {
     // Encrypted user token
     bytes token = 1;
@@ -39,6 +39,7 @@ message ControlHandshakeRequest {
     int32 port = 5;
 }
 
+// Handshake response, containing user ID
 message ControlHandshakeResponse {
     // Optional user ID (will be sent after authentication)
     int32 userID = 1;
