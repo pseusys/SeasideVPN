@@ -65,6 +65,8 @@ GENERATE_CERTS=false
 RUN_NODE=false
 # Use no ASCII text formatting
 TEXT_MODE=false
+# Just generate self-signed certificates and exit
+GENERATE_CERTIFICATES_AND_EXIT=false
 # Just print script help and exit
 HELP_AND_EXIT=false
 # Invalid option flags found
@@ -110,8 +112,7 @@ function generate_certificates() {
     local VALIDITY=365250
     local ALGORITHM=prime256v1
 
-    rm -rf certificates/
-    mkdir certificates/
+    rm -rf certificates/*
     openssl ecparam -genkey -name "$ALGORITHM" -noout -out certificates/cert.key
     openssl req -new -x509 -sha256 -key certificates/cert.key -out certificates/cert.crt -days "$VALIDITY" -addext "$ALTNAMES" -subj "$SUBJECT"
 }
@@ -240,7 +241,7 @@ function help() {
 
 # CLI flags and options:
 
-while getopts "o:v:a:e:c:n:x:w:f:m:d:p:i:b:l:u:y:kgsrth" flag
+while getopts "o:v:a:e:c:n:x:w:f:m:d:p:i:b:l:u:y:kgsrtzh" flag
 do
     case "${flag}" in
         o) SEASIDE_PAYLOAD_OWNER=${OPTARG};;
@@ -265,6 +266,7 @@ do
         s) GENERATE_CERTS=true;;
         r) RUN_NODE=true;;
         t) TEXT_MODE=true;;
+        z) GENERATE_CERTIFICATES_AND_EXIT=true;;
         h) HELP_AND_EXIT=true;;
         *) INVALID_OPTIONS_FOUND=true;;
     esac
@@ -278,6 +280,13 @@ if [ "$TEXT_MODE" = true ] ; then
     YELLOW=""
     RED=""
     RESET=""
+fi
+
+if [ "$GENERATE_CERTIFICATES_AND_EXIT" = true ] ; then
+    echo -e "Just generating certificates for $SEASIDE_ADDRESS..."
+    generate_certificates "$SEASIDE_ADDRESS"
+    echo -e "${GREEN}Certificates generated successfully!${RESET}"
+    exit 0
 fi
 
 if [ "$HELP_AND_EXIT" = true ] ; then

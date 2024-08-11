@@ -227,7 +227,7 @@ async function waitForServer(ip, key, waitTimes, sleepTime) {
 /**
  * Deploy Whirlpool node to VPS.
  * Copy whirlpool installation script from the local source.
- * Run the script and prepare environment (generate 'conf.env' file and certificates).
+ * Run the script and prepare environment (generate 'conf.env' file and self-signed certificates).
  * Run the node in the background and close SSH connection.
  * @param {NodeSSH} sshConn SSH connection to use
  * @param {string} ownerPayload deployment server owner payload
