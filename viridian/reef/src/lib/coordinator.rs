@@ -1,8 +1,8 @@
 use std::error::Error;
-use std::net::{IpAddr, Ipv4Addr};
+use std::net::Ipv4Addr;
 use std::time::Duration;
+use std::fs::read_to_string;
 
-use dns_lookup::lookup_host;
 use rand::prelude::{thread_rng, RngCore, Rng};
 use rand::rngs::ThreadRng;
 use tokio::net::UdpSocket;
@@ -10,7 +10,7 @@ use tokio::runtime::Handle;
 use tokio::task::block_in_place;
 use tokio::time::sleep;
 use tonic::metadata::MetadataValue;
-use tonic::transport::{Channel, Endpoint};
+use tonic::transport::{Certificate, Channel, ClientTlsConfig};
 use tonic::Request;
 
 use generated::whirlpool_viridian_client::WhirlpoolViridianClient;
@@ -48,33 +48,9 @@ pub struct Coordinator {
 }
 
 
-fn parse_address(address: &str) -> Option<Ipv4Addr> {
-    match address.parse::<IpAddr>() {
-        Ok(IpAddr::V4(pip)) => Some(pip),
-        _ => match lookup_host(address) {
-            Ok(rip) => match rip.first() {
-                Some(IpAddr::V4(rsip)) => Some(*rsip),
-                _ => None
-            },
-            Err(_) => None
-        }
-    }
-}
-
 impl Coordinator {
-    pub async fn new(payload: &str, address: &str, ctrl_port: u16, user_name: &str, min_hc_time: u16, max_hc_time: u16, max_timeout: f32, tunnel_name: &str) -> Result<Coordinator, Box<dyn Error>> {
+    pub async fn new(address: Ipv4Addr, ctrl_port: u16, payload: &str, user_name: &str, min_hc_time: u16, max_hc_time: u16, max_timeout: f32, tunnel_name: &str, ca: Option<&str>) -> Result<Coordinator, Box<dyn Error>> {
         let viridian_host = format!("{GRPC_PROTOCOL}://{address}:{ctrl_port}");
-        let resolved_ip  = match parse_address(address) {
-            Some(ip) => ip,
-            None => return Err(Box::from(format!("Address {address} can't be resolved!")))
-        };
-
-        let tunnel = Tunnel::new(tunnel_name, resolved_ip).await?;
-        let socket = UdpSocket::bind((tunnel.default_interface().0, 0)).await?;
-
-        let caerulean_max_timeout = Duration::from_secs_f32(max_timeout);
-        let endpoint = Endpoint::from_shared(viridian_host).ok().unwrap().timeout(caerulean_max_timeout).connect_timeout(caerulean_max_timeout);
-        let client = WhirlpoolViridianClient::connect(endpoint).await?;
 
         if min_hc_time < 1 {
             return Err(Box::from("Minimum healthcheck time shouldn't be less than 1 second!"));
@@ -82,6 +58,17 @@ impl Coordinator {
         if max_hc_time < 1 {
             return Err(Box::from("Maximum healthcheck time shouldn't be less than 1 second!"));
         }
+
+        let tunnel = Tunnel::new(tunnel_name, address).await?;
+        let socket = UdpSocket::bind((tunnel.default_interface().0, 0)).await?;
+
+        let tls = match ca {
+            Some(certificate) => ClientTlsConfig::new().ca_certificate(Certificate::from_pem(read_to_string(certificate)?.as_bytes())),
+            None => ClientTlsConfig::new().with_webpki_roots()
+        };
+        let caerulean_max_timeout = Duration::from_secs_f32(max_timeout);
+        let channel = Channel::from_shared(viridian_host)?.timeout(caerulean_max_timeout).connect_timeout(caerulean_max_timeout).tls_config(tls)?.connect().await?;
+        let client = WhirlpoolViridianClient::new(channel);
 
         Ok(Coordinator {
             tunnel,
@@ -108,13 +95,13 @@ impl Coordinator {
 
         let recevive_token_res = self.receive_token().await;
         if let Err(res) = recevive_token_res {
-            println!("log error status: {res}");
+            println!("log receive token error status: {res}");
             return Err(Box::from("Token receiving failed"));
         }
 
         let initialize_control_res = self.initialize_control().await;
         if let Err(ref res) = initialize_control_res {
-            println!("log error status: {res}");
+            println!("log initialize control error status: {res}");
             return Err(Box::from("Control initialization failed"));
         }
 
@@ -145,7 +132,7 @@ impl Coordinator {
     }
 
     async fn receive_token(&mut self) -> Result<(), tonic::Status> {
-        let mut session_key = Vec::with_capacity(SYMM_KEY_LENGTH);
+        let mut session_key = vec![0; SYMM_KEY_LENGTH];
         self.randomizer.fill_bytes(&mut session_key);
 
         let message = WhirlpoolAuthenticationRequest {uid: self.user_name.clone(), session: session_key.clone(), payload: self.node_payload.clone()};
@@ -154,7 +141,8 @@ impl Coordinator {
 
         match response {
             Ok(resp) => {
-                self.session_key = Some(resp.get_ref().token.clone());
+                self.session_key = Some(session_key);
+                self.session_token = Some(resp.get_ref().token.clone());
                 Ok(())
             },
             Err(resp) => Err(resp)

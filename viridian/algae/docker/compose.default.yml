@@ -1,7 +1,7 @@
 # This file defines default Docker images for integration testing.
-# Unlike images from "base", these contain additional dependencies, settings, etc.
-# These images also will not be destroyed and recreated during tests - for speedup.
-# These images will also reused in other Dockerfile targets in this directory.
+# Other docker images from this directory might be built on top of these ones.
+# These images will not be destroyed and recreated during tests - for speedup.
+# These images will be reused in other Dockerfile targets in this directory.
 
 services:
   algae:

@@ -96,8 +96,9 @@ function check_command_exists() {
     done
 }
 
-# Regenerate (self-signed) certificas in ./certificates directory.
-# Certificates will be valid for 1000 years, prime256v1 algorithm will be used.
+# Regenerate certificas in ./certificates/server directory.
+# Certificates will be signed with a CA in ./certificates/client directory.
+# Certificates will be valid for 1000 years, rsa:2048 algorithm will be used.
 # #1: IP address to authorize the certificate for.
 function generate_certificates() {
     $(check_command_exists openssl &> /dev/null) || apt-get install -y --no-install-recommends openssl
@@ -108,13 +109,19 @@ function generate_certificates() {
         local ALTNAMES="subjectAltName = DNS:$1"
     fi
 
-    local SUBJECT="/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=viridian-algae/CN=Algae"
+    local SUBJECT="/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=viridian/CN=Viridian"
     local VALIDITY=365250
-    local ALGORITHM=prime256v1
+    local ALGORITHM=rsa:2048
+
+    local CLI="certificates/client"
+    local SRV="certificates/server"
 
     rm -rf certificates/*
-    openssl ecparam -genkey -name "$ALGORITHM" -noout -out certificates/cert.key
-    openssl req -new -x509 -sha256 -key certificates/cert.key -out certificates/cert.crt -days "$VALIDITY" -addext "$ALTNAMES" -subj "$SUBJECT"
+    mkdir -p "$CLI" "$SRV"
+
+    openssl req -digest -newkey "$ALGORITHM" -sha256 -nodes -keyout "$SRV/cert.key" -out "$SRV/cert.csr" -subj "$SUBJECT" -addext "$ALTNAMES" -addext keyUsage=critical,digitalSignature,nonRepudiation -addext extendedKeyUsage=serverAuth
+    openssl req -digest -new -x509 -sha256 -sha256 -nodes -keyout "$CLI/rootCA.key" -out "$CLI/rootCA.crt" -days "$VALIDITY" -newkey "$ALGORITHM" -subj "$SUBJECT" -addext keyUsage=critical,digitalSignature,nonRepudiation,keyEncipherment,dataEncipherment,keyAgreement,keyCertSign,cRLSign -addext extendedKeyUsage=serverAuth,clientAuth
+    openssl x509 -req -CA "$CLI/rootCA.crt" -CAkey "$CLI/rootCA.key" -in "$SRV/cert.csr" -out "$SRV/cert.crt" -days "$VALIDITY" -CAcreateserial -copy_extensions=copyall
 }
 
 # Check if the GO dependencies are installed and install them.

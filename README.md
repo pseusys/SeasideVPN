@@ -267,6 +267,7 @@ Proxy to Surface connection:
 
 1. Check tests without 0.0.0.0 iptables rule(s).
 2. Rename all "user" and "cleint" to viridian (for consistency).
+3. Setup routing table saving and restoration for algae and reef.
 
 ### Further considerations
 

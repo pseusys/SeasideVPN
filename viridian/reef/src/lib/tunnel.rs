@@ -10,8 +10,7 @@ use neli::nl::{NlPayload, Nlmsghdr};
 use neli::rtnl::{Ifaddrmsg, Ifinfomsg, Rtattr, Rtmsg};
 use neli::socket::NlSocketHandle;
 use neli::types::RtBuffer;
-use tun2::platform::Device;
-use tun2::{create, Configuration};
+use tun2::{create, Configuration, Device};
 
 const TUNNEL_ADDRESS: Ipv4Addr = Ipv4Addr::new(192, 168, 0, 82);
 const TUNNEL_NETMASK: Ipv4Addr = Ipv4Addr::new(255, 255, 255, 0);
@@ -171,7 +170,7 @@ pub struct Tunnel {
 impl Tunnel {
     pub async fn new(name: &str, address: Ipv4Addr) -> Result<Tunnel, Box<dyn Error>> {
         let (default_address, default_cidr, default_name, default_mtu) = get_default_interface(address).unwrap();
-        let tunnel_device = create_tunnel(&name, default_mtu as u16)?;
+        let tunnel_device = create_tunnel(name, default_mtu as u16)?;
         enable_routing(name).ok().unwrap();
 
         let sia = format!("-o {default_name} --dst {default_address}/{default_cidr} -j ACCEPT");

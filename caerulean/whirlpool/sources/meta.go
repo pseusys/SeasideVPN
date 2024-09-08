@@ -13,12 +13,6 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-const (
-	GENERATE_CERT_LENGTH = 4096
-	GENERATE_CERT_SERIAL = 8 * 20
-	GENERATE_CERT_YEARS  = 10
-)
-
 // Metaserver structure.
 // Contains gRPC server and whirlpool server, also includes connection listener.
 type MetaServer struct {

@@ -1,21 +1,28 @@
+name: "seaside-reef"
+
 services:
   reef:
     container_name: seaside-reef
     privileged: true
     build:
       context: ../../..
-      dockerfile: viridian/reef/docker/Dockerfile
+      dockerfile: viridian/reef/docker/Dockerfile.reef
       target: test
       args:
         NETWORK_GATEWAY: 10.82.0.100
     environment:
-      SEASIDE_ADDRESS: 10.87.82.87
+      SEASIDE_PAYLOAD_VIRIDIAN: super_secret_user_payload_data
+      SEASIDE_ADDRESS: $SEASIDE_ADDRESS
+      SEASIDE_CTRLPORT: 8587
+      SEASIDE_ROOT_CERTIFICATE_AUTHORITY: /seaside/viridian/ca/rootCA.crt
+      SEASIDE_LOG_LEVEL: DEBUG
       LOCAL_ADDRESS: 10.82.0.82
       ECHO_ADDRESS: 10.42.0.42
-      SEASIDE_CONNECTION_TIMEOUT: 3.0
     networks:
       sea-cli-int:
         ipv4_address: 10.82.0.82
+    volumes:
+      - ../certificates/client:/seaside/viridian/ca:ro
     depends_on:
       whirlpool:
         condition: service_healthy
@@ -38,20 +45,23 @@ services:
     privileged: true
     build:
       context: ../../..
-      dockerfile: viridian/algae/docker/Dockerfile.whirlpool
-      target: smoke
+      dockerfile: viridian/reef/docker/Dockerfile.whirlpool
       args:
         NETWORK_GATEWAY: 10.87.42.100
     environment:
       SEASIDE_PAYLOAD_OWNER: super_secret_owner_payload_data
       SEASIDE_PAYLOAD_VIRIDIAN: super_secret_user_payload_data
-      SEASIDE_ADDRESS: 10.87.82.87
+      SEASIDE_ADDRESS: $SEASIDE_ADDRESS
       SEASIDE_EXTERNAL: 10.87.42.87
       SEASIDE_CTRLPORT: 8587
       SEASIDE_LOG_LEVEL: DEBUG
+    volumes:
+      - ../certificates/server:/seaside/caerulean/certificates:ro
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=1
     networks:
       sea-rout-int:
-        ipv4_address: 10.87.82.87
+        ipv4_address: $SEASIDE_ADDRESS
       sea-rout-ext:
         ipv4_address: 10.87.42.87
 

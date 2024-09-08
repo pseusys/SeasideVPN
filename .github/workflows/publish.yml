@@ -52,30 +52,3 @@ jobs:
           files: |
             algae-executable.zip
             whirlpool-executable.zip
-
-  caerulean-whirlpool-deploy:
-    name: Deploy Caerulean Whirlpool To Dedicated Test Server
-    runs-on: ubuntu-latest
-    concurrency:
-      group: DEPLOY-${{ github.ref }}
-      cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
-
-    steps:
-      - name: Checkout 🛎️
-        uses: actions/checkout@v4
-
-      - name: Install NodeJS 🪢
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
-
-      - name: Install Dependencies 🔮
-        run: npm install --prefix .github/scripts
-
-      - name: Deploy Caerulean Whirlpool 🚀
-        env:
-          BEGET_API_LOGIN: ${{ secrets.BEGET_API_LOGIN }}
-          BEGET_API_PASSWORD: ${{ secrets.BEGET_API_PASSWORD }}
-          BEGET_SERVER_KEY: ${{ secrets.BEGET_SERVER_KEY }}
-          WHIRLPOOL_PAYLOAD: ${{ secrets.WHIRLPOOL_DEPLOYMENT_PAYLOAD }}
-        run: npm run --prefix .github/scripts deploy-whirlpool-beget -- -v

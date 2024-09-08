@@ -10,14 +10,20 @@ authors = [
 
 [dependencies]
 rand = "0.8.5"
-prost = "0.13.1"
-tonic = "0.12.1"
+prost = "0.13.2"
+env_logger = "0.11.5"
 prost-types = "0.13.1"
 dns-lookup = "2.0.4"
 neli = "0.6.4"
 iptables = "0.5.1"
-tun2 = { version = "2.0.5", features = ["async"] }
+gethostname = "^0.5.0"
+tun2 = { version = "3.1.0", features = ["async"] }
+tonic = { version = "0.12.2", features = ["tls", "tls-webpki-roots"] }
 tokio = { version = "1.37.0", features = ["macros", "rt-multi-thread"] }
+structopt = { version = "0.3.26", optional = true }
+
+[features]
+cli-exec = ["structopt"]
 
 [build-dependencies]
 tonic-build = "0.12.1"
@@ -36,3 +42,4 @@ path = "src/lib/mod.rs"
 [[bin]]
 name = "cli"
 path = "src/cli.rs"
+required-features = ["cli-exec"] 

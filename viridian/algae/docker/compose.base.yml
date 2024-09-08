@@ -1,6 +1,9 @@
 # This file defines basic Docker images for integration testing.
-# They will not be destroyed and recreated during tests - for speedup.
+# Unlike images from "default", these contain additional dependencies, settings, etc.
+# They also will not be destroyed and recreated during tests - for speedup.
 # They are also reused in other Dockerfile targets in this directory.
+
+name: "seaside-algae"
 
 services:
   algae:
@@ -26,6 +29,8 @@ services:
       target: smoke
     env_file:
       - test.conf.env
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=1
 
   echo:
     image: seaside-echo-smoke

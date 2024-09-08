@@ -1,11 +1,108 @@
 use std::error::Error;
+use std::env::{set_var, var};
+use std::time::Duration;
+use std::path::PathBuf;
+use std::fs::read_to_string;
+use std::net::{Ipv4Addr, IpAddr, SocketAddr, ToSocketAddrs};
+
+use tonic::transport::{Certificate, Channel, ClientTlsConfig};
+use gethostname::gethostname;
+use structopt::StructOpt;
+use env_logger::init;
 
 use reeflib::coordinator::Coordinator;
 
+use generated::whirlpool_viridian_client::WhirlpoolViridianClient;
+use generated::WhirlpoolAuthenticationRequest; 
+
+mod generated {
+    tonic::include_proto!("generated");
+}
+
+
+const DEFAULT_CAERULEAN_ADDRESS: &str = "127.0.0.1";
+const DEFAULT_CAERULEAN_PORT: &str = "8587";
+
+const DEFAULT_MIN_HC_TIME: &str = "1";
+const DEFAULT_MAX_HC_TIME: &str = "5";
+const DEFAULT_CONNECTION_TIMEOUT: &str = "3.0";
+const DEFAULT_TUNNEL_NAME: &str = "seatun";
+const DEFAULT_LOG_LEVEL: &str = "INFO";
+
+
+fn parse_address(address: &str) -> Result<Ipv4Addr, Box<dyn Error>> {
+    match address.parse::<IpAddr>() {
+        Ok(IpAddr::V4(pip)) => Ok(pip),
+        _ => match address.to_socket_addrs()?.next() {
+            Some(rip) => match rip.ip() {
+                IpAddr::V4(ripv4) => Ok(ripv4),
+                IpAddr::V6(ripv6) => Err(Box::from(format!("IP addresses v6 {ripv6} are not yet supported!")))
+            },
+            None => Err(Box::from(format!("IP address {address} can't be resolved!")))
+        }
+    }
+}
+
+
+#[derive(StructOpt, Debug)]
+#[structopt()]
+struct Opt {
+    /// Caerulean remote IP address (default: [`DEFAULT_CAERULEAN_ADDRESS`])
+    #[structopt(short = "a", long, default_value = DEFAULT_CAERULEAN_ADDRESS, parse(try_from_str = parse_address))]
+    address: Ipv4Addr,
+
+    /// Caerulean control port number (default: [`DEFAULT_CAERULEAN_PORT`])
+    #[structopt(short = "c", long, default_value = DEFAULT_CAERULEAN_PORT)]
+    ctrl_port: u16,
+
+    /// Caerulean payload value (required!)
+    #[structopt(short = "p", long)]
+    payload: Option<String>,
+
+    /// Connection link, will be used instead of other arguments if specified
+    #[structopt(short = "l", long)]
+    link: Option<String>,
+
+    /// Print reef version number and exit
+    #[structopt(short = "v", long)]
+    version: bool,
+}
+
+
+fn init_logging() {
+    set_var("RUST_LOG", match var("SEASIDE_LOG_LEVEL") {
+        Ok(level) => level,
+        _ => match var("RUST_LOG") {
+            Ok(level) => level,
+            _ => DEFAULT_LOG_LEVEL.to_string()
+        }
+    });
+    init();
+}
+
+fn parse_link(link: Option<String>) -> (Option<String>, Option<Ipv4Addr>, Option<u16>, Option<String>) {
+    (None, None, None, None)
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let mut coordinator = Coordinator::new("payload", "10.87.82.87", 8587, "user", 1, 3, 5.0, "tun0").await?;
-    coordinator.start().await?;
+    let opt = Opt::from_args();
+    if opt.version {
+        println!("Seaside Viridian Reef version {}", env!("CARGO_PKG_VERSION"));
+    } else {
+        init_logging();
+        let (link_node, link_address, link_ctrl_port, link_payload) = parse_link(opt.link);
+        let address = link_address.unwrap_or(opt.address);
+        let port = link_ctrl_port.unwrap_or(opt.ctrl_port);
+        let payload = link_payload.unwrap_or_else(|| opt.payload.expect("Caerulean payload value was not specified!"));
+        let user = var("SEASIDE_USER_NAME").unwrap_or(gethostname().into_string().expect("Host name can not be parsed into a string!"));
+        let min_hc = var("SEASIDE_MIN_HC_TIME").unwrap_or(DEFAULT_MIN_HC_TIME.to_string()).parse::<u16>().expect("'SEASIDE_MIN_HC_TIME' should be an integer!");
+        let max_hc = var("SEASIDE_MAX_HC_TIME").unwrap_or(DEFAULT_MAX_HC_TIME.to_string()).parse::<u16>().expect("'SEASIDE_MAX_HC_TIME' should be an integer!");
+        let timeout = var("SEASIDE_CONNECTION_TIMEOUT").unwrap_or(DEFAULT_CONNECTION_TIMEOUT.to_string()).parse::<f32>().expect("'SEASIDE_CONNECTION_TIMEOUT' should be a float!");
+        let tunnel = var("SEASIDE_TUNNEL_NAME").unwrap_or(DEFAULT_TUNNEL_NAME.to_string());
+        let certs = var("SEASIDE_ROOT_CERTIFICATE_AUTHORITY").ok();
+        let mut coordinator = Coordinator::new(address, port, &payload, &user, min_hc, max_hc, timeout, &tunnel, certs.as_deref()).await?;
+        coordinator.start().await?;
+    }
     Ok(())
 }

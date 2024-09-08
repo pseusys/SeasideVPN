@@ -9,6 +9,7 @@ import (
 	"main/users"
 	"main/utils"
 	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -18,6 +19,11 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/timestamppb"
+)
+
+const (
+	USER_TIMEOUT_HOURS = 24 * 365
 )
 
 // Whirlpool server structure.
@@ -87,11 +93,12 @@ func (server *WhirlpoolServer) Authenticate(ctx context.Context, request *genera
 		return nil, status.Error(codes.PermissionDenied, "wrong payload value")
 	}
 
-	// Create and marshall user token
+	// Create and marshall user token (will be valid for 10 years for non-privileged users)
 	token := &generated.UserToken{
-		Uid:        request.Uid,
-		Session:    request.Session,
-		Privileged: request.Payload == server.nodeOwnerPayload,
+		Uid:          request.Uid,
+		Session:      request.Session,
+		Privileged:   request.Payload == server.nodeOwnerPayload,
+		Subscription: timestamppb.New(time.Now().Add(time.Hour * time.Duration(USER_TIMEOUT_HOURS))),
 	}
 	logrus.Infof("User %s (privileged: %t) autnenticated", token.Uid, token.Privileged)
 	marshToken, err := proto.Marshal(token)
