@@ -21,6 +21,8 @@ message WhirlpoolAuthenticationRequest {
 message WhirlpoolAuthenticationResponse {
     // Encrypted user token
     bytes token = 1;
+    // Maximum expected nextIn delay
+    int32 maxNextIn = 2;
 }
 
 
@@ -57,31 +59,10 @@ message ControlHealthcheck {
 
 
 
-enum ControlExceptionStatus {
-    // Control operation success
-    EXCEPTION = 0;
-    // Control operation error
-    TERMINATION = 1;
-}
-
-// Whirlpool control responseto user
-message ControlException {
-    // Control response status
-    ControlExceptionStatus status = 1;
-    // Optional user ID (will be sent after authentication)
-    int32 userID = 2;
-    // Encrypted error message or empty string
-    optional string message = 3;
-}
-
-
-
 service WhirlpoolViridian {
     rpc Authenticate(WhirlpoolAuthenticationRequest) returns (WhirlpoolAuthenticationResponse) {}
 
     rpc Handshake(ControlHandshakeRequest) returns (ControlHandshakeResponse) {}
 
     rpc Healthcheck(ControlHealthcheck) returns (google.protobuf.Empty) {}
-
-    rpc Exception(ControlException) returns (google.protobuf.Empty) {}
 }

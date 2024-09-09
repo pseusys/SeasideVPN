@@ -44,6 +44,7 @@ isort = "^5.11.0"
 pyinstaller = "^6.9.0"
 python-on-whales = "^0.72.0"
 grpcio-tools = "^1.62.0"
+PyYAML = "^6.0.2"
 betterproto = { version = "^2.0.0b6", extras = ["compiler"] }
 
 

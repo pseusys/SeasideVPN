@@ -131,6 +131,7 @@ The whirlpool executable is sensitive to the following environmental variables:
 - `SEASIDE_CTRLPORT`: Control port for gRPC viridian connections.
 - `SEASIDE_PAYLOAD_OWNER`: Authentication payload for node administrators, they have priority in connection limits.
 - `SEASIDE_PAYLOAD_VIRIDIAN`: Authentication payload for viridians for direct connection.
+- `SEASIDE_MAXIMUM_NEXTIN`: Maximum nextIn delay after that a user will be deleted.
 - `SEASIDE_MAX_VIRIDIANS`: Maximum amount of viridians (non-privileged) that can be connected simultaneously (should be positive integer or zero).
 - `SEASIDE_MAX_ADMINS`: Maximum amount of owners (privileged) that can be connected simultaneously (in addition to normal viridians, should be positive integer or zero).
 - `SEASIDE_BURST_LIMIT_MULTIPLIER`: Burst multiplier for all the limits below (should be positive integer).

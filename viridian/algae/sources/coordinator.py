@@ -9,7 +9,7 @@ from Crypto.Random import get_random_bytes
 from Crypto.Random.random import randint
 from grpclib.exceptions import GRPCError
 
-from .generated import ControlHandshakeRequest, ControlException, ControlExceptionStatus, ControlHealthcheck, WhirlpoolAuthenticationRequest, WhirlpoolViridianStub
+from .generated import ControlHandshakeRequest, ControlHealthcheck, WhirlpoolAuthenticationRequest, WhirlpoolViridianStub
 from .tunnel import Tunnel
 from .utils import MAX_TAIL_LENGTH, SYMM_KEY_LENGTH, create_grpc_secure_channel, logger
 from .viridian import Viridian
@@ -65,17 +65,18 @@ class Coordinator:
         self._max_hc_time = int(getenv("SEASIDE_MAX_HC_TIME", _DEFAULT_HEALTHCHECK_MAX_TIME))
         self._max_timeout = float(getenv("SEASIDE_CONNECTION_TIMEOUT", _DEFAULT_CONNECTION_TIMEOUT))
 
-        self._gate_socket = socket(AF_INET, SOCK_DGRAM)
-        self._gate_socket.bind((self._tunnel.default_ip, 0))
-        self._gate_socket.setblocking(False)
-
-        self._channel = create_grpc_secure_channel(self._address, self._ctrl_port)
-        self._control = WhirlpoolViridianStub(self._channel)
-
         if self._min_hc_time < 1:
             raise ValueError("Minimal healthcheck time can't be less than 1 second!")
         if self._max_hc_time < 1:
             raise ValueError("Maximum healthcheck time can't be less than 1 second!")
+
+        self._gate_socket = socket(AF_INET, SOCK_DGRAM)
+        self._gate_socket.bind((self._tunnel.default_ip, 0))
+        self._gate_socket.setblocking(False)
+
+        authority = getenv("SEASIDE_ROOT_CERTIFICATE_AUTHORITY", None)
+        self._channel = create_grpc_secure_channel(self._address, self._ctrl_port, authority)
+        self._control = WhirlpoolViridianStub(self._channel)
 
         self._user_id: int
         self._session_token: bytes
@@ -126,7 +127,7 @@ class Coordinator:
                 await self._initialize_connection()
             except BaseException as exc:
                 logger.debug(f"Interrupting connection to caerulean {self._address}:{self._ctrl_port}...")
-                await self.interrupt(str(exc))
+                await self.interrupt()
                 raise exc
 
     def _grpc_metadata(self) -> Dict[str, Any]:
@@ -151,6 +152,13 @@ class Coordinator:
         response = await self._control.authenticate(request, **self._grpc_metadata())
         self._session_token = response.token
         logger.debug(f"Symmetric session token received: {self._session_token!r}!")
+
+        if response.max_next_in < self._min_hc_time:
+            self._min_hc_time = response.max_next_in
+            logger.debug(f"Minimum healthcheck delay updated to: {self._min_hc_time}!")
+        if response.max_next_in < self._max_hc_time:
+            self._max_hc_time = response.max_next_in
+            logger.debug(f"Maximum healthcheck delay updated to: {self._max_hc_time}!")
 
     async def _initialize_control(self) -> None:
         """
@@ -195,7 +203,7 @@ class Coordinator:
         await self._control.healthcheck(request, **self._grpc_metadata())
         await sleep(next_in)
 
-    async def interrupt(self, exception: Optional[str] = None) -> None:
+    async def interrupt(self) -> None:
         """
         Interrupt VPN connection gracefully.
         Includes not only tunnel closing ("interface", "viridian" and seaside socket), but also sending termination request to caerulean.
@@ -203,11 +211,6 @@ class Coordinator:
         :param exception: optional exception, if not terminating successfully.
         """
         logger.debug(f"Interrupting connection to caerulean {self._address}:{self._ctrl_port}...")
-        request = ControlException(ControlExceptionStatus.TERMINATION, self._user_id, exception)
-
-        logger.info("Interrupting caerulean connection...")
-        await self._control.exception(request, **self._grpc_metadata())
-        logger.info(f"Disconnected from caerulean {self._address}:{self._ctrl_port} successfully!")
 
         self._channel.close()
         self._clean_tunnel()

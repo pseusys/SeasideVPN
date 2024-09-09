@@ -5,8 +5,6 @@
 SHELL=/bin/bash
 .SHELLFLAGS=-c -e
 
-DOCKER_BUILDKIT = 1
-
 BOLD=\033[1m
 BLUE=\033[34m
 GREEN=\033[32m

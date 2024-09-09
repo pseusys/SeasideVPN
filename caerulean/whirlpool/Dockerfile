@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # Docker image for building whirlpool executable and testing
-FROM golang:1.20-alpine3.17 as builder
+FROM golang:1.21-alpine3.17 as builder
 
 WORKDIR /seaside/caerulean
 
@@ -44,6 +44,7 @@ ENV SEASIDE_MAX_ADMINS 5
 
 ENV SEASIDE_VIRIDIAN_WAITING_OVERTIME 5
 ENV SEASIDE_VIRIDIAN_FIRST_HEALTHCHECK_DELAY 3
+ENV SEASIDE_MAXIMUM_NEXTIN 15
 
 ENV SEASIDE_TUNNEL_MTU 1500
 ENV SEASIDE_VPN_DATA_LIMIT -1

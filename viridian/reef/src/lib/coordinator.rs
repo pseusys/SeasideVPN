@@ -2,19 +2,19 @@ use std::error::Error;
 use std::net::Ipv4Addr;
 use std::time::Duration;
 use std::fs::read_to_string;
+use std::cmp::min;
 
 use rand::prelude::{thread_rng, RngCore, Rng};
-use rand::rngs::ThreadRng;
+use rand::rngs::StdRng;
+use rand::SeedableRng;
 use tokio::net::UdpSocket;
-use tokio::runtime::Handle;
-use tokio::task::block_in_place;
 use tokio::time::sleep;
 use tonic::metadata::MetadataValue;
 use tonic::transport::{Certificate, Channel, ClientTlsConfig};
 use tonic::Request;
 
 use generated::whirlpool_viridian_client::WhirlpoolViridianClient;
-use generated::{WhirlpoolAuthenticationRequest, WhirlpoolAuthenticationResponse, ControlHandshakeRequest, ControlHandshakeResponse, ControlHealthcheck, ControlException, ControlExceptionStatus};
+use generated::{WhirlpoolAuthenticationRequest, WhirlpoolAuthenticationResponse, ControlHandshakeRequest, ControlHandshakeResponse, ControlHealthcheck};
 
 use super::tunnel::Tunnel;
 use super::viridian::Viridian;
@@ -44,7 +44,7 @@ pub struct Coordinator {
 
     session_token: Option<Vec<u8>>,
     session_key: Option<Vec<u8>>,
-    randomizer: ThreadRng
+    randomizer: StdRng
 }
 
 
@@ -70,6 +70,7 @@ impl Coordinator {
         let channel = Channel::from_shared(viridian_host)?.timeout(caerulean_max_timeout).connect_timeout(caerulean_max_timeout).tls_config(tls)?.connect().await?;
         let client = WhirlpoolViridianClient::new(channel);
 
+        let randomizer = StdRng::from_rng(thread_rng())?;
         Ok(Coordinator {
             tunnel,
             viridian: None,
@@ -82,7 +83,7 @@ impl Coordinator {
             max_hc_time,
             session_token: None,
             session_key: None,
-            randomizer: thread_rng()
+            randomizer
         })
     }
 
@@ -143,6 +144,8 @@ impl Coordinator {
             Ok(resp) => {
                 self.session_key = Some(session_key);
                 self.session_token = Some(resp.get_ref().token.clone());
+                self.min_hc_time = min(self.min_hc_time, resp.get_ref().max_next_in as u16);
+                self.max_hc_time = min(self.max_hc_time, resp.get_ref().max_next_in as u16);
                 Ok(())
             },
             Err(resp) => Err(resp)
@@ -168,38 +171,11 @@ impl Coordinator {
     }
 
     async fn perform_control(&mut self, user_id: u16) -> Result<tonic::Response<()>, tonic::Status> {
-        let next_in = self.randomizer.gen_range(self.min_hc_time..self.max_hc_time);
+        let next_in = self.randomizer.gen_range(self.min_hc_time..=self.max_hc_time);
         let message = ControlHealthcheck {user_id: i32::from(user_id), next_in: i32::from(next_in)};
         let request = self.make_grpc_request(message);
         let response = self.client.healthcheck(request).await;
         sleep(Duration::from_secs(u64::from(next_in))).await;
         response
-    }
-
-    async fn interrupt(&mut self, exception: Option<String>) -> Result<(), Box<dyn Error>> {
-        let message = ControlException {
-            status: i32::from(ControlExceptionStatus::Termination),
-            user_id: i32::from(self.user_id),
-            message: exception
-        };
-        let request = self.make_grpc_request(message);
-        let response = self.client.exception(request).await;
-        match response {
-            Ok(_) => Ok(()),
-            Err(resp) => Err(Box::from(resp))
-        }
-    }
-}
-
-impl Drop for Coordinator {
-    fn drop(&mut self) -> () {
-        if self.user_id != NONE_USER_ID {
-            block_in_place(move || {
-                Handle::current().block_on(async move {
-                    // TODO: log message!
-                    self.interrupt(None).await.expect("...");
-                });
-            });
-        }
     }
 }

@@ -38,6 +38,9 @@ type WhirlpoolServer struct {
 	// Authentication string for node user (viridian).
 	nodeViridianPayload string
 
+	// Maximum nextIn delay allowed for viridians
+	maxNextIn int32
+
 	// Viridians dictionary, contains all the currently connected viridians.
 	viridians users.ViridianDict
 
@@ -58,6 +61,9 @@ func createWhirlpoolServer(ctx context.Context) *WhirlpoolServer {
 	nodeOwnerPayload := utils.GetEnv("SEASIDE_PAYLOAD_OWNER")
 	nodeViridianPayload := utils.GetEnv("SEASIDE_PAYLOAD_VIRIDIAN")
 
+	// Read max nextIn delay from environment
+	maxNextIn := utils.GetIntEnv("SEASIDE_MAXIMUM_NEXTIN")
+
 	// Generate private node cipher
 	privateKey, err := crypto.GenerateCipher()
 	if err != nil {
@@ -68,6 +74,7 @@ func createWhirlpoolServer(ctx context.Context) *WhirlpoolServer {
 	return &WhirlpoolServer{
 		nodeOwnerPayload:    nodeOwnerPayload,
 		nodeViridianPayload: nodeViridianPayload,
+		maxNextIn:           int32(maxNextIn),
 		viridians:           *users.NewViridianDict(ctx),
 		privateKey:          privateKey,
 		base:                ctx,
@@ -115,7 +122,8 @@ func (server *WhirlpoolServer) Authenticate(ctx context.Context, request *genera
 	// Create and marshall response
 	grpc.SetTrailer(ctx, metadata.Pairs("seaside-tail-bin", hex.EncodeToString(utils.GenerateReliableTail())))
 	return &generated.WhirlpoolAuthenticationResponse{
-		Token: tokenData,
+		Token:     tokenData,
+		MaxNextIn: server.maxNextIn,
 	}, nil
 }
 
@@ -195,7 +203,7 @@ func (server *WhirlpoolServer) Healthcheck(ctx context.Context, request *generat
 	}
 
 	// Get next healthcheck timeout
-	nextIn := request.NextIn
+	nextIn := min(request.NextIn, server.maxNextIn)
 	logrus.Infof("Healthcheck from user %s: %d, next in %d", viridian.UID, userID, nextIn)
 
 	// Update the viridian deletion timer
@@ -205,35 +213,6 @@ func (server *WhirlpoolServer) Healthcheck(ctx context.Context, request *generat
 	}
 
 	// Return empty response
-	grpc.SetTrailer(ctx, metadata.Pairs("seaside-tail-bin", hex.EncodeToString(utils.GenerateReliableTail())))
-	return &emptypb.Empty{}, nil
-}
-
-// Process exception.
-// React to viridian reporting an exception.
-// Viridian will be removed, an appropriate response message will be sent.
-// Should be applied for WhirlpoolServer object.
-// Accept context and exception request.
-// Return empty response and nil if exception hendling successful, otherwise nil and error.
-func (server *WhirlpoolServer) Exception(ctx context.Context, request *generated.ControlException) (*emptypb.Empty, error) {
-	// Get connected viridian by ID
-	userID := uint16(request.UserID)
-	viridian, ok := server.viridians.Get(userID)
-	if !ok {
-		return nil, status.Errorf(codes.Unauthenticated, "user not connected: %d", userID)
-	}
-
-	// Check exception status and react according to it
-	if request.Status == generated.ControlExceptionStatus_TERMINATION {
-		logrus.Infof("Disconnecting user %s: %d", viridian.UID, userID)
-	} else if request.Message != nil {
-		logrus.Infof("Aborting user connection, user %s: %d, message: %s", viridian.UID, userID, *request.Message)
-	} else {
-		logrus.Infof("Aborting user connection, user %s: %d, reason unknown!", viridian.UID, userID)
-	}
-
-	// Remove viridian and return empty response
-	server.viridians.Delete(userID, false)
 	grpc.SetTrailer(ctx, metadata.Pairs("seaside-tail-bin", hex.EncodeToString(utils.GenerateReliableTail())))
 	return &emptypb.Empty{}, nil
 }

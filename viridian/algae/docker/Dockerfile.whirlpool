@@ -7,13 +7,6 @@ WORKDIR /seaside/caerulean
 ARG NETWORK_GATEWAY
 ENV ARG_NETWORK_GATEWAY $NETWORK_GATEWAY
 
-# Adding openssl library for self-signed certificate generation
-RUN apk add --no-cache openssl
-
-# Copying script for generating self-signed certificates
-COPY caerulean/whirlpool/whirlpool.sh ./
-
 # Setup default route IP and run caerulean whirlpool.
 ENTRYPOINT ip route replace default via $ARG_NETWORK_GATEWAY && \
-    sh whirlpool.sh -za $SEASIDE_ADDRESS && \
     ./whirlpool.run

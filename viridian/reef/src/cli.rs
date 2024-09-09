@@ -5,6 +5,8 @@ use std::path::PathBuf;
 use std::fs::read_to_string;
 use std::net::{Ipv4Addr, IpAddr, SocketAddr, ToSocketAddrs};
 
+use tokio::signal::unix::{signal, SignalKind};
+use tokio::process::Command;
 use tonic::transport::{Certificate, Channel, ClientTlsConfig};
 use gethostname::gethostname;
 use structopt::StructOpt;
@@ -66,6 +68,10 @@ struct Opt {
     /// Print reef version number and exit
     #[structopt(short = "v", long)]
     version: bool,
+
+    /// Install VPN connection, run command and exit after command is finished
+    #[structopt(short = "e", long)]
+    command: Option<String>
 }
 
 
@@ -101,8 +107,24 @@ async fn main() -> Result<(), Box<dyn Error>> {
         let timeout = var("SEASIDE_CONNECTION_TIMEOUT").unwrap_or(DEFAULT_CONNECTION_TIMEOUT.to_string()).parse::<f32>().expect("'SEASIDE_CONNECTION_TIMEOUT' should be a float!");
         let tunnel = var("SEASIDE_TUNNEL_NAME").unwrap_or(DEFAULT_TUNNEL_NAME.to_string());
         let certs = var("SEASIDE_ROOT_CERTIFICATE_AUTHORITY").ok();
-        let mut coordinator = Coordinator::new(address, port, &payload, &user, min_hc, max_hc, timeout, &tunnel, certs.as_deref()).await?;
-        coordinator.start().await?;
+        let vpn_future = tokio::spawn(async move {
+            let constructor = Coordinator::new(address, port, &payload, &user, min_hc, max_hc, timeout, &tunnel, certs.as_deref());
+            let mut coordinator = constructor.await.expect("Error creating VPN coordinator!");
+            coordinator.start().await;
+        });
+        if let Some(cmd) = opt.command {
+            let args = cmd.split_whitespace().collect::<Vec<_>>();
+            let status = Command::new(args[0]).args(&args[1..]).spawn().expect("Command failed to spawn!").wait().await?;
+            println!("The command exited with: {status}");
+        } else {
+            let mut sigterm = signal(SignalKind::terminate())?;
+            let mut sigint = signal(SignalKind::interrupt())?;
+            tokio::select! {
+                _ = sigint.recv() => println!("VPN process was interrupted!"),
+                _ = sigterm.recv() => println!("VPN process was terminated!")
+            }
+        }
+        vpn_future.abort();
     }
     Ok(())
 }

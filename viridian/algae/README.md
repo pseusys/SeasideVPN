@@ -91,6 +91,7 @@ It also sensitive to the following environmental variable:
 - `SEASIDE_MAX_HC_TIME`: Maximal time between two healthcheck control messages, in seconds (default: `5`).
 - `SEASIDE_CONNECTION_TIMEOUT`: Timeout for gRPC control connection, in seconds (default: `3.0`).
 - `SEASIDE_LOG_LEVEL`: Output verbosity logging level, can be "error", "warning", "info", "debug" (default: `DEBUG`).
+- `SEASIDE_ROOT_CERTIFICATE_AUTHORITY`: Custom certificate authority file path for whirlpool server.
 
 ## Other commands
 
