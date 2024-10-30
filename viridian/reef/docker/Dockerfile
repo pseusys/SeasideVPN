@@ -1,12 +1,13 @@
 # syntax=docker/dockerfile:1
 
-FROM ubuntu:22.04 as builder
+FROM ubuntu:22.04 AS downloader
 
 WORKDIR /seaside
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential wget unzip ca-certificates && rm -rf /var/lib/apt/lists/*
-RUN wget -qO- https://sh.rustup.rs | sh -s -- --default-toolchain 1.77.2 -y
+RUN wget -qO- https://sh.rustup.rs | sh -s -- --default-toolchain 1.81.0 -y
+ENV PATH="/root/.cargo/bin:${PATH}"
 
 ENV PROTOC_VERSION=24.4
 ENV PROTOC_ZIP=protoc-$PROTOC_VERSION-linux-x86_64.zip
@@ -17,10 +18,21 @@ COPY viridian/reef/Cargo.toml viridian/reef/Cargo.toml
 COPY viridian/reef/build.rs viridian/reef/build.rs
 COPY viridian/reef/src viridian/reef/src
 
-RUN . $HOME/.cargo/env && cargo build --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml
+
+FROM downloader AS builder
+
+RUN cargo build --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml
 
 
-FROM ubuntu:22.04 as test
+FROM downloader AS test
+
+RUN apt-get update && apt-get install -y --no-install-recommends net-tools uml-utilities iproute2 && rm -rf /var/lib/apt/lists/*
+
+COPY viridian/reef/tests viridian/reef/tests
+WORKDIR /seaside/viridian/reef
+
+
+FROM ubuntu:22.04 AS integration
 
 WORKDIR /seaside/viridian
 

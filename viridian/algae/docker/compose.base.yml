@@ -19,6 +19,8 @@ services:
       SEASIDE_ROOT_CERTIFICATE_AUTHORITY: /seaside/viridian/ca/rootCA.crt
       BUFFER_SIZE: 8192  # Buffer for echo server message storing
       ECHO_PORT: 5000  # Port for echo server accessing
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=1
     volumes:
       - ../certificates/client:/seaside/viridian/ca:ro
 
