@@ -1,21 +1,13 @@
-use std::error::Error;
 use std::env::{set_var, var};
-use std::time::Duration;
-use std::path::PathBuf;
-use std::fs::read_to_string;
-use std::net::{Ipv4Addr, IpAddr, SocketAddr, ToSocketAddrs};
+use std::net::{Ipv4Addr, IpAddr, ToSocketAddrs};
 
-use tokio::signal::unix::{signal, SignalKind};
-use tokio::process::Command;
-use tonic::transport::{Certificate, Channel, ClientTlsConfig};
+use simple_error::bail;
 use gethostname::gethostname;
 use structopt::StructOpt;
 use env_logger::init;
 
 use reeflib::coordinator::Coordinator;
-
-use generated::whirlpool_viridian_client::WhirlpoolViridianClient;
-use generated::WhirlpoolAuthenticationRequest; 
+use reeflib::DynResult;
 
 mod generated {
     tonic::include_proto!("generated");
@@ -32,15 +24,15 @@ const DEFAULT_TUNNEL_NAME: &str = "seatun";
 const DEFAULT_LOG_LEVEL: &str = "INFO";
 
 
-fn parse_address(address: &str) -> Result<Ipv4Addr, Box<dyn Error>> {
+fn parse_address(address: &str) -> DynResult<Ipv4Addr> {
     match address.parse::<IpAddr>() {
         Ok(IpAddr::V4(pip)) => Ok(pip),
         _ => match address.to_socket_addrs()?.next() {
             Some(rip) => match rip.ip() {
                 IpAddr::V4(ripv4) => Ok(ripv4),
-                IpAddr::V6(ripv6) => Err(Box::from(format!("IP addresses v6 {ripv6} are not yet supported!")))
+                IpAddr::V6(ripv6) => bail!("IP addresses v6 {ripv6} are not yet supported!")
             },
-            None => Err(Box::from(format!("IP address {address} can't be resolved!")))
+            None => bail!("IP address {address} can't be resolved!")
         }
     }
 }
@@ -86,17 +78,18 @@ fn init_logging() {
     init();
 }
 
+
 fn parse_link(link: Option<String>) -> (Option<String>, Option<Ipv4Addr>, Option<u16>, Option<String>) {
     (None, None, None, None)
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main() -> DynResult<()> {
+    init_logging();
     let opt = Opt::from_args();
     if opt.version {
         println!("Seaside Viridian Reef version {}", env!("CARGO_PKG_VERSION"));
     } else {
-        init_logging();
         let (link_node, link_address, link_ctrl_port, link_payload) = parse_link(opt.link);
         let address = link_address.unwrap_or(opt.address);
         let port = link_ctrl_port.unwrap_or(opt.ctrl_port);
@@ -107,24 +100,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
         let timeout = var("SEASIDE_CONNECTION_TIMEOUT").unwrap_or(DEFAULT_CONNECTION_TIMEOUT.to_string()).parse::<f32>().expect("'SEASIDE_CONNECTION_TIMEOUT' should be a float!");
         let tunnel = var("SEASIDE_TUNNEL_NAME").unwrap_or(DEFAULT_TUNNEL_NAME.to_string());
         let certs = var("SEASIDE_ROOT_CERTIFICATE_AUTHORITY").ok();
-        let vpn_future = tokio::spawn(async move {
-            let constructor = Coordinator::new(address, port, &payload, &user, min_hc, max_hc, timeout, &tunnel, certs.as_deref());
-            let mut coordinator = constructor.await.expect("Error creating VPN coordinator!");
-            coordinator.start().await;
-        });
-        if let Some(cmd) = opt.command {
-            let args = cmd.split_whitespace().collect::<Vec<_>>();
-            let status = Command::new(args[0]).args(&args[1..]).spawn().expect("Command failed to spawn!").wait().await?;
-            println!("The command exited with: {status}");
-        } else {
-            let mut sigterm = signal(SignalKind::terminate())?;
-            let mut sigint = signal(SignalKind::interrupt())?;
-            tokio::select! {
-                _ = sigint.recv() => println!("VPN process was interrupted!"),
-                _ = sigterm.recv() => println!("VPN process was terminated!")
-            }
-        }
-        vpn_future.abort();
+
+        let constructor = Coordinator::new(address, port, &payload, &user, min_hc, max_hc, timeout, &tunnel, certs.as_deref());
+        constructor.await?.start(opt.command).await?;
     }
     Ok(())
 }

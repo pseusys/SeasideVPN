@@ -1,20 +1,25 @@
-use std::error::Error;
 use std::net::Ipv4Addr;
 use std::time::Duration;
 use std::fs::read_to_string;
 use std::cmp::min;
 
-use rand::prelude::{thread_rng, RngCore, Rng};
-use rand::rngs::StdRng;
-use rand::SeedableRng;
+use rand::{Rng, RngCore};
+use chacha20poly1305::aead::generic_array::GenericArray;
+use chacha20poly1305::aead::generic_array::typenum::U32;
+use chacha20poly1305::aead::OsRng;
+use chacha20poly1305::{XChaCha20Poly1305, KeyInit};
+use simple_error::bail;
 use tokio::net::UdpSocket;
+use tokio::process::Command;
 use tokio::time::sleep;
 use tonic::metadata::MetadataValue;
 use tonic::transport::{Certificate, Channel, ClientTlsConfig};
 use tonic::Request;
 
 use generated::whirlpool_viridian_client::WhirlpoolViridianClient;
-use generated::{WhirlpoolAuthenticationRequest, WhirlpoolAuthenticationResponse, ControlHandshakeRequest, ControlHandshakeResponse, ControlHealthcheck};
+use generated::{WhirlpoolAuthenticationRequest, ControlHandshakeRequest, ControlHealthcheck};
+
+use crate::DynResult;
 
 use super::tunnel::Tunnel;
 use super::viridian::Viridian;
@@ -26,41 +31,30 @@ mod generated {
 
 const GRPC_PROTOCOL: &str = "https";
 const MAX_TAIL_LENGTH: usize = 64;
-const SYMM_KEY_LENGTH: usize = 32;
-const NONE_USER_ID: u16 = 0;
+const SEASIDE_TAIL_HEADER: &str = "seaside-tail-bin";
 
 
 pub struct Coordinator {
-    tunnel: Tunnel,
-    viridian: Option<Viridian>,
-    socket: UdpSocket,
+    viridian: Viridian,
     client: WhirlpoolViridianClient<Channel>,
 
     node_payload: String,
     user_name: String,
-    user_id: u16,
     min_hc_time: u16,
-    max_hc_time: u16,
-
-    session_token: Option<Vec<u8>>,
-    session_key: Option<Vec<u8>>,
-    randomizer: StdRng
+    max_hc_time: u16
 }
 
 
 impl Coordinator {
-    pub async fn new(address: Ipv4Addr, ctrl_port: u16, payload: &str, user_name: &str, min_hc_time: u16, max_hc_time: u16, max_timeout: f32, tunnel_name: &str, ca: Option<&str>) -> Result<Coordinator, Box<dyn Error>> {
+    pub async fn new(address: Ipv4Addr, ctrl_port: u16, payload: &str, user_name: &str, min_hc_time: u16, max_hc_time: u16, max_timeout: f32, tunnel_name: &str, ca: Option<&str>) -> DynResult<Coordinator> {
         let viridian_host = format!("{GRPC_PROTOCOL}://{address}:{ctrl_port}");
 
         if min_hc_time < 1 {
-            return Err(Box::from("Minimum healthcheck time shouldn't be less than 1 second!"));
+            bail!("Minimum healthcheck time shouldn't be less than 1 second!");
         }
         if max_hc_time < 1 {
-            return Err(Box::from("Maximum healthcheck time shouldn't be less than 1 second!"));
+            bail!("Maximum healthcheck time shouldn't be less than 1 second!");
         }
-
-        let tunnel = Tunnel::new(tunnel_name, address).await?;
-        let socket = UdpSocket::bind((tunnel.default_interface().0, 0)).await?;
 
         let tls = match ca {
             Some(certificate) => ClientTlsConfig::new().ca_certificate(Certificate::from_pem(read_to_string(certificate)?.as_bytes())),
@@ -70,112 +64,108 @@ impl Coordinator {
         let channel = Channel::from_shared(viridian_host)?.timeout(caerulean_max_timeout).connect_timeout(caerulean_max_timeout).tls_config(tls)?.connect().await?;
         let client = WhirlpoolViridianClient::new(channel);
 
-        let randomizer = StdRng::from_rng(thread_rng())?;
+        let tunnel = Tunnel::new(tunnel_name, address).await?;
+        let socket = UdpSocket::bind((tunnel.default_interface().0, 0)).await?;
+        let viridian = Viridian::new(socket, tunnel, address);
+
         Ok(Coordinator {
-            tunnel,
-            viridian: None,
-            socket,
+            viridian,
             client,
             node_payload: payload.to_string(),
             user_name: user_name.to_string(),
-            user_id: NONE_USER_ID,
             min_hc_time,
-            max_hc_time,
-            session_token: None,
-            session_key: None,
-            randomizer
+            max_hc_time
         })
     }
 
-    async fn initialize_connection(&mut self) -> Result<u16, Box<dyn Error>> {
-        if let Some(viridian) = &self.viridian {
-            if viridian.is_operational() {
-                viridian.close();
-            }
-        }
-
-        let recevive_token_res = self.receive_token().await;
-        if let Err(res) = recevive_token_res {
-            println!("log receive token error status: {res}");
-            return Err(Box::from("Token receiving failed"));
-        }
-
-        let initialize_control_res = self.initialize_control().await;
-        if let Err(ref res) = initialize_control_res {
-            println!("log initialize control error status: {res}");
-            return Err(Box::from("Control initialization failed"));
-        }
-
-        if let Some(viridian) = &self.viridian {
-            viridian.open();
-        }
-        Ok(initialize_control_res.unwrap())
+    async fn initialize_connection(&mut self) -> DynResult<u16> {
+        let (session_key, session_token) = self.receive_token().await?;
+        Ok(self.initialize_control(session_key, session_token).await?)
     }
 
-    pub async fn start(&mut self) -> Result<(), Box<dyn Error>> {
-        self.user_id = self.initialize_connection().await?;
-        loop {
-            let control = self.perform_control(self.user_id).await;
-            if let Err(ctrl) = control {
-                println!("log error status: {ctrl}");
-                self.user_id = self.initialize_connection().await?;
+    pub async fn start(&mut self, command: Option<String>) -> DynResult<()> {
+        let mut user_id = self.initialize_connection().await?;
+        let mut control = self.perform_control(user_id).await;
+
+        if let Some(cmd) = command {
+            let args = cmd.split_whitespace().collect::<Vec<_>>();
+            let status = Command::new(args[0]).args(&args[1..]).spawn().expect("Command failed to spawn!").wait().await?;
+            println!("The command exited with: {status}");
+            Ok(())
+        } else {
+            loop {
+                if let Err(ctrl) = control {
+                    println!("log error status: {ctrl}");
+                    user_id = self.initialize_connection().await?;
+                }
+                control = self.perform_control(user_id).await;
             }
         }
     }
 
     fn make_grpc_request<T>(&mut self, message: T) -> Request<T> {
-        let mut tail = Vec::with_capacity(self.randomizer.gen_range(1..MAX_TAIL_LENGTH));
-        self.randomizer.fill_bytes(&mut tail);
+        let mut tail = Vec::with_capacity(OsRng.gen_range(1..MAX_TAIL_LENGTH));
+        OsRng.fill_bytes(&mut tail);
 
         let mut request = Request::new(message);
-        request.metadata_mut().append_bin("seaside-tail-bin", MetadataValue::from_bytes(&tail));
+        request.metadata_mut().append_bin(SEASIDE_TAIL_HEADER, MetadataValue::from_bytes(&tail));
         request
     }
 
-    async fn receive_token(&mut self) -> Result<(), tonic::Status> {
-        let mut session_key = vec![0; SYMM_KEY_LENGTH];
-        self.randomizer.fill_bytes(&mut session_key);
+    async fn receive_token(&mut self) -> Result<(GenericArray<u8, U32>, Vec<u8>), tonic::Status> {
+        let session_key = XChaCha20Poly1305::generate_key(&mut OsRng);
 
-        let message = WhirlpoolAuthenticationRequest {uid: self.user_name.clone(), session: session_key.clone(), payload: self.node_payload.clone()};
+        let message = WhirlpoolAuthenticationRequest {uid: self.user_name.clone(), session: session_key.to_vec(), payload: self.node_payload.clone()};
         let request = self.make_grpc_request(message);
         let response = self.client.authenticate(request).await;
 
         match response {
-            Ok(resp) => {
-                self.session_key = Some(session_key);
-                self.session_token = Some(resp.get_ref().token.clone());
-                self.min_hc_time = min(self.min_hc_time, resp.get_ref().max_next_in as u16);
-                self.max_hc_time = min(self.max_hc_time, resp.get_ref().max_next_in as u16);
-                Ok(())
+            Ok(res) => {
+                self.min_hc_time = min(self.min_hc_time, res.get_ref().max_next_in as u16);
+                self.max_hc_time = min(self.max_hc_time, res.get_ref().max_next_in as u16);
+                Ok((session_key, res.get_ref().token.clone()))
             },
-            Err(resp) => Err(resp)
+            Err(res) => Err(res)
         }
     }
 
-    async fn initialize_control(&mut self) -> Result<u16, tonic::Status> {
+    async fn initialize_control(&mut self, session_key: GenericArray<u8, U32>, session_token: Vec<u8>) -> Result<u16, tonic::Status> {
         let message = ControlHandshakeRequest {
-            token: self.session_token.clone().unwrap(),
+            token: session_token.clone(),
             version: VERSION.to_string(),
             payload: Some(self.node_payload.clone()),
-            address: self.tunnel.default_interface().0.octets().to_vec(),
-            port: i32::from(self.socket.local_addr().ok().unwrap().port())
+            address: self.viridian.tunnel.default_interface().0.octets().to_vec(),
+            port: i32::from(self.viridian.socket.local_addr().ok().unwrap().port())
         };
         let request = self.make_grpc_request(message);
         let response = self.client.handshake(request).await;
 
-        self.viridian = Some(Viridian::new());
         match response {
-            Ok(resp) => Ok(resp.get_ref().user_id as u16),
-            Err(resp) => Err(resp)
+            Ok(res) => {
+                let user_id = res.get_ref().user_id as u16;
+                self.viridian.open(session_key, user_id).await;
+                Ok(user_id)
+            },
+            Err(res) => Err(res)
         }
     }
 
-    async fn perform_control(&mut self, user_id: u16) -> Result<tonic::Response<()>, tonic::Status> {
-        let next_in = self.randomizer.gen_range(self.min_hc_time..=self.max_hc_time);
+    async fn perform_control(&mut self, user_id: u16) -> Result<(), tonic::Status> {
+        let next_in = OsRng.gen_range(self.min_hc_time..=self.max_hc_time);
+
         let message = ControlHealthcheck {user_id: i32::from(user_id), next_in: i32::from(next_in)};
         let request = self.make_grpc_request(message);
         let response = self.client.healthcheck(request).await;
-        sleep(Duration::from_secs(u64::from(next_in))).await;
-        response
+
+        match response {
+            Ok(_) => {
+                sleep(Duration::from_secs(u64::from(next_in))).await;
+                Ok(())
+            },
+            Err(res) => {
+                self.viridian.close();
+                Err(res)
+            }
+        }
     }
 }

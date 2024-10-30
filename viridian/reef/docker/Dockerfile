@@ -16,6 +16,8 @@ RUN wget -qO "$PROTOC_ZIP" https://github.com/protocolbuffers/protobuf/releases/
 COPY vessels vessels
 COPY viridian/reef/Cargo.toml viridian/reef/Cargo.toml
 COPY viridian/reef/build.rs viridian/reef/build.rs
+RUN cargo build --manifest-path viridian/reef/Cargo.toml --all-features --bin cli || true
+
 COPY viridian/reef/src viridian/reef/src
 
 
