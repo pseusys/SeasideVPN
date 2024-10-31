@@ -103,7 +103,7 @@ pub fn send_netlink_stream<'a, T: NlType + Debug, P: for<'b> FromBytesWithInput<
 }
 
 
-pub fn create_router() -> DynResult<NlSocketHandle> {
+pub fn create_socket() -> DynResult<NlSocketHandle> {
     Ok(NlSocketHandle::connect(NlFamily::Route, None, &[])?)
 }
 

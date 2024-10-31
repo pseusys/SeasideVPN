@@ -29,13 +29,9 @@ structopt = { version = "^0.3.26", optional = true }
 cli-exec = ["structopt"]
 
 [build-dependencies]
-tonic-build = "0.12.3"
+tonic-build = "^0.12.3"
 
 [dev-dependencies]
-bollard = "0.17.0"
-compose-rs = "0.0.3"
-rcgen = "0.13.1"
-test-context = "0.3.0"
 regex = "^1.11.1"
 
 

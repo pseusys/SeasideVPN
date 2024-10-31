@@ -28,7 +28,8 @@ RUN cargo build --features cli-exec --bin cli --manifest-path viridian/reef/Carg
 
 FROM downloader AS test
 
-RUN apt-get update && apt-get install -y --no-install-recommends net-tools uml-utilities iproute2 && rm -rf /var/lib/apt/lists/*
+ENV RUST_BACKTRACE=1
+RUN apt-get update && apt-get install -y --no-install-recommends net-tools uml-utilities iptables iproute2 && rm -rf /var/lib/apt/lists/*
 
 COPY viridian/reef/tests viridian/reef/tests
 WORKDIR /seaside/viridian/reef
