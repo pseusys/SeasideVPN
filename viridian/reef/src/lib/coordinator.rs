@@ -3,6 +3,7 @@ use std::time::Duration;
 use std::fs::read_to_string;
 use std::cmp::min;
 
+use log::{debug, info, warn};
 use rand::{Rng, RngCore};
 use chacha20poly1305::aead::generic_array::GenericArray;
 use chacha20poly1305::aead::generic_array::typenum::U32;
@@ -46,7 +47,7 @@ pub struct Coordinator {
 
 
 impl Coordinator {
-    pub async fn new(address: Ipv4Addr, ctrl_port: u16, payload: &str, user_name: &str, min_hc_time: u16, max_hc_time: u16, max_timeout: f32, tunnel_name: &str, ca: Option<&str>) -> DynResult<Coordinator> {
+    pub async fn new(address: Ipv4Addr, ctrl_port: u16, payload: &str, user_name: &str, min_hc_time: u16, max_hc_time: u16, max_timeout: f32, tunnel_name: &str, tunnel_address: Ipv4Addr, tunnel_netmask: Ipv4Addr, svr_index: u8, ca: Option<&str>) -> DynResult<Coordinator> {
         let viridian_host = format!("{GRPC_PROTOCOL}://{address}:{ctrl_port}");
 
         if min_hc_time < 1 {
@@ -56,15 +57,22 @@ impl Coordinator {
             bail!("Maximum healthcheck time shouldn't be less than 1 second!");
         }
 
+        debug!("Creating client TLS config with CA {ca:?}...");
         let tls = match ca {
             Some(certificate) => ClientTlsConfig::new().ca_certificate(Certificate::from_pem(read_to_string(certificate)?.as_bytes())),
             None => ClientTlsConfig::new().with_webpki_roots()
         };
         let caerulean_max_timeout = Duration::from_secs_f32(max_timeout);
         let channel = Channel::from_shared(viridian_host)?.timeout(caerulean_max_timeout).connect_timeout(caerulean_max_timeout).tls_config(tls)?.connect().await?;
+
+        debug!("Creating client with channel {channel:?}...");
         let client = WhirlpoolViridianClient::new(channel);
 
-        let tunnel = Tunnel::new(tunnel_name, address).await?;
+        debug!("Creating tunnel with seaside address {address}, tunnel name {tunnel_name}, tunnel network {tunnel_address}/{tunnel_netmask}, SVR index {svr_index}...");
+        let tunnel = Tunnel::new(address, tunnel_name, tunnel_address, tunnel_netmask, svr_index).await?;
+
+        let default_interface = (tunnel.default_interface().0, 0);
+        debug!("Creating viridian with default interface {default_interface:?}...");
         let socket = UdpSocket::bind((tunnel.default_interface().0, 0)).await?;
         let viridian = Viridian::new(socket, tunnel, address);
 
@@ -80,24 +88,32 @@ impl Coordinator {
 
     async fn initialize_connection(&mut self) -> DynResult<u16> {
         let (session_key, session_token) = self.receive_token().await?;
-        Ok(self.initialize_control(session_key, session_token).await?)
+        info!("Connection established, key {session_key:?}, token {session_token:?}");
+        let user_id = self.initialize_control(session_key, session_token).await?;
+        info!("Control initialized, received user ID: {user_id}");
+        Ok(user_id)
     }
 
     pub async fn start(&mut self, command: Option<String>) -> DynResult<()> {
+        debug!("Initiating connection...");
         let mut user_id = self.initialize_connection().await?;
+        debug!("Sending healthcheck message...");
         let mut control = self.perform_control(user_id).await;
 
         if let Some(cmd) = command {
+            info!("Executing command '{cmd}'...");
             let args = cmd.split_whitespace().collect::<Vec<_>>();
             let status = Command::new(args[0]).args(&args[1..]).spawn().expect("Command failed to spawn!").wait().await?;
             println!("The command exited with: {status}");
             Ok(())
         } else {
+            info!("Starting infinite VPN loop...");
             loop {
                 if let Err(ctrl) = control {
-                    println!("log error status: {ctrl}");
+                    warn!("Healthcheck message exchange failed (status {ctrl}), reinitializating connection...");
                     user_id = self.initialize_connection().await?;
                 }
+                debug!("Sending healthcheck message...");
                 control = self.perform_control(user_id).await;
             }
         }
@@ -159,6 +175,7 @@ impl Coordinator {
 
         match response {
             Ok(_) => {
+                debug!("Healthcheck message sent, next in {next_in}");
                 sleep(Duration::from_secs(u64::from(next_in))).await;
                 Ok(())
             },

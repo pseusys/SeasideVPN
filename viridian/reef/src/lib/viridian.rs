@@ -6,6 +6,7 @@ use chacha20poly1305::aead::generic_array::GenericArray;
 use chacha20poly1305::aead::generic_array::typenum::U32;
 use chacha20poly1305::aead::{Aead, AeadCore, KeyInit, OsRng};
 use chacha20poly1305::XChaCha20Poly1305;
+use log::{debug, info};
 use tokio::spawn;
 use tokio::net::UdpSocket;
 use tokio::task::JoinHandle;
@@ -41,6 +42,7 @@ impl Viridian {
         let socket = Arc::clone(&self.socket);
         let tunnel = Arc::clone(&self.tunnel);
         let address = (self.address, user_id);
+        info!("Setting up send-to-caerulean coroutine...");
         async move {
             let mut buffer = vec![0; usize::from(u16::MAX)];
             loop {
@@ -48,7 +50,7 @@ impl Viridian {
                     Err(res) => panic!("Error reading from tunnel: {res}!"),
                     Ok(res) => res
                 };
-                println!("PING: Bytes to encrypt: {:?}!", &buffer[..length]);
+                debug!("Captured {length} bytes from tunnel");
                 let nonce = XChaCha20Poly1305::generate_nonce(&mut OsRng);
                 let ciphertext = match cipher.encrypt(&nonce, &buffer[..length]) {
                     Err(res) => panic!("Error encrypting packet: {res}!"),
@@ -57,7 +59,7 @@ impl Viridian {
                 let result = [&nonce[..], &ciphertext[..]].concat();
                 match socket.send_to(&result, address).await {
                     Err(res) => panic!("Error writing to socket: {res}!"),
-                    Ok(res) => println!("Sent {res} bytes to caerulean: {result:?}!")
+                    Ok(res) => debug!("Sent {res} bytes to caerulean")
                 };
             }
         }
@@ -66,6 +68,7 @@ impl Viridian {
     async fn receive_from_caerulean(self: &Viridian, cipher: XChaCha20Poly1305) -> impl Future<Output = Result<(), ()>> {
         let socket = Arc::clone(&self.socket);
         let tunnel = Arc::clone(&self.tunnel);
+        info!("Setting up receive-freom-caerulean coroutine...");
         async move {
             let mut buffer = vec![0; usize::from(u16::MAX)];
             loop {
@@ -73,6 +76,7 @@ impl Viridian {
                     Err(res) => panic!("Error reading from socket: {res}!"),
                     Ok(res) => res
                 };
+                debug!("Received {length} bytes caerulean");
                 let nonce = GenericArray::from_slice(&buffer[..CIPHER_NONCE_SIZE]);
                 let plaintext = match cipher.decrypt(nonce, &buffer[CIPHER_NONCE_SIZE..length]) {
                     Err(res) => panic!("Error decrypting packet: {res}!"),
@@ -80,7 +84,7 @@ impl Viridian {
                 };
                 match tunnel.write_bytes(&plaintext).await {
                     Err(res) => panic!("Error writing to tunnel: {res}!"),
-                    Ok(res) => println!("Sent {res} bytes to tunnel!")
+                    Ok(res) => debug!("Injected {res} bytes into tunnel")
                 };
             }
         }

@@ -5,6 +5,7 @@ mod tunnel_test;
 use std::str;
 use std::net::{IpAddr, Ipv4Addr};
 
+use log::{debug, error};
 use neli::consts::nl::NlTypeWrapper;
 use neli::consts::rtnl::{Ifa, Ifla, RtTable, Rta, Rtm};
 use neli::rtnl::{Ifinfomsg, Rtmsg};
@@ -78,15 +79,15 @@ async fn create_tunnel(name: &str, address: Ipv4Addr, netmask: Ipv4Addr, mtu: u1
 }
 
 
-fn save_svs_table(svs_idx: i32) -> DynResult<Vec<Rtmsg>> {
-    let svs_table = RtTable::UnrecognizedConst(svs_idx as u8);
+fn save_svr_table(svr_idx: u8) -> DynResult<Vec<Rtmsg>> {
+    let svr_table = RtTable::UnrecognizedConst(svr_idx);
     let mut receiver_socket = create_socket()?;
     let mut sender_socket = create_socket()?;
 
     let mut table_data = Vec::new();
-    let message = create_routing_message(svs_table, Rtm::Getroute, false, true, &[])?;
+    let message = create_routing_message(svr_table, Rtm::Getroute, false, true, &[])?;
     send_netlink_stream(&mut receiver_socket, message, |hdr| {
-        if hdr.rtm_table == svs_table {
+        if hdr.rtm_table == svr_table {
             table_data.push(copy_rtmsg(hdr));
             let rm_msg = create_header(Rtm::Delroute, false, copy_rtmsg(hdr));
             send_netlink_message::<Rtm, Rtmsg, Rtm>(&mut sender_socket, rm_msg, true)?;
@@ -97,7 +98,7 @@ fn save_svs_table(svs_idx: i32) -> DynResult<Vec<Rtmsg>> {
     Ok(table_data)
 }
 
-fn restore_svs_table(table_data: &mut Vec<Rtmsg>) -> DynResult<()> {
+fn restore_svr_table(table_data: &mut Vec<Rtmsg>) -> DynResult<()> {
     let mut socket = create_socket()?;
 
     while let Some(entry) = table_data.pop() {
@@ -108,56 +109,56 @@ fn restore_svs_table(table_data: &mut Vec<Rtmsg>) -> DynResult<()> {
     Ok(())
 }
 
-fn enable_routing(tunnel_address: Ipv4Addr, svs_idx: i32) -> DynResult<()> {
-    let svs_table = RtTable::UnrecognizedConst(svs_idx as u8);
+fn enable_routing(tunnel_address: Ipv4Addr, svr_idx: u8) -> DynResult<()> {
+    let svr_table = RtTable::UnrecognizedConst(svr_idx);
     let mut socket = create_socket()?;
 
     let tunnel_dev = get_address_device(&mut socket, tunnel_address)?;
     let tun_addr_vec = Vec::from(tunnel_address.octets());
-    let route_message = create_routing_message(svs_table, Rtm::Newroute, true, false, &[create_attr(Rta::Oif, tunnel_dev)?, create_attr(Rta::Gateway, tun_addr_vec)?])?;
+    let route_message = create_routing_message(svr_table, Rtm::Newroute, true, false, &[create_attr(Rta::Oif, tunnel_dev)?, create_attr(Rta::Gateway, tun_addr_vec)?])?;
     send_netlink_message::<Rtm, Rtmsg, Rtm>(&mut socket, route_message, true)?;
-    let rule_message = create_routing_message(svs_table, Rtm::Newrule, true, false, &[create_attr(FRA_MASK, svs_idx)?])?;
+    let rule_message = create_routing_message(svr_table, Rtm::Newrule, true, false, &[create_attr(FRA_MASK, svr_idx as i32)?])?;
     send_netlink_message::<Rtm, Rtmsg, Rtm>(&mut socket, rule_message, true)?;
 
     Ok(())
 }
 
-fn disable_routing(tunnel_address: Ipv4Addr, svs_idx: i32) -> DynResult<()> {
-    let svs_table = RtTable::UnrecognizedConst(svs_idx as u8);
+fn disable_routing(tunnel_address: Ipv4Addr, svr_idx: u8) -> DynResult<()> {
+    let svr_table = RtTable::UnrecognizedConst(svr_idx);
     let mut socket = create_socket()?;
 
     let tunnel_dev = get_address_device(&mut socket, tunnel_address)?;
     let tun_addr_vec = Vec::from(tunnel_address.octets());
-    let route_message = create_routing_message(svs_table, Rtm::Delroute, true, false, &[create_attr(Rta::Oif, tunnel_dev)?, create_attr(Rta::Gateway, tun_addr_vec)?])?;
+    let route_message = create_routing_message(svr_table, Rtm::Delroute, true, false, &[create_attr(Rta::Oif, tunnel_dev)?, create_attr(Rta::Gateway, tun_addr_vec)?])?;
     send_netlink_message::<Rtm, Rtmsg, Rtm>(&mut socket, route_message, true)?;
-    let rule_message = create_routing_message(svs_table, Rtm::Delrule, true, false, &[create_attr(FRA_MASK, svs_idx)?])?;
+    let rule_message = create_routing_message(svr_table, Rtm::Delrule, true, false, &[create_attr(FRA_MASK, svr_idx as i32)?])?;
     send_netlink_message::<Rtm, Rtmsg, Rtm>(&mut socket, rule_message, true)?;
 
     Ok(())
 }
 
 
-fn create_firewall_rules(default_name: &str, default_address: &Ipv4Addr, default_cidr: u8, seaside_address: &Ipv4Addr, svs_idx: i32) -> Vec<String> {
+fn create_firewall_rules(default_name: &str, default_address: &Ipv4Addr, default_cidr: u8, seaside_address: &Ipv4Addr, svr_idx: u8) -> Vec<String> {
     let sia = format!("-o {default_name} ! --dst {default_address}/{default_cidr} -j ACCEPT");
-    let sim = format!("-o {default_name} ! --dst {default_address}/{default_cidr} -j MARK --set-mark {svs_idx}");
+    let sim = format!("-o {default_name} ! --dst {default_address}/{default_cidr} -j MARK --set-mark {svr_idx}");
     let sc = format!("-o {default_name} --src {default_address} --dst {seaside_address} -j ACCEPT");
     return vec![sia, sim, sc];
 }
 
-fn enable_firewall(default_name: &str, default_address: &Ipv4Addr, default_cidr: u8, seaside_address: &Ipv4Addr, svs_idx: i32) -> DynResult<()> {
+fn enable_firewall(default_name: &str, default_address: &Ipv4Addr, default_cidr: u8, seaside_address: &Ipv4Addr, svr_idx: u8) -> DynResult<()> {
     let ipt = iptables::new(false)?;
     for chain in ["OUTPUT", "FORWARD"].iter() {
-        for rule in create_firewall_rules(default_name, default_address, default_cidr, seaside_address, svs_idx).iter() {
+        for rule in create_firewall_rules(default_name, default_address, default_cidr, seaside_address, svr_idx).iter() {
             ipt.insert_unique("mangle", chain, rule, 1)?;
         }
     }
     Ok(())
 }
 
-fn disable_firewall(default_name: &str, default_address: &Ipv4Addr, default_cidr: u8, seaside_address: &Ipv4Addr, svs_idx: i32) -> DynResult<()> {
+fn disable_firewall(default_name: &str, default_address: &Ipv4Addr, default_cidr: u8, seaside_address: &Ipv4Addr, svr_idx: u8) -> DynResult<()> {
     let ipt = iptables::new(false)?;
     for chain in ["OUTPUT", "FORWARD"].iter() {
-        for rule in create_firewall_rules(default_name, default_address, default_cidr, seaside_address, svs_idx).iter() {
+        for rule in create_firewall_rules(default_name, default_address, default_cidr, seaside_address, svr_idx).iter() {
             ipt.delete("mangle", chain, rule)?;
         }
     }
@@ -170,25 +171,35 @@ pub struct Tunnel {
     def_cidr: u8,
     tun_device: AsyncDevice,
 
-    svs_idx: i32,
-    svs_data: Vec<Rtmsg>,
+    svr_idx: u8,
+    svr_data: Vec<Rtmsg>,
     def_name: String,
     sea_ip: Ipv4Addr
 }
 
 impl Tunnel {
-    pub async fn new(name: &str, address: Ipv4Addr) -> DynResult<Tunnel> {
-        let tunnel_address: Ipv4Addr = Ipv4Addr::new(192, 168, 0, 82);  // TODO: check last byte not 1!
-        let tunnet_netmask: Ipv4Addr = Ipv4Addr::new(255, 255, 255, 0);
-        let svs_idx: i32 = 82;
+    pub async fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_address: Ipv4Addr, tunnel_netmask: Ipv4Addr, svr_index: u8) -> DynResult<Tunnel> {
+        if tunnel_address.octets()[3] == 1 {
+            bail!("Last byte of tunnel address should not be equal to 1!")
+        }
 
-        let (default_address, default_cidr, default_name, default_mtu) = get_default_interface(address)?;
-        let tunnel_device = create_tunnel(name, tunnel_address, tunnet_netmask, default_mtu as u16).await?;
-        let svs_data = save_svs_table(svs_idx)?;
-        enable_routing(tunnel_address, svs_idx)?;
-        enable_firewall(&default_name, &default_address, default_cidr, &address, svs_idx)?;
+        debug!("Checking system default network properties...");
+        let (default_address, default_cidr, default_name, default_mtu) = get_default_interface(seaside_address)?;
+        debug!("Default network properties received: address {default_address}, CIDR {default_cidr}, name {default_name}, MTU {default_mtu}");
+    
+        debug!("Creating tunnel device...");
+        let tunnel_device = create_tunnel(tunnel_name, tunnel_address, tunnel_netmask, default_mtu as u16).await?;
+    
+        debug!("Clearing seaside-viridian-reef routing table...");
+        let svr_data = save_svr_table(svr_index)?;
 
-        Ok(Tunnel {def_ip: default_address, def_cidr: default_cidr, tun_device: tunnel_device, svs_idx, svs_data, def_name: default_name, sea_ip: address})
+        debug!("Setting up routing...");
+        enable_routing(tunnel_address, svr_index)?;
+
+        debug!("Enabling firewall...");
+        enable_firewall(&default_name, &default_address, default_cidr, &seaside_address, svr_index)?;
+
+        Ok(Tunnel {def_ip: default_address, def_cidr: default_cidr, tun_device: tunnel_device, svr_idx: svr_index, svr_data, def_name: default_name, sea_ip: seaside_address})
     }
 
     pub fn default_interface(&self) -> (Ipv4Addr, u8) {
@@ -211,16 +222,20 @@ impl Tunnel {
 }
 
 impl Drop for Tunnel {
-    // TODO: log errors
     #[allow(unused_must_use)]
     fn drop(&mut self) {
-        disable_firewall(&self.def_name, &self.def_ip, self.def_cidr, &self.sea_ip, self.svs_idx).inspect_err(|e| print!("{}", e));
+        debug!("Disabling firewall...");
+        disable_firewall(&self.def_name, &self.def_ip, self.def_cidr, &self.sea_ip, self.svr_idx).inspect_err(|e| error!("Error disabling firewall: {}", e));
+
+        debug!("Resetting routing...");
         match self.tun_device.address() {
             Ok(IpAddr::V4(ripv4)) => {
-                disable_routing(ripv4, self.svs_idx).inspect_err(|e| print!("{}", e));
+                disable_routing(ripv4, self.svr_idx).inspect_err(|e| error!("Error resetting routing: {}", e));
             },
-            _ => println!("Tunnel device has unknown address type!")
+            _ => error!("Tunnel device has unknown address type!")
         };
-        restore_svs_table(&mut self.svs_data).inspect_err(|e| print!("{}", e));
+
+        debug!("Restoring seaside-viridian-reef routing table...");
+        restore_svr_table(&mut self.svr_data).inspect_err(|e| error!("Error restoring seaside-viridian-reef routing table: {}", e));
     }
 }

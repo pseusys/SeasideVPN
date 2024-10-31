@@ -8,7 +8,7 @@ use regex::Regex;
 use simple_error::bail;
 use tokio::test;
 
-use super::{get_default_interface, create_tunnel, disable_firewall, disable_routing, enable_routing, enable_firewall, restore_svs_table, save_svs_table};
+use super::{get_default_interface, create_tunnel, disable_firewall, disable_routing, enable_routing, enable_firewall, restore_svr_table, save_svr_table};
 use super::super::DynResult;
 
 
@@ -56,7 +56,7 @@ async fn test_create_tunnel() {
     let tun_address = Ipv4Addr::new(192, 168, 2, 2);
     let tun_netmask = Ipv4Addr::new(255, 255, 255, 0);
 
-    let _device = create_tunnel(tun_name, tun_address, tun_netmask, tun_mtu).expect("Error creating tunnel!");
+    let _device = create_tunnel(tun_name, tun_address, tun_netmask, tun_mtu).await.expect("Error creating tunnel!");
 
     let addr_regex = Regex::new(r"mtu (?<mtu>\d+) [\s\S]* inet (?<address>\d+\.\d+\.\d+\.\d+)/(?<cidr>\d+)").expect("Error compiling default IP address regex!");
     let (addr_out, _) = run_command("ip", ["addr", "show", tun_name]).expect("Error getting default IP address!");
@@ -76,12 +76,12 @@ async fn test_save_restore_table() {
         run_command("ip", ["route", "add", *destination, "dev", "lo", "table", table_idx.to_string().as_str()]).expect("Error creating default route!");
     }
 
-    let mut table_data = save_svs_table(table_idx).expect("Error saving SVS table!");
+    let mut table_data = save_svr_table(table_idx).expect("Error saving SVR table!");
 
     let (route_out_empty, _) = run_command("ip", ["route", "show", "table", table_idx.to_string().as_str()]).expect("Error getting routes!");
     assert_eq!(route_out_empty, "", "Routing table not empty!");
 
-    restore_svs_table(&mut table_data).expect("Error restoring SVS table!");
+    restore_svr_table(&mut table_data).expect("Error restoring SVR table!");
 
     let route_regex = Regex::new(r"(?<destination>\S+) dev lo [\s\S]*").expect("Error compiling route regex!");
     let (route_out_full, _) = run_command("ip", ["route", "show", "table", table_idx.to_string().as_str()]).expect("Error getting routes!");
@@ -130,7 +130,7 @@ async fn test_enable_disable_routing() {
 
 #[test]
 async fn test_enable_disable_firewall() {
-    let svs_idx = 5;
+    let svr_idx = 5;
     let external_address = Ipv4Addr::new(8, 8, 8, 8);
     let seaside_address = Ipv4Addr::new(10, 0, 0, 10);
 
@@ -151,7 +151,7 @@ async fn test_enable_disable_firewall() {
     let sim_regex = Regex::new(r"MARK +all[\s\S]+?(?<interface>\S+)\s+(?<source>\d+\.\d+\.\d+\.\d+/\d+)\s+!(?<destination>\d+\.\d+\.\d+\.\d+/\d+)\s+MARK set (?<mark>\S+)").expect("Error compiling iptables SIM regex!");
     let sc_regex = Regex::new(r"ACCEPT +all[\s\S]+?(?<interface>\S+)\s+(?<source>\d+\.\d+\.\d+\.\d+/\d+)\s+!(?<destination>\d+\.\d+\.\d+\.\d+/\d+)").expect("Error compiling iptables SC regex!");
 
-    enable_firewall(default_name, &default_addr, *default_cidr, &seaside_address, svs_idx).expect("Error enabling firewall!");
+    enable_firewall(default_name, &default_addr, *default_cidr, &seaside_address, svr_idx).expect("Error enabling firewall!");
 
     for chain in ["OUTPUT", "FORWARD"] {
         let (iptables_out, _) = run_command("iptables", ["-L", chain, "-v", "-n", "-t", "mangle"]).expect("Error getting 'iptables' data!");
@@ -165,7 +165,7 @@ async fn test_enable_disable_firewall() {
         assert_eq!(default_name, &sim_match["interface"], "SIA rule interface name doesn't match!");
         assert_eq!("0.0.0.0/0", &sim_match["source"], "SIA rule source address doesn't match!");
         assert_eq!(default_net, &sim_match["destination"], "SIA rule destination address doesn't match!");
-        assert_eq!(format!("0x{:x}", svs_idx), &sim_match["mark"], "SIA rule mark value doesn't match!");
+        assert_eq!(format!("0x{:x}", svr_idx), &sim_match["mark"], "SIA rule mark value doesn't match!");
 
         let sc_match = sc_regex.captures(iptables_out.as_str()).expect("Error finding SC rule in 'iptables' output!");
         assert_eq!(default_name, &sc_match["interface"], "SIA rule interface name doesn't match!");
@@ -173,7 +173,7 @@ async fn test_enable_disable_firewall() {
         assert_eq!(default_net, &sc_match["destination"], "SIA rule destination address doesn't match!");
     }
 
-    disable_firewall(default_name, &default_addr, *default_cidr, &seaside_address, svs_idx).expect("Error disabling firewall!");
+    disable_firewall(default_name, &default_addr, *default_cidr, &seaside_address, svr_idx).expect("Error disabling firewall!");
     
     for chain in ["OUTPUT", "FORWARD"] {
         let (iptables_out, _) = run_command("iptables", ["-L", chain, "-v", "-n", "-t", "mangle"]).expect("Error getting 'iptables' data!");

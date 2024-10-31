@@ -1,6 +1,7 @@
 use std::env::{set_var, var};
 use std::net::{Ipv4Addr, IpAddr, ToSocketAddrs};
 
+use log::info;
 use simple_error::bail;
 use gethostname::gethostname;
 use structopt::StructOpt;
@@ -16,12 +17,15 @@ mod generated {
 
 const DEFAULT_CAERULEAN_ADDRESS: &str = "127.0.0.1";
 const DEFAULT_CAERULEAN_PORT: &str = "8587";
+const DEFAULT_LOG_LEVEL: &str = "INFO";
 
 const DEFAULT_MIN_HC_TIME: &str = "1";
 const DEFAULT_MAX_HC_TIME: &str = "5";
 const DEFAULT_CONNECTION_TIMEOUT: &str = "3.0";
 const DEFAULT_TUNNEL_NAME: &str = "seatun";
-const DEFAULT_LOG_LEVEL: &str = "INFO";
+const DEFAULT_TUNNEL_ADDRESS: &str = "192.168.0.82";
+const DEFAULT_TUNNEL_NETMASK: &str = "255.255.255.0";
+const DEFAULT_SVR_INDEX: &str = "82";
 
 
 fn parse_address(address: &str) -> DynResult<Ipv4Addr> {
@@ -99,9 +103,14 @@ async fn main() -> DynResult<()> {
         let max_hc = var("SEASIDE_MAX_HC_TIME").unwrap_or(DEFAULT_MAX_HC_TIME.to_string()).parse::<u16>().expect("'SEASIDE_MAX_HC_TIME' should be an integer!");
         let timeout = var("SEASIDE_CONNECTION_TIMEOUT").unwrap_or(DEFAULT_CONNECTION_TIMEOUT.to_string()).parse::<f32>().expect("'SEASIDE_CONNECTION_TIMEOUT' should be a float!");
         let tunnel = var("SEASIDE_TUNNEL_NAME").unwrap_or(DEFAULT_TUNNEL_NAME.to_string());
+        let tunnel_address = var("SEASIDE_TUNNEL_ADDRESS").unwrap_or(DEFAULT_TUNNEL_ADDRESS.to_string()).parse::<Ipv4Addr>().expect("'SEASIDE_TUNNEL_ADDRESS' should be an IP address!");
+        let tunnel_netmask = var("SEASIDE_TUNNEL_NETMASK").unwrap_or(DEFAULT_TUNNEL_NETMASK.to_string()).parse::<Ipv4Addr>().expect("'DEFAULT_TUNNEL_NETMASK' should be an IP netmask!");
+        let svr_index = var("SEASIDE_SVR_INDEX").unwrap_or(DEFAULT_SVR_INDEX.to_string()).parse::<u8>().expect("'DEFAULT_SVR_INDEX' should be an integer!");
         let certs = var("SEASIDE_ROOT_CERTIFICATE_AUTHORITY").ok();
 
-        let constructor = Coordinator::new(address, port, &payload, &user, min_hc, max_hc, timeout, &tunnel, certs.as_deref());
+        info!("Creating reef coordinator...");
+        let constructor = Coordinator::new(address, port, &payload, &user, min_hc, max_hc, timeout, &tunnel, tunnel_address, tunnel_netmask, svr_index, certs.as_deref());
+        info!("Starting reef coordinator...");
         constructor.await?.start(opt.command).await?;
     }
     Ok(())
