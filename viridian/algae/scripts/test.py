@@ -1,12 +1,15 @@
 from logging import getLogger
 from os import environ
 from pathlib import Path
+from shutil import rmtree
+from subprocess import DEVNULL, check_call
 from typing import Literal, Union
 
 from colorama import Fore, Style, just_fix_windows_console
 from python_on_whales import DockerClient, DockerException
 
 from scripts.misc import docker_test
+from yaml import safe_load
 
 # Default logger instance.
 logger = getLogger(__name__)
@@ -36,10 +39,21 @@ def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remot
     :return: integer return code, 0 if tests succeeded.
     """
     logger.warning(f"{Style.BRIGHT}{Fore.BLUE}Testing {profile}...{Style.RESET_ALL}")
-    docker = DockerClient(compose_files=[docker_path / f"compose.{profile}.yml"])
+    compose_file = docker_path / f"compose.{profile}.yml"
+    docker = DockerClient(compose_files=[compose_file])
     before_networks = set([net.name for net in docker.network.list()])
 
+    whirlpool_conf = safe_load(compose_file.read_text())["services"].get("whirlpool", None)
+    if whirlpool_conf is not None:
+        logger.debug("Generating self-signed testing certificates...")
+        whirlpool_script = docker_path.parent.parent.parent / "caerulean" / "whirlpool" / "whirlpool.sh"
+        whirlpool_ip = whirlpool_conf["environment"]["SEASIDE_ADDRESS"]
+        check_call(["bash", whirlpool_script, "-z", "-a", whirlpool_ip], stdout=DEVNULL, stderr=DEVNULL, cwd=docker_path.parent)
+        logger.debug("Self-signed certificates generated!")
+
+
     try:
+        logger.debug("Running tests...")
         docker.compose.up(wait=True, build=True, detach=True, quiet=hosted)
 
         test_command = ["pytest", f"--log-cli-level={'ERROR' if hosted else 'DEBUG'}", "-k", f"test_{profile}"]
@@ -68,6 +82,11 @@ def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remot
         logger.error(f"Testing {profile}: {Style.BRIGHT}{Fore.YELLOW}interrupted{Fore.RESET}!{Style.RESET_ALL}")
         docker.compose.kill()
         exit_code = 1
+
+    if whirlpool_conf is not None:
+        logger.debug("Clearing self-signed testing certificates...")
+        rmtree(docker_path.parent / "certificates", ignore_errors=True)
+        logger.debug("Self-signed certificates removed!")
 
     after_networks = set([net.name for net in docker.network.list()]) - before_networks
     docker.compose.rm(stop=True)

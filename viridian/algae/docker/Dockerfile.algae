@@ -13,7 +13,7 @@ ENV PROTOC_VERSION=24.4
 ENV PROTOC_ZIP=protoc-$PROTOC_VERSION-linux-x86_64.zip
 
 # Download and install latest protoc compiler and python dependencies.
-RUN apt-get update && apt-get install -y --no-install-recommends python3-pip wget unzip && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends python3-pip wget unzip ca-certificates && rm -rf /var/lib/apt/lists/*
 RUN wget -qO $PROTOC_ZIP https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_VERSION/$PROTOC_ZIP && unzip -o $PROTOC_ZIP -d /usr/local bin/protoc && unzip -o $PROTOC_ZIP -d /usr/local 'include/*' && rm -f $PROTOC_ZIP
 RUN pip install --upgrade --no-cache-dir pip poetry && poetry self add poetry-plugin-export
 

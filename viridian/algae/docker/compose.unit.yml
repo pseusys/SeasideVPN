@@ -1,3 +1,5 @@
+name: seaside-algae-unit
+
 services:
   algae:
     image: seaside-algae-default-sleeping

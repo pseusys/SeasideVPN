@@ -1,3 +1,5 @@
+name: seaside-algae-local
+
 services:
   algae:
     image: seaside-algae-smoke-local
