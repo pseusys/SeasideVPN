@@ -54,8 +54,8 @@ func NewViridianDict(ctx context.Context) *ViridianDict {
 	}
 
 	// Retrieve time limits from environment variables
-	viridianWaitingOvertime := uint(utils.GetIntEnv("SEASIDE_VIRIDIAN_WAITING_OVERTIME"))
-	firstHealthcheckDelayMultiplier := uint(utils.GetIntEnv("SEASIDE_VIRIDIAN_FIRST_HEALTHCHECK_DELAY"))
+	viridianWaitingOvertime := uint(utils.GetIntEnv("SEASIDE_WAITING_OVERTIME"))
+	firstHealthcheckDelayMultiplier := uint(utils.GetIntEnv("SEASIDE_FIRST_HEALTHCHECK_DELAY"))
 	firstHealthcheckDelay := time.Second * time.Duration(viridianWaitingOvertime*firstHealthcheckDelayMultiplier)
 
 	// Retrieve tunnel configurations from context

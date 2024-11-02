@@ -8,6 +8,7 @@ import (
 	"main/generated"
 	"main/users"
 	"main/utils"
+	"slices"
 	"strings"
 	"time"
 
@@ -35,8 +36,11 @@ type WhirlpoolServer struct {
 	// Authentication string for node owner (administrator).
 	nodeOwnerPayload string
 
+	// Maximum nextIn delay allowed for viridians
+	maxNextIn int32
+
 	// Authentication string for node user (viridian).
-	nodeViridianPayload string
+	nodeViridianPayload []string
 
 	// Maximum nextIn delay allowed for viridians
 	maxNextIn int32
@@ -59,7 +63,10 @@ type WhirlpoolServer struct {
 func createWhirlpoolServer(ctx context.Context) *WhirlpoolServer {
 	// Read server payloads from environment
 	nodeOwnerPayload := utils.GetEnv("SEASIDE_PAYLOAD_OWNER")
-	nodeViridianPayload := utils.GetEnv("SEASIDE_PAYLOAD_VIRIDIAN")
+	nodeViridianPayloads := utils.GetEnv("SEASIDE_PAYLOAD_VIRIDIAN")
+
+	// Read max nextIn delay from environment
+	maxNextIn := utils.GetIntEnv("SEASIDE_MAXIMUM_NEXTIN")
 
 	// Read max nextIn delay from environment
 	maxNextIn := utils.GetIntEnv("SEASIDE_MAXIMUM_NEXTIN")
@@ -73,7 +80,7 @@ func createWhirlpoolServer(ctx context.Context) *WhirlpoolServer {
 	// Return Whirlpool server pointer
 	return &WhirlpoolServer{
 		nodeOwnerPayload:    nodeOwnerPayload,
-		nodeViridianPayload: nodeViridianPayload,
+		nodeViridianPayload: strings.Split(nodeViridianPayloads, ":"),
 		maxNextIn:           int32(maxNextIn),
 		viridians:           *users.NewViridianDict(ctx),
 		privateKey:          privateKey,
@@ -96,7 +103,7 @@ func (server *WhirlpoolServer) destroyWhirlpoolServer() {
 // Return authentication response and nil if authentication successful, otherwise nil and error.
 func (server *WhirlpoolServer) Authenticate(ctx context.Context, request *generated.WhirlpoolAuthenticationRequest) (*generated.WhirlpoolAuthenticationResponse, error) {
 	// Check node owner or viridian payload
-	if request.Payload != server.nodeOwnerPayload && request.Payload != server.nodeViridianPayload {
+	if request.Payload != server.nodeOwnerPayload && !slices.Contains(server.nodeViridianPayload, request.Payload) {
 		return nil, status.Error(codes.PermissionDenied, "wrong payload value")
 	}
 

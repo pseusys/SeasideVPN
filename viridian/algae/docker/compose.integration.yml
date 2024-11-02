@@ -1,4 +1,4 @@
-version: "3.9"
+name: seaside-algae-integration
 
 services:
   algae:
@@ -13,8 +13,11 @@ services:
     env_file:
       - test.conf.env
     environment:
+      SEASIDE_ROOT_CERTIFICATE_AUTHORITY: /seaside/viridian/ca/rootCA.crt
       RESTRICTED_ADDRESS: 1.1.1.1
       SEASIDE_ADDRESS: 10.87.65.87
+    volumes:
+      - ../certificates/client:/seaside/viridian/ca:ro
     networks:
       sea-client:
         ipv4_address: 10.65.0.65

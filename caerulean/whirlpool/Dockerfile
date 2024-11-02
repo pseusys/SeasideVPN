@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # Docker image for building whirlpool executable and testing
-FROM golang:1.21-alpine3.17 as builder
+FROM golang:1.22-alpine AS builder
 
 WORKDIR /seaside/caerulean
 
@@ -26,7 +26,7 @@ RUN go build -o whirlpool.run ./sources
 
 
 # Docker image for whirlpool executable production running
-FROM alpine:3.17 as default
+FROM alpine:3.17 AS default
 
 WORKDIR /seaside/caerulean
 
@@ -35,24 +35,24 @@ RUN apk add --no-cache iptables
 COPY --from=builder /seaside/caerulean/whirlpool.run ./
 
 # Setup environmental variables.
-ENV SEASIDE_CTRLPORT 8587
+ENV SEASIDE_CTRLPORT=8587
 
-ENV SEASIDE_AUTH auth
+ENV SEASIDE_AUTH=auth
 
-ENV SEASIDE_MAX_VIRIDIANS 10
-ENV SEASIDE_MAX_ADMINS 5
+ENV SEASIDE_MAX_VIRIDIANS=10
+ENV SEASIDE_MAX_ADMINS=5
 
-ENV SEASIDE_VIRIDIAN_WAITING_OVERTIME 5
-ENV SEASIDE_VIRIDIAN_FIRST_HEALTHCHECK_DELAY 3
+ENV SEASIDE_WAITING_OVERTIME=5
+ENV SEASIDE_FIRST_HEALTHCHECK_DELAY=3
 ENV SEASIDE_MAXIMUM_NEXTIN 15
 
-ENV SEASIDE_TUNNEL_MTU 1500
-ENV SEASIDE_VPN_DATA_LIMIT -1
-ENV SEASIDE_CONTROL_PACKET_LIMIT 2
-ENV SEASIDE_ICMP_PACKET_LIMIT 5
-ENV SEASIDE_BURST_LIMIT_MULTIPLIER 3
+ENV SEASIDE_TUNNEL_MTU=1500
+ENV SEASIDE_VPN_DATA_LIMIT=-1
+ENV SEASIDE_CONTROL_PACKET_LIMIT=2
+ENV SEASIDE_ICMP_PACKET_LIMIT=5
+ENV SEASIDE_BURST_LIMIT_MULTIPLIER=3
 
-ENV SEASIDE_LOG_LEVEL WARNING
+ENV SEASIDE_LOG_LEVEL=WARNING
 
 # Certificates volume.
 VOLUME /seaside/caerulean/certificates

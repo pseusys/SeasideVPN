@@ -33,7 +33,7 @@ func loadTLSCredentials() (credentials.TransportCredentials, error) {
 	// Load server's certificate and private key
 	serverCert, err := tls.LoadX509KeyPair("certificates/cert.crt", "certificates/cert.key")
 	if err != nil {
-		return nil, fmt.Errorf("Error reading certificates: %v", err)
+		return nil, fmt.Errorf("error reading certificates: %v", err)
 	}
 
 	// Create the credentials and return it

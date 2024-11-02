@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from logging import getLogger
 from os import environ
 from pathlib import Path
 from re import compile
@@ -7,6 +8,9 @@ from typing import Iterator, List, Tuple
 
 from OpenSSL.crypto import FILETYPE_PEM, TYPE_RSA, X509, PKey, X509Extension, dump_certificate, dump_privatekey
 from python_on_whales import DockerClient
+
+# Default logger instance.
+logger = getLogger(__name__)
 
 # Root of algae viridian source files.
 ALGAE_ROOT = Path(__file__).parent.parent
@@ -23,6 +27,7 @@ def docker_test() -> Iterator[Tuple[Path, bool]]:
     docker_path = ALGAE_ROOT / "docker"
     docker = DockerClient(compose_files=[docker_path / "compose.default.yml"])
     try:
+        logger.debug("Building default testing images...")
         docker.compose.build(quiet=hosted)
         yield docker_path, hosted
     finally:

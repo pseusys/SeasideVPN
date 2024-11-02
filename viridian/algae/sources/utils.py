@@ -1,11 +1,12 @@
 from asyncio import AbstractEventLoop, Future
 from logging import StreamHandler, getLogger
 from os import getenv, read, write
+from pathlib import Path
 from socket import socket
 from ssl import PROTOCOL_TLS_CLIENT, SSLContext, get_server_certificate
 from sys import stdout
-from typing import Any, Callable, Dict, Tuple
-from urllib.parse import parse_qs, urlparse
+from typing import Any, Callable, Dict, Optional, Tuple
+from urllib.parse import urlparse
 
 from grpclib.client import Channel
 
@@ -31,7 +32,7 @@ SYMM_KEY_LENGTH = 32
 MAX_TWO_BYTES_VALUE = (1 << 16) - 1
 
 
-def create_grpc_secure_channel(host: str, port: int) -> Channel:
+def create_grpc_secure_channel(host: str, port: int, ca: Optional[Path]) -> Channel:
     """
     Create secure gRPC channel.
     Retrieve and add certificated to avoid probkems with self-signed connection.
@@ -40,8 +41,8 @@ def create_grpc_secure_channel(host: str, port: int) -> Channel:
     :return: gRPC secure channel.
     """
     context = SSLContext(PROTOCOL_TLS_CLIENT)
-    certificate = get_server_certificate((host, port))
-    context.load_verify_locations(cadata=certificate)
+    if ca is not None:
+        context.load_verify_locations(cafile=ca)
     return Channel(host, port, ssl=context)
 
 
@@ -142,7 +143,7 @@ def parse_connection_link(link: str) -> Dict[str, Any]:
     """
     Parse connection link and return contained data as dict.
     Connection link has the following format:
-    seaside+{nodetype}://{address}:{ctrlport}/{anchor}?payload={payload}
+    seaside+{nodetype}://{address}:{ctrlport}/{payload}
     All the link parts are included into output dictionary.
     :param link: connection link for parsing.
     :return: parameters dictionary, string keys are mapped to values.
@@ -161,9 +162,6 @@ def parse_connection_link(link: str) -> Dict[str, Any]:
     else:
         result.update({"addr": str(parsed.hostname), "ctrl_port": parsed.port})
 
-    result.update({"anchor": parsed.path[1:]})
-
-    query = parse_qs(parsed.query)
-    result.update({"payload": query["payload"][0]})
+    result.update({"payload": parsed.path[1:]})
 
     return result
