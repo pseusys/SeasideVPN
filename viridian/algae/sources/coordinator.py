@@ -63,13 +63,15 @@ class Coordinator:
         self._user_name = getenv("SEASIDE_USER_NAME", _DEFAULT_USER_NAME)
         self._min_hc_time = int(getenv("SEASIDE_MIN_HC_TIME", _DEFAULT_HEALTHCHECK_MIN_TIME))
         self._max_hc_time = int(getenv("SEASIDE_MAX_HC_TIME", _DEFAULT_HEALTHCHECK_MAX_TIME))
-        self._max_timeout = int(getenv("SEASIDE_CONNECTION_TIMEOUT", _DEFAULT_CONNECTION_TIMEOUT))
+        self._max_timeout = float(getenv("SEASIDE_CONNECTION_TIMEOUT", _DEFAULT_CONNECTION_TIMEOUT))
 
         if self._min_hc_time < 1:
             raise ValueError("Minimal healthcheck time can't be less than 1 second!")
+        if self._max_hc_time < 1:
+            raise ValueError("Maximum healthcheck time can't be less than 1 second!")
 
         self._gate_socket = socket(AF_INET, SOCK_DGRAM)
-        self._gate_socket.bind((self._tunnel.default_ip, 0))
+        self._gate_socket.bind((self._interface.default_ip, 0))
         self._gate_socket.setblocking(False)
 
         authority = getenv("SEASIDE_ROOT_CERTIFICATE_AUTHORITY", None)

@@ -24,7 +24,7 @@ def generate() -> None:
     Previous generation results will be removed.
     Library `betterproto` is used for generation.
     """
-    command = f"{executable} -m grpc_tools.protoc -I=vessels --python_betterproto_out=viridian/algae/sources/generated vessels/*.proto"
+    command = f"{executable} -m grpc_tools.protoc -I=vessels --python_betterproto_out=viridian/algae/sources vessels/*.proto"
     generated_dir = ALGAE_ROOT / "sources" / "generated"
     rmtree(generated_dir, ignore_errors=True)
     generated_dir.mkdir(exist_ok=True)
