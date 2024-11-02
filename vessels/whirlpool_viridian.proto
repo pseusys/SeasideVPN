@@ -31,8 +31,8 @@ message ControlHandshakeRequest {
     bytes token = 1;
     // User client version
     string version = 2;
-    // Node authentication owner payload
-    optional string payload = 3;
+    // Node authentication payload
+    string payload = 3;
     // User local IP address
     bytes address = 4;
     // User seaside port number

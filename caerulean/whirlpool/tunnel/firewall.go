@@ -76,9 +76,9 @@ func (conf *TunnelConfig) openForwarding(intIP, extIP string, ctrlPort int) erro
 	// Allow all the connections that are already established
 	runCommand("iptables", "-A", "INPUT", "-m", "conntrack", "--ctstate", "ESTABLISHED,RELATED", "-j", "ACCEPT")
 	runCommand("iptables", "-A", "OUTPUT", "-m", "conntrack", "--ctstate", "ESTABLISHED", "-j", "ACCEPT")
-	// Accept SSH connections
-	runCommand("iptables", "-A", "INPUT", "-p", "tcp", "--dport", "22", "-m", "conntrack", "--ctstate", "NEW,ESTABLISHED,RELATED", "-j", "ACCEPT")
-	runCommand("iptables", "-A", "OUTPUT", "-p", "tcp", "--sport", "22", "-m", "conntrack", "--ctstate", "ESTABLISHED", "-j", "ACCEPT")
+	// Accept admin connections to private ports (e.g. SSH, HTTP, etc.)
+	runCommand("iptables", "-A", "INPUT", "-p", "tcp", "--dport", "0:1024", "-m", "conntrack", "--ctstate", "NEW,ESTABLISHED,RELATED", "-j", "ACCEPT")
+	runCommand("iptables", "-A", "OUTPUT", "-p", "tcp", "--sport", "0:1024", "-m", "conntrack", "--ctstate", "ESTABLISHED", "-j", "ACCEPT")
 	// Accept packets to port network, control and whirlpool ports, also accept PING packets
 	runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "udp", "-d", intIP, "-i", intName}, conf.vpnDataKbyteLimitRule)...)
 	runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "tcp", "-d", intIP, "--dport", ctrlStr, "-i", intName}, conf.controlPacketLimitRule)...)

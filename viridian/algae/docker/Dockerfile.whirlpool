@@ -1,11 +1,11 @@
 # syntax=docker/dockerfile:1
 
-FROM seaside-whirlpool-default as smoke
+FROM seaside-whirlpool-default AS smoke
 
 WORKDIR /seaside/caerulean
 
 ARG NETWORK_GATEWAY
-ENV ARG_NETWORK_GATEWAY $NETWORK_GATEWAY
+ENV ARG_NETWORK_GATEWAY=$NETWORK_GATEWAY
 
 # Adding openssl library for self-signed certificate generation
 RUN apk add --no-cache openssl

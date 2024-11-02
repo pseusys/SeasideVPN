@@ -19,11 +19,11 @@ RESET="\033[0m"
 # Global arguments:
 
 # Whirlpool owner payload value
-SEASIDE_PAYLOAD_OWNER=$(cat /dev/urandom | base64 | head -c 16)
+SEASIDE_PAYLOAD_OWNER=$(cat /dev/urandom | base64 | head -c 16 || echo "supersecret_owner_payload")
 # Whirlpool viridian payload value
-SEASIDE_PAYLOAD_VIRIDIAN=$(cat /dev/urandom | base64 | head -c 16)
+SEASIDE_PAYLOAD_VIRIDIAN=$(cat /dev/urandom | base64 | head -c 16 ||  echo "supersecret_viridian_payload")
 # Internal whirlpool address (first host address by default)
-SEASIDE_ADDRESS=$(hostname -I | awk '{print $1}')
+SEASIDE_ADDRESS=$(hostname -I 2> /dev/null | awk '{print $1}' || echo "localhost")
 # External whirlpool address (same as local address by default)
 SEASIDE_EXTERNAL=$SEASIDE_ADDRESS
 # Seaside control port number (random by default, no TCP processes are expected)

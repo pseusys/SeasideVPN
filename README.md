@@ -150,10 +150,12 @@ Connection certificate is a secret Seaside network address and should be shared 
 > NB! In case of non-digital connection certificate transmission, QR-code usage is advised.
 
 Each node can support multiple **payload** options, e.g. for users with differen privelege levels or for users from different origins.
+It is required for unauthorised access to the network prevention (i.e. it is **not enough** to know the IP address and port to connect).
+
 All the connection certificate can be expressed in a form of an URL:
 
 ```text
-seaside+{nodetype}://{address}:{ctrlport}/{anchor}?public={public}&payload={payload}
+seaside+{nodetype}://{address}:{ctrlport}/{payload}
 ```
 
 > NB! Some of the nodes (the ones that can be run in Docker) usually accept the certificate in form of environmental variables.

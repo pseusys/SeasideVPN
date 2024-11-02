@@ -1,9 +1,9 @@
 # syntax=docker/dockerfile:1
 
-FROM alpine:3.18 as smoke
+FROM alpine:3.18 AS smoke
 
 ARG RESTRICTED_ADDRESS=0.0.0.0
-ENV ARG_RESTRICTED_ADDRESS $RESTRICTED_ADDRESS
+ENV ARG_RESTRICTED_ADDRESS=$RESTRICTED_ADDRESS
 
 # Setup packet forwarding and sleep.
 RUN apk add --no-cache iptables iproute2-tc

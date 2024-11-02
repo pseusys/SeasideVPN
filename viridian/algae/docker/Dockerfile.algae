@@ -1,16 +1,16 @@
 # syntax=docker/dockerfile:1
 
-FROM ubuntu:22.04 as builder
+FROM ubuntu:22.04 AS builder
 
 WORKDIR /seaside/algae
 
-ENV PYTHONUNBUFFERED 1
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV DEBIAN_FRONTEND noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV DEBIAN_FRONTEND=noninteractive
 
 # Set protoc version environment variables.
-ENV PROTOC_VERSION 24.4
-ENV PROTOC_ZIP protoc-$PROTOC_VERSION-linux-x86_64.zip
+ENV PROTOC_VERSION=24.4
+ENV PROTOC_ZIP=protoc-$PROTOC_VERSION-linux-x86_64.zip
 
 # Download and install latest protoc compiler and python dependencies.
 RUN apt-get update && apt-get install -y --no-install-recommends python3-pip wget unzip && rm -rf /var/lib/apt/lists/*
@@ -27,13 +27,13 @@ COPY vessels ./vessels
 RUN poetry run python -m grpc_tools.protoc -I=vessels --python_betterproto_out=. vessels/*.proto
 
 
-FROM ubuntu:22.04 as default-sleeping
+FROM ubuntu:22.04 AS default-sleeping
 
 WORKDIR /seaside/algae
 
-ENV PYTHONUNBUFFERED 1
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV DEBIAN_FRONTEND noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV DEBIAN_FRONTEND=noninteractive
 
 # Install testing dependencies.
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential iptables iproute2 iputils-ping python3-pip && rm -rf /var/lib/apt/lists/*
@@ -50,16 +50,16 @@ ENV SEASIDE_PAYLOAD_OWNER=
 ENV SEASIDE_ADDRESS=
 ENV SEASIDE_CTRLPORT=
 
-ENV SEASIDE_TUNNEL_NAME seatun
-ENV SEASIDE_MIN_HC_TIME 1
-ENV SEASIDE_MAX_HC_TIME 5
-ENV SEASIDE_CONNECTION_TIMEOUT 3.0
+ENV SEASIDE_TUNNEL_NAME=seatun
+ENV SEASIDE_MIN_HC_TIME=1
+ENV SEASIDE_MAX_HC_TIME=5
+ENV SEASIDE_CONNECTION_TIMEOUT=3.0
 
 # Just sleep - run nothing.
 ENTRYPOINT sleep infinity
 
 
-FROM default-sleeping as default
+FROM default-sleeping AS default
 
 # Run viridian algae in the background.
 ENTRYPOINT python3 -m sources.main $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -c $SEASIDE_CTRLPORT -t $SEASIDE_TUNNEL_NAME
@@ -67,16 +67,16 @@ ENTRYPOINT python3 -m sources.main $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -c
 HEALTHCHECK --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s CMD ls /sys/class/net | grep $SEASIDE_TUNNEL_NAME
 
 
-FROM default-sleeping as smoke-sleeping
+FROM default-sleeping AS smoke-sleeping
 
 ARG NETWORK_GATEWAY
-ENV ARG_NETWORK_GATEWAY $NETWORK_GATEWAY
+ENV ARG_NETWORK_GATEWAY=$NETWORK_GATEWAY
 
 # Setup default route IP and sleep.
 ENTRYPOINT ip route replace default via $ARG_NETWORK_GATEWAY && sleep infinity
 
 
-FROM smoke-sleeping as smoke
+FROM smoke-sleeping AS smoke
 
 # Setup default route IP and run viridian algae in the background.
 ENTRYPOINT ip route replace default via $ARG_NETWORK_GATEWAY \

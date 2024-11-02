@@ -8,6 +8,7 @@ import (
 	"main/generated"
 	"main/users"
 	"main/utils"
+	"slices"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -30,7 +31,7 @@ type WhirlpoolServer struct {
 	nodeOwnerPayload string
 
 	// Authentication string for node user (viridian).
-	nodeViridianPayload string
+	nodeViridianPayload []string
 
 	// Viridians dictionary, contains all the currently connected viridians.
 	viridians users.ViridianDict
@@ -50,7 +51,7 @@ type WhirlpoolServer struct {
 func createWhirlpoolServer(ctx context.Context) *WhirlpoolServer {
 	// Read server payloads from environment
 	nodeOwnerPayload := utils.GetEnv("SEASIDE_PAYLOAD_OWNER")
-	nodeViridianPayload := utils.GetEnv("SEASIDE_PAYLOAD_VIRIDIAN")
+	nodeViridianPayloads := utils.GetEnv("SEASIDE_PAYLOAD_VIRIDIAN")
 
 	// Generate private node cipher
 	privateKey, err := crypto.GenerateCipher()
@@ -61,7 +62,7 @@ func createWhirlpoolServer(ctx context.Context) *WhirlpoolServer {
 	// Return Whirlpool server pointer
 	return &WhirlpoolServer{
 		nodeOwnerPayload:    nodeOwnerPayload,
-		nodeViridianPayload: nodeViridianPayload,
+		nodeViridianPayload: strings.Split(nodeViridianPayloads, ":"),
 		viridians:           *users.NewViridianDict(ctx),
 		privateKey:          privateKey,
 		base:                ctx,
@@ -83,7 +84,7 @@ func (server *WhirlpoolServer) destroyWhirlpoolServer() {
 // Return authentication response and nil if authentication successful, otherwise nil and error.
 func (server *WhirlpoolServer) Authenticate(ctx context.Context, request *generated.WhirlpoolAuthenticationRequest) (*generated.WhirlpoolAuthenticationResponse, error) {
 	// Check node owner or viridian payload
-	if request.Payload != server.nodeOwnerPayload && request.Payload != server.nodeViridianPayload {
+	if request.Payload != server.nodeOwnerPayload && !slices.Contains(server.nodeViridianPayload, request.Payload) {
 		return nil, status.Error(codes.PermissionDenied, "wrong payload value")
 	}
 
@@ -155,9 +156,7 @@ func (server *WhirlpoolServer) Handshake(ctx context.Context, request *generated
 	}
 
 	// Make viridian privileged if it passed owner payload
-	if request.Payload != nil {
-		token.Privileged = token.Privileged || (*request.Payload == server.nodeOwnerPayload)
-	}
+	token.Privileged = token.Privileged || (request.Payload == server.nodeOwnerPayload)
 
 	// Add viridian to the dictionary
 	userID, err := server.viridians.Add(server.base, token, request.Address, remoteAddress, uint16(request.Port))
