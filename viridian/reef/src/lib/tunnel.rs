@@ -179,8 +179,8 @@ pub struct Tunnel {
 
 impl Tunnel {
     pub async fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_address: Ipv4Addr, tunnel_netmask: Ipv4Addr, svr_index: u8) -> DynResult<Tunnel> {
-        if tunnel_address.octets()[3] == 1 {
-            bail!("Last byte of tunnel address should not be equal to 1!")
+        if [0, 1, 255].contains(&tunnel_address.octets()[3]) {
+            bail!("Last byte of tunnel address should not be equal to {}!", tunnel_address.octets()[3])
         }
 
         debug!("Checking system default network properties...");
