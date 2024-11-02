@@ -36,9 +36,6 @@ type WhirlpoolServer struct {
 	// Authentication string for node owner (administrator).
 	nodeOwnerPayload string
 
-	// Maximum nextIn delay allowed for viridians
-	maxNextIn int32
-
 	// Authentication string for node user (viridian).
 	nodeViridianPayload []string
 
@@ -64,9 +61,6 @@ func createWhirlpoolServer(ctx context.Context) *WhirlpoolServer {
 	// Read server payloads from environment
 	nodeOwnerPayload := utils.GetEnv("SEASIDE_PAYLOAD_OWNER")
 	nodeViridianPayloads := utils.GetEnv("SEASIDE_PAYLOAD_VIRIDIAN")
-
-	// Read max nextIn delay from environment
-	maxNextIn := utils.GetIntEnv("SEASIDE_MAXIMUM_NEXTIN")
 
 	// Read max nextIn delay from environment
 	maxNextIn := utils.GetIntEnv("SEASIDE_MAXIMUM_NEXTIN")
