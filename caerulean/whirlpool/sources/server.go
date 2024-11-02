@@ -10,6 +10,7 @@ import (
 	"main/utils"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -19,6 +20,11 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/timestamppb"
+)
+
+const (
+	USER_TIMEOUT_HOURS = 24 * 365
 )
 
 // Whirlpool server structure.
@@ -29,6 +35,9 @@ type WhirlpoolServer struct {
 
 	// Authentication string for node owner (administrator).
 	nodeOwnerPayload string
+
+	// Maximum nextIn delay allowed for viridians
+	maxNextIn int32
 
 	// Authentication string for node user (viridian).
 	nodeViridianPayload []string
@@ -53,6 +62,9 @@ func createWhirlpoolServer(ctx context.Context) *WhirlpoolServer {
 	nodeOwnerPayload := utils.GetEnv("SEASIDE_PAYLOAD_OWNER")
 	nodeViridianPayloads := utils.GetEnv("SEASIDE_PAYLOAD_VIRIDIAN")
 
+	// Read max nextIn delay from environment
+	maxNextIn := utils.GetIntEnv("SEASIDE_MAXIMUM_NEXTIN")
+
 	// Generate private node cipher
 	privateKey, err := crypto.GenerateCipher()
 	if err != nil {
@@ -63,6 +75,7 @@ func createWhirlpoolServer(ctx context.Context) *WhirlpoolServer {
 	return &WhirlpoolServer{
 		nodeOwnerPayload:    nodeOwnerPayload,
 		nodeViridianPayload: strings.Split(nodeViridianPayloads, ":"),
+		maxNextIn:           int32(maxNextIn),
 		viridians:           *users.NewViridianDict(ctx),
 		privateKey:          privateKey,
 		base:                ctx,
@@ -88,11 +101,12 @@ func (server *WhirlpoolServer) Authenticate(ctx context.Context, request *genera
 		return nil, status.Error(codes.PermissionDenied, "wrong payload value")
 	}
 
-	// Create and marshall user token
+	// Create and marshall user token (will be valid for 10 years for non-privileged users)
 	token := &generated.UserToken{
-		Uid:        request.Uid,
-		Session:    request.Session,
-		Privileged: request.Payload == server.nodeOwnerPayload,
+		Uid:          request.Uid,
+		Session:      request.Session,
+		Privileged:   request.Payload == server.nodeOwnerPayload,
+		Subscription: timestamppb.New(time.Now().Add(time.Hour * time.Duration(USER_TIMEOUT_HOURS))),
 	}
 	logrus.Infof("User %s (privileged: %t) autnenticated", token.Uid, token.Privileged)
 	marshToken, err := proto.Marshal(token)
@@ -156,7 +170,9 @@ func (server *WhirlpoolServer) Handshake(ctx context.Context, request *generated
 	}
 
 	// Make viridian privileged if it passed owner payload
-	token.Privileged = token.Privileged || (request.Payload == server.nodeOwnerPayload)
+	if request.Payload != nil {
+		token.Privileged = token.Privileged || (*request.Payload == server.nodeOwnerPayload)
+	}
 
 	// Add viridian to the dictionary
 	userID, err := server.viridians.Add(server.base, token, request.Address, remoteAddress, uint16(request.Port))
@@ -187,7 +203,7 @@ func (server *WhirlpoolServer) Healthcheck(ctx context.Context, request *generat
 	}
 
 	// Get next healthcheck timeout
-	nextIn := request.NextIn
+	nextIn := min(request.NextIn, server.maxNextIn)
 	logrus.Infof("Healthcheck from user %s: %d, next in %d", viridian.UID, userID, nextIn)
 
 	// Update the viridian deletion timer
@@ -197,35 +213,6 @@ func (server *WhirlpoolServer) Healthcheck(ctx context.Context, request *generat
 	}
 
 	// Return empty response
-	grpc.SetTrailer(ctx, metadata.Pairs("seaside-tail-bin", hex.EncodeToString(utils.GenerateReliableTail())))
-	return &emptypb.Empty{}, nil
-}
-
-// Process exception.
-// React to viridian reporting an exception.
-// Viridian will be removed, an appropriate response message will be sent.
-// Should be applied for WhirlpoolServer object.
-// Accept context and exception request.
-// Return empty response and nil if exception hendling successful, otherwise nil and error.
-func (server *WhirlpoolServer) Exception(ctx context.Context, request *generated.ControlException) (*emptypb.Empty, error) {
-	// Get connected viridian by ID
-	userID := uint16(request.UserID)
-	viridian, ok := server.viridians.Get(userID)
-	if !ok {
-		return nil, status.Errorf(codes.Unauthenticated, "user not connected: %d", userID)
-	}
-
-	// Check exception status and react according to it
-	if request.Status == generated.ControlExceptionStatus_TERMINATION {
-		logrus.Infof("Disconnecting user %s: %d", viridian.UID, userID)
-	} else if request.Message != nil {
-		logrus.Infof("Aborting user connection, user %s: %d, message: %s", viridian.UID, userID, *request.Message)
-	} else {
-		logrus.Infof("Aborting user connection, user %s: %d, reason unknown!", viridian.UID, userID)
-	}
-
-	// Remove viridian and return empty response
-	server.viridians.Delete(userID, false)
 	grpc.SetTrailer(ctx, metadata.Pairs("seaside-tail-bin", hex.EncodeToString(utils.GenerateReliableTail())))
 	return &emptypb.Empty{}, nil
 }

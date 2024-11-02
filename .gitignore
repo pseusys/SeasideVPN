@@ -42,6 +42,9 @@ viridian/algae/**/.pytest-cache/
 viridian/algae/sources/__init__.py
 viridian/algae/sources/generated/
 
+## Test files:
+viridian/algae/certificates/
+
 
 
 # Golang:

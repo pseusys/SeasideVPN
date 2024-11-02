@@ -227,7 +227,7 @@ async function waitForServer(ip, key, waitTimes, sleepTime) {
 /**
  * Deploy Whirlpool node to VPS.
  * Copy whirlpool installation script from the local source.
- * Run the script and prepare environment (generate 'conf.env' file and self-signed certificates).
+ * Run the script and prepare environment (generate 'conf.env' file).
  * Run the node in the background and close SSH connection.
  * @param {NodeSSH} sshConn SSH connection to use
  * @param {string} ownerPayload deployment server owner payload
@@ -239,7 +239,7 @@ async function runDeployCommand(sshConn, ownerPayload, viridianPayload, ctrlport
 	console.log("Copying whirlpool installation script to beget test server...");
 	await sshConn.putFile(INSTALL_SCRIPT, "exec.sh");
 	console.log("Running whirlpool installation script on beget test server...");
-	const installFlags = runInDocker ? "-kgst" : "-gst";
+	const installFlags = runInDocker ? "-kgt" : "-gt";
 	const installRes = await sshConn.execCommand(`bash exec.sh ${installFlags} -o ${ownerPayload} -v ${viridianPayload} -c ${ctrlport}`);
 	if (installRes.code != 0) throw new Error(`Installation script failed, error code: ${installRes.code}`);
 	console.log("Running whirlpool executable on beget test server...");
