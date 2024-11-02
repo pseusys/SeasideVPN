@@ -1,12 +1,12 @@
 from asyncio import TimeoutError, open_connection, sleep, wait_for
 from logging import getLogger
 from os import environ, getenv
+from random import randint
 from subprocess import check_output
 from typing import AsyncGenerator, Generator, Optional, Tuple
 
 import pytest
 import pytest_asyncio
-from Crypto.Random.random import randint
 from Crypto.Random import get_random_bytes
 
 from ..sources.coordinator import Coordinator
@@ -26,6 +26,7 @@ async def is_tcp_available(address: Optional[str] = None, port: int = 443) -> bo
         return False
 
 
+@pytest.mark.asyncio(scope="session")
 @pytest_asyncio.fixture(scope="session")
 async def coordinator() -> AsyncGenerator[Coordinator, None]:
     payload = environ["SEASIDE_PAYLOAD_OWNER"]
@@ -44,7 +45,7 @@ def tail() -> Generator[Tuple[str, str], None, None]:
 @pytest.mark.dependency()
 async def test_controller_initialization(coordinator: Coordinator) -> None:
     routes = check_output(["ip", "link", "show"]).decode()
-    assert coordinator._tunnel._name in routes, "Tunnel wasn't created!"
+    assert coordinator._interface._name in routes, "Tunnel wasn't created!"
 
 
 @pytest.mark.asyncio(scope="session")
@@ -75,8 +76,8 @@ async def test_initialize_control(coordinator: Coordinator) -> None:
 @pytest.mark.dependency(depends=["test_initialize_control"])
 async def test_open_tunnel(coordinator: Coordinator) -> None:
     logger.info("Testing opening the tunnel")
-    coordinator._tunnel.up()
-    assert coordinator._tunnel._operational, "Tunnel interface isn't operational!"
+    coordinator._interface.up()
+    assert coordinator._interface._operational, "Tunnel interface isn't operational!"
 
 
 @pytest.mark.asyncio(scope="session")
