@@ -1,5 +1,5 @@
 from fcntl import ioctl
-from ipaddress import IPv4Address, IPv4Interface
+from ipaddress import IPv4Address, IPv4Interface, IPv4Network
 from os import O_RDWR, getegid, geteuid, open
 from struct import pack
 from typing import Tuple
@@ -30,9 +30,6 @@ _UNIX_TUN_DEVICE = "/dev/net/tun"
 
 # Unix TUN device maximal file name length.
 _UNIX_IFNAMSIZ = 16
-
-# Seaside viridian algae universal code.
-_SVA_CODE = 65
 
 
 def _create_tunnel(name: str) -> Tuple[int, str]:
@@ -99,7 +96,7 @@ def _create_internet_rule_skeleton(default_ip: IPv4Interface, default_interface:
     return rule
 
 
-def _create_internet_rule_mark(default_ip: IPv4Interface, default_interface: str) -> Rule:
+def _create_internet_rule_mark(default_ip: IPv4Interface, default_interface: str, sva_code: int) -> Rule:
     """
     Create iptables rule to mark packets going to internet with seaside viridian algae universal code.
     :param default_ip: IP address of the default network interface.
@@ -108,7 +105,7 @@ def _create_internet_rule_mark(default_ip: IPv4Interface, default_interface: str
     """
     rule = _create_internet_rule_skeleton(default_ip, default_interface)
     mark = Target(rule, "MARK")
-    mark.set_mark = str(_SVA_CODE)
+    mark.set_mark = str(sva_code)
     rule.target = mark
     return rule
 
@@ -132,28 +129,32 @@ class Tunnel:
     It also creates and removes iptables rules for packet forwarding.
     """
 
-    def __init__(self, name: str, addr: IPv4Address):
+    def __init__(self, name: str, address: IPv4Address, netmask: IPv4Address, sva_code: int, seaside_address: IPv4Address):
         """
         Tunnel constructor.
         :param self: instance of Tunnel.
         :param name: tunnel interface name.
-        :param addr: tunnel interface IP address.
+        :param address: tunnel interface IP address.
+        :param netmask: tunnel interface network mask.
+        :param sva_code: seaside-viridian-algae constant.
+        :param seaside_address: seaside server address.
         """
         self._name = name
-        address = str(addr)
+        seaside_address = str(seaside_address)
 
-        self._tunnel_ip = "192.168.0.65"
-        self._tunnel_cdr = 24
-        self._def_iface, def_iface_name, self._mtu = _get_default_interface(address)
+        self._tunnel_ip = str(address)
+        self._tunnel_cdr = IPv4Network(f"{address}/{netmask}", strict=False).prefixlen
+        self._def_iface, def_iface_name, self._mtu = _get_default_interface(seaside_address)
 
+        self._sva_code = sva_code
         self._active = True
         self._operational = False
 
         self._descriptor, self._tunnel_dev = _create_tunnel(name)
         logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} created")
 
-        self._send_to_caerulean_rule = _create_caerulean_rule(self._def_iface, address, def_iface_name)
-        self._send_to_internet_rule_mark = _create_internet_rule_mark(self._def_iface, def_iface_name)
+        self._send_to_caerulean_rule = _create_caerulean_rule(self._def_iface, seaside_address, def_iface_name)
+        self._send_to_internet_rule_mark = _create_internet_rule_mark(self._def_iface, def_iface_name, sva_code)
         self._send_to_internet_rule_accept = _create_internet_rule_accept(self._def_iface, def_iface_name)
         logger.info(f"Packet capturing rules {Fore.GREEN}created{Fore.RESET}")
 
@@ -216,7 +217,7 @@ class Tunnel:
         """
         self._setup_iptables_rules(self._filter_output_chain)
         self._setup_iptables_rules(self._filter_forward_chain)
-        logger.info(f"Packet forwarding with mark {Fore.BLUE}{_SVA_CODE}{Fore.RESET} via table {Fore.BLUE}{_SVA_CODE}{Fore.RESET} configured")
+        logger.info(f"Packet forwarding with mark {Fore.BLUE}{self._sva_code}{Fore.RESET} via table {Fore.BLUE}{self._sva_code}{Fore.RESET} configured")
 
         with IPRoute() as ip:
             logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} is created")
@@ -226,9 +227,9 @@ class Tunnel:
             logger.info(f"Tunnel IP address set to {Fore.BLUE}{self._tunnel_ip}{Fore.RESET}")
             ip.link("set", index=self._tunnel_dev, state="up")
             logger.info(f"Tunnel {Fore.GREEN}enabled{Fore.RESET}")
-            ip.flush_routes(table=_SVA_CODE)  # TODO: save routes when / if possible!
-            ip.route("add", table=_SVA_CODE, dst="default", gateway=self._tunnel_ip, oif=self._tunnel_dev)
-            ip.rule("add", fwmark=_SVA_CODE, table=_SVA_CODE)
+            ip.flush_routes(table=self._sva_code)  # TODO: save routes when / if possible!
+            ip.route("add", table=self._sva_code, dst="default", gateway=self._tunnel_ip, oif=self._tunnel_dev)
+            ip.rule("add", fwmark=self._sva_code, table=self._sva_code)
             logger.info(f"Packet forwarding via tunnel {Fore.GREEN}enabled{Fore.RESET}")
         self._operational = True
 
@@ -241,11 +242,11 @@ class Tunnel:
         """
         self._reset_iptables_rules(self._filter_output_chain)
         self._reset_iptables_rules(self._filter_forward_chain)
-        logger.info(f"Packet forwarding with mark {Fore.BLUE}{_SVA_CODE}{Fore.RESET} via table {Fore.BLUE}{_SVA_CODE}{Fore.RESET} removed")
+        logger.info(f"Packet forwarding with mark {Fore.BLUE}{self._sva_code}{Fore.RESET} via table {Fore.BLUE}{self._sva_code}{Fore.RESET} removed")
 
         with IPRoute() as ip:
-            ip.flush_routes(table=_SVA_CODE)
-            ip.rule("remove", fwmark=_SVA_CODE, table=_SVA_CODE)
+            ip.flush_routes(table=self._sva_code)
+            ip.rule("remove", fwmark=self._sva_code, table=self._sva_code)
             logger.info(f"Packet forwarding via tunnel {Fore.GREEN}disabled{Fore.RESET}")
             ip.link("set", index=self._tunnel_dev, state="down")
             logger.info(f"Tunnel {Fore.GREEN}disabled{Fore.RESET}")

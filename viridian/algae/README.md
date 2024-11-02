@@ -79,13 +79,17 @@ The following CLI arguments are supported:
 
 - `-a --address [ADDRESS]`: Caerulean server address, to connect to (default: `127.0.0.1`).
 - `-c --ctrl-port`: Control port - the port that will be used for control communication with caerulean (default: `8587`).
-- `-t --tunnel`: Name of the tunnel device that will be used for packet forwarding (default: `seatun`)
 - `-l --link`: Connection certificate in link form (will overwrite other parameters specified).
 - `-h --help`: Print short command notice and exit.
 - `-v --version`: Print current algae version and exit.
+- `-e --command`: Establish VPM connection, execute the given command and destroy connection.
 
 It also sensitive to the following environmental variable:
 
+- `SEASIDE_TUNNEL_NAME`: Name of the tunnel interface (default: `seatun`).
+- `SEASIDE_TUNNEL_ADDRESS`: IP address of the tunnel (default: `192.168.0.65`).
+- `SEASIDE_TUNNEL_NETMASK`: Netmask of the tunnel network (default: `255.255.255.0`).
+- `SEASIDE_TUNNEL_SVA`: A special constant used for packet marking and routing table setting (default: `65`).
 - `SEASIDE_USER_NAME`: User name that will be used during connection (default: `default_algae_user`).
 - `SEASIDE_MIN_HC_TIME`: Minimal time between two healthcheck control messages, in seconds (default: `1`).
 - `SEASIDE_MAX_HC_TIME`: Maximal time between two healthcheck control messages, in seconds (default: `5`).

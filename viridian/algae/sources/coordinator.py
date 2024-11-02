@@ -1,7 +1,9 @@
-from asyncio import sleep
+from asyncio import CancelledError, Task, create_subprocess_shell, sleep, wait
+from asyncio.subprocess import STDOUT
+from contextlib import suppress
 from ipaddress import AddressValueError, IPv4Address
 from os import getenv
-from socket import AF_INET, SOCK_DGRAM, gethostbyname, inet_aton, socket
+from socket import AF_INET, SOCK_DGRAM, gethostbyname, gethostname, inet_aton, socket
 from typing import Any, Dict, Optional
 
 from colorama import Fore
@@ -17,8 +19,17 @@ from .viridian import Viridian
 # Current algae distribution version.
 VERSION = "0.0.2"
 
-# Default algae user UID
-_DEFAULT_USER_NAME = "default_algae_user"
+# Default tunnel interface name.
+_DEFAULT_TUNNEL_NAME = "seatun"
+
+# Default tunnel interface address.
+_DEFAULT_TUNNEL_ADDRESS = "192.168.0.65"
+
+# Default tunnel interface netmask.
+_DEFAULT_TUNNEL_NETMASK = "255.255.255.0"
+
+# Default tunnel interface seaside-viridian-algae code.
+_DEFAULT_TUNNEL_SVA = 65
 
 # Minimal time between two healthpings, in seconds.
 _DEFAULT_HEALTHCHECK_MIN_TIME = 1
@@ -41,7 +52,7 @@ class Coordinator:
     They can also be stopped and resumed in runtime.
     """
 
-    def __init__(self, payload: str, addr: str, ctrl_port: int, name: str):
+    def __init__(self, payload: str, addr: str, ctrl_port: int, command: Optional[str]):
         """
         Coordinator constructor.
         :param self: instance of Coordinator.
@@ -55,12 +66,18 @@ class Coordinator:
         except AddressValueError:
             self._address = gethostbyname(addr)
 
+        self._command = command
         self._viridian: Optional[Viridian] = None
-        self._tunnel = Tunnel(name, IPv4Address(self._address))
+
+        tunnel_name = getenv("SEASIDE_TUNNEL_NAME", _DEFAULT_TUNNEL_NAME)
+        tunnel_address = IPv4Address(getenv("SEASIDE_TUNNEL_ADDRESS", _DEFAULT_TUNNEL_ADDRESS))
+        tunnel_netmask = IPv4Address(getenv("SEASIDE_TUNNEL_NETMASK", _DEFAULT_TUNNEL_NETMASK))
+        tunnel_sva = int(getenv("SEASIDE_TUNNEL_SVA", _DEFAULT_TUNNEL_SVA))
+        self._tunnel = Tunnel(tunnel_name, tunnel_address, tunnel_netmask, tunnel_sva, IPv4Address(self._address))
 
         self._node_payload = payload
         self._ctrl_port = ctrl_port
-        self._user_name = getenv("SEASIDE_USER_NAME", _DEFAULT_USER_NAME)  # TODO: default to hostname
+        self._user_name = getenv("SEASIDE_USER_NAME", gethostname())
         self._min_hc_time = int(getenv("SEASIDE_MIN_HC_TIME", _DEFAULT_HEALTHCHECK_MIN_TIME))
         self._max_hc_time = int(getenv("SEASIDE_MAX_HC_TIME", _DEFAULT_HEALTHCHECK_MAX_TIME))
         self._max_timeout = float(getenv("SEASIDE_CONNECTION_TIMEOUT", _DEFAULT_CONNECTION_TIMEOUT))
@@ -106,16 +123,19 @@ class Coordinator:
             self._clean_tunnel()
             raise
 
-    async def start(self) -> None:
+    async def _run_vpn_command(self) -> int:
         """
-        Create VPN connection.
-        Receive viridian connection token, initialize and manage control.
-        Upon receiving an error message, client is re-initialized, token is received once again and control is re-initialized.
-        NB! This method is blocking, should be run while VPN is active.
+        Run the command asynchronourly.
+        Extracted into a separate command so that it can be run with the VPN loop asynchronously.
         """
-        logger.info("Initializing connection...")
-        await self._initialize_connection()
+        proc = await create_subprocess_shell(self._command, stderr=STDOUT, stdout=STDOUT)
+        return proc.returncode
 
+    async def _run_vpn_loop(self) -> None:
+        """
+        Run VPN loop asynchronourly.
+        Extracted into a separate command so that it can be run with the command asynchronously.
+        """
         while self._tunnel.operational:
             try:
                 logger.info("Sending healthcheck request...")
@@ -128,6 +148,38 @@ class Coordinator:
                 logger.debug(f"Interrupting connection to caerulean {self._address}:{self._ctrl_port}...")
                 await self.interrupt()
                 raise exc
+
+    async def start(self) -> None:
+        """
+        Create VPN connection.
+        Receive viridian connection token, initialize and manage control.
+        Upon receiving an error message, client is re-initialized, token is received once again and control is re-initialized.
+        NB! This method is blocking, should be run while VPN is active.
+        """
+        logger.info("Initializing connection...")
+        await self._initialize_connection()
+
+        if self._command is not None:
+            vpn_loop = Task(self._run_vpn_loop(), name="vpn_loop")
+            vpn_command = Task(self._run_vpn_loop(), name="vpn_command")
+            done_first, pending = await wait([vpn_loop, vpn_command])
+            for t in done_first:
+                if t.get_name() == "vpn_loop":
+                    if t.cancelled():
+                        print("Command execution was cancelled!")
+                    elif t.exception() is not None:
+                        print("Command execution finished with an exception!")
+                    else:
+                        print(f"Command exited with code: {t.result()}")
+                else:
+                    if t.cancelled():
+                        print("VPN loop execution was cancelled!")
+                    else:
+                        print(f"VPN loop exited with exception: {t.exception()}")
+            for p in pending:
+                p.cancel()
+        else:
+            await self._run_vpn_loop()
 
     def _grpc_metadata(self) -> Dict[str, Any]:
         """
