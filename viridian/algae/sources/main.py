@@ -20,7 +20,7 @@ _DEFAULT_CTRL_PORT = 8587
 
 
 # Command line arguments parser.
-parser = ArgumentParser()
+parser = ArgumentParser()  # TODO: move tunnel name to env, add command param
 parser.add_argument("payload", help="Whirlpool node owner key (required!)")
 parser.add_argument("-a", "--address", dest="addr", default=_DEFAULT_ADDRESS, type=str, help=f"Caerulean remote IP address (default: {_DEFAULT_ADDRESS})")
 parser.add_argument("-c", "--ctrl-port", dest="ctrl_port", default=_DEFAULT_CTRL_PORT, type=int, help=f"Caerulean control port number (default: {_DEFAULT_CTRL_PORT})")

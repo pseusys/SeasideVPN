@@ -226,7 +226,7 @@ class Tunnel:
             logger.info(f"Tunnel IP address set to {Fore.BLUE}{self._tunnel_ip}{Fore.RESET}")
             ip.link("set", index=self._tunnel_dev, state="up")
             logger.info(f"Tunnel {Fore.GREEN}enabled{Fore.RESET}")
-            ip.flush_routes(table=_SVA_CODE)
+            ip.flush_routes(table=_SVA_CODE)  # TODO: save routes when / if possible!
             ip.route("add", table=_SVA_CODE, dst="default", gateway=self._tunnel_ip, oif=self._tunnel_dev)
             ip.rule("add", fwmark=_SVA_CODE, table=_SVA_CODE)
             logger.info(f"Packet forwarding via tunnel {Fore.GREEN}enabled{Fore.RESET}")

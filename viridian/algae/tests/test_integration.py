@@ -26,7 +26,7 @@ async def is_tcp_available(address: Optional[str] = None, port: int = 443) -> bo
         return False
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture(scope="session", loop_scope="session")
 async def coordinator() -> AsyncGenerator[Coordinator, None]:
     payload = environ["SEASIDE_PAYLOAD_OWNER"]
     name = getenv("SEASIDE_TUNNEL_NAME", "sea-tun")
@@ -40,21 +40,21 @@ def tail() -> Generator[Tuple[str, str], None, None]:
     yield ("tail", get_random_bytes(randint(1, MAX_TAIL_LENGTH)).hex())
 
 
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio(loop_scope="session")
 @pytest.mark.dependency()
 async def test_controller_initialization(coordinator: Coordinator) -> None:
     routes = check_output(["ip", "link", "show"]).decode()
     assert coordinator._tunnel._name in routes, "Tunnel wasn't created!"
 
 
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio(loop_scope="session")
 @pytest.mark.dependency(depends=["test_controller_initialization"])
 async def test_no_vpn_request() -> None:
     logger.info("Testing unreachability with TCP echo server")
     assert not await is_tcp_available(), "External website is already available!"
 
 
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio(loop_scope="session")
 @pytest.mark.dependency(depends=["test_no_vpn_request"])
 async def test_receive_token(coordinator: Coordinator) -> None:
     logger.info("Testing receiving user token")
@@ -62,7 +62,7 @@ async def test_receive_token(coordinator: Coordinator) -> None:
     assert len(coordinator._session_token) > 0, "Session token was not received!"
 
 
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio(loop_scope="session")
 @pytest.mark.dependency(depends=["test_receive_token"])
 async def test_initialize_control(coordinator: Coordinator) -> None:
     logger.info("Testing initializing control sequence")
@@ -71,7 +71,7 @@ async def test_initialize_control(coordinator: Coordinator) -> None:
     assert coordinator._user_id >= 1 and coordinator._user_id <= MAX_TWO_BYTES_VALUE, "User ID isn't in range!"
 
 
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio(loop_scope="session")
 @pytest.mark.dependency(depends=["test_initialize_control"])
 async def test_open_tunnel(coordinator: Coordinator) -> None:
     logger.info("Testing opening the tunnel")
@@ -79,7 +79,7 @@ async def test_open_tunnel(coordinator: Coordinator) -> None:
     assert coordinator._tunnel._operational, "Tunnel interface isn't operational!"
 
 
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio(loop_scope="session")
 @pytest.mark.dependency(depends=["test_open_tunnel"])
 async def test_open_viridian(coordinator: Coordinator) -> None:
     logger.info("Testing opening the viridian")
@@ -87,14 +87,14 @@ async def test_open_viridian(coordinator: Coordinator) -> None:
     assert coordinator._viridian._operational, "Client processes aren't operational!"
 
 
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio(loop_scope="session")
 @pytest.mark.dependency(depends=["test_open_viridian"])
 async def test_validate_request() -> None:
     logger.info("Testing reachability with TCP example server")
     assert await is_tcp_available(), "External website isn't available!"
 
 
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio(loop_scope="session")
 @pytest.mark.dependency(depends=["test_validate_request"])
 async def test_send_healthcheck_message(coordinator: Coordinator, tail: Tuple[str, str]) -> None:
     logger.info("Testing sending healthcheck to caerulean")
@@ -104,7 +104,7 @@ async def test_send_healthcheck_message(coordinator: Coordinator, tail: Tuple[st
         await sleep(coordinator._min_hc_time)
 
 
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio(loop_scope="session")
 @pytest.mark.dependency(depends=["test_send_healthcheck_message"])
 async def test_healthcheck_overtime(coordinator: Coordinator, tail: Tuple[str, str]) -> None:
     logger.info("Testing exceeding healthcheck time with caerulean")
@@ -118,14 +118,14 @@ async def test_healthcheck_overtime(coordinator: Coordinator, tail: Tuple[str, s
         await coordinator._control.healthcheck(request, timeout=coordinator._max_timeout, metadata=(tail,))
 
 
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio(loop_scope="session")
 @pytest.mark.dependency(depends=["test_healthcheck_overtime"])
 async def test_no_vpn_rerequest() -> None:
     logger.info("Testing unreachability with TCP echo server again")
     assert not await is_tcp_available(), "External website is still available!"
 
 
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio(loop_scope="session")
 @pytest.mark.dependency(depends=["test_no_vpn_rerequest"])
 async def test_reconnect(coordinator: Coordinator) -> None:
     logger.info("Testing reconnecting to caerulean")
@@ -139,14 +139,14 @@ async def test_reconnect(coordinator: Coordinator) -> None:
     coordinator._viridian.open()
 
 
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio(loop_scope="session")
 @pytest.mark.dependency(depends=["test_reconnect"])
 async def test_revalidate_request() -> None:
     logger.info("Testing reachability with TCP example server again")
     assert await is_tcp_available(), "External website isn't available!"
 
 
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio(loop_scope="session")
 @pytest.mark.dependency(depends=["test_revalidate_request"])
 async def test_close_connection(coordinator: Coordinator) -> None:
     logger.info("Testing closing viridian connection")

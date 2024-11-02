@@ -60,7 +60,7 @@ class Coordinator:
 
         self._node_payload = payload
         self._ctrl_port = ctrl_port
-        self._user_name = getenv("SEASIDE_USER_NAME", _DEFAULT_USER_NAME)
+        self._user_name = getenv("SEASIDE_USER_NAME", _DEFAULT_USER_NAME)  # TODO: default to hostname
         self._min_hc_time = int(getenv("SEASIDE_MIN_HC_TIME", _DEFAULT_HEALTHCHECK_MIN_TIME))
         self._max_hc_time = int(getenv("SEASIDE_MAX_HC_TIME", _DEFAULT_HEALTHCHECK_MAX_TIME))
         self._max_timeout = float(getenv("SEASIDE_CONNECTION_TIMEOUT", _DEFAULT_CONNECTION_TIMEOUT))

@@ -39,6 +39,7 @@ message ControlHandshakeRequest {
     bytes address = 4;
     // User seaside port number
     int32 port = 5;
+    // TODO: Add client type to signin protocol.
 }
 
 // Handshake response, containing user ID
