@@ -74,7 +74,8 @@ class Coordinator:
         self._gate_socket.bind((self._tunnel.default_ip, 0))
         self._gate_socket.setblocking(False)
 
-        self._channel = create_grpc_secure_channel(self._address, self._ctrl_port)
+        authority = getenv("SEASIDE_ROOT_CERTIFICATE_AUTHORITY", None)
+        self._channel = create_grpc_secure_channel(self._address, self._ctrl_port, authority)
         self._control = WhirlpoolViridianStub(self._channel)
 
         self._user_id: int
