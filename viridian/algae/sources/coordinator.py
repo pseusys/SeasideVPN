@@ -9,7 +9,7 @@ from Crypto.Random import get_random_bytes
 from Crypto.Random.random import randint
 from grpclib.exceptions import GRPCError
 
-from .generated import ControlHandshakeRequest, ControlHealthcheck, WhirlpoolAuthenticationRequest, WhirlpoolViridianStub
+from .generated import ControlConnectionRequest, ControlException, ControlExceptionStatus, ControlHealthcheck, WhirlpoolAuthenticationRequest, WhirlpoolViridianStub
 from .tunnel import Tunnel
 from .utils import MAX_TAIL_LENGTH, SYMM_KEY_LENGTH, create_grpc_secure_channel, logger
 from .viridian import Viridian
@@ -27,7 +27,7 @@ _DEFAULT_HEALTHCHECK_MIN_TIME = 1
 _DEFAULT_HEALTHCHECK_MAX_TIME = 5
 
 # Default gRPC maximal request timeout.
-_DEFAULT_CONNECTION_TIMEOUT = 3.0
+_DEFAULT_CONNECTION_TIMEOUT = 3
 
 
 class Coordinator:
@@ -56,27 +56,24 @@ class Coordinator:
             self._address = gethostbyname(addr)
 
         self._viridian: Optional[Viridian] = None
-        self._tunnel = Tunnel(name, IPv4Address(self._address))
+        self._interface = Tunnel(name, IPv4Address(self._address))
 
         self._node_payload = payload
         self._ctrl_port = ctrl_port
         self._user_name = getenv("SEASIDE_USER_NAME", _DEFAULT_USER_NAME)
         self._min_hc_time = int(getenv("SEASIDE_MIN_HC_TIME", _DEFAULT_HEALTHCHECK_MIN_TIME))
         self._max_hc_time = int(getenv("SEASIDE_MAX_HC_TIME", _DEFAULT_HEALTHCHECK_MAX_TIME))
-        self._max_timeout = float(getenv("SEASIDE_CONNECTION_TIMEOUT", _DEFAULT_CONNECTION_TIMEOUT))
+        self._max_timeout = int(getenv("SEASIDE_CONNECTION_TIMEOUT", _DEFAULT_CONNECTION_TIMEOUT))
+
+        self._gate_socket = socket(AF_INET, SOCK_DGRAM)
+        self._gate_socket.bind((self._interface.default_ip, 0))
+        self._gate_socket.setblocking(False)
+
+        self._channel = create_grpc_secure_channel(self._address, self._ctrl_port)
+        self._control = WhirlpoolViridianStub(self._channel)
 
         if self._min_hc_time < 1:
             raise ValueError("Minimal healthcheck time can't be less than 1 second!")
-        if self._max_hc_time < 1:
-            raise ValueError("Maximum healthcheck time can't be less than 1 second!")
-
-        self._gate_socket = socket(AF_INET, SOCK_DGRAM)
-        self._gate_socket.bind((self._tunnel.default_ip, 0))
-        self._gate_socket.setblocking(False)
-
-        authority = getenv("SEASIDE_ROOT_CERTIFICATE_AUTHORITY", None)
-        self._channel = create_grpc_secure_channel(self._address, self._ctrl_port, authority)
-        self._control = WhirlpoolViridianStub(self._channel)
 
         self._user_id: int
         self._session_token: bytes
@@ -96,9 +93,9 @@ class Coordinator:
             await self._receive_token()
             logger.info("Exchanging basic information...")
             await self._initialize_control()
-            if not self._tunnel.operational:
+            if not self._interface.operational:
                 logger.info("Opening the tunnel...")
-                self._tunnel.up()
+                self._interface.up()
             if self._viridian is not None:
                 logger.info("Opening the seaside client...")
                 self._viridian.open()
@@ -116,7 +113,7 @@ class Coordinator:
         logger.info("Initializing connection...")
         await self._initialize_connection()
 
-        while self._tunnel.operational:
+        while self._interface.operational:
             try:
                 logger.info("Starting controller process...")
                 await self._perform_control()
@@ -127,7 +124,7 @@ class Coordinator:
                 await self._initialize_connection()
             except BaseException as exc:
                 logger.debug(f"Interrupting connection to caerulean {self._address}:{self._ctrl_port}...")
-                await self.interrupt()
+                await self.interrupt(str(exc))
                 raise exc
 
     def _grpc_metadata(self) -> Dict[str, Any]:
@@ -135,7 +132,7 @@ class Coordinator:
         Generate gRPC tail metadata.
         It consists of random number of random bytes.
         """
-        tail_metadata = ("seaside-tail-bin", get_random_bytes(randint(1, MAX_TAIL_LENGTH)))
+        tail_metadata = ("tail", get_random_bytes(randint(1, MAX_TAIL_LENGTH)).hex())
         return {"timeout": self._max_timeout, "metadata": (tail_metadata,)}
 
     async def _receive_token(self) -> None:
@@ -153,22 +150,15 @@ class Coordinator:
         self._session_token = response.token
         logger.debug(f"Symmetric session token received: {self._session_token!r}!")
 
-        if response.max_next_in < self._min_hc_time:
-            self._min_hc_time = response.max_next_in
-            logger.debug(f"Minimum healthcheck delay updated to: {self._min_hc_time}!")
-        if response.max_next_in < self._max_hc_time:
-            self._max_hc_time = response.max_next_in
-            logger.debug(f"Maximum healthcheck delay updated to: {self._max_hc_time}!")
-
     async def _initialize_control(self) -> None:
         """
-        Handshake with VPN node and initialize connection control.
+        Connect to VPN node and initialize connection control.
         Initialize "viridian" object.
         Only proceed if valid user ID and successful control response status is received.
         """
-        logger.debug(f"Making handshake caerulean {self._address}:{self._ctrl_port}...")
-        request = ControlHandshakeRequest(self._session_token, VERSION, self._node_payload, inet_aton(self._tunnel.default_ip), self._gate_socket.getsockname()[1])
-        response = await self._control.handshake(request, **self._grpc_metadata())
+        logger.debug(f"Establishing connection to caerulean {self._address}:{self._ctrl_port}...")
+        request = ControlConnectionRequest(self._session_token, VERSION, self._node_payload, inet_aton(self._interface.default_ip), self._gate_socket.getsockname()[1])
+        response = await self._control.connect(request, **self._grpc_metadata())
 
         if response.user_id is None:
             raise RuntimeError("User ID is None in control server response!")
@@ -176,8 +166,8 @@ class Coordinator:
             logger.info(f"User ID assigned: {Fore.BLUE}{response.user_id}{Fore.RESET}")
             self._user_id = response.user_id
 
-        self._viridian = Viridian(self._gate_socket, self._tunnel.descriptor, self._address, self._session_key, self._user_id)
-        logger.info(f"Handshake with caerulean {self._address}:{self._ctrl_port} completed successfully!")
+        self._viridian = Viridian(self._gate_socket, self._interface.descriptor, self._address, self._session_key, self._user_id)
+        logger.info(f"Connected to caerulean {self._address}:{self._ctrl_port} successfully!")
 
     def _clean_tunnel(self) -> None:
         """
@@ -188,9 +178,9 @@ class Coordinator:
         if self._viridian is not None and self._viridian.operational:
             logger.info("Closing the seaside client...")
             self._viridian.close()
-        if self._tunnel.operational:
+        if self._interface.operational:
             logger.info("Closing the tunnel...")
-            self._tunnel.down()
+            self._interface.down()
         logger.info("Closing the seaside socket...")
         self._gate_socket.close()
 
@@ -203,7 +193,7 @@ class Coordinator:
         await self._control.healthcheck(request, **self._grpc_metadata())
         await sleep(next_in)
 
-    async def interrupt(self) -> None:
+    async def interrupt(self, exception: Optional[str] = None) -> None:
         """
         Interrupt VPN connection gracefully.
         Includes not only tunnel closing ("interface", "viridian" and seaside socket), but also sending termination request to caerulean.
@@ -211,10 +201,15 @@ class Coordinator:
         :param exception: optional exception, if not terminating successfully.
         """
         logger.debug(f"Interrupting connection to caerulean {self._address}:{self._ctrl_port}...")
+        request = ControlException(ControlExceptionStatus.TERMINATION, self._user_id, exception)
+
+        logger.info("Interrupting caerulean connection...")
+        await self._control.exception(request, **self._grpc_metadata())
+        logger.info(f"Disconnected from caerulean {self._address}:{self._ctrl_port} successfully!")
 
         self._channel.close()
         self._clean_tunnel()
         logger.warning("Whirlpool connection terminated!")
 
-        self._tunnel.delete()
+        self._interface.delete()
         logger.warning("Local viridian interface removed!!")
