@@ -28,9 +28,10 @@ The basic idea behind every viridian app is the following:
    1. Listen to the tunnel interface, read packets from there, encrypt them and send to caerulean from `seaport`.
    2. Listen to `seaport`, decrypt any packets coming from it and sends them through the tunnel interface.
 7. Sleeps until the connection is interrupted.
-8. When the connection should be terminated, both `viridian` processes are stopped and terminated.
-9. Firewall rules are restored.
-10. Tunnel interface is stopped and deleted.
+8. When the connection should be terminated, `coordinator` sends disconnection request to caerulean.
+9. Both `viridian` processes are stopped and terminated.
+10. Firewall rules are restored.
+11. Tunnel interface is stopped and deleted.
 
 ## Viridian diagram
 
@@ -88,6 +89,11 @@ sequenceDiagram
       W ->> V: [Encrypted VPN packet (response)]
     end
   end
+
+  opt Connection interrupted OR exception happens
+    V ->> W: ControlException
+    W -->> V: [Empty response]
+  end
 ```
 
 In this diagram, a typical VPN connection is shown.
@@ -104,6 +110,9 @@ Healthcheck control messages are sent at random time intervals, losing several h
 At the same time, `seaport` can be used to transmit encrypted packets to `whirlpool`.
 The packets will be decrypted by `whirlpool` and forwarded to destination.
 In case `whirlpool` receives any response, response packets will be encrypted and sent back to `seaport`.
+
+If an exception happens on viridian side or it just wants to disconnect, a special message should be sent to `whirlpool` via `ctrlport`.
+This behavior is advised, but not necessary: after some time of no activity `viridian` will be disconnected automatically.
 
 > **NB!** Although the protocol is stateful, the current state is not necessarily important:
 > if the current state is lost, viridian can safely re-connect to caerulean _any_ time it wants!

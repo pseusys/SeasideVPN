@@ -2,8 +2,6 @@
 
 FROM seaside-whirlpool-default as smoke
 
-WORKDIR /seaside/caerulean
-
 ARG NETWORK_GATEWAY
 ENV ARG_NETWORK_GATEWAY $NETWORK_GATEWAY
 

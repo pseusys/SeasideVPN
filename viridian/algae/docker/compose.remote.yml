@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   algae:
     image: seaside-algae-smoke-remote
@@ -28,6 +30,8 @@ services:
     environment:
       SEASIDE_ADDRESS: 10.0.0.87
       SEASIDE_EXTERNAL: 10.0.0.87
+    volumes:
+      - ./certificates:/seaside/caerulean/certificates
     networks:
       sea-net:
         ipv4_address: 10.0.0.87

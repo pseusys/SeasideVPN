@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   algae:
     image: seaside-algae-smoke-local
@@ -12,7 +14,7 @@ services:
       SEASIDE_ADDRESS: 10.87.65.87
       LOCAL_ADDRESS: 10.65.0.65
       ECHO_ADDRESS: 10.42.0.42
-      SEASIDE_CONNECTION_TIMEOUT: 30.0
+      SEASIDE_CONNECTION_TIMEOUT: 30
     networks:
       sea-cli-int:
         ipv4_address: 10.65.0.65
@@ -35,7 +37,7 @@ services:
         NETWORK_GATEWAY: 10.65.0.100
     environment:
       SEASIDE_ADDRESS: 10.87.65.87
-      SEASIDE_CONNECTION_TIMEOUT: 30.0
+      SEASIDE_CONNECTION_TIMEOUT: 30
     networks:
       - sea-cli-int
     depends_on:
@@ -70,6 +72,8 @@ services:
     environment:
       SEASIDE_ADDRESS: 10.87.65.87
       SEASIDE_EXTERNAL: 10.87.42.87
+    volumes:
+      - ./certificates:/seaside/caerulean/certificates
     networks:
       sea-rout-int:
         ipv4_address: 10.87.65.87
