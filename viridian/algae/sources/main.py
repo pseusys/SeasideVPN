@@ -23,7 +23,6 @@ parser.add_argument("-a", "--address", dest="addr", default=_DEFAULT_ADDRESS, ty
 parser.add_argument("-c", "--ctrl-port", dest="ctrl_port", default=_DEFAULT_CTRL_PORT, type=int, help=f"Caerulean control port number (default: {_DEFAULT_CTRL_PORT})")
 parser.add_argument("-l", "--link", dest="link", default=None, help="Connection link, will be used instead of other arguments if specified")
 parser.add_argument("-v", "--version", action="store_true", default=False, help="Print algae version number and exit")
-parser.add_argument("-e", "--command", dest="command", default=None, help="Execute this command with VPN connected and exit")
 
 # Viridian VPN coordinator.
 coordinator: Coordinator

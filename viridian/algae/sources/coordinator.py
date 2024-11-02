@@ -1,6 +1,4 @@
-from asyncio import CancelledError, Task, create_subprocess_shell, sleep, wait
-from asyncio.subprocess import STDOUT
-from contextlib import suppress
+from asyncio import sleep
 from ipaddress import AddressValueError, IPv4Address
 from os import getenv
 from socket import AF_INET, SOCK_DGRAM, gethostbyname, gethostname, inet_aton, socket
@@ -9,7 +7,6 @@ from typing import Any, Dict, Optional
 from colorama import Fore
 from Crypto.Random import get_random_bytes
 from Crypto.Random.random import randint
-from grpclib.exceptions import GRPCError
 
 from .generated import ControlHandshakeRequest, ControlHealthcheck, WhirlpoolAuthenticationRequest, WhirlpoolViridianStub
 from .tunnel import Tunnel
@@ -52,7 +49,7 @@ class Coordinator:
     They can also be stopped and resumed in runtime.
     """
 
-    def __init__(self, payload: str, addr: str, ctrl_port: int, command: Optional[str]):
+    def __init__(self, payload: str, addr: str, ctrl_port: int):
         """
         Coordinator constructor.
         :param self: instance of Coordinator.
@@ -66,7 +63,6 @@ class Coordinator:
         except AddressValueError:
             self._address = gethostbyname(addr)
 
-        self._command = command
         self._viridian: Optional[Viridian] = None
 
         tunnel_name = getenv("SEASIDE_TUNNEL_NAME", _DEFAULT_TUNNEL_NAME)
@@ -123,32 +119,6 @@ class Coordinator:
             self._clean_tunnel()
             raise
 
-    async def _run_vpn_command(self) -> int:
-        """
-        Run the command asynchronourly.
-        Extracted into a separate command so that it can be run with the VPN loop asynchronously.
-        """
-        proc = await create_subprocess_shell(self._command, stderr=STDOUT, stdout=STDOUT)
-        return proc.returncode
-
-    async def _run_vpn_loop(self) -> None:
-        """
-        Run VPN loop asynchronourly.
-        Extracted into a separate command so that it can be run with the command asynchronously.
-        """
-        while self._tunnel.operational:
-            try:
-                logger.info("Sending healthcheck request...")
-                await self._perform_control()
-            except GRPCError:
-                logger.info("Control error occurs, trying to reconnect!")
-                logger.info("Re-initializing connection...")
-                await self._initialize_connection()
-            except BaseException as exc:
-                logger.debug(f"Interrupting connection to caerulean {self._address}:{self._ctrl_port}...")
-                await self.interrupt()
-                raise exc
-
     async def start(self) -> None:
         """
         Create VPN connection.
@@ -159,27 +129,24 @@ class Coordinator:
         logger.info("Initializing connection...")
         await self._initialize_connection()
 
-        if self._command is not None:
-            vpn_loop = Task(self._run_vpn_loop(), name="vpn_loop")
-            vpn_command = Task(self._run_vpn_loop(), name="vpn_command")
-            done_first, pending = await wait([vpn_loop, vpn_command])
-            for t in done_first:
-                if t.get_name() == "vpn_loop":
-                    if t.cancelled():
-                        print("Command execution was cancelled!")
-                    elif t.exception() is not None:
-                        print("Command execution finished with an exception!")
-                    else:
-                        print(f"Command exited with code: {t.result()}")
-                else:
-                    if t.cancelled():
-                        print("VPN loop execution was cancelled!")
-                    else:
-                        print(f"VPN loop exited with exception: {t.exception()}")
-            for p in pending:
-                p.cancel()
-        else:
-            await self._run_vpn_loop()
+        logger.info("Running VPN loop...")
+        try:
+            if self._viridian is not None and self._viridian.operational:
+                logger.info("Closing the seaside client...")
+                self._viridian.close()
+            logger.info("Receiving user token...")
+            await self._receive_token()
+            logger.info("Exchanging basic information...")
+            await self._initialize_control()
+            if not self._tunnel.operational:
+                logger.info("Opening the tunnel...")
+                self._tunnel.up()
+            if self._viridian is not None:
+                logger.info("Opening the seaside client...")
+                self._viridian.open()
+        except BaseException:
+            self._clean_tunnel()
+            raise
 
     def _grpc_metadata(self) -> Dict[str, Any]:
         """

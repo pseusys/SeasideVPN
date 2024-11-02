@@ -82,7 +82,6 @@ The following CLI arguments are supported:
 - `-l --link`: Connection certificate in link form (will overwrite other parameters specified).
 - `-h --help`: Print short command notice and exit.
 - `-v --version`: Print current algae version and exit.
-- `-e --command`: Establish VPM connection, execute the given command and destroy connection.
 
 It also sensitive to the following environmental variable:
 
