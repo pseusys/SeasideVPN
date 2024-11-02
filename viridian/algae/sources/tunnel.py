@@ -143,7 +143,10 @@ class Tunnel:
         seaside_address = str(seaside_address)
 
         self._tunnel_ip = str(address)
-        self._tunnel_cdr = IPv4Network(f"{address}/{netmask}", strict=False).prefixlen
+        if int(self._tunnel_ip.split(".")[-1]) in (0, 1, 255):
+            raise ValueError(f"Tunnel address can not end with {address[3]}!!")
+
+        self._tunnel_cidr = IPv4Network(f"{address}/{netmask}", strict=False).prefixlen
         self._def_iface, def_iface_name, self._mtu = _get_default_interface(seaside_address)
 
         self._sva_code = sva_code
@@ -223,7 +226,7 @@ class Tunnel:
             logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} is created")
             ip.link("set", index=self._tunnel_dev, mtu=self._mtu)
             logger.info(f"Tunnel MTU set to {Fore.BLUE}{self._mtu}{Fore.RESET}")
-            ip.addr("replace", index=self._tunnel_dev, address=self._tunnel_ip, prefixlen=self._tunnel_cdr)
+            ip.addr("replace", index=self._tunnel_dev, address=self._tunnel_ip, prefixlen=self._tunnel_cidr)
             logger.info(f"Tunnel IP address set to {Fore.BLUE}{self._tunnel_ip}{Fore.RESET}")
             ip.link("set", index=self._tunnel_dev, state="up")
             logger.info(f"Tunnel {Fore.GREEN}enabled{Fore.RESET}")

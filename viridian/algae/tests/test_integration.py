@@ -29,10 +29,9 @@ async def is_tcp_available(address: Optional[str] = None, port: int = 443) -> bo
 @pytest_asyncio.fixture(scope="session", loop_scope="session")
 async def coordinator() -> AsyncGenerator[Coordinator, None]:
     payload = environ["SEASIDE_PAYLOAD_OWNER"]
-    name = getenv("SEASIDE_TUNNEL_NAME", "sea-tun")
     addr = environ["SEASIDE_ADDRESS"]
     ctrl_port = int(getenv("SEASIDE_CTRLPORT", "8587"))
-    yield Coordinator(payload, addr, ctrl_port, name)
+    yield Coordinator(payload, addr, ctrl_port)
 
 
 @pytest.fixture(scope="function")

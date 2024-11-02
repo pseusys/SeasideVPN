@@ -62,7 +62,7 @@ ENTRYPOINT sleep infinity
 FROM default-sleeping AS default
 
 # Run viridian algae in the background.
-ENTRYPOINT python3 -m sources.main $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -c $SEASIDE_CTRLPORT -t $SEASIDE_TUNNEL_NAME
+ENTRYPOINT python3 -m sources.main $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -c $SEASIDE_CTRLPORT
 
 HEALTHCHECK --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s CMD ls /sys/class/net | grep $SEASIDE_TUNNEL_NAME
 
@@ -80,6 +80,6 @@ FROM smoke-sleeping AS smoke
 
 # Setup default route IP and run viridian algae in the background.
 ENTRYPOINT ip route replace default via $ARG_NETWORK_GATEWAY \
-    && python3 -m sources.main $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -c $SEASIDE_CTRLPORT -t $SEASIDE_TUNNEL_NAME
+    && python3 -m sources.main $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -c $SEASIDE_CTRLPORT
 
 HEALTHCHECK --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s CMD ls /sys/class/net | grep $SEASIDE_TUNNEL_NAME
