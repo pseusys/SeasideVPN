@@ -7,6 +7,7 @@ from typing import Any, Dict, Optional
 from colorama import Fore
 from Crypto.Random import get_random_bytes
 from Crypto.Random.random import randint
+from grpclib.exceptions import GRPCError
 
 from .generated import ControlHandshakeRequest, ControlHealthcheck, WhirlpoolAuthenticationRequest, WhirlpoolViridianStub
 from .tunnel import Tunnel
@@ -130,23 +131,18 @@ class Coordinator:
         await self._initialize_connection()
 
         logger.info("Running VPN loop...")
-        try:
-            if self._viridian is not None and self._viridian.operational:
-                logger.info("Closing the seaside client...")
-                self._viridian.close()
-            logger.info("Receiving user token...")
-            await self._receive_token()
-            logger.info("Exchanging basic information...")
-            await self._initialize_control()
-            if not self._tunnel.operational:
-                logger.info("Opening the tunnel...")
-                self._tunnel.up()
-            if self._viridian is not None:
-                logger.info("Opening the seaside client...")
-                self._viridian.open()
-        except BaseException:
-            self._clean_tunnel()
-            raise
+        while self._tunnel.operational:
+            try:
+                logger.info("Sending healthcheck request...")
+                await self._perform_control()
+            except GRPCError:
+                logger.info("Control error occurs, trying to reconnect!")
+                logger.info("Re-initializing connection...")
+                await self._initialize_connection()
+            except BaseException as exc:
+                logger.debug(f"Interrupting connection to caerulean {self._address}:{self._ctrl_port}...")
+                await self.interrupt()
+                raise exc
 
     def _grpc_metadata(self) -> Dict[str, Any]:
         """
