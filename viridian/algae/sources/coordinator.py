@@ -118,9 +118,8 @@ class Coordinator:
 
         while self._tunnel.operational:
             try:
-                logger.info("Starting controller process...")
+                logger.info("Sending healthcheck request...")
                 await self._perform_control()
-                logger.info("Connection established!")
             except GRPCError:
                 logger.info("Control error occurs, trying to reconnect!")
                 logger.info("Re-initializing connection...")
@@ -202,6 +201,7 @@ class Coordinator:
         next_in = randint(self._min_hc_time, self._max_hc_time)
         request = ControlHealthcheck(user_id=self._user_id, next_in=next_in)
         await self._control.healthcheck(request, **self._grpc_metadata())
+        logger.info(f"Healthcheck performed, sleeping for {next_in} seconds!!")
         await sleep(next_in)
 
     async def interrupt(self) -> None:

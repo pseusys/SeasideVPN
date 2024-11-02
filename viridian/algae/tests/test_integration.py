@@ -112,7 +112,7 @@ async def test_healthcheck_overtime(coordinator: Coordinator, tail: Tuple[str, s
     request = ControlHealthcheck(user_id=coordinator._user_id, next_in=coordinator._min_hc_time)
     await coordinator._control.healthcheck(request, timeout=coordinator._max_timeout, metadata=(tail,))
 
-    await sleep(coordinator._min_hc_time * 10)
+    await sleep(coordinator._min_hc_time + 25)
     with pytest.raises(Exception):
         request = ControlHealthcheck(user_id=coordinator._user_id, next_in=coordinator._min_hc_time)
         await coordinator._control.healthcheck(request, timeout=coordinator._max_timeout, metadata=(tail,))

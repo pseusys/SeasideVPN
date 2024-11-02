@@ -196,7 +196,7 @@ func (dict *ViridianDict) Update(userID uint16, nextIn int32) error {
 		dict.Delete(userID, false)
 		return status.Errorf(codes.DeadlineExceeded, "viridian %d subscription outdated", userID)
 	} else {
-		viridian.reset.Reset(time.Duration(nextIn*int32(dict.viridianWaitingOvertime)) * time.Second)
+		viridian.reset.Reset(time.Duration(nextIn+int32(dict.viridianWaitingOvertime)) * time.Second)
 		return nil
 	}
 }

@@ -73,7 +73,7 @@ def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remot
             _print_container_logs(docker, "seaside-echo")
             _print_container_logs(docker, "network-disruptor")
             for i in range(3):
-                _print_container_logs(docker, f"docker-algae-copy-{i}")
+                _print_container_logs(docker, f"algae-copy-{i}")
 
         docker.compose.kill()
         exit_code = 1

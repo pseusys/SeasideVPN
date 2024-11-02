@@ -43,6 +43,7 @@ def create_grpc_secure_channel(host: str, port: int, ca: Optional[Path]) -> Chan
     context = SSLContext(PROTOCOL_TLS_CLIENT)
     if ca is not None:
         context.load_verify_locations(cafile=ca)
+    context.set_alpn_protocols(["h2"])
     return Channel(host, port, ssl=context)
 
 

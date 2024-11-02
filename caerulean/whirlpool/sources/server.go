@@ -123,7 +123,8 @@ func (server *WhirlpoolServer) Authenticate(ctx context.Context, request *genera
 	// Create and marshall response
 	grpc.SetTrailer(ctx, metadata.Pairs("seaside-tail-bin", hex.EncodeToString(utils.GenerateReliableTail())))
 	return &generated.WhirlpoolAuthenticationResponse{
-		Token: tokenData,
+		Token:     tokenData,
+		MaxNextIn: server.maxNextIn,
 	}, nil
 }
 

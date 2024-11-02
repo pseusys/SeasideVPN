@@ -33,7 +33,7 @@ SEASIDE_MAX_VIRIDIANS=10
 # Maximum privileged viridian number
 SEASIDE_MAX_ADMINS=5
 # Maximum additional waiting time for healthcheck message
-SEASIDE_WAITING_OVERTIME=5
+SEASIDE_WAITING_OVERTIME=15
 # Maximum waiting time for the first healthcheck message
 SEASIDE_FIRST_HEALTHCHECK_DELAY=3
 # VPN tunnel interface MTU
