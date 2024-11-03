@@ -36,6 +36,8 @@ SEASIDE_MAX_ADMINS=5
 SEASIDE_WAITING_OVERTIME=15
 # Maximum waiting time for the first healthcheck message
 SEASIDE_FIRST_HEALTHCHECK_DELAY=3
+# Maximum waiting time between helathcheck
+SEASIDE_MAXIMUM_NEXTIN=15
 # VPN tunnel interface MTU
 SEASIDE_TUNNEL_MTU=-1
 # Limit of data transferred through sea port
@@ -157,10 +159,10 @@ function check_installation() {
 # Disable IPv6 router solicitation for new tunnel interface.
 function configure_server() {
     local DEFAULT_IPV6="/proc/sys/net/ipv6/conf/default/accept_ra"
-    [[ $(cat "$DEFAULT_IPV6") != 0 ]] || echo 0 > "$DEFAULT_IPV6"
+    [[ $(cat "$DEFAULT_IPV6") != "0" ]] || echo "0" > "$DEFAULT_IPV6"
 
     local IPV4_FORWARD="/proc/sys/net/ipv4/ip_forward"
-    [[ $(cat "$IPV4_FORWARD") != 1 ]] || echo 1 > "$IPV4_FORWARD"
+    [[ $(cat "$IPV4_FORWARD") != "1" ]] || echo "1" > "$IPV4_FORWARD"
 }
 
 # Regenerate ./conf.env file, write all the environmental variables required for node there.
@@ -176,6 +178,7 @@ function generate_env_file() {
     echo "SEASIDE_MAX_ADMINS=$SEASIDE_MAX_ADMINS" >> conf.env
     echo "SEASIDE_WAITING_OVERTIME=$SEASIDE_WAITING_OVERTIME" >> conf.env
     echo "SEASIDE_FIRST_HEALTHCHECK_DELAY=$SEASIDE_FIRST_HEALTHCHECK_DELAY" >> conf.env
+    echo "SEASIDE_MAXIMUM_NEXTIN=$SEASIDE_MAXIMUM_NEXTIN" >> conf.env
     echo "SEASIDE_TUNNEL_MTU=$SEASIDE_TUNNEL_MTU" >> conf.env
     echo "SEASIDE_VPN_DATA_LIMIT=$SEASIDE_VPN_DATA_LIMIT" >> conf.env
     echo "SEASIDE_CONTROL_PACKET_LIMIT=$SEASIDE_CONTROL_PACKET_LIMIT" >> conf.env
@@ -227,6 +230,7 @@ function help() {
     echo -e "\t${BLUE}-x [SEASIDE_MAX_ADMINS]${RESET}: Maximum amount of privileged veridians of the node."
     echo -e "\t${BLUE}-w [SEASIDE_WAITING_OVERTIME]${RESET}: Maximum additional waiting time for healthcheck message."
     echo -e "\t${BLUE}-f [SEASIDE_FIRST_HEALTHCHECK_DELAY]${RESET}: Maximum waiting time for the first healthcheck message."
+    echo -e "\t${BLUE}-j [SEASIDE_MAXIMUM_NEXTIN]${RESET}: Maximum waiting time between helathchecks."
     echo -e "\t${BLUE}-m [SEASIDE_TUNNEL_MTU]${RESET}: MTU value of the node tunnel."
     echo -e "\t${BLUE}-d [SEASIDE_VPN_DATA_LIMIT]${RESET}: Maximum amount of data transferred through VPN."
     echo -e "\t${BLUE}-p [SEASIDE_CONTROL_PACKET_LIMIT]${RESET}: Maximum amount of control packets."
@@ -260,6 +264,7 @@ do
         x) SEASIDE_MAX_ADMINS=${OPTARG};;
         w) SEASIDE_WAITING_OVERTIME=${OPTARG};;
         f) SEASIDE_FIRST_HEALTHCHECK_DELAY=${OPTARG};;
+        j) SEASIDE_MAXIMUM_NEXTIN=${OPTARG};;
         m) SEASIDE_TUNNEL_MTU=${OPTARG};;
         d) SEASIDE_VPN_DATA_LIMIT=${OPTARG};;
         p) SEASIDE_CONTROL_PACKET_LIMIT=${OPTARG};;
