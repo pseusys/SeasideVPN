@@ -4,14 +4,14 @@ use std::time::Duration;
 use std::fs::read_to_string;
 use std::cmp::min;
 
-use log::{debug, info, warn};
+use log::{debug, info, error, warn};
 use rand::{Rng, RngCore};
 use chacha20poly1305::aead::generic_array::GenericArray;
 use chacha20poly1305::aead::generic_array::typenum::U32;
 use chacha20poly1305::aead::OsRng;
 use chacha20poly1305::{XChaCha20Poly1305, KeyInit};
 use simple_error::{bail, require_with};
-use tokio::net::UdpSocket;
+use tokio::net::{UdpSocket, lookup_host};
 use tokio::process::Command;
 use tokio::select;
 use tokio::signal::unix::{SignalKind, signal};
@@ -126,6 +126,11 @@ impl Coordinator {
 
         debug!("Initiating connection...");
         let user_id = self.initialize_connection().await?;
+
+        debug!("Running DNS probe to check for globally available DNS servers...");
+        if lookup_host("example.com").await.is_err() {
+            error!("WARNING! DNS probe failed! It is very likely that you have local DNS servers configured only!");
+        }
 
         debug!("Running VPN processes asynchronously...");
         select! {
