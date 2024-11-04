@@ -4,16 +4,17 @@ use std::time::Duration;
 use std::fs::read_to_string;
 use std::cmp::min;
 
-use log::{debug, error, info, warn};
+use log::{debug, info, warn};
 use rand::{Rng, RngCore};
 use chacha20poly1305::aead::generic_array::GenericArray;
 use chacha20poly1305::aead::generic_array::typenum::U32;
 use chacha20poly1305::aead::OsRng;
 use chacha20poly1305::{XChaCha20Poly1305, KeyInit};
-use simple_error::bail;
+use simple_error::{bail, require_with};
 use tokio::net::UdpSocket;
 use tokio::process::Command;
 use tokio::select;
+use tokio::signal::unix::{SignalKind, signal};
 use tokio::time::sleep;
 use tonic::metadata::MetadataValue;
 use tonic::transport::{Certificate, Channel, ClientTlsConfig};
@@ -96,14 +97,16 @@ impl Coordinator {
         Ok(user_id)
     }
 
-    async fn run_vpn_command(command: &str) -> DynResult<ExitStatus> {
-        info!("Executing command '{command}'...");
-        let args = command.split_whitespace().collect::<Vec<_>>();
+    async fn run_vpn_command(command: Option<String>) -> DynResult<ExitStatus> {
+        let cmd = require_with!(command, "Command should not be None!");
+        info!("Executing command '{cmd}'...");
+        let args = cmd.split_whitespace().collect::<Vec<_>>();
         let status = Command::new(args[0]).args(&args[1..]).spawn().expect("Command failed to spawn!").wait().await?;
         Ok(status)
     }
 
-    async fn run_vpn_loop(&mut self, mut user_id: u16) -> DynResult<i32> {
+    async fn run_vpn_loop(&mut self, mut user_id: u16) -> DynResult<()> {
+        info!("Starting infinite VPN loop...");
         debug!("Sending healthcheck message...");
         let mut control = self.perform_control(user_id).await;
         loop {
@@ -117,24 +120,25 @@ impl Coordinator {
     }
 
     pub async fn start(&mut self, command: Option<String>) -> DynResult<()> {
+        debug!("Creating signal handlers...");
+        let mut signal_terminate = signal(SignalKind::terminate())?;
+        let mut signal_interrupt = signal(SignalKind::interrupt())?;
+
         debug!("Initiating connection...");
         let user_id = self.initialize_connection().await?;
 
-        if let Some(cmd) = command {
-            info!("Running command and stopping VPN...");
-            select! {
-                res = Self::run_vpn_command(cmd.as_str()) => match res {
-                    Ok(status) => println!("The command exited with: {status}"),
-                    Err(err) =>  println!("The command exited error: {err}")
-                },
-                _ = self.run_vpn_loop(user_id) => {
-                    error!("VPN loop finished unexpectedly before the command exited!");
-                }
-            };
-        } else {
-            info!("Starting infinite VPN loop...");
-            self.run_vpn_loop(user_id).await?;
-        }
+        debug!("Running VPN processes asynchronously...");
+        select! {
+            res = Self::run_vpn_command(command), if command.is_some() => match res {
+                Ok(status) => println!("The command exited with: {status}"),
+                Err(err) => return Err(err)
+            },
+            err = self.run_vpn_loop(user_id) => {
+                return Ok(err?)
+            },
+            _ = signal_terminate.recv() => info!("Received SIGTERM, terminating gracefully..."),
+            _ = signal_interrupt.recv() => info!("Received SIGINT, terminating gracefully..."),
+        };
 
         Ok(())
     }

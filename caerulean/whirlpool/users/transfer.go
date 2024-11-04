@@ -92,7 +92,7 @@ func (dict *ViridianDict) ReceivePacketsFromViridian(ctx context.Context, userID
 		}
 
 		// Serialize the packet
-		err = gopacket.SerializePacket(serialBuffer, gopacket.SerializeOptions{ComputeChecksums: true}, packet)
+		err = gopacket.SerializePacket(serialBuffer, gopacket.SerializeOptions{FixLengths: true, ComputeChecksums: true}, packet)
 		if err != nil {
 			logrus.Errorf("Error serializing packet: %v", err)
 			continue
@@ -174,7 +174,7 @@ func (dict *ViridianDict) SendPacketsToViridians(ctx context.Context, tunnel *wa
 		}
 
 		// Serialize the packet
-		err = gopacket.SerializePacket(serialBuffer, gopacket.SerializeOptions{ComputeChecksums: true}, packet)
+		err = gopacket.SerializePacket(serialBuffer, gopacket.SerializeOptions{FixLengths: true, ComputeChecksums: true}, packet)
 		if err != nil {
 			logrus.Errorf("Error serializing packet: %v", err)
 			continue
