@@ -71,7 +71,7 @@ def clean() -> None:
     unique_containers: List[Union[str, Container]] = ["seaside-algae", "seaside-whirlpool", "seaside-echo", "seaside-internal-router", "seaside-external-router", "network-disruptor"]
     copy_containers: List[Union[str, Container]] = [f"docker-algae-copy-{n + 1}" for n in range(3)]
     docker.container.remove(unique_containers + copy_containers, True, True)
-    algae_images: List[ValidImage] = [f"seaside-algae-{mode}" for mode in ("default", "smoke", "smoke-sleeping", "default-sleeping", "smoke-local", "smoke-remote")]
+    algae_images: List[ValidImage] = [f"seaside-algae-{mode}" for mode in ("default", "smoke", "smoke-sleeping", "default-sleeping", "smoke-local", "smoke-remote", "smoke-domain")]
     whirlpool_images: List[ValidImage] = [f"seaside-whirlpool-{mode}" for mode in ("default", "smoke", "integration", "smoke-local", "smoke-remote")]
     docker.image.remove(["seaside-echo-smoke", "seaside-router-smoke", "seaside-router-smoke-sleeping", "seaside-echo-default", "seaside-echo"] + algae_images + whirlpool_images, True, True)
     docker_network = [f"docker_{net}" for net in ("sea-client", "sea-router", "sea-server", "sea-cli-int", "sea-rout-int", "sea-rout-ext", "sea-serv-ext")]
@@ -92,6 +92,7 @@ def help() -> None:
     print(f"\t{Fore.BLUE}poetry run test-smoke{Fore.RESET}: run seaside smoke tests in a Docker container.")
     print(f"\t{Fore.BLUE}poetry run test-local{Fore.RESET}: run seaside local smoke tests in a Docker container (without access to internet).")
     print(f"\t{Fore.BLUE}poetry run test-remote{Fore.RESET}: run seaside remote smoke tests in a Docker container.")
+    print(f"\t{Fore.BLUE}poetry run test-domain{Fore.RESET}: run seaside domain smoke tests in a Docker container.")
     print(f"\t{Fore.BLUE}poetry run test-all{Fore.RESET}: run all possible tests in a Docker container.")
     print(f"\t{Fore.BLUE}poetry run compile{Fore.RESET}: compile algae Python source code to an executable (using pyinstaller library).")
     print(f"\t{Fore.BLUE}poetry run execute [ARGS...]{Fore.RESET}: execute algae Python sources locally (ARGS will be passed to the executable).")

@@ -1,7 +1,9 @@
-from asyncio import sleep
+from asyncio import FIRST_COMPLETED, CancelledError, create_subprocess_shell, create_task, sleep, wait
+from contextlib import suppress
 from ipaddress import AddressValueError, IPv4Address
 from os import getenv
-from socket import AF_INET, SOCK_DGRAM, gethostbyname, gethostname, inet_aton, socket
+from socket import AF_INET, SOCK_DGRAM, gaierror, gethostbyname, gethostname, inet_aton, socket
+from subprocess import PIPE
 from typing import Any, Dict, Optional
 
 from colorama import Fore
@@ -120,16 +122,7 @@ class Coordinator:
             self._clean_tunnel()
             raise
 
-    async def start(self) -> None:
-        """
-        Create VPN connection.
-        Receive viridian connection token, initialize and manage control.
-        Upon receiving an error message, client is re-initialized, token is received once again and control is re-initialized.
-        NB! This method is blocking, should be run while VPN is active.
-        """
-        logger.info("Initializing connection...")
-        await self._initialize_connection()
-
+    async def _run_vpn_loop(self) -> None:
         logger.info("Running VPN loop...")
         while self._tunnel.operational:
             try:
@@ -143,6 +136,42 @@ class Coordinator:
                 logger.debug(f"Interrupting connection to caerulean {self._address}:{self._ctrl_port}...")
                 await self.interrupt()
                 raise exc
+
+    async def _run_vpn_command(self, cmd: str) -> None:
+        proc = await create_subprocess_shell(cmd, stdout=PIPE, stderr=PIPE)
+        stdout, stderr = await proc.communicate()
+        print(f"The command exited with: {proc.returncode}")
+        if len(stdout) > 0:
+            print(f"STDOUT: {stdout.decode()}")
+        if len(stderr) > 0:
+            print(f"STDERR: {stderr.decode()}")
+
+    async def start(self, cmd: Optional[str]) -> None:
+        """
+        Create VPN connection.
+        Receive viridian connection token, initialize and manage control.
+        Upon receiving an error message, client is re-initialized, token is received once again and control is re-initialized.
+        NB! This method is blocking, should be run while VPN is active.
+        """
+        logger.info("Initializing connection...")
+        await self._initialize_connection()
+
+        try:
+            gethostbyname("example.com")
+        except gaierror:
+            logger.warning("WARNING! DNS probe failed! It is very likely that you have local DNS servers configured only!")
+
+        task_set = set()
+        task_set.add(create_task(self._run_vpn_loop()))
+        if cmd is not None:
+            task_set.add(create_task(self._run_vpn_command(cmd)))
+
+        _, pending = await wait(task_set, return_when=FIRST_COMPLETED)
+        for p in pending:
+            p.cancel()
+            with suppress(CancelledError):
+                await p
+
 
     def _grpc_metadata(self) -> Dict[str, Any]:
         """

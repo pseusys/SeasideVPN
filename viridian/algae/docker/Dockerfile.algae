@@ -36,7 +36,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install testing dependencies.
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential iptables iproute2 iputils-ping python3-pip && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential iptables iproute2 iputils-ping dnsutils python3-pip && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /seaside/algae/requirements.txt ./
 RUN pip install --upgrade --no-cache-dir pip -r requirements.txt
 
@@ -83,3 +83,14 @@ ENTRYPOINT ip route replace default via $ARG_NETWORK_GATEWAY \
     && python3 -m sources.main $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -c $SEASIDE_CTRLPORT
 
 HEALTHCHECK --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s CMD ls /sys/class/net | grep $SEASIDE_TUNNEL_NAME
+
+
+
+FROM smoke AS commanded
+
+ARG COMMAND
+ENV COMMAND=$COMMAND
+
+# Setup default route IP and run viridian algae in the background.
+ENTRYPOINT ip route replace default via $ARG_NETWORK_GATEWAY \
+    && python3 -m sources.main $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -c $SEASIDE_CTRLPORT -e "$COMMAND"

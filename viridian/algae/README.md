@@ -137,5 +137,6 @@ Four test sets are included:
 2. `integration`: Integration tests for communication between `algae` viridian and `whirlpool` caerulean.
 3. `local`: Smoke test for UDP server access in a chaotic network.
 4. `remote`: Smoke test for real-world website access.
-5. `smoke`: Both `local` and `remote` test sets.
-6. `all`: All the tests specified.
+5. `domain`: Smoke test for DNS website resolving.
+6. `smoke`: All of the `local`, `remote` and `domain` test sets.
+7. `all`: All the tests specified.

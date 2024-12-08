@@ -11,6 +11,8 @@ from python_on_whales import DockerClient, DockerException
 from scripts.misc import docker_test
 from yaml import safe_load
 
+Profile = Union[Literal["local"], Literal["remote"], Literal["domain"], Literal["integration"], Literal["unit"]]
+
 # Default logger instance.
 logger = getLogger(__name__)
 
@@ -29,12 +31,12 @@ def _print_container_logs(docker: DockerClient, container: str, last: int = 100)
         logger.error(f"{Style.BRIGHT}{Fore.RED}No container {container} found!{Style.RESET_ALL}")
 
 
-def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remote"], Literal["integration"], Literal["unit"]], hosted: bool) -> int:
+def _test_set(docker_path: Path, profile: Profile, hosted: bool, test_detached: bool = True) -> int:
     """
     Launch specified compose file and launch speceified test set inside of it.
     Print test output and any errors that happened.
     :param docker_path: path to "algae/docker" directory, containing all dockerfiles and compose files.
-    :param profile: name of the testing profile, one of "local", "remote", "integration", "unit".
+    :param profile: name of the testing profile, one of "local", "remote", "domain", "integration", "unit".
     :param hosted: flag, whether the current test set is being run in CI (disables verbose output).
     :return: integer return code, 0 if tests succeeded.
     """
@@ -51,15 +53,15 @@ def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remot
         check_call(["bash", whirlpool_script, "-z", "-a", whirlpool_ip], stdout=DEVNULL, stderr=DEVNULL, cwd=docker_path.parent)
         logger.debug("Self-signed certificates generated!")
 
-
     try:
         logger.debug("Running tests...")
-        docker.compose.up(wait=True, build=True, detach=True, quiet=hosted)
+        docker.compose.up(build=True, wait=test_detached, detach=test_detached, abort_on_container_exit=not test_detached, quiet=hosted)
 
-        test_command = ["pytest", f"--log-cli-level={'ERROR' if hosted else 'DEBUG'}", "-k", f"test_{profile}"]
-        docker.compose.execute("algae", test_command, envs=dict() if not hosted else {"CI": environ["CI"]})
+        if test_detached:
+            test_command = ["pytest", f"--log-cli-level={'ERROR' if hosted else 'DEBUG'}", "-k", f"test_{profile}"]
+            docker.compose.execute("algae", test_command, envs=dict() if not hosted else {"CI": environ["CI"]})
+            docker.compose.kill(signal="SIGINT")
 
-        docker.compose.kill(signal="SIGINT")
         logger.warning(f"{Style.BRIGHT}Testing {profile}: {Fore.GREEN}success{Fore.RESET}!{Style.RESET_ALL}")
         exit_code = 0
 
@@ -136,16 +138,27 @@ def test_remote() -> int:
         return _test_set(docker_path, "remote", hosted)
 
 
+def test_domain() -> int:
+    """
+    Run domain smoke tests: domain name of a webserver is being reslved after connection.
+    DNS protocol is used used.
+    :return: integer return code.
+    """
+    just_fix_windows_console()
+    with docker_test() as (docker_path, hosted):
+        return _test_set(docker_path, "domain", hosted, False)
+
+
 def test_smoke() -> int:
     """
-    Run smoke tests: run both "local" and "remote" smoke tests (specified above).
+    Run smoke tests: run both "local", "remote" and "domain" smoke tests (specified above).
     :return: integer return code.
     """
     just_fix_windows_console()
     with docker_test() as (docker_path, hosted):
         result = 0
-        for test_set in ("local", "remote"):
-            result = result or _test_set(docker_path, test_set, hosted)  # type: ignore[arg-type]
+        for test_set in ("local", "remote", "domain"):
+            result = result or _test_set(docker_path, test_set, hosted, test_set != "domain")  # type: ignore[arg-type]
         return result
 
 
@@ -158,5 +171,5 @@ def test_all() -> int:
     with docker_test() as (docker_path, hosted):
         result = 0
         for test_set in ("unit", "integration", "local", "remote"):
-            result = result or _test_set(docker_path, test_set, hosted)  # type: ignore[arg-type]
+            result = result or _test_set(docker_path, test_set, hosted, test_set != "domain")  # type: ignore[arg-type]
         return result

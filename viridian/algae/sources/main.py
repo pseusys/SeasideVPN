@@ -23,6 +23,7 @@ parser.add_argument("-a", "--address", dest="addr", default=_DEFAULT_ADDRESS, ty
 parser.add_argument("-c", "--ctrl-port", dest="ctrl_port", default=_DEFAULT_CTRL_PORT, type=int, help=f"Caerulean control port number (default: {_DEFAULT_CTRL_PORT})")
 parser.add_argument("-l", "--link", dest="link", default=None, help="Connection link, will be used instead of other arguments if specified")
 parser.add_argument("-v", "--version", action="store_true", default=False, help="Print algae version number and exit")
+parser.add_argument("-e", "--command", dest="cmd", default=None, help="Command to execute and exit (will run forever if not specified)")
 
 # Viridian VPN coordinator.
 coordinator: Coordinator
@@ -46,6 +47,7 @@ async def main(args: Sequence[str] = argv[1:]) -> None:
     if connection_link is not None:
         arguments.update(parse_connection_link(connection_link))
 
+    command = arguments.pop("cmd")
     logger.debug(f"Initializing coordinator with parameters: {arguments}")
     coordinator = Coordinator(**arguments)
 
@@ -54,7 +56,7 @@ async def main(args: Sequence[str] = argv[1:]) -> None:
     loop.add_signal_handler(SIGINT, lambda: create_task(finish()))
 
     logger.warning("Starting algae client coordinator...")
-    await coordinator.start()
+    await coordinator.start(command)
 
 
 async def finish() -> None:
@@ -64,7 +66,7 @@ async def finish() -> None:
     """
     global coordinator
     await coordinator.interrupt()
-    exit(0)
+    exit(1)
 
 
 if __name__ == "__main__":
