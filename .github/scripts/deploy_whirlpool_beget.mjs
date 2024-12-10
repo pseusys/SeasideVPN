@@ -85,7 +85,7 @@ async function sleep(seconds) {
  * @returns {any | null} promise result if promise executed successfully, null otherwise
  */
 async function getPromiseResultOrNull(promise) {
-	return promise.then(res => { return res; }).catch(_ => { return null; });
+	return promise.then((res) => res).catch((_) => null);
 }
 
 /**
@@ -113,7 +113,7 @@ function printHelpMessage() {
 function ensureInstallationScript() {
 	if (!existsSync(INSTALL_SCRIPT)) {
 		console.log("Installation script not found, generating...");
-		execSync("python3 -m zipapp setup -c -o install.pyz -m main:main", {"cwd": dirname(INSTALL_SCRIPT)});
+		execSync("python3 -m zipapp setup -c -o install.pyz -m main:main", { cwd: dirname(INSTALL_SCRIPT) });
 	} else console.log("Installation script found!");
 }
 

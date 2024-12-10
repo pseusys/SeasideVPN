@@ -23,7 +23,7 @@ jobs:
         run: make lint-scripts
 
   misc-scripts-lint:
-    name: Lint Shell Scripts Everywhere
+    name: Lint Misc Scripts Everywhere
     runs-on: ubuntu-latest
 
     steps:

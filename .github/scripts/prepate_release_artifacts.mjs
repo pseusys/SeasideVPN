@@ -41,10 +41,10 @@ function parseArguments() {
  * @returns {string} current branch name
  */
 function getVersionValue() {
-    const gitBranch = execSync("git rev-parse --abbrev-ref HEAD").toString().trim();
-    const cleanVersion = gitBranch.replaceAll("/", "-");
-    console.log(`Current version: ${cleanVersion}`);
-    return cleanVersion;
+	const gitBranch = execSync("git rev-parse --abbrev-ref HEAD").toString().trim();
+	const cleanVersion = gitBranch.replaceAll("/", "-");
+	console.log(`Current version: ${cleanVersion}`);
+	return cleanVersion;
 }
 
 /**
@@ -53,11 +53,11 @@ function getVersionValue() {
  * @param {string} version Git version to remove
  */
 function renameFileGlob(glob, version) {
-    for (const file of globSync(glob)) {
-        const newName = file.replaceAll(`-${version}`, "");
-        console.log(`Renaming '${file}' to '${newName}'...`);
-        renameSync(file, newName);
-    }
+	for (const file of globSync(glob)) {
+		const newName = file.replaceAll(`-${version}`, "");
+		console.log(`Renaming '${file}' to '${newName}'...`);
+		renameSync(file, newName);
+	}
 }
 
 // Script body:
@@ -65,5 +65,4 @@ function renameFileGlob(glob, version) {
 const positionals = parseArguments();
 const version = getVersionValue();
 
-for (const glob of positionals)
-    renameFileGlob(glob, version, verbos);
+for (const glob of positionals) renameFileGlob(glob, version, verbos);

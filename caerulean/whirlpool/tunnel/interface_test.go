@@ -18,7 +18,9 @@ func TestOpenInterfaceCycle(test *testing.T) {
 		test.Fatalf("error parsing tunnel network address (%s): %v", tunIP, err)
 	}
 
-	tun, err := water.New(water.Config{DeviceType: water.TUN})
+	config := water.Config{DeviceType: water.TUN}
+	config.Name = OPEN_INTERFACE_CYCLE_NAME
+	tun, err := water.New(config)
 	if err != nil {
 		test.Fatalf("error allocating TUN interface: %v", err)
 	}
