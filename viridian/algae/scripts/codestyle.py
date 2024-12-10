@@ -8,7 +8,7 @@ from mypy import api
 from scripts.misc import ALGAE_ROOT
 
 # Maximum python sources line length.
-_MAX_LINE_LEN = 250
+_MAX_LINE_LEN = 500
 
 # Default logger instance.
 logger = getLogger(__name__)

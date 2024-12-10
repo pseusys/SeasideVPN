@@ -8,12 +8,11 @@ from random import randint
 from socket import gethostbyname, gethostname
 from typing import Callable, Union
 
-
 DEFAULT_GENERATED_VALUE = str()
 
 
 def payload_value(default_length: int) -> Callable[[str], bytes]:
-    def internal(value: str) -> bytes:
+    def internal(value: str) -> str:
         return b64encode(urandom(default_length)).decode("ASCII").strip("=") if len(value) == 0 else value
     return internal
 
@@ -37,6 +36,7 @@ def port_number(minval: int, maxval: int) -> Callable[[str], int]:
 
 def logging_level(defult: str, convert: bool) -> Callable[[str], Union[int, str]]:
     mapping = _nameToLevel.copy()
+
     def inner(value: str) -> int:
         uppercase_value = value.upper()
         if convert:

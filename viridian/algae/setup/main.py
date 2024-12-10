@@ -6,8 +6,8 @@ from sys import argv
 from typing import Sequence
 
 from base import Installer
-from default import DEFAULT_GENERATED_VALUE, DefaultOptionalAction, local_ip, logging_level
 from certificates import check_certificates, generate_certificates
+from default import DEFAULT_GENERATED_VALUE, DefaultOptionalAction, local_ip, logging_level
 from utils import get_logger, is_64_bit, is_admin, is_linux
 from whirlpool import WhirlpoolInstaller
 
@@ -30,7 +30,7 @@ parser.add_argument("-g", "--certificates", action="store_true", default=_DEFAUL
 parser.add_argument("-o", "--override-env-file", action="store_true", default=_DEFAULT_OVERRIDE_ENV, help=f"Override existing environment file (if it exists, default: {_DEFAULT_OVERRIDE_ENV})")
 parser.add_argument("-a", "--run-after-config", choices=(_RAC_NO, _RAC_BACK, _RAC_RUN), default=_DEFAULT_RUN_AFTER_CONFIG, help=f"Run caerulean after configuration is done ('{_RAC_NO}' for don't run, '{_RAC_BACK}' for running in the background, '{_RAC_RUN}' for running in foreground, default: {_DEFAULT_RUN_AFTER_CONFIG})")
 parser.add_argument("-v", "--verbose", type=_logging_type, default=DEFAULT_GENERATED_VALUE, help=f"Logging level for installation process (default: {_DEFAULT_LOG_LEVEL})")
-parser.add_argument("--just-certs", type=local_ip(False), action=DefaultOptionalAction, help=f"Generate self-signed certificates for the given IP or host and exit (even if they already exist, default: not present)")
+parser.add_argument("--just-certs", type=local_ip(False), action=DefaultOptionalAction, help="Generate self-signed certificates for the given IP or host and exit (even if they already exist, default: not present)")
 subparsers = parser.add_subparsers(title="Caeruleans", description="Install and configure different caeruleans", help="Caerulean name to install")
 WhirlpoolInstaller.create_parser(subparsers)
 
@@ -59,7 +59,7 @@ def main(args: Sequence[str] = argv[1:]) -> None:
         logger.error("No caerulean selected for installation!")
         exit(1)
 
-    installer: Installer  = installer_class(logger, namespace)
+    installer: Installer = installer_class(logger, namespace)
     logger.info(f"Running using selected caerulean installer: {type(installer).__name__}")
 
     if not installer.verify():
@@ -70,7 +70,7 @@ def main(args: Sequence[str] = argv[1:]) -> None:
         logger.info(f"Overriding environment file {str(_ENVIRONMENT_PATH)}...")
         _ENVIRONMENT_PATH.write_text("\n".join(f"{k}={v}" for k, v in installer.create_environment().items()))
         logger.info("Environment file ready!")
-    
+
     if namespace["certificates"]:
         logger.info("Refreshing certificates if they are not present...")
         installer.refresh_certificates()

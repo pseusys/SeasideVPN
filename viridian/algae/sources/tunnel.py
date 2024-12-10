@@ -143,8 +143,9 @@ class Tunnel:
         seaside_address = str(seaside_address)
 
         self._tunnel_ip = str(address)
-        if int(self._tunnel_ip.split(".")[-1]) in (0, 1, 255):
-            raise ValueError(f"Tunnel address can not end with {address[3]}!!")
+        tunnel_ip_tail = int(self._tunnel_ip.split(".")[-1])
+        if tunnel_ip_tail in (0, 1, 255):
+            raise ValueError(f"Tunnel address can not end with {tunnel_ip_tail}!!")
 
         self._tunnel_cidr = IPv4Network(f"{address}/{netmask}", strict=False).prefixlen
         self._def_iface, def_iface_name, self._mtu = _get_default_interface(seaside_address)

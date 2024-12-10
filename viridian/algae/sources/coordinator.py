@@ -172,7 +172,6 @@ class Coordinator:
             with suppress(CancelledError):
                 await p
 
-
     def _grpc_metadata(self) -> Dict[str, Any]:
         """
         Generate gRPC tail metadata.
@@ -202,7 +201,6 @@ class Coordinator:
         if response.max_next_in < self._max_hc_time:
             self._max_hc_time = response.max_next_in
             logger.debug(f"Maximum healthcheck delay updated to: {self._max_hc_time}!")
-
 
     async def _initialize_control(self) -> None:
         """

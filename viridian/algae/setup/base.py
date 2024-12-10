@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from argparse import _SubParsersAction, ArgumentParser
+from argparse import ArgumentParser, _SubParsersAction
 from logging import Logger
 from typing import Any, Dict
 
@@ -32,7 +32,7 @@ class Installer(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def install(self, hide: bool) -> None:
+    def install(self) -> None:
         raise NotImplementedError
 
     @abstractmethod

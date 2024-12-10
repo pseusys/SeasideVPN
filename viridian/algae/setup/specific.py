@@ -9,7 +9,7 @@ _OS_RELEASE_FILE = Path("/etc/os-release")
 
 
 def _get_distro() -> str:
-    os_id, os_like = None, None
+    os_id, os_like = str(), str()
     for line in _OS_RELEASE_FILE.read_text().split("\n"):
         if line.startswith("ID="):
             os_id = line.split("=")[-1].strip("\" '")

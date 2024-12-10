@@ -1,6 +1,6 @@
 from logging import Logger, StreamHandler, getLogger
 from os import getuid
-from platform import system, machine
+from platform import machine, system
 
 BOLD = "\033[1m"
 UNDER = "\033[4m"

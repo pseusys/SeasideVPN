@@ -6,8 +6,8 @@ from typing import AsyncGenerator, Generator, Optional, Tuple
 
 import pytest
 import pytest_asyncio
-from Crypto.Random.random import randint
 from Crypto.Random import get_random_bytes
+from Crypto.Random.random import randint
 
 from ..sources.coordinator import Coordinator
 from ..sources.generated import ControlHealthcheck

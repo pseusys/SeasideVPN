@@ -1,4 +1,4 @@
-from argparse import _SubParsersAction, ArgumentParser
+from argparse import ArgumentParser, _SubParsersAction
 from os import environ
 from pathlib import Path
 from shutil import copy, move, rmtree
@@ -9,8 +9,8 @@ from urllib.request import urlretrieve
 from zipfile import ZipFile
 
 from base import Installer
-from default import DEFAULT_GENERATED_VALUE, local_ip, logging_level, payload_value, port_number
 from certificates import GENERATE_CERTIFICATES_PATH, generate_certificates
+from default import DEFAULT_GENERATED_VALUE, local_ip, logging_level, payload_value, port_number
 from specific import check_install_packages, check_package
 from utils import BLUE, BOLD, GREEN, RED, RESET, UNDER, YELLOW, get_arch
 
@@ -101,7 +101,7 @@ class WhirlpoolInstaller(Installer):
             raise RuntimeError(f"Unknown distribution type: {self._args['distribution_type']}")
 
     def verify(self) -> bool:
-        if self._args["distribution_type"] == _DT_DOCKER and not check_package("docker"):
+        if self._args["distribution_type"] == _DT_DOCKER and not check_package(self._logger, "docker"):
             self._logger.error("Docker not found, can not run in docker!")
             return False
         return True
@@ -224,9 +224,9 @@ class WhirlpoolInstaller(Installer):
         self._logger.debug("Cloning SeasideVPN repository...")
         check_call(f"git clone -n --branch {self._args['source_tag']} --depth=1 --filter=tree:0 {_SEASIDE_REPO}", stdout=DEVNULL, stderr=DEVNULL, shell=True)
         self._logger.debug("Performing a sparse checkout...")
-        check_call(f"git sparse-checkout set --no-cone caerulean/whirlpool vessels && git checkout", cwd=seapath, stdout=DEVNULL, stderr=DEVNULL, shell=True)
+        check_call("git sparse-checkout set --no-cone caerulean/whirlpool vessels && git checkout", cwd=seapath, stdout=DEVNULL, stderr=DEVNULL, shell=True)
         self._logger.debug("Building whirlpool...")
-        check_call(f"make build", cwd=seapath / "caerulean" / "whirlpool", env=go_env, stdout=DEVNULL, stderr=DEVNULL, shell=True)
+        check_call("make build", cwd=seapath / "caerulean" / "whirlpool", env=go_env, stdout=DEVNULL, stderr=DEVNULL, shell=True)
         self._logger.debug("Moving executable...")
         move(seapath / "caerulean" / "whirlpool" / "build" / "whirlpool.run", "whirlpool.run")
         self._logger.debug("Deleting build files...")

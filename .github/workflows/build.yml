@@ -44,7 +44,7 @@ jobs:
           BRANCH_NAME="${{ env.BRANCH_NAME }}"
           BRANCH_NAME=${BRANCH_NAME////-}
           echo BRANCH=${BRANCH_NAME} >> $GITHUB_ENV
-          echo ARCH=${uname -m} >> $GITHUB_ENV
+          echo ARCH=`uname -m` >> $GITHUB_ENV
 
       - name: Build Algae Executable 🏗️
         env:

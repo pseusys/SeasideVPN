@@ -3,7 +3,7 @@ from logging import StreamHandler, getLogger
 from os import getenv, read, write
 from pathlib import Path
 from socket import socket
-from ssl import PROTOCOL_TLS_CLIENT, SSLContext, get_server_certificate
+from ssl import PROTOCOL_TLS_CLIENT, SSLContext
 from sys import stdout
 from typing import Any, Callable, Dict, Optional, Tuple
 from urllib.parse import urlparse

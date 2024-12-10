@@ -45,7 +45,7 @@ func TestOpenInterfaceCycle(test *testing.T) {
 
 	expectedName := OPEN_INTERFACE_CYCLE_NAME
 	if tunnelOpenedIface.Name != expectedName {
-		test.Fatalf("tunnel interface setup incorrectly: %d != %d", expectedName, tunnelOpenedIface.Name)
+		test.Fatalf("tunnel interface setup incorrectly: %s != %s", expectedName, tunnelOpenedIface.Name)
 	}
 
 	test.Logf("tunnel interface flags set: %s", tunnelOpenedIface.Flags.String())

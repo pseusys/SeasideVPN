@@ -7,12 +7,10 @@ from shutil import rmtree
 from subprocess import DEVNULL, check_call
 from typing import Union
 
-
 _GENERATE_CERTIFICATES_ALGORITHM = "rsa:2048"
 _GENERATE_CERTIFICATES_SUBJECT = "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPN"
 _GENERATE_CERTIFICATES_VALIDITY = 365250
 GENERATE_CERTIFICATES_PATH = Path(getcwd()) / "certificates"
-
 
 
 def check_certificates(cert_path: Path = GENERATE_CERTIFICATES_PATH) -> bool:
