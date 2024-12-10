@@ -161,7 +161,7 @@ class WhirlpoolInstaller(Installer):
             arch.extractall(_GO_ROOT.parent)
         go_path = _GO_ROOT / "bin"
         with open(_SHELL_LOGIN, "a+") as file:
-            file.write(f"export PATH=$PATH:{str(go_path)}")
+            file.write(f"export PATH={str(go_path)}:$PATH")
         check_call(f"chmod +x {str(go_path / 'go')}", stdout=DEVNULL, stderr=DEVNULL, shell=True)
         return go_path
 
@@ -176,7 +176,7 @@ class WhirlpoolInstaller(Installer):
             arch.extractall(_PROTOC_ROOT)
         protoc_path = _PROTOC_ROOT / "bin"
         with open(_SHELL_LOGIN, "a+") as file:
-            file.write(f"export PATH=$PATH:{str(protoc_path)}")
+            file.write(f"export PATH={str(protoc_path)}:$PATH")
         check_call(f"chmod +x {str(protoc_path / 'protoc')}", stdout=DEVNULL, stderr=DEVNULL, shell=True)
         return protoc_path
 
@@ -193,14 +193,14 @@ class WhirlpoolInstaller(Installer):
 
     def _prepare_environment(self) -> Tuple[Path, Path]:
         """Prepare environment for building whirlpool executable: install GO and PROTOC (and also some GO packages)."""
-        if not check_package(self._logger, "go"):
+        if not check_package(self._logger, "go", _GO_VERSION, "version"):
             self._logger.info("Installing GO...")
             go_path = self._install_go()
             self._logger.info(f"GO installed to {go_path}!")
         else:
             self._logger.info("Global GO found!")
             go_path = None
-        if not check_package(self._logger, "protoc"):
+        if not check_package(self._logger, "protoc", _PROTOC_VERSION):
             self._logger.info("Installing PROTOC...")
             protoc_path = self._install_protoc()
             self._logger.info(f"PROTOC installed to {protoc_path}!")
@@ -219,7 +219,7 @@ class WhirlpoolInstaller(Installer):
         check_install_packages(self._logger, "git", "make")
         seapath = Path("SeasideVPN")
         go_env = environ.copy()
-        go_env["PATH"] = ":".join([environ["PATH"], *paths])
+        go_env["PATH"] = ":".join([*paths, environ["PATH"]])
         self._logger.debug(f"PATH prepared for caerulean building: {go_env['PATH']}")
         self._logger.debug("Cloning SeasideVPN repository...")
         check_call(f"git clone -n --branch {self._args['source_tag']} --depth=1 --filter=tree:0 {_SEASIDE_REPO}", stdout=DEVNULL, stderr=DEVNULL, shell=True)
@@ -238,11 +238,11 @@ class WhirlpoolInstaller(Installer):
 
     def _download_binary(self) -> None:
         arch = "arm64" if get_arch() == "arm" else "amd64"
-        if self._args["binary_name"] == "latest":
+        if self._args["binary_name"] == _DEFAULT_BINARY_NAME:
             binary_url = f"{_SEASIDE_REPO}/releases/latest/download/caerulean-whirlpool-executable-{arch}.run"
         else:
             binary_url = f"{_SEASIDE_REPO}/releases/download/{self._args['binary_name']}/caerulean-whirlpool-executable-{arch}.run"
-        self._logger.debug(f"Downloading whirlpool binary from {binary_url}...")
+        self._logger.info(f"Downloading whirlpool binary from {binary_url}...")  # TODO: debug
         urlretrieve(binary_url, "whirlpool.run")
         self._logger.debug("Release downloading completed!")
 
