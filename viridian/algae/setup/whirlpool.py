@@ -242,7 +242,7 @@ class WhirlpoolInstaller(Installer):
             binary_url = f"{_SEASIDE_REPO}/releases/latest/download/caerulean-whirlpool-executable-{arch}.run"
         else:
             binary_url = f"{_SEASIDE_REPO}/releases/download/{self._args['binary_name']}/caerulean-whirlpool-executable-{arch}.run"
-        self._logger.info(f"Downloading whirlpool binary from {binary_url}...")  # TODO: debug
+        self._logger.debug(f"Downloading whirlpool binary from {binary_url}...")
         urlretrieve(binary_url, "whirlpool.run")
         self._logger.debug("Release downloading completed!")
 

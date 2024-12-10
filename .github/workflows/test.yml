@@ -65,4 +65,4 @@ jobs:
           python-version: "3.10"
 
       - name: Run Installer Script 📥
-        run: sudo python3 viridian/algae/setup/main.py -g -a no ${{ matrix.caerulean }} -r ${{ matrix.dist }}
+        run: sudo python3 viridian/algae/setup/main.py -g -a -v DEBUG no ${{ matrix.caerulean }} -r ${{ matrix.dist }}
