@@ -2,6 +2,7 @@
 .EXPORT_ALL_VARIABLES:
 .DEFAULT_GOAL := help
 
+PYTHON=python3
 SHELL=/bin/bash
 .SHELLFLAGS=-c -e
 
@@ -48,7 +49,7 @@ build:
 run: build
 	@ # Run executable
 	if [ ! -d "certificates" ]; then
-		${SHELL} whirlpool.sh -z
+		${PYTHON} ../../viridian/algae/setup/main.py --just-certs
 	fi
 	sudo build/$(EXEC_NAME)
 .PHONY: run

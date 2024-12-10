@@ -61,6 +61,7 @@ test-domain = "scripts.test:test_domain"
 test-all = "scripts.test:test_all"
 compile = "scripts.process:compile"
 execute = "scripts.process:execute"
+bundle = "scripts.process:bundle"
 clean = "scripts.process:clean"
 help = "scripts.process:help"
 

@@ -30,8 +30,8 @@ VERSIONED_FILES=(
     "viridian/algae/pyproject.toml" \
     "viridian/algae/README.md" \
     "viridian/algae/sources/coordinator.py" \
+    "viridian/algae/setup/whirlpool.py" \
     "caerulean/whirlpool/README.md" \
-    "caerulean/whirlpool/whirlpool.sh" \
     "caerulean/whirlpool/sources/main.go"
 )
 

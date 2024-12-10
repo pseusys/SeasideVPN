@@ -45,3 +45,24 @@ jobs:
 
       - name: Test Caerulean Whirlpool 🧪
         run: make test-whirlpool
+
+  caerulean-installer-script:
+    name: Test Caerulean Installer Script
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dist: [compile, docker, binary]
+        caerulean: [whirlpool]
+
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.10 🐍
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Run Installer Script 📥
+        run: python3 viridian/algae/setup/main.py -a no ${{ matrix.caerulean }} -r ${{ matrix.dist }}

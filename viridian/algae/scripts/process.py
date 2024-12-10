@@ -5,6 +5,7 @@ from shutil import rmtree
 from subprocess import run as subprocess_run
 from sys import argv, executable
 from typing import List, Union
+from zipapp import create_archive
 
 from colorama import Fore, Style, just_fix_windows_console
 from PyInstaller.__main__ import run as install
@@ -16,6 +17,9 @@ from scripts.misc import ALGAE_ROOT
 
 # Default algae executable file name.
 _EXECUTABLE_NAME = "algae.run"
+
+# Default caerulean installer file name.
+_INSTALLER_NAME = "install.pyz"
 
 
 def generate() -> None:
@@ -48,6 +52,14 @@ def execute() -> None:
     from sources.main import main
 
     async_run(main(argv[1:]))
+
+
+def bundle() -> None:
+    """
+    Bundle caerulean installation script.
+    """
+    installer_name = argv[1] if len(argv) > 1 else _INSTALLER_NAME
+    create_archive(ALGAE_ROOT / "setup", ALGAE_ROOT / installer_name, main="main:main", compressed=True)
 
 
 def clean() -> None:
@@ -96,6 +108,7 @@ def help() -> None:
     print(f"\t{Fore.BLUE}poetry run test-all{Fore.RESET}: run all possible tests in a Docker container.")
     print(f"\t{Fore.BLUE}poetry run compile{Fore.RESET}: compile algae Python source code to an executable (using pyinstaller library).")
     print(f"\t{Fore.BLUE}poetry run execute [ARGS...]{Fore.RESET}: execute algae Python sources locally (ARGS will be passed to the executable).")
+    print(f"\t{Fore.BLUE}poetry run bundle{Fore.RESET}: bundle caerulean installation script 'install.pyz', required for caerulean installation and certificates generation.")
     print(f"\t{Fore.BLUE}poetry run clean{Fore.RESET}: clean all the build files, executables, Docker images, containers and networks.")
     print(f"\t{Fore.BLUE}poetry run help{Fore.RESET}: print this message again.")
     print(f"{Style.BRIGHT}Arguments for algae executable (ARGS){Style.RESET_ALL}:")

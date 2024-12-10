@@ -96,6 +96,10 @@ It also sensitive to the following environmental variable:
 - `SEASIDE_LOG_LEVEL`: Output verbosity logging level, can be "error", "warning", "info", "debug" (default: `DEBUG`).
 - `SEASIDE_ROOT_CERTIFICATE_AUTHORITY`: Custom certificate authority file path for whirlpool server.
 
+## Caerulean installation script
+
+TODO!!
+
 ## Other commands
 
 Lint all python files:
@@ -114,6 +118,12 @@ Build standalone executable (OS-specific):
 
 ```bash
 sudo poetry run build
+```
+
+Bundle installation script:
+
+```bash
+sudo poetry run bundle
 ```
 
 Clean build artifacts:

@@ -1,15 +1,16 @@
+from ipaddress import IPv4Address
 from logging import getLogger
 from os import environ
 from pathlib import Path
 from shutil import rmtree
-from subprocess import DEVNULL, check_call
 from typing import Literal, Union
 
 from colorama import Fore, Style, just_fix_windows_console
 from python_on_whales import DockerClient, DockerException
+from yaml import safe_load
 
 from scripts.misc import docker_test
-from yaml import safe_load
+from setup.certificates import generate_certificates
 
 Profile = Union[Literal["local"], Literal["remote"], Literal["domain"], Literal["integration"], Literal["unit"]]
 
@@ -45,12 +46,11 @@ def _test_set(docker_path: Path, profile: Profile, hosted: bool, test_detached: 
     docker = DockerClient(compose_files=[compose_file])
     before_networks = set([net.name for net in docker.network.list()])
 
+    certificates_path = docker_path.parent / "certificates"
     whirlpool_conf = safe_load(compose_file.read_text())["services"].get("whirlpool", None)
     if whirlpool_conf is not None:
         logger.debug("Generating self-signed testing certificates...")
-        whirlpool_script = docker_path.parent.parent.parent / "caerulean" / "whirlpool" / "whirlpool.sh"
-        whirlpool_ip = whirlpool_conf["environment"]["SEASIDE_ADDRESS"]
-        check_call(["bash", whirlpool_script, "-z", "-a", whirlpool_ip], stdout=DEVNULL, stderr=DEVNULL, cwd=docker_path.parent)
+        generate_certificates(logger, IPv4Address(whirlpool_conf["environment"]["SEASIDE_ADDRESS"]), certificates_path, True)
         logger.debug("Self-signed certificates generated!")
 
     try:
@@ -87,7 +87,7 @@ def _test_set(docker_path: Path, profile: Profile, hosted: bool, test_detached: 
 
     if whirlpool_conf is not None:
         logger.debug("Clearing self-signed testing certificates...")
-        rmtree(docker_path.parent / "certificates", ignore_errors=True)
+        rmtree(certificates_path, ignore_errors=True)
         logger.debug("Self-signed certificates removed!")
 
     after_networks = set([net.name for net in docker.network.list()]) - before_networks

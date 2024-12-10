@@ -21,8 +21,8 @@ const WAIT_TIMES = 25;
 const SLEEP_TIME = 15;
 // Ubuntu version to reinstall on the server
 const UBUNTU_VERISON = "22.04";
-// Local path to the 'whirlpool.sh' Whirlpool node installation script
-const INSTALL_SCRIPT = fileURLToPath(join(dirname(import.meta.url), "..", "..", "caerulean", "whirlpool", "whirlpool.sh"));
+// Local path to the 'install.pyz' Whirlpool node installation script
+const INSTALL_SCRIPT = fileURLToPath(join(dirname(import.meta.url), "..", "..", "viridian", "algae", "install.pyz"));
 // Default ctrlport for whirlpool.
 const DEFAULT_CTRLPORT = 8587;
 // Default certificates path.
@@ -89,7 +89,7 @@ async function getPromiseResultOrNull(promise) {
 }
 
 /**
- * Print usage help message and exit with code 1.
+ * Print usage help message and exit with code 0.
  */
 function printHelpMessage() {
 	console.log(`${BOLD}Beget deployment script usage${RESET}:`);
@@ -103,7 +103,18 @@ function printHelpMessage() {
 	console.log(`${BOLD}Optional environment variables${RESET}:`);
 	console.log(`\t${GREEN}WHIRLPOOL_PAYLOAD${RESET}: Whirlpool viridian poyload (default: will be generated).`);
 	console.log(`\t${GREEN}WHIRLPOOL_CTRLPORT${RESET}: Whirlpool control port (default: ${DEFAULT_CTRLPORT}).`);
-	process.exit(1);
+	process.exit(0);
+}
+
+/**
+ * Generate python installation script (just compress the installation module with 'zipapp') if it does not exist.
+ * The installation script '.pyz' will be uploaded to the server.
+ */
+function ensureInstallationScript() {
+	if (!existsSync(INSTALL_SCRIPT)) {
+		console.log("Installation script not found, generating...");
+		execSync("python3 -m zipapp setup -c -o install.pyz -m main:main", {"cwd": dirname(INSTALL_SCRIPT)});
+	} else console.log("Installation script found!");
 }
 
 /**
@@ -130,7 +141,7 @@ function parseArguments() {
 			default: true
 		}
 	};
-	const { values } = parseArgs({ options, tokens: true });
+	const { values } = parseArgs(options);
 	if (values.help) printHelpMessage();
 	if (process.env.BEGET_API_LOGIN === undefined) throw new Error("Parameter 'login' is missing!");
 	else values["login"] = process.env.BEGET_API_LOGIN;
@@ -253,26 +264,20 @@ async function waitForServer(ip, key, waitTimes, sleepTime) {
  * @param {string} ctrlport whirlpool ctrlport
  */
 async function runDeployCommand(sshConn, certsPath, ownerPayload, viridianPayload, ctrlport) {
-	console.log("Checking if certificates present on host...");
-	const certificatesPresent = await getPromiseResultOrNull(sshConn.getDirectory(certsPath, DEFAULT_CERTS));
+	console.log("Ensuring installation script exists...");
+	ensureInstallationScript();
 	console.log("Determining current git branch...");
 	const gitBranch = execSync("git rev-parse --abbrev-ref HEAD").toString().trim();
 	console.log("Copying whirlpool installation script to beget test server...");
-	await sshConn.putFile(INSTALL_SCRIPT, "exec.sh");
+	await sshConn.putFile(INSTALL_SCRIPT, "install.pyz");
 	console.log("Running whirlpool installation script on beget test server...");
-	const installFlags = certificatesPresent === true ? "-gt" : "-gst";
-	const installRes = await sshConn.execCommand(`bash exec.sh ${installFlags} -u ${gitBranch} -o ${ownerPayload} -v ${viridianPayload} -c ${ctrlport}`);
+	const installRes = await sshConn.execCommand(`python3 install.pyz -o -g whirlpool -s ${gitBranch} -o ${ownerPayload} -v ${viridianPayload} -p ${ctrlport}`);
 	if (installRes.code != 0) throw new Error(`Installation script failed, error code: ${installRes.code}`);
-	if (certificatesPresent !== true) {
-		console.log("Downloading viridian certificates from host...");
-		const clientCertsLoaded = await getPromiseResultOrNull(sshConn.getDirectory(certsPath, `${DEFAULT_CERTS}/client`));
-		if (clientCertsLoaded !== true) throw new Error("Viridian certificates moving failed");
-		console.log("Moving caerulean certificates to a dedicated folder on host...");
-		const certsMoveRes = await sshConn.execCommand(`mv ${DEFAULT_CERTS} certs-old && mv certs-old/server ${DEFAULT_CERTS} && rm -rf certs-old`);
-		if (certsMoveRes.code != 0) throw new Error(`Certificates moving failed, error code: ${certsMoveRes.code}`);
-	}
+	console.log("Downloading viridian certificates from host...");
+	const clientCertsLoaded = await getPromiseResultOrNull(sshConn.getDirectory(certsPath, `${DEFAULT_CERTS}/client`));
+	if (clientCertsLoaded !== true) throw new Error("Viridian certificates moving failed");
 	console.log("Running whirlpool executable on beget test server...");
-	const execRes = await sshConn.execCommand('set -a && source conf.env && bash -c "nohup SeasideVPN/caerulean/whirlpool/build/whirlpool.run &" &>/dev/null </dev/null');
+	const execRes = await sshConn.execCommand('set -a && source conf.env && bash -c "nohup whirlpool.run &" &>/dev/null </dev/null');
 	if (execRes.code != 0) throw new Error(`Running executable failed, error code: ${execRes.code}`);
 	console.log("Closing connection to beget test server...");
 	sshConn.dispose();
