@@ -78,10 +78,10 @@ jobs:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
 
-      - name: Setup Go 1.20 🦫
+      - name: Setup Go 1.22 🦫
         uses: actions/setup-go@v5
         with:
-          go-version: "^1.20.4"
+          go-version: "^1.22.0"
 
       - name: Install Protoc 💾
         uses: arduino/setup-protoc@v3

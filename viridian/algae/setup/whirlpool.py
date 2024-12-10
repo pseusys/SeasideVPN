@@ -44,7 +44,7 @@ _DEFAULT_BURST_LIMIT_MULTIPLIER = 3
 _DEFAULT_LOG_LEVEL = "WARNING"
 
 _GO_VERSION = "1.22.0"
-_PROTOC_VERSION = "3.15.8"
+_PROTOC_VERSION = "24.4"
 
 _SEASIDE_REPO = "https://github.com/pseusys/SeasideVPN"
 _SEASIDE_IMAGE = "ghcr.io/pseusys/seasidevpn/caerulean-whirlpool"

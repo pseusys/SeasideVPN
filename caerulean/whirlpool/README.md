@@ -11,7 +11,7 @@ It doesn't manage payments and authentication.
 
 ## Dependencies
 
-1. `go` (compiler) version >= 1.21
+1. `go` (compiler) version >= 1.22
   Installation guide can be found [here](https://go.dev/doc/install).
 2. `protobuf` (compiler) version >= 24.4
   Installation guide example can be found [here](https://grpc.io/docs/protoc-installation/#install-pre-compiled-binaries-any-os).

@@ -3,7 +3,6 @@ module main
 go 1.22
 
 require (
-	github.com/golang/protobuf v1.5.4
 	github.com/google/gopacket v1.1.19
 	github.com/sirupsen/logrus v1.9.3
 	github.com/songgao/water v0.0.0-20200317203138-2b4b6d7c09d8
