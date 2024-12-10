@@ -37,7 +37,7 @@ def _install_package_command() -> str:
         raise RuntimeError(f"Current platform '{platform_version}' distribution is either not supported or unknown!")
 
 
-def check_package(logger: Logger, package: str, version: Optional[str], version_command: str = "--version") -> bool:
+def check_package(logger: Logger, package: str, version: Optional[str] = None, version_command: str = "--version") -> bool:
     try:
         logger.debug(f"Checking if package {package} exists...")
         check_call(f"command -v {package}", stdout=DEVNULL, stderr=DEVNULL, shell=True)
