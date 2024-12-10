@@ -28,11 +28,20 @@ func readLimit(envVar, template string, userNumber, burstMultiplier int) []strin
 	}
 }
 
+// Flush all the IP tables.
+// This includes filter, raw, nat and mangle tables.
+func flushIPTables() {
+	runCommand("iptables", "-F")
+	runCommand("iptables", "-t", "raw", "-F")
+	runCommand("iptables", "-t", "nat", "-F")
+	runCommand("iptables", "-t", "mangle", "-F")
+}
+
 // Store iptables configuration.
 // Use iptables-store command to store iptables configurations as bytes.
 // Should be applied for TunnelConf object, store the configurations in .buffer field.
 func (conf *TunnelConfig) storeForwarding() {
-	command := exec.Command("iptables-save")
+	command := exec.Command("iptables-save", "--counters")
 	command.Stdout = &conf.buffer
 	err := command.Run()
 	if err != nil {
@@ -66,10 +75,7 @@ func (conf *TunnelConfig) openForwarding(intIP, extIP string, ctrlPort int) erro
 	extName := extIface.Name
 
 	// Flush iptables rules
-	runCommand("iptables", "-F")
-	runCommand("iptables", "-t", "raw", "-F")
-	runCommand("iptables", "-t", "nat", "-F")
-	runCommand("iptables", "-t", "mangle", "-F")
+	flushIPTables()
 	// Accept localhost connections
 	runCommand("iptables", "-A", "INPUT", "-i", "lo", "-j", "ACCEPT")
 	runCommand("iptables", "-A", "OUTPUT", "-o", "lo", "-j", "ACCEPT")
@@ -103,11 +109,14 @@ func (conf *TunnelConfig) openForwarding(intIP, extIP string, ctrlPort int) erro
 // Use iptables-restore command to restore iptables configurations from bytes.
 // Should be applied for TunnelConf object, restore the configurations from .buffer field.
 func (conf *TunnelConfig) closeForwarding() {
-	runCommand("iptables", "-F")
-	command := exec.Command("iptables-restore", "--counters")
-	command.Stdin = &conf.buffer
-	err := command.Run()
-	if err != nil {
-		logrus.Errorf("Error running command %s: %v", command, err)
+	if conf.buffer.Len() > 0 {
+		command := exec.Command("iptables-restore", "--counters")
+		command.Stdin = &conf.buffer
+		err := command.Run()
+		if err != nil {
+			logrus.Errorf("Error running command %s: %v", command, err)
+		}
+	} else {
+		flushIPTables()
 	}
 }
