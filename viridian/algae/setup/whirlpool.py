@@ -226,7 +226,7 @@ class WhirlpoolInstaller(Installer):
         self._logger.debug("Performing a sparse checkout...")
         check_call("git sparse-checkout set --no-cone caerulean/whirlpool vessels && git checkout", cwd=seapath, stdout=DEVNULL, stderr=DEVNULL, shell=True)
         self._logger.debug("Building whirlpool...")
-        check_call("make build", cwd=seapath / "caerulean" / "whirlpool", env=go_env, shell=True)  # TODO: , stdout=DEVNULL, stderr=DEVNULL
+        check_call("make build", cwd=seapath / "caerulean" / "whirlpool", env=go_env, stdout=DEVNULL, stderr=DEVNULL, shell=True)
         self._logger.debug("Moving executable...")
         move(seapath / "caerulean" / "whirlpool" / "build" / "whirlpool.run", "whirlpool.run")
         self._logger.debug("Deleting build files...")
