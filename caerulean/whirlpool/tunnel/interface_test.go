@@ -9,7 +9,7 @@ import (
 
 const (
 	OPEN_INTERFACE_CYCLE_MTU  = 1500
-	OPEN_INTERFACE_CYCLE_NAME = "testtun"
+	OPEN_INTERFACE_CYCLE_NAME = "ifcetesttun"
 )
 
 func TestOpenInterfaceCycle(test *testing.T) {

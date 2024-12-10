@@ -16,7 +16,7 @@ import (
 
 const (
 	DIRECTORY_CYCLE_MTU          = "1500"
-	DIRECTORY_CYCLE_NAME         = "testtun"
+	DIRECTORY_CYCLE_NAME         = "dirtesttun"
 	DIRECTORY_CYCLE_VIRIDIAN_UID = "test_user_uid"
 )
 
