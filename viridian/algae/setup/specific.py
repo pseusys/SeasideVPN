@@ -44,7 +44,7 @@ def check_package(logger: Logger, package: str, version: Optional[str], version_
         logger.debug(f"Package {package} found!")
         if version is not None:
             logger.debug(f"Checking package {package} version...")
-            semver = search(_SEMVER_REGEX, check_output(f"{package} {version_command}", shell=True))
+            semver = search(_SEMVER_REGEX, check_output(f"{package} {version_command}", shell=True).decode())
             if semver is not None:
                 package_version = semver.group()
                 versions_match = parse_version(package_version) >= parse_version(version)
