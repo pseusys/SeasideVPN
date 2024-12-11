@@ -27,7 +27,7 @@ jobs:
 
     steps:
       - name: Download Viridian Algae Artifact 🌿
-        uses: dawidd6/action-download-artifact@v3
+        uses: dawidd6/action-download-artifact@v6
         with:
           workflow: publish.yml
           run_id: ${{ github.run_id }}
@@ -36,7 +36,7 @@ jobs:
           name: algae-executable
   
       - name: Download Caerulean Whirlpool Artifact 🌌
-        uses: dawidd6/action-download-artifact@v3
+        uses: dawidd6/action-download-artifact@v6
         with:
           workflow: publish.yml
           run_id: ${{ github.run_id }}
