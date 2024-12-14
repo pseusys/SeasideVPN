@@ -55,7 +55,7 @@ jobs:
           name_is_regexp: true
 
       - name: Rename Artifact Files ⭕
-        run: npm run --prefix .github/scripts prepare-release-artifacts -- "*.run" "*.pyz"
+        run: npm run --prefix .github/scripts prepare-release-artifacts -- "**/*.run" "**/*.pyz"
 
       - name: Create Release 🪅
         uses: marvinpinto/action-automatic-releases@v1.2.1
@@ -63,8 +63,8 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           prerelease: false
           files: |
-            *.run
-            *.pyz
+            **/*.run
+            **/*.pyz
 
   caerulean-whirlpool-deploy:
     name: Deploy Caerulean Whirlpool To Dedicated Test Server

@@ -140,7 +140,7 @@ function parseArguments() {
 			default: true
 		}
 	};
-	const { values } = parseArgs(options);
+	const { values } = parseArgs({ options });
 	if (values.help) printHelpMessage();
 	if (process.env.BEGET_API_LOGIN === undefined) throw new Error("Parameter 'login' is missing!");
 	else values["login"] = process.env.BEGET_API_LOGIN;
