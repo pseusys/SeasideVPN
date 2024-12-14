@@ -17,7 +17,7 @@ from sources.utils import MAX_TAIL_LENGTH, SYMM_KEY_LENGTH, create_grpc_secure_c
 from sources.viridian import Viridian
 
 # Current algae distribution version.
-VERSION = "0.0.2"
+VERSION = "0.0.3"
 
 # Default tunnel interface name.
 _DEFAULT_TUNNEL_NAME = "seatun"

@@ -18,7 +18,7 @@ RESET="\033[0m"
 # Global arguments:
 
 # Curremt project version
-CURRENT_VERSION="0.0.2"
+CURRENT_VERSION="0.0.3"
 # New project version (same as current by default)
 NEW_VERSION="$CURRENT_VERSION"
 # Files that require versioning

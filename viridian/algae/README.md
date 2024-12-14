@@ -1,6 +1,6 @@
 # Viridian Algae
 
-> Current version: **"0.0.2"**
+> Current version: **"0.0.3"**
 
 Small CLI-based client application, written in `Python`.
 It can be run on linux (in for- and background), it's highly customizable.

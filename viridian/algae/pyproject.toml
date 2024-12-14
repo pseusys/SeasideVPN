@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "SeasideVPN"
-version = "0.0.2"
+version = "0.0.3"
 description = "A simple PPTP UDP VPN system"
 license = "MIT"
 package-mode = false

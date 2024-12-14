@@ -25,7 +25,7 @@ import (
 
 const (
 	// Current Whirlpool distribution version.
-	VERSION = "0.0.2"
+	VERSION = "0.0.3"
 
 	// Path for storing logs, two files will be created there: "danger.log" and "safe.log".
 	LOG_PATH = "logs"
