@@ -60,8 +60,8 @@ jobs:
           retention-days: 3
           if-no-files-found: error
           path: |
-            viridian/algae/dist/*.run
-            virdian/algae/*.pyz
+            **/*.run
+            **/*.pyz
 
   caerulean-whirlpool-build:
     name: Build Caerulean Whirlpool Server Executable
@@ -103,7 +103,7 @@ jobs:
       - name: Build Caerulean Whirlpool 🏗️
         env:
           EXEC_NAME: ${{ format('caerulean-whirlpool-executable-{0}-{1}', env.BRANCH, matrix.arch) }}
-        run: EXEC_NAME=${{ env.EXEC_NAME }}.run make -C caerulean/whirlpool build
+        run: make -C caerulean/whirlpool build EXEC_NAME=${{ env.EXEC_NAME }}.run
 
       - name: Save Artifact 🏺
         uses: actions/upload-artifact@v4

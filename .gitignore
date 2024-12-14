@@ -40,7 +40,7 @@ viridian/algae/**/.pytest-cache/
 
 ## Python generated files:
 viridian/algae/sources/generated/
-viridian/algae/install.pyz
+viridian/algae/*.pyz
 
 ## Test files:
 viridian/algae/certificates/
