@@ -28,8 +28,8 @@ def _print_container_logs(docker: DockerClient, container: str, last: int = 100)
     try:
         logger.error(f"{Style.BRIGHT}{Fore.YELLOW}Container {container} logs:{Style.RESET_ALL}")
         logger.error(docker.logs(container, tail=last))
-    except DockerException as e:
-        logger.error(f"{Style.BRIGHT}{Fore.RED}No container {container} found!{Style.RESET_ALL}:\n\n{e}")
+    except DockerException:
+        logger.error(f"{Style.BRIGHT}{Fore.RED}No container {container} found!{Style.RESET_ALL}")
 
 
 def _test_set(docker_path: Path, profile: Profile, hosted: bool, test_detached: bool = True) -> int:
