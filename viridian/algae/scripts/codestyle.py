@@ -32,7 +32,8 @@ def lint(files: Optional[List[str]] = None) -> int:
     report = get_style_guide(select=selector, ignore=ignore, max_line_length=_MAX_LINE_LEN).check_files(files)
     lint_result += sum(len(report.get_statistics(sel)) for sel in selector)
     lint_result += format(files, False)
-    mypy_opts = ["--strict", "--ignore-missing-imports", "--explicit-package-bases", "--namespace-packages"]
+    cache_dir = str(ALGAE_ROOT / ".mypy_cache")
+    mypy_opts = ["--strict", "--ignore-missing-imports", "--cache-dir", cache_dir, "--explicit-package-bases", "--namespace-packages"]
     out, _, code = run(mypy_opts + files)
     if code != 0:
         logger.error(out)
