@@ -27,13 +27,13 @@ jobs:
           poetry -C viridian/algae install --without client,devel
 
       - name: Test Viridian Algae (unit) 🧪
-        run: poetry -C viridian/algae run test-unit
+        run: poetry -C viridian/algae poe test-unit
 
       - name: Test Viridian Algae (integration) 📇
-        run: poetry -C viridian/algae run test-integration
+        run: poetry -C viridian/algae poe test-integration
 
       - name: Test Viridian Algae (smoke) 😶‍🌫️
-        run: poetry -C viridian/algae run test-smoke
+        run: poetry -C viridian/algae poe test-smoke
 
   caerulean-whirlpool-test:
     name: Test Caerulean Whirlpool
@@ -67,4 +67,5 @@ jobs:
       - name: Run Installer Script 📥
         env:
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
-        run: PYTHONPATH=viridian/algae sudo python3 -m setup -g -a no ${{ matrix.caerulean }} -r ${{ matrix.dist }} -s ${{ env.BRANCH_NAME }}
+          PYTHONPATH: viridian/algae
+        run: sudo -E PYTHONPATH=${{ env.PYTHONPATH }} python3 -m setup -g -a no ${{ matrix.caerulean }} -r ${{ matrix.dist }} -s ${{ env.BRANCH_NAME }}
