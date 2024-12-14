@@ -7,7 +7,10 @@ import (
 	"github.com/songgao/water"
 )
 
-const OPEN_INTERFACE_CYCLE_MTU = 1500
+const (
+	OPEN_INTERFACE_CYCLE_MTU  = 1500
+	OPEN_INTERFACE_CYCLE_NAME = "ifcetesttun"
+)
 
 func TestOpenInterfaceCycle(test *testing.T) {
 	tunIP, tunNetwork, err := net.ParseCIDR("10.0.0.25/24")
@@ -15,7 +18,9 @@ func TestOpenInterfaceCycle(test *testing.T) {
 		test.Fatalf("error parsing tunnel network address (%s): %v", tunIP, err)
 	}
 
-	tun, err := water.New(water.Config{DeviceType: water.TUN})
+	config := water.Config{DeviceType: water.TUN}
+	config.Name = OPEN_INTERFACE_CYCLE_NAME
+	tun, err := water.New(config)
 	if err != nil {
 		test.Fatalf("error allocating TUN interface: %v", err)
 	}
@@ -25,6 +30,7 @@ func TestOpenInterfaceCycle(test *testing.T) {
 		IP:      tunIP,
 		Network: tunNetwork,
 		mtu:     OPEN_INTERFACE_CYCLE_MTU,
+		name:    OPEN_INTERFACE_CYCLE_NAME,
 	}
 	conf.openInterface("127.0.0.1")
 	test.Logf("tunnel interface created: %s", conf.Tunnel.Name())
@@ -37,6 +43,11 @@ func TestOpenInterfaceCycle(test *testing.T) {
 	expectedMTU := OPEN_INTERFACE_CYCLE_MTU
 	if tunnelOpenedIface.MTU != expectedMTU {
 		test.Fatalf("tunnel interface setup incorrectly: %d != %d", expectedMTU, tunnelOpenedIface.MTU)
+	}
+
+	expectedName := OPEN_INTERFACE_CYCLE_NAME
+	if tunnelOpenedIface.Name != expectedName {
+		test.Fatalf("tunnel interface setup incorrectly: %s != %s", expectedName, tunnelOpenedIface.Name)
 	}
 
 	test.Logf("tunnel interface flags set: %s", tunnelOpenedIface.Flags.String())

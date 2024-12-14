@@ -1,12 +1,18 @@
+from ipaddress import IPv4Address
 from logging import getLogger
 from os import environ
 from pathlib import Path
+from shutil import rmtree
 from typing import Literal, Union
 
 from colorama import Fore, Style, just_fix_windows_console
 from python_on_whales import DockerClient, DockerException
+from yaml import safe_load
 
-from scripts.misc import docker_test, generate_certificates
+from scripts.misc import docker_test
+from setup.certificates import generate_certificates
+
+Profile = Union[Literal["local"], Literal["remote"], Literal["domain"], Literal["integration"], Literal["unit"]]
 
 # Default logger instance.
 logger = getLogger(__name__)
@@ -21,31 +27,41 @@ def _print_container_logs(docker: DockerClient, container: str, last: int = 100)
     """
     try:
         logger.error(f"{Style.BRIGHT}{Fore.YELLOW}Container {container} logs:{Style.RESET_ALL}")
-        logger.error(docker.compose.logs(container, tail=str(last)))
+        logger.error(docker.logs(container, tail=last))
     except DockerException:
         logger.error(f"{Style.BRIGHT}{Fore.RED}No container {container} found!{Style.RESET_ALL}")
 
 
-def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remote"], Literal["integration"], Literal["unit"]], hosted: bool) -> int:
+def _test_set(docker_path: Path, profile: Profile, hosted: bool, test_detached: bool = True) -> int:
     """
     Launch specified compose file and launch speceified test set inside of it.
     Print test output and any errors that happened.
     :param docker_path: path to "algae/docker" directory, containing all dockerfiles and compose files.
-    :param profile: name of the testing profile, one of "local", "remote", "integration", "unit".
+    :param profile: name of the testing profile, one of "local", "remote", "domain", "integration", "unit".
     :param hosted: flag, whether the current test set is being run in CI (disables verbose output).
     :return: integer return code, 0 if tests succeeded.
     """
     logger.warning(f"{Style.BRIGHT}{Fore.BLUE}Testing {profile}...{Style.RESET_ALL}")
-    docker = DockerClient(compose_files=[docker_path / f"compose.{profile}.yml"])
+    compose_file = docker_path / f"compose.{profile}.yml"
+    docker = DockerClient(compose_files=[compose_file])
     before_networks = set([net.name for net in docker.network.list()])
 
+    certificates_path = docker_path.parent / "certificates"
+    whirlpool_conf = safe_load(compose_file.read_text())["services"].get("whirlpool", None)
+    if whirlpool_conf is not None:
+        logger.debug("Generating self-signed testing certificates...")
+        generate_certificates(IPv4Address(whirlpool_conf["environment"]["SEASIDE_ADDRESS"]), certificates_path, True)
+        logger.debug("Self-signed certificates generated!")
+
     try:
-        docker.compose.up(wait=True, build=True, detach=True, quiet=hosted)
+        logger.debug("Running tests...")
+        docker.compose.up(build=True, wait=test_detached, detach=test_detached, abort_on_container_exit=not test_detached, quiet=hosted)
 
-        test_command = ["pytest", f"--log-cli-level={'ERROR' if hosted else 'DEBUG'}", "-k", f"test_{profile}"]
-        docker.compose.execute("algae", test_command, envs=dict() if not hosted else {"CI": environ["CI"]})
+        if test_detached:
+            test_command = ["pytest", f"--log-cli-level={'ERROR' if hosted else 'DEBUG'}", "-k", f"test_{profile}"]
+            docker.compose.execute("algae", test_command, envs=dict() if not hosted else {"CI": environ["CI"]})
+            docker.compose.kill(signal="SIGINT")
 
-        docker.compose.kill(signal="SIGINT")
         logger.warning(f"{Style.BRIGHT}Testing {profile}: {Fore.GREEN}success{Fore.RESET}!{Style.RESET_ALL}")
         exit_code = 0
 
@@ -53,13 +69,13 @@ def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remot
         logger.error(f"Testing {profile}: {Style.BRIGHT}{Fore.RED}failed{Fore.RESET}!{Style.RESET_ALL}")
         logger.error(f"Error message: {exc}")
 
-        _print_container_logs(docker, "algae")
-        _print_container_logs(docker, "whirlpool")
+        _print_container_logs(docker, "seaside-algae")
+        _print_container_logs(docker, "seaside-whirlpool")
         if profile == "local":
             _print_container_logs(docker, "seaside-echo")
             _print_container_logs(docker, "network-disruptor")
-            for i in range(3):
-                _print_container_logs(docker, f"docker-algae-copy-{i}")
+            for i in range(1, 4):
+                _print_container_logs(docker, f"seaside-algae-local-algae-copy-{i}")
 
         docker.compose.kill()
         exit_code = 1
@@ -68,6 +84,11 @@ def _test_set(docker_path: Path, profile: Union[Literal["local"], Literal["remot
         logger.error(f"Testing {profile}: {Style.BRIGHT}{Fore.YELLOW}interrupted{Fore.RESET}!{Style.RESET_ALL}")
         docker.compose.kill()
         exit_code = 1
+
+    if whirlpool_conf is not None:
+        logger.debug("Clearing self-signed testing certificates...")
+        rmtree(certificates_path, ignore_errors=True)
+        logger.debug("Self-signed certificates removed!")
 
     after_networks = set([net.name for net in docker.network.list()]) - before_networks
     docker.compose.rm(stop=True)
@@ -91,7 +112,7 @@ def test_integration() -> int:
     :return: integer return code.
     """
     just_fix_windows_console()
-    with docker_test() as (docker_path, hosted), generate_certificates():
+    with docker_test() as (docker_path, hosted):
         return _test_set(docker_path, "integration", hosted)
 
 
@@ -102,7 +123,7 @@ def test_local() -> int:
     :return: integer return code.
     """
     just_fix_windows_console()
-    with docker_test() as (docker_path, hosted), generate_certificates():
+    with docker_test() as (docker_path, hosted):
         return _test_set(docker_path, "local", hosted)
 
 
@@ -113,20 +134,31 @@ def test_remote() -> int:
     :return: integer return code.
     """
     just_fix_windows_console()
-    with docker_test() as (docker_path, hosted), generate_certificates():
+    with docker_test() as (docker_path, hosted):
         return _test_set(docker_path, "remote", hosted)
+
+
+def test_domain() -> int:
+    """
+    Run domain smoke tests: domain name of a webserver is being reslved after connection.
+    DNS protocol is used used.
+    :return: integer return code.
+    """
+    just_fix_windows_console()
+    with docker_test() as (docker_path, hosted):
+        return _test_set(docker_path, "domain", hosted, False)
 
 
 def test_smoke() -> int:
     """
-    Run smoke tests: run both "local" and "remote" smoke tests (specified above).
+    Run smoke tests: run both "local", "remote" and "domain" smoke tests (specified above).
     :return: integer return code.
     """
     just_fix_windows_console()
-    with docker_test() as (docker_path, hosted), generate_certificates():
+    with docker_test() as (docker_path, hosted):
         result = 0
-        for test_set in ("local", "remote"):
-            result = result or _test_set(docker_path, test_set, hosted)  # type: ignore[arg-type]
+        for test_set in ("local", "remote", "domain"):
+            result = result or _test_set(docker_path, test_set, hosted, test_set != "domain")  # type: ignore[arg-type]
         return result
 
 
@@ -136,8 +168,8 @@ def test_all() -> int:
     :return: integer return code.
     """
     just_fix_windows_console()
-    with docker_test() as (docker_path, hosted), generate_certificates():
+    with docker_test() as (docker_path, hosted):
         result = 0
-        for test_set in ("unit", "integration", "local", "remote"):
-            result = result or _test_set(docker_path, test_set, hosted)  # type: ignore[arg-type]
+        for test_set in ("unit", "integration", "local", "remote", "domain"):
+            result = result or _test_set(docker_path, test_set, hosted, test_set != "domain")  # type: ignore[arg-type]
         return result

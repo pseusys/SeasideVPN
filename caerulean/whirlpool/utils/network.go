@@ -15,7 +15,7 @@ const NONE_PORT = 0
 // - *.*.0.0 (network address)
 // - *.*.0.1 (gateway address)
 // - *.*.255.255 (broadcast address)
-var SPECIAL_IP_ADDRESSES = []uint16{0x0, 0x1, 0xFFFF}
+var SPECIAL_IP_ADDRESSES = []uint16{0x0000, 0x0001, 0xFFFF}
 
 // Get IP and port address from net.Addr object.
 // Accept address object.

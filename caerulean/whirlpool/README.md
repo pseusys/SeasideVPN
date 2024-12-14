@@ -1,6 +1,6 @@
 # Caerulean Whirlpool
 
-> Current version: **"0.0.2"**
+> Current version: **"0.0.3"**
 
 Whirlpool is "worker" Seaside server node.
 It is written in `Go`.
@@ -11,7 +11,7 @@ It doesn't manage payments and authentication.
 
 ## Dependencies
 
-1. `go` (compiler) version >= 1.18
+1. `go` (compiler) version >= 1.22
   Installation guide can be found [here](https://go.dev/doc/install).
 2. `protobuf` (compiler) version >= 24.4
   Installation guide example can be found [here](https://grpc.io/docs/protoc-installation/#install-pre-compiled-binaries-any-os).
@@ -112,6 +112,8 @@ make run
 
 Superuser rights are required for tunnel interface creation.
 
+> NB! If no certificates are present locally, they will be regenerated with `setup` package in "viridian/algae" directory.
+
 ### Docker whirlpool execution
 
 Whirlpool can also be launched in Docker, using the following command:
@@ -138,8 +140,10 @@ The whirlpool executable is sensitive to the following environmental variables:
 - `SEASIDE_CONTROL_PACKET_LIMIT`: Limit for control packets, packets per viridian per second (should be positive integer, if not - no limit will be applied).
 - `SEASIDE_ICMP_PACKET_LIMIT`: Limit for ICMP packets (ping), packets per viridian per second (should be positive integer, if not - no limit will be applied).
 - `SEASIDE_TUNNEL_MTU`: Whirlpool internal tunnel MTU number (should be positive integer, if not - will be set same to internal whirlpool address MTU).
-- `SEASIDE_VIRIDIAN_WAITING_OVERTIME`: Multiplier of time that whirlpool will wait for the next control packet before deleting viridian and interrupting its connection (should be positive number).
-- `SEASIDE_VIRIDIAN_FIRST_HEALTHCHECK_DELAY`: Amount of time that whirlpool will wait for the first control packet before deleting viridian and interrupting its connection (should be positive number).
+- `SEASIDE_TUNNEL_NAME`: Whirlpool internal tunnel interface name (should be an ASCII string, not be longer than 15 characters).
+- `SEASIDE_WAITING_OVERTIME`: Additional time that whirlpool will wait for the next control packet before deleting viridian and interrupting its connection (should be positive number).
+- `SEASIDE_FIRST_HEALTHCHECK_DELAY`: Amount of time that whirlpool will wait for the first control packet before deleting viridian and interrupting its connection (should be positive number).
+- `SEASIDE_MAXIMUM_NEXTIN`: Maximum nextIn delay after that a user will be deleted.
 - `SEASIDE_LOG_LEVEL`:  Output verbosity logging level, can be "error", "warning", "info", "debug" (default: `DEBUG`).
 
 Note: connection made _prior_ whirlpool launch will not be interrupted or limited, `SSH` connection (towards port 22) are not limited as well.

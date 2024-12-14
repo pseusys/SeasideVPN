@@ -26,12 +26,19 @@ jobs:
       pull-requests: write
 
     steps:
+      - name: Install NodeJS 🪢
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install Dependencies 🔮
+        run: npm install --prefix .github/scripts
+
       - name: Download Viridian Algae Artifact 🌿
         uses: dawidd6/action-download-artifact@v3
         with:
           workflow: publish.yml
           run_id: ${{ github.run_id }}
-          skip_unpack: true
           allow_forks: false
           name: algae-executable
   
@@ -40,9 +47,12 @@ jobs:
         with:
           workflow: publish.yml
           run_id: ${{ github.run_id }}
-          skip_unpack: true
           allow_forks: false
-          name: whirlpool-executable
+          name: whirlpool-executable-.+
+          name_is_regexp: true
+
+      - name: Rename Artifact Files ⭕
+        run: npm run --prefix .github/scripts prepare-release-artifacts -- *.run *.pyz
 
       - name: Create Release 🪅
         uses: marvinpinto/action-automatic-releases@v1.2.1
@@ -50,12 +60,13 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           prerelease: false
           files: |
-            algae-executable.zip
-            whirlpool-executable.zip
+            *.run
+            *.pyz
 
   caerulean-whirlpool-deploy:
     name: Deploy Caerulean Whirlpool To Dedicated Test Server
     runs-on: ubuntu-latest
+    needs: all-release-publish
     concurrency:
       group: DEPLOY-${{ github.ref }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
@@ -68,6 +79,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18
+
+      - name: Setup Python 3.10 🐍
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
 
       - name: Install Dependencies 🔮
         run: npm install --prefix .github/scripts

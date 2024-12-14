@@ -1,4 +1,5 @@
 syntax = "proto3";
+package generated;
 
 import "google/protobuf/empty.proto";
 
@@ -20,25 +21,29 @@ message WhirlpoolAuthenticationRequest {
 message WhirlpoolAuthenticationResponse {
     // Encrypted user token
     bytes token = 1;
+    // Maximum expected nextIn delay
+    int32 maxNextIn = 2;
 }
 
 
 
-// User control request to whirlpool node
-message ControlConnectionRequest {
+// User control request for handshake to whirlpool node
+message ControlHandshakeRequest {
     // Encrypted user token
     bytes token = 1;
-    // User client version
+    // Viridian version
     string version = 2;
-    // Node authentication owner payload
+    // Node authentication payload
     optional string payload = 3;
     // User local IP address
     bytes address = 4;
     // User seaside port number
     int32 port = 5;
+    // TODO: Add viridian type to signin protocol.
 }
 
-message ControlConnectionResponse {
+// Handshake response, containing user ID
+message ControlHandshakeResponse {
     // Optional user ID (will be sent after authentication)
     int32 userID = 1;
 }
@@ -55,31 +60,10 @@ message ControlHealthcheck {
 
 
 
-enum ControlExceptionStatus {
-    // Control operation success
-    EXCEPTION = 0;
-    // Control operation error
-    TERMINATION = 1;
-}
-
-// Whirlpool control responseto user
-message ControlException {
-    // Control response status
-    ControlExceptionStatus status = 1;
-    // Optional user ID (will be sent after authentication)
-    int32 userID = 2;
-    // Encrypted error message or empty string
-    optional string message = 3;
-}
-
-
-
 service WhirlpoolViridian {
     rpc Authenticate(WhirlpoolAuthenticationRequest) returns (WhirlpoolAuthenticationResponse) {}
 
-    rpc Connect(ControlConnectionRequest) returns (ControlConnectionResponse) {}
+    rpc Handshake(ControlHandshakeRequest) returns (ControlHandshakeResponse) {}
 
     rpc Healthcheck(ControlHealthcheck) returns (google.protobuf.Empty) {}
-
-    rpc Exception(ControlException) returns (google.protobuf.Empty) {}
 }

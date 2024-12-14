@@ -4,7 +4,7 @@
 SHELL=/bin/bash
 .SHELLFLAGS=-O globstar -c -e
 
-VERSION="0.0.2"
+VERSION="0.0.3"
 
 BOLD=\033[1m
 BLUE=\033[34m
@@ -20,7 +20,7 @@ help-whirlpool:
 
 help-algae:
 	@ # Print help message of viridian algae
-	poetry -C viridian/algae run help
+	poetry poe -C viridian/algae help
 .PHONY: help-algae
 
 help:
@@ -75,7 +75,7 @@ test-whirlpool:
 
 test-algae: install-algae
 	@ # Run caerulean algae tests (in a docker container)
-	poetry -C viridian/algae run test-all
+	poetry poe -C viridian/algae test-all
 .PHONY: test-algae
 
 test: test-whirlpool test-algae
@@ -91,7 +91,7 @@ lint-whirlpool:
 
 lint-algae: install-algae-all
 	@ # Lint viridian algae (locally, formatting available)
-	poetry -C viridian/algae run lint
+	poetry poe -C viridian/algae lint
 .PHONY: lint-algae
 
 lint-scripts:
@@ -118,7 +118,7 @@ clean-whirlpool:
 
 clean-algae: install-algae
 	@ # Clean viridian algae (including build and docker artifacts)
-	poetry -C viridian/algae run clean
+	poetry poe -C viridian/algae clean
 .PHONY: clean-algae
 
 clean: clean-whirlpool clean-algae

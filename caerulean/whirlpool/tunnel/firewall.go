@@ -16,23 +16,32 @@ import (
 // Burst multiplier is applied when large amount of data comes at the same time, doesn't last for long.
 // At that time, packet limit is getting multiplied by this multiplier.
 // Return rule appendix string array.
-func readLimit(envVar, template string, userNumber, burstMultiplier int) []string {
+func readLimit(envVar, template string, userNumber int32, burstMultiplier uint32) []string {
 	acceptRuleTemplate := []string{"-j", "ACCEPT"}
 	hashlimitRuleTemplate := []string{"-m", "hashlimit", "--hashlimit-mode", "dstip,dstport"}
-	limitNumber := utils.GetIntEnv(envVar) * userNumber
+	limitNumber := int32(utils.GetIntEnv(envVar, 32)) * userNumber
 	if limitNumber > 0 {
-		ruleSlice := []string{"--hashlimit-name", strings.ToLower(envVar), "--hashlimit-upto", fmt.Sprintf(template, limitNumber), "--hashlimit-burst", strconv.Itoa(limitNumber * burstMultiplier)}
+		ruleSlice := []string{"--hashlimit-name", strings.ToLower(envVar), "--hashlimit-upto", fmt.Sprintf(template, limitNumber), "--hashlimit-burst", strconv.FormatUint(uint64(limitNumber)*uint64(burstMultiplier), 10)}
 		return utils.ConcatSlices(hashlimitRuleTemplate, ruleSlice, acceptRuleTemplate)
 	} else {
 		return acceptRuleTemplate
 	}
 }
 
+// Flush all the IP tables.
+// This includes filter, raw, nat and mangle tables.
+func flushIPTables() {
+	runCommand("iptables", "-F")
+	runCommand("iptables", "-t", "raw", "-F")
+	runCommand("iptables", "-t", "nat", "-F")
+	runCommand("iptables", "-t", "mangle", "-F")
+}
+
 // Store iptables configuration.
 // Use iptables-store command to store iptables configurations as bytes.
 // Should be applied for TunnelConf object, store the configurations in .buffer field.
 func (conf *TunnelConfig) storeForwarding() {
-	command := exec.Command("iptables-save")
+	command := exec.Command("iptables-save", "--counters")
 	command.Stdout = &conf.buffer
 	err := command.Run()
 	if err != nil {
@@ -46,10 +55,10 @@ func (conf *TunnelConfig) storeForwarding() {
 // Should be applied for TunnelConf object.
 // Accept internal and external IP addresses as strings, seaside, network and control ports as integers.
 // Return error if configuration was not successful, nil otherwise.
-func (conf *TunnelConfig) openForwarding(intIP, extIP string, ctrlPort int) error {
+func (conf *TunnelConfig) openForwarding(intIP, extIP string, ctrlPort uint16) error {
 	// Prepare interface names and port numbers as strings
 	tunIface := conf.Tunnel.Name()
-	ctrlStr := strconv.Itoa(ctrlPort)
+	ctrlStr := strconv.FormatUint(uint64(ctrlPort), 10)
 
 	// Find internal network interface name
 	intIface, err := findInterfaceByIP(intIP)
@@ -66,19 +75,16 @@ func (conf *TunnelConfig) openForwarding(intIP, extIP string, ctrlPort int) erro
 	extName := extIface.Name
 
 	// Flush iptables rules
-	runCommand("iptables", "-F")
-	runCommand("iptables", "-t", "raw", "-F")
-	runCommand("iptables", "-t", "nat", "-F")
-	runCommand("iptables", "-t", "mangle", "-F")
+	flushIPTables()
 	// Accept localhost connections
 	runCommand("iptables", "-A", "INPUT", "-i", "lo", "-j", "ACCEPT")
 	runCommand("iptables", "-A", "OUTPUT", "-o", "lo", "-j", "ACCEPT")
 	// Allow all the connections that are already established
 	runCommand("iptables", "-A", "INPUT", "-m", "conntrack", "--ctstate", "ESTABLISHED,RELATED", "-j", "ACCEPT")
 	runCommand("iptables", "-A", "OUTPUT", "-m", "conntrack", "--ctstate", "ESTABLISHED", "-j", "ACCEPT")
-	// Accept SSH connections
-	runCommand("iptables", "-A", "INPUT", "-p", "tcp", "--dport", "22", "-m", "conntrack", "--ctstate", "NEW,ESTABLISHED,RELATED", "-j", "ACCEPT")
-	runCommand("iptables", "-A", "OUTPUT", "-p", "tcp", "--sport", "22", "-m", "conntrack", "--ctstate", "ESTABLISHED", "-j", "ACCEPT")
+	// Accept admin connections to private ports (e.g. SSH, HTTP, etc.)
+	runCommand("iptables", "-A", "INPUT", "-p", "tcp", "--dport", "0:1024", "-m", "conntrack", "--ctstate", "NEW,ESTABLISHED,RELATED", "-j", "ACCEPT")
+	runCommand("iptables", "-A", "OUTPUT", "-p", "tcp", "--sport", "0:1024", "-m", "conntrack", "--ctstate", "ESTABLISHED", "-j", "ACCEPT")
 	// Accept packets to port network, control and whirlpool ports, also accept PING packets
 	runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "udp", "-d", intIP, "-i", intName}, conf.vpnDataKbyteLimitRule)...)
 	runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "tcp", "-d", intIP, "--dport", ctrlStr, "-i", intName}, conf.controlPacketLimitRule)...)
@@ -103,11 +109,14 @@ func (conf *TunnelConfig) openForwarding(intIP, extIP string, ctrlPort int) erro
 // Use iptables-restore command to restore iptables configurations from bytes.
 // Should be applied for TunnelConf object, restore the configurations from .buffer field.
 func (conf *TunnelConfig) closeForwarding() {
-	runCommand("iptables", "-F")
-	command := exec.Command("iptables-restore", "--counters")
-	command.Stdin = &conf.buffer
-	err := command.Run()
-	if err != nil {
-		logrus.Errorf("Error running command %s: %v", command, err)
+	if conf.buffer.Len() > 0 {
+		command := exec.Command("iptables-restore", "--counters")
+		command.Stdin = &conf.buffer
+		err := command.Run()
+		if err != nil {
+			logrus.Errorf("Error running command %s: %v", command, err)
+		}
+	} else {
+		flushIPTables()
 	}
 }

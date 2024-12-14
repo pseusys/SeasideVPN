@@ -1,6 +1,6 @@
 # SeasideVPN
 
-<img align="left" width="175" height="175" alt="Seaside VPN logo" src="./view/icon-light.png">
+<img align="left" width="175" height="175" alt="Seaside VPN logo" src="./view/icon-light.svg">
 
 [![BUILD](https://github.com/pseusys/SeasideVPN/actions/workflows/build.yml/badge.svg)](https://github.com/pseusys/SeasideVPN/actions/workflows/build.yml)
 [![TEST](https://github.com/pseusys/SeasideVPN/actions/workflows/test.yml/badge.svg)](https://github.com/pseusys/SeasideVPN/actions/workflows/test.yml)
@@ -9,7 +9,7 @@
 A simple PPTP UDP and VPN system, focused on undetectability.
 The system is based on a new headerless completely encrypted communication protocol.
 
-> Current project version: **"0.0.2"**
+> Current project version: **"0.0.3"**
 
 ## General info
 
@@ -128,7 +128,6 @@ Seaside VPN offers several ways to handle all these cases:
 Following ways are yet to be implemented:
 
 1. VPN packets sending via several "gateway" servers with different IPs, simulating [`UDP tracker`](https://en.wikipedia.org/wiki/UDP_tracker) protocol.
-2. All ports and endpoint names are randomized.
 
 An encrypted viridian packet arriving to a whirlpool is authenticated by its port destination.
 I.e. alongside with a TCP gRPC contol channel a similar dedicated UDP port is assigned to every viridian and the VPN packets from that viridian should arrive to that port.
@@ -151,10 +150,12 @@ Connection certificate is a secret Seaside network address and should be shared 
 > NB! In case of non-digital connection certificate transmission, QR-code usage is advised.
 
 Each node can support multiple **payload** options, e.g. for users with differen privelege levels or for users from different origins.
+It is required for unauthorised access to the network prevention (i.e. it is **not enough** to know the IP address and port to connect).
+
 All the connection certificate can be expressed in a form of an URL:
 
 ```text
-seaside+{nodetype}://{address}:{ctrlport}/{anchor}?public={public}&payload={payload}
+seaside+{nodetype}://{address}:{ctrlport}/{payload}
 ```
 
 > NB! Some of the nodes (the ones that can be run in Docker) usually accept the certificate in form of environmental variables.
@@ -187,6 +188,7 @@ There are several client options:
 #### Algae
 
 A client in `Python` written for development and integration testing purposes.
+Also, contains [`setup`](./viridian/algae/setup) package for easy caerulean deployment.
 
 See detailed documentation [here](./viridian/algae/README.md).
 
@@ -227,10 +229,13 @@ These are the most important of them:
   > - Dependencies for `algae` running, testing and linting are listed in the [dedicated README](./viridian/algae/README.md#dependencies).
   > - Dependencies for `whirlpool` code generation and running are listed in the [dedicated README](./caerulean/whirlpool/README.md#dependencies).
   > - [`NodeJS18+`](https://nodejs.org/en) for scripts (in `./github/scripts`) execution.
+  > - `install.pyz` installation script in "viridian/algae" directory, can be generated with `poetry poe bundle` command.
 
 ## Future development
 
-## Connection short descriptions
+The steps of expected system development and not-yet-implemented features are described below.
+
+### Connection short descriptions
 
 Whirlpool to Surface connection:
 
@@ -246,20 +251,19 @@ Proxy to Surface connection:
 
 ### Roadmap
 
-- `viridian/submerged`: Rust crate viridian client.
+- `viridian/reef`: Rust CLI and GUI crate viridian client and router app for Linux.
 - `caerulean/foam`: Proxy for whirlpool.
-- `viridian/...`: Windows and Linux GUI client ([wintun](https://git.zx2c4.com/wintun/about/) + `submerged` + electron).
-- `viridian/...`: Android and iOS client (flutter + NDK + `submerged`).
+- `viridian/...`: Windows GUI client (by [this](https://github.com/microsoft/UwpVpnPluginSample) example).
+- `viridian/...`: Apple (MacOS + iOS) GUI client (by [this](https://kean.blog/post/vpn-configuration-manager) example).
+- `viridian/...`: Android (Kotlin + SDK) GUI client (by [this](https://developer.android.com/reference/android/net/VpnService) example).
 - `caerulean/surface`: Linux distributed node manager (java + springboot + thymeleaf).
 - `...`: TRON API smart contract for payments.
-- `viridian/...`: Linux router app (rust + CLI).
-- `caerulean/...`: Web `caerulean` explorer - pulls info from TRON, displays public servers, allows qr codes generation (static + github hosting + kotlin WEB).
+- `caerulean/...`: Web `caerulean` explorer - pulls info from TRON, displays public servers, allows QR codes generation (static + github hosting + TypeScript + React/Angular).
 
 ### TODOs
 
 1. Check tests without 0.0.0.0 iptables rule(s).
 2. Rename all "user" and "cleint" to viridian (for consistency).
-3. Fix all READMEs.
 
 ### Further considerations
 
@@ -275,8 +279,8 @@ Proxy to Surface connection:
 - Create CONTRIBUTING.md and USING.md tutorials.
 - Fix release artiface algorithm: add different installation scripts **only** (whirlpool-standalone, whirlpool-foam, whirlpool-surface (with compose.yml), ...).
 
-### Similar projects
+## Similar projects
 
 - [Claimed-to-be undetectable VPN](https://github.com/vpnhood/VpnHood)
 - [Simple Golang VPN](https://github.com/skx/simple-vpn)
-- [Chinese-grade VPN](https://github.com/bigeagle/gohop) and [article about it](https://www.researchgate.net/publication/269310871_GoHop_Personal_VPN_to_defend_from_censorship)
+- [Chinese VPN](https://github.com/bigeagle/gohop) and [article about it](https://www.researchgate.net/publication/269310871_GoHop_Personal_VPN_to_defend_from_censorship)

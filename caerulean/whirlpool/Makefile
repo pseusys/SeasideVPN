@@ -5,7 +5,8 @@
 SHELL=/bin/bash
 .SHELLFLAGS=-c -e
 
-DOCKER_BUILDKIT = 1
+PYTHON=python3
+PYTHONPATH=../../viridian/algae
 
 BOLD=\033[1m
 BLUE=\033[34m
@@ -49,6 +50,10 @@ build:
 
 run: build
 	@ # Run executable
+	if [ ! -d "certificates" ]; then
+		${PYTHON} -m setup --just-certs
+		mv certificates/caerulean/cert.key certificates/caerulean/cert.cert caertificates/
+	fi
 	sudo build/$(EXEC_NAME)
 .PHONY: run
 
@@ -66,7 +71,7 @@ build-docker-prod:
 
 run-docker: build-docker-prod
 	@ # Run executable inside of the production Docker image
-	docker run --privileged -it --rm --name seaside-whirlpool-run --env-file conf.env seaside-whirlpool-prod --network host ../..
+	docker run --privileged -it --rm --name seaside-whirlpool-run --env-file example.conf.env --sysctl net.ipv6.conf.all.disable_ipv6=1 --network host seaside-whirlpool-prod ../..
 .PHONY: run-docker
 
 
@@ -82,15 +87,15 @@ endif
 
 lint: build-docker-test
 	@ # Run lint inside of the testing docker container
-	docker run --privileged --rm --name seaside-whirlpool-lint --env-file example.conf.env --entrypoint golint seaside-whirlpool-test .
+	docker run --privileged --rm --name seaside-whirlpool-lint --env-file example.conf.env --sysctl net.ipv6.conf.all.disable_ipv6=1 --entrypoint golint seaside-whirlpool-test .
 .PHONY: lint
 
 test: build-docker-test
 	@ # Run tests inside of the testing docker container
 ifndef CI
-	docker run --privileged --rm --name seaside-whirlpool-test --env-file example.conf.env --entrypoint go seaside-whirlpool-test test -v ./...
+	docker run --privileged --rm --name seaside-whirlpool-test --env-file example.conf.env --sysctl net.ipv6.conf.all.disable_ipv6=1 --entrypoint go seaside-whirlpool-test test -v ./...
 else
-	docker run --privileged --rm --name seaside-whirlpool-test --env-file example.conf.env --entrypoint go seaside-whirlpool-test test ./...
+	docker run --privileged --rm -e CI=${CI} --name seaside-whirlpool-test --env-file example.conf.env --sysctl net.ipv6.conf.all.disable_ipv6=1 --entrypoint go seaside-whirlpool-test test ./...
 endif
 .PHONY: test
 
@@ -98,12 +103,8 @@ endif
 
 clean:
 	@ # Clean all the generated files, Docker images, containers and networks
-	rm -rf build
-	rm -rf generated
-	rm -rf certificates
-	rm -rf SeasideVPN
-	rm -f go.sum
-	rm -f conf.env
+	rm -rf build generated SeasideVPN
+	rm -f go.sum conf.env
 	docker rm -f seaside-whirlpool-run seaside-whirlpool-lint seaside-whirlpool-test
 	docker rmi -f seaside-whirlpool-prod seaside-whirlpool-test
 .PHONY: clean
