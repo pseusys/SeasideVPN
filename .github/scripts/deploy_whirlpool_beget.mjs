@@ -112,7 +112,7 @@ function printHelpMessage() {
 function ensureInstallationScript() {
 	if (!existsSync(INSTALL_SCRIPT)) {
 		console.log("Installation script not found, generating...");
-		execSync("python3 -m zipapp setup -c -o install.pyz", { cwd: dirname(INSTALL_SCRIPT) });
+		execSync("python3 -m viridian/algae/zipapp setup -c -o viridian/algae/install.pyz", { cwd: dirname(INSTALL_SCRIPT) });
 	} else console.log("Installation script found!");
 }
 
@@ -280,6 +280,8 @@ async function runDeployCommand(sshConn, certsPath, ownerPayload, viridianPayloa
 }
 
 // Script body:
+
+ensureInstallationScript()
 
 const args = parseArguments();
 const token = await getToken(args.login, args.password);

@@ -93,7 +93,6 @@ jobs:
 
       - name: Deploy Caerulean Whirlpool 🚀
         env:
-          PYTHONPATH: viridian/algae
           BEGET_API_LOGIN: ${{ secrets.BEGET_API_LOGIN }}
           BEGET_API_PASSWORD: ${{ secrets.BEGET_API_PASSWORD }}
           BEGET_SERVER_KEY: ${{ secrets.BEGET_SERVER_KEY }}
