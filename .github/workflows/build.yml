@@ -102,6 +102,7 @@ jobs:
 
       - name: Build Caerulean Whirlpool 🏗️
         env:
+          GOARCH: ${{ matrix.arch }}
           EXEC_NAME: ${{ format('caerulean-whirlpool-executable-{0}-{1}', env.BRANCH, matrix.arch) }}
         run: make -C caerulean/whirlpool build EXEC_NAME=${{ env.EXEC_NAME }}.run
 
@@ -110,5 +111,58 @@ jobs:
         with:
           name: whirlpool-executable-${{ matrix.arch }}
           path: caerulean/whirlpool/build/*.run
+          retention-days: 3
+          if-no-files-found: error
+
+  viridian-reef-build:
+    name: Build Viridian Reef Client Executable
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+        os: [linux, windows]
+
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v4
+
+      - name: Setup Nightly Rust 🦀
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: nightly
+
+      - name: Install Protoc 💾
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "24.4"
+
+      - name: Install Dependencies 🔮
+        run: sudo apt-get install -y --no-install-recommends protobuf-compiler
+
+      - name: Create Executable Branch Name 🌱
+        env:
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+          ARCHITECTURE: ${{ matrix.arch == 'amd64' && 'x86_64' || 'aarch64' }}
+          OS_TARGET: ${{ matrix.os == 'linux' && 'unknown-linux' || 'pc-windows' }}
+        run: |
+          BRANCH_NAME="${{ env.BRANCH_NAME }}"
+          BRANCH_NAME=${BRANCH_NAME////-}
+          echo BRANCH=${BRANCH_NAME} >> $GITHUB_ENV
+          echo TARGET=${ARCHITECTURE}-${OS_TARGET}-gnu >> $GITHUB_ENV
+
+      - name: Install Target Toolchain
+        run: rustup target add ${{ env.TARGET }}
+
+      - name: Build Viridian Reef 🏗️
+        env:
+          EXEC_NAME: ${{ format('caerulean-whirlpool-executable-{0}-{1}-{2}', env.BRANCH, matrix.os, matrix.arch) }}
+        run: cargo build --release --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml --target ${{ env.TARGET }}
+
+      - name: Save Artifact 🏺
+        uses: actions/upload-artifact@v4
+        with:
+          name: whirlpool-executable-${{ matrix.os }}-${{ matrix.arch }}
+          path: viridian/reef/target/**/cli.run
           retention-days: 3
           if-no-files-found: error

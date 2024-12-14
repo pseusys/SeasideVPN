@@ -1,11 +1,11 @@
 [tool.poetry]
-name = "SeasideVPN"
+name = "SeasideVPN-Algae"
 version = "0.0.3"
-description = "A simple PPTP UDP VPN system"
+description = "A testing SeasideVPN client and installation script for Linux"
 license = "MIT"
 package-mode = false
 authors = [
-    "Alexander Sergeev <alexander.sergeev@onmail.com>",
+    "Alexander Sergeev <alexander.sergeev@onmail.com>"
 ]
 
 readme = "README.md"

@@ -90,4 +90,4 @@ ARG COMMAND
 ENV COMMAND=$COMMAND
 
 # Setup default route IP and run viridian algae in the background.
-ENTRYPOINT ["sh", "-c", "ip route replace default via $ARG_NETWORK_GATEWAY && python3 -m sources $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -c $SEASIDE_CTRLPORT -e '$COMMAND'"]
+ENTRYPOINT ["sh", "-c", "ip route replace default via $ARG_NETWORK_GATEWAY && python3 -m sources $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -c $SEASIDE_CTRLPORT -e \"$COMMAND\""]

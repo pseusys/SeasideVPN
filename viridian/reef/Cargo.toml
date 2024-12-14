@@ -1,11 +1,14 @@
+cargo-features = ["different-binary-name"]
+
 [package]
-name = "reef"
-version = "0.0.2"
+name = "SeasideVPN-Reef"
+version = "0.0.3"
 edition = "2021"
 description = "A production-ready SeasideVPN client for Linux"
 authors = [
     "Alexander Sergeev <alexander.sergeev@onmail.com>"
 ]
+
 
 
 [dependencies]
@@ -34,6 +37,7 @@ tonic-build = "^0.12.3"
 regex = "^1.11.1"
 
 
+
 [lib]
 name = "reeflib"
 path = "src/lib/mod.rs"
@@ -41,4 +45,5 @@ path = "src/lib/mod.rs"
 [[bin]]
 name = "cli"
 path = "src/cli.rs"
+filename = "cli.run"
 required-features = ["cli-exec"] 

@@ -49,7 +49,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends iptables iproute2 python3-pip && rm -rf /var/lib/apt/lists/* && pip install --no-cache-dir pytest pytest-timeout
 COPY viridian/algae/tests/conftest.py viridian/algae/tests/test_local.py tests/
-COPY --from=builder /seaside/viridian/reef/target/debug/cli CLI_executable
+COPY --from=builder /seaside/viridian/reef/target/debug/cli.run cli.run
 
 VOLUME /seaside/viridian/ca
 
@@ -58,6 +58,6 @@ ENV SEASIDE_ADDRESS=
 ENV SEASIDE_CTRLPORT=
 
 ENV TEST_COMMAND="pytest --log-cli-level=INFO tests/test_local.py"
-ENTRYPOINT ["sh", "-c", "ip route replace default via '$ARG_NETWORK_GATEWAY' && ./CLI_executable -a '$SEASIDE_ADDRESS' -c '$SEASIDE_CTRLPORT' -p '$SEASIDE_PAYLOAD_VIRIDIAN' -e '$TEST_COMMAND'"]
+ENTRYPOINT ["sh", "-c", "ip route replace default via \"$ARG_NETWORK_GATEWAY\" && ./cli.run -a \"$SEASIDE_ADDRESS\" -c \"$SEASIDE_CTRLPORT\" -p \"$SEASIDE_PAYLOAD_VIRIDIAN\" -e \"$TEST_COMMAND\""]
 
 HEALTHCHECK --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s CMD ls /sys/class/net | grep tun0
