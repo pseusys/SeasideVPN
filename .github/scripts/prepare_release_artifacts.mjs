@@ -43,7 +43,7 @@ function parseArguments() {
  * @returns {string} current branch name
  */
 function getVersionValue() {
-	const gitBranch = execSync("git rev-parse --abbrev-ref HEAD").toString().trim();
+	const gitBranch = execSync("git describe --exact-match --tags").toString().trim();
 	const cleanVersion = gitBranch.replaceAll("/", "-");
 	console.log(`Current version: ${cleanVersion}`);
 	return cleanVersion;

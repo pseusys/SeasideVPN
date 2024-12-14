@@ -1,5 +1,4 @@
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, rmdirSync } from "node:fs";
@@ -22,7 +21,7 @@ const SLEEP_TIME = 15;
 // Ubuntu version to reinstall on the server
 const UBUNTU_VERISON = "22.04";
 // Local path to the 'install.pyz' Whirlpool node installation script
-const INSTALL_SCRIPT = fileURLToPath(join(dirname(import.meta.dirname), "..", "..", "viridian", "algae", "install.pyz"));
+const INSTALL_SCRIPT = join(dirname(import.meta.dirname), "..", "..", "viridian", "algae", "install.pyz");
 // Default ctrlport for whirlpool.
 const DEFAULT_CTRLPORT = 8587;
 // Default certificates path.
