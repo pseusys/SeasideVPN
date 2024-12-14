@@ -1,16 +1,13 @@
 from argparse import ArgumentParser
-from asyncio import create_task, get_event_loop, run
+from asyncio import create_task, get_event_loop
 from signal import SIGINT, SIGTERM
 from sys import argv, exit
 from typing import Sequence
 
 from colorama import just_fix_windows_console
 
-from .coordinator import VERSION, Coordinator
-from .utils import logger, parse_connection_link
-
-# Default tunnel interface name.
-_DEFAULT_NAME = "seatun"
+from sources.coordinator import VERSION, Coordinator
+from sources.utils import logger, parse_connection_link
 
 # Default tunnel interface IP address.
 _DEFAULT_ADDRESS = "127.0.0.1"
@@ -24,9 +21,9 @@ parser = ArgumentParser()
 parser.add_argument("payload", help="Whirlpool node owner key (required!)")
 parser.add_argument("-a", "--address", dest="addr", default=_DEFAULT_ADDRESS, type=str, help=f"Caerulean remote IP address (default: {_DEFAULT_ADDRESS})")
 parser.add_argument("-c", "--ctrl-port", dest="ctrl_port", default=_DEFAULT_CTRL_PORT, type=int, help=f"Caerulean control port number (default: {_DEFAULT_CTRL_PORT})")
-parser.add_argument("-t", "--tunnel", dest="name", default=_DEFAULT_NAME, help=f"Tunnel interface name (default: {_DEFAULT_NAME})")
 parser.add_argument("-l", "--link", dest="link", default=None, help="Connection link, will be used instead of other arguments if specified")
-parser.add_argument("-v", "--version", action="store_true", default=False, help="Print algae version number and exit")
+parser.add_argument("-v", "--version", action="version", version=f"Seaside Viridian Algae version {VERSION}", help="Print algae version number and exit")
+parser.add_argument("-e", "--command", dest="cmd", default=None, help="Command to execute and exit (will run forever if not specified)")
 
 # Viridian VPN coordinator.
 coordinator: Coordinator
@@ -40,16 +37,13 @@ async def main(args: Sequence[str] = argv[1:]) -> None:
     """
     global coordinator
     just_fix_windows_console()
-
     arguments = vars(parser.parse_args(args))
-    if arguments.pop("version"):
-        print(f"Seaside Viridian Algae version {VERSION}")
-        exit(0)
 
     connection_link = arguments.pop("link")
     if connection_link is not None:
         arguments.update(parse_connection_link(connection_link))
 
+    command = arguments.pop("cmd")
     logger.debug(f"Initializing coordinator with parameters: {arguments}")
     coordinator = Coordinator(**arguments)
 
@@ -58,7 +52,7 @@ async def main(args: Sequence[str] = argv[1:]) -> None:
     loop.add_signal_handler(SIGINT, lambda: create_task(finish()))
 
     logger.warning("Starting algae client coordinator...")
-    await coordinator.start()
+    await coordinator.start(command)
 
 
 async def finish() -> None:
@@ -68,8 +62,4 @@ async def finish() -> None:
     """
     global coordinator
     await coordinator.interrupt()
-    exit(0)
-
-
-if __name__ == "__main__":
-    run(main())
+    exit(1)

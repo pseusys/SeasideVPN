@@ -36,11 +36,11 @@ type WhirlpoolServer struct {
 	// Authentication string for node owner (administrator).
 	nodeOwnerPayload string
 
-	// Authentication string for node user (viridian).
-	nodeViridianPayload []string
-
 	// Maximum nextIn delay allowed for viridians
 	maxNextIn int32
+
+	// Authentication string for node user (viridian).
+	nodeViridianPayload []string
 
 	// Viridians dictionary, contains all the currently connected viridians.
 	viridians users.ViridianDict
@@ -63,7 +63,7 @@ func createWhirlpoolServer(ctx context.Context) *WhirlpoolServer {
 	nodeViridianPayloads := utils.GetEnv("SEASIDE_PAYLOAD_VIRIDIAN")
 
 	// Read max nextIn delay from environment
-	maxNextIn := utils.GetIntEnv("SEASIDE_MAXIMUM_NEXTIN")
+	maxNextIn := int32(utils.GetIntEnv("SEASIDE_MAXIMUM_NEXTIN", 32))
 
 	// Generate private node cipher
 	privateKey, err := crypto.GenerateCipher()
@@ -75,7 +75,7 @@ func createWhirlpoolServer(ctx context.Context) *WhirlpoolServer {
 	return &WhirlpoolServer{
 		nodeOwnerPayload:    nodeOwnerPayload,
 		nodeViridianPayload: strings.Split(nodeViridianPayloads, ":"),
-		maxNextIn:           int32(maxNextIn),
+		maxNextIn:           maxNextIn,
 		viridians:           *users.NewViridianDict(ctx),
 		privateKey:          privateKey,
 		base:                ctx,

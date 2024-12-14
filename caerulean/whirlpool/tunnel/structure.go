@@ -43,25 +43,30 @@ type TunnelConfig struct {
 	icmpPacketPACKETLimitRules []string
 
 	// Tunnel MTU.
-	mtu int
+	mtu uint32
+
+	// Tunnel name.
+	name string
 }
 
 // Preserve current iptables configuration in a TunnelConfig object.
 // Create and return the tunnel config pointer.
 func Preserve() *TunnelConfig {
-	maxViridians := utils.GetIntEnv("SEASIDE_MAX_VIRIDIANS") + utils.GetIntEnv("SEASIDE_MAX_ADMINS")
-	burstMultiplier := utils.GetIntEnv("SEASIDE_BURST_LIMIT_MULTIPLIER")
+	maxViridians := int32(utils.GetIntEnv("SEASIDE_MAX_VIRIDIANS", 32) + utils.GetIntEnv("SEASIDE_MAX_ADMINS", 32))
+	burstMultiplier := uint32(utils.GetIntEnv("SEASIDE_BURST_LIMIT_MULTIPLIER", 32))
 
 	vpnDataKbyteLimitRule := readLimit("SEASIDE_VPN_DATA_LIMIT", "%dkb/s", maxViridians, burstMultiplier)
 	controlPacketLimitRule := readLimit("SEASIDE_CONTROL_PACKET_LIMIT", "%d/sec", maxViridians, burstMultiplier)
 	icmpPacketPACKETLimitRules := readLimit("SEASIDE_ICMP_PACKET_LIMIT", "%d/sec", maxViridians, burstMultiplier)
-	mtu := utils.GetIntEnv("SEASIDE_TUNNEL_MTU")
+	mtu := uint32(utils.GetIntEnv("SEASIDE_TUNNEL_MTU", 32))
+	name := utils.GetEnv("SEASIDE_TUNNEL_NAME")
 
 	conf := TunnelConfig{
 		vpnDataKbyteLimitRule:      vpnDataKbyteLimitRule,
 		controlPacketLimitRule:     controlPacketLimitRule,
 		icmpPacketPACKETLimitRules: icmpPacketPACKETLimitRules,
 		mtu:                        mtu,
+		name:                       name,
 	}
 
 	conf.mutex.Lock()
@@ -82,7 +87,7 @@ func (conf *TunnelConfig) Open() (err error) {
 	// Parse IPs and control port number from environment variables
 	intIP := utils.GetEnv("SEASIDE_ADDRESS")
 	extIP := utils.GetEnv("SEASIDE_EXTERNAL")
-	ctrlPort := utils.GetIntEnv("SEASIDE_CTRLPORT")
+	ctrlPort := uint16(utils.GetIntEnv("SEASIDE_CTRLPORT", 16))
 
 	// Parse and initialize tunnel IP and network fields
 	conf.IP, conf.Network, err = net.ParseCIDR(TUNNEL_IP)
@@ -91,7 +96,9 @@ func (conf *TunnelConfig) Open() (err error) {
 	}
 
 	// Create and open TUN device
-	conf.Tunnel, err = water.New(water.Config{DeviceType: water.TUN})
+	configuration := water.Config{DeviceType: water.TUN}
+	configuration.Name = conf.name
+	conf.Tunnel, err = water.New(configuration)
 	if err != nil {
 		return fmt.Errorf("error allocating TUN interface: %v", err)
 	}

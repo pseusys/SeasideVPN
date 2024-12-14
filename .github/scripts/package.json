@@ -1,8 +1,11 @@
 {
 	"name": "seasidevpn-action-scripts",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"description": "Scripts for SeasideVPN GitHub Actions",
+	"type": "module",
 	"scripts": {
+		"deploy-whirlpool-beget": "node deploy_whirlpool_beget.mjs",
+		"prepare-release-artifacts": "node prepare_release_artifacts.mjs",
 		"lint-scripts": "npx prettier . --check",
 		"format-scripts": "npx prettier . --write"
 	},
@@ -17,6 +20,7 @@
 	},
 	"homepage": "https://github.com/pseusys/SeasideVPN#README",
 	"dependencies": {
+		"glob": "^11.0.0",
 		"node-fetch": "^3.3.2",
 		"node-ssh": "^13.1.0"
 	},

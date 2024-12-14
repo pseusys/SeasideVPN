@@ -1,8 +1,8 @@
 from asyncio import Task, create_task, get_running_loop
 from socket import socket
 
-from .crypto import Cipher
-from .utils import MAX_TWO_BYTES_VALUE, logger, os_read, os_write, sock_read, sock_write
+from sources.crypto import Cipher
+from sources.utils import MAX_TWO_BYTES_VALUE, logger, os_read, os_write, sock_read, sock_write
 
 
 class Viridian:

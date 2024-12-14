@@ -39,8 +39,8 @@ viridian/algae/**/.mypy_cache/
 viridian/algae/**/.pytest-cache/
 
 ## Python generated files:
-viridian/algae/sources/__init__.py
 viridian/algae/sources/generated/
+viridian/algae/*.pyz
 
 ## Test files:
 viridian/algae/certificates/
@@ -58,6 +58,9 @@ caerulean/whirlpool/**/go.sum
 
 ## Go generated files:
 caerulean/whirlpool/**/*.pb.go
+
+# Server certificates
+caerulean/whirlpool/certificates
 
 
 

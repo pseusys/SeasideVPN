@@ -23,17 +23,17 @@ jobs:
 
       - name: Install Dependencies 🔮
         run: |
-          pip3 install poetry
+          pip3 install poetry poethepoet[poetry_plugin]
           poetry -C viridian/algae install --without client,devel
 
       - name: Test Viridian Algae (unit) 🧪
-        run: poetry -C viridian/algae run test-unit
+        run: poetry poe -C viridian/algae test-unit
 
       - name: Test Viridian Algae (integration) 📇
-        run: poetry -C viridian/algae run test-integration
+        run: poetry poe -C viridian/algae test-integration
 
       - name: Test Viridian Algae (smoke) 😶‍🌫️
-        run: poetry -C viridian/algae run test-smoke
+        run: poetry poe -C viridian/algae test-smoke
 
   caerulean-whirlpool-test:
     name: Test Caerulean Whirlpool
@@ -45,3 +45,26 @@ jobs:
 
       - name: Test Caerulean Whirlpool 🧪
         run: make test-whirlpool
+
+  caerulean-installer-script:
+    name: Test Caerulean Installer Script
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dist: [compile, docker, binary]
+        caerulean: [whirlpool]
+
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.10 🐍
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Run Installer Script 📥
+        env:
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+        run: sudo -E PYTHONPATH=viridian/algae python3 -m setup -g -a no ${{ matrix.caerulean }} -r ${{ matrix.dist }} -s ${{ env.BRANCH_NAME }}

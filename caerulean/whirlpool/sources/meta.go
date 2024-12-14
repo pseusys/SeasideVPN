@@ -13,6 +13,12 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
+const (
+	GENERATE_CERT_LENGTH = 4096
+	GENERATE_CERT_SERIAL = 8 * 20
+	GENERATE_CERT_YEARS  = 10
+)
+
 // Metaserver structure.
 // Contains gRPC server and whirlpool server, also includes connection listener.
 type MetaServer struct {
@@ -55,7 +61,7 @@ func start(base context.Context) *MetaServer {
 
 	// Parse internal IP and control port from environment
 	intIP := utils.GetEnv("SEASIDE_ADDRESS")
-	ctrlPort := utils.GetIntEnv("SEASIDE_CTRLPORT")
+	ctrlPort := uint16(utils.GetIntEnv("SEASIDE_CTRLPORT", 16))
 
 	// Create TCP listener for gRPC connections
 	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", intIP, ctrlPort))

@@ -9,7 +9,7 @@
 A simple PPTP UDP and VPN system, focused on undetectability.
 The system is based on a new headerless completely encrypted communication protocol.
 
-> Current project version: **"0.0.2"**
+> Current project version: **"0.0.3"**
 
 ## General info
 
@@ -189,6 +189,7 @@ There are several client options:
 #### Algae
 
 A client in `Python` written for development and integration testing purposes.
+Also, contains [`setup`](./viridian/algae/setup) package for easy caerulean deployment.
 
 See detailed documentation [here](./viridian/algae/README.md).
 
@@ -257,10 +258,11 @@ Proxy to Surface connection:
 
 ### Roadmap
 
-- `viridian/reef`: Rust crate viridian client.
+- `viridian/reef`: Rust CLI and GUI crate viridian client and router app for Linux.
 - `caerulean/foam`: Proxy for whirlpool.
-- `viridian/...`: Windows and Linux GUI client ([wintun](https://git.zx2c4.com/wintun/about/) + `reef` + electron).
-- `viridian/...`: Android and iOS client (flutter + NDK + `reef`).
+- `viridian/...`: Windows GUI client (by [this](https://github.com/microsoft/UwpVpnPluginSample) example).
+- `viridian/...`: Apple (MacOS + iOS) GUI client (by [this](https://kean.blog/post/vpn-configuration-manager) example).
+- `viridian/...`: Android (Kotlin + SDK) GUI client (by [this](https://developer.android.com/reference/android/net/VpnService) example).
 - `caerulean/surface`: Linux distributed node manager (java + springboot + thymeleaf).
 - `...`: TRON API smart contract for payments.
 - `caerulean/...`: Web `caerulean` explorer - pulls info from TRON, displays public servers, allows QR codes generation (static + github hosting + TypeScript + React/Angular).
@@ -269,7 +271,6 @@ Proxy to Surface connection:
 
 1. Check tests without 0.0.0.0 iptables rule(s).
 2. Rename all "user" and "cleint" to viridian (for consistency).
-3. Setup routing table saving and restoration for algae and reef.
 
 ### Further considerations
 
@@ -289,4 +290,4 @@ Proxy to Surface connection:
 
 - [Claimed-to-be undetectable VPN](https://github.com/vpnhood/VpnHood)
 - [Simple Golang VPN](https://github.com/skx/simple-vpn)
-- [Chinese-grade VPN](https://github.com/bigeagle/gohop) and [article about it](https://www.researchgate.net/publication/269310871_GoHop_Personal_VPN_to_defend_from_censorship)
+- [Chinese VPN](https://github.com/bigeagle/gohop) and [article about it](https://www.researchgate.net/publication/269310871_GoHop_Personal_VPN_to_defend_from_censorship)

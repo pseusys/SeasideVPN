@@ -32,7 +32,7 @@ SYMM_KEY_LENGTH = 32
 MAX_TWO_BYTES_VALUE = (1 << 16) - 1
 
 
-def create_grpc_secure_channel(host: str, port: int, ca: Optional[Path]) -> Channel:
+def create_grpc_secure_channel(host: str, port: int, ca: Optional[str]) -> Channel:
     """
     Create secure gRPC channel.
     Retrieve and add certificated to avoid probkems with self-signed connection.
@@ -43,6 +43,7 @@ def create_grpc_secure_channel(host: str, port: int, ca: Optional[Path]) -> Chan
     context = SSLContext(PROTOCOL_TLS_CLIENT)
     if ca is not None:
         context.load_verify_locations(cafile=ca)
+    context.set_alpn_protocols(["h2", "http/1.1"])
     return Channel(host, port, ssl=context)
 
 

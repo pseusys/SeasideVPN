@@ -20,11 +20,11 @@ func GetEnv(key string) string {
 }
 
 // Get integer value from environment variable.
-// Accept environment variable (string).
+// Accept environment variable (string) and number of bits in the resulting number (integer).
 // Return environment variable value (converted to integer) or terminate program with an error.
-func GetIntEnv(key string) int {
+func GetIntEnv(key string, bitSize int) int64 {
 	if value, ok := os.LookupEnv(key); ok {
-		number, err := strconv.Atoi(value)
+		number, err := strconv.ParseInt(value, 10, bitSize)
 		if err == nil {
 			return number
 		} else {

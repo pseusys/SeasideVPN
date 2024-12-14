@@ -5,6 +5,9 @@
 SHELL=/bin/bash
 .SHELLFLAGS=-c -e
 
+PYTHON=python3
+PYTHONPATH=../../viridian/algae
+
 BOLD=\033[1m
 BLUE=\033[34m
 GREEN=\033[32m
@@ -48,7 +51,8 @@ build:
 run: build
 	@ # Run executable
 	if [ ! -d "certificates" ]; then
-		${SHELL} whirlpool.sh -z
+		${PYTHON} -m setup --just-certs
+		mv certificates/caerulean/cert.key certificates/caerulean/cert.cert caertificates/
 	fi
 	sudo build/$(EXEC_NAME)
 .PHONY: run
@@ -91,7 +95,7 @@ test: build-docker-test
 ifndef CI
 	docker run --privileged --rm --name seaside-whirlpool-test --env-file example.conf.env --sysctl net.ipv6.conf.all.disable_ipv6=1 --entrypoint go seaside-whirlpool-test test -v ./...
 else
-	docker run --privileged --rm --name seaside-whirlpool-test --env-file example.conf.env --sysctl net.ipv6.conf.all.disable_ipv6=1 --entrypoint go seaside-whirlpool-test test ./...
+	docker run --privileged --rm -e CI=${CI} --name seaside-whirlpool-test --env-file example.conf.env --sysctl net.ipv6.conf.all.disable_ipv6=1 --entrypoint go seaside-whirlpool-test test ./...
 endif
 .PHONY: test
 

@@ -1,10 +1,11 @@
 # Viridian Algae
 
-> Current version: **"0.0.2"**
+> Current version: **"0.0.3"**
 
 Small CLI-based client application, written in `Python`.
 It can be run on linux (in for- and background), it's highly customizable.
 Created mainly for development and testing purposes.
+Also contains caerulean installation [script](#caerulean-installation-script).
 
 > Target platform: _linux_ only
 
@@ -14,8 +15,10 @@ Created mainly for development and testing purposes.
   Installation guide can be found [here](https://www.python.org/downloads/).
 2. `protobuf` (compiler) version >= 24.4
   Installation guide example can be found [here](https://grpc.io/docs/protoc-installation/#install-pre-compiled-binaries-any-os).
-3. `poetry` (build system) version >= 1.0.0
+3. `poetry` (build system) version >= 1.0
   Installation guide can be found [here](https://python-poetry.org/docs/#installation).
+4. `poethepoet` (task runner) version >= 0.31
+  Installation guide can be found [here](https://poethepoet.natn.io/installation.html#installation).
 
 ## Implementation details
 
@@ -70,7 +73,7 @@ poetry install --without devel
 Algae can be executed with following command:
 
 ```bash
-sudo poetry run execute [PAYLOAD_VALUE]
+sudo poetry poe execute [PAYLOAD_VALUE]
 ```
 
 Superuser rights required for tunnel interface creation.
@@ -79,51 +82,93 @@ The following CLI arguments are supported:
 
 - `-a --address [ADDRESS]`: Caerulean server address, to connect to (default: `127.0.0.1`).
 - `-c --ctrl-port`: Control port - the port that will be used for control communication with caerulean (default: `8587`).
-- `-t --tunnel`: Name of the tunnel device that will be used for packet forwarding (default: `seatun`)
 - `-l --link`: Connection certificate in link form (will overwrite other parameters specified).
 - `-h --help`: Print short command notice and exit.
 - `-v --version`: Print current algae version and exit.
 
 It also sensitive to the following environmental variable:
 
+- `SEASIDE_TUNNEL_NAME`: Name of the tunnel interface (default: `seatun`).
+- `SEASIDE_TUNNEL_ADDRESS`: IP address of the tunnel (default: `192.168.0.65`).
+- `SEASIDE_TUNNEL_NETMASK`: Netmask of the tunnel network (default: `255.255.255.0`).
+- `SEASIDE_TUNNEL_SVA`: A special constant used for packet marking and routing table setting (default: `65`).
 - `SEASIDE_USER_NAME`: User name that will be used during connection (default: `default_algae_user`).
 - `SEASIDE_MIN_HC_TIME`: Minimal time between two healthcheck control messages, in seconds (default: `1`).
 - `SEASIDE_MAX_HC_TIME`: Maximal time between two healthcheck control messages, in seconds (default: `5`).
-- `SEASIDE_CONNECTION_TIMEOUT`: Timeout for gRPC control connection, in seconds (default: `3`).
+- `SEASIDE_CONNECTION_TIMEOUT`: Timeout for gRPC control connection, in seconds (default: `3.0`).
 - `SEASIDE_LOG_LEVEL`: Output verbosity logging level, can be "error", "warning", "info", "debug" (default: `DEBUG`).
 - `SEASIDE_ROOT_CERTIFICATE_AUTHORITY`: Custom certificate authority file path for whirlpool server.
+
+## Caerulean installation script
+
+> NB! Viridian algae is a python module, so all the commands in this section should be:
+>
+> - Either run from `viridian/algae` root.
+> - Or have environmental variable `PYTHONPATH` set to the `viridian/algae` root path.
+
+Caerulean installation script consists of several python files in `setup` directory.
+It can deploy different caerulean server apps on Linux machines with different architectures.
+The script itself has no external dependencies, does not require installation or building and can be used as a deployment entrypoint.
+It also is not demanding in terms of interpreter version: some reasonably-old `python3` (like `3.8`, available on most of the systems) should be just enough.
+The script can be used as-is or compressed for uploading to a remote server using the following command:
+
+```bash
+sudo poetry poe bundle [INSTALLATION_SCRIPT_NAME]
+```
+
+The script is flexible and accepts multiple different parameters, that will not be described here.
+Detailed parameter description can be received by running this command:
+
+```bash
+python3 -m setup --help
+```
+
+For each individual caerulean, the options closely resemble the environment variables they depend on.
+The option description for each individual caerulean in the following list: (`whirlpool`) can be received by running this command:
+
+```bash
+python3 -m setup CAERULEAN_NAME --help
+```
+
+In order to achieve reproducible caerulean deployments, `conf.env` and `certificates` files can be uploaded before deployment.
+Combined with relevant script arguments, they will prevent script from regenerating system settings.
+
+> NB! A special case of using the script is generating self-signed certificates set (for local testing or no-DNS deployment).
+> It can be done with the following command: `python3 -m setup --just-certs`.
+
+Examples of this script usage can be found in [whirlpool make](../../caerulean/whirlpool/Makefile) and [Beget deployment script](../../.github/scripts//deploy_whirlpool_beget.mjs).
 
 ## Other commands
 
 Lint all python files:
 
 ```bash
-sudo poetry run lint
+sudo poetry poe lint
 ```
 
 Test (all types of tests):
 
 ```bash
-sudo poetry run test-all
+sudo poetry poe test-all
 ```
 
 Build standalone executable (OS-specific):
 
 ```bash
-sudo poetry run build
+sudo poetry poe build [EXECUTABLE_NAME]
 ```
 
 Clean build artifacts:
 
 ```bash
-sudo poetry run clean
+sudo poetry poe clean
 poetry env remove --all
 ```
 
 There are other commands available, run this to get the full list:
 
 ```bash
-sudo poetry run help
+sudo poetry poe help
 ```
 
 ## Test sets
@@ -134,5 +179,6 @@ Four test sets are included:
 2. `integration`: Integration tests for communication between `algae` viridian and `whirlpool` caerulean.
 3. `local`: Smoke test for UDP server access in a chaotic network.
 4. `remote`: Smoke test for real-world website access.
-5. `smoke`: Both `local` and `remote` test sets.
-6. `all`: All the tests specified.
+5. `domain`: Smoke test for DNS website resolving.
+6. `smoke`: All of the `local`, `remote` and `domain` test sets.
+7. `all`: All the tests specified.

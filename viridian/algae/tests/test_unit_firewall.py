@@ -5,10 +5,13 @@ from typing import Generator
 
 import pytest
 
-from ..sources.tunnel import Tunnel
+from sources.tunnel import Tunnel
 
 TUNNEL_NAME = "test-tun"
+TUNNEL_ADDRESS = IPv4Address("10.0.0.2")
+TUNNEL_NETMASK = IPv4Address("255.255.0.0")
 TUNNEL_DIRECTION = IPv4Address("8.8.8.8")
+TUNNEL_SVA = 65
 
 IP_LINK_ENTRY = compile(r"\S+: (?P<name>\S+): <(?P<flags>\S+)> mtu (?P<mtu>\d+) [\S\s]*?\n")
 IP_ADDRESS_ENTRY = compile(r"\S+: (?P<name>\S+): <(?P<flags>\S+)> [\S\s]*? inet (?P<address>\S+) [\S\s]*?\n")
@@ -21,7 +24,7 @@ def tunnel() -> Generator[Tunnel, None, None]:
 
 @pytest.mark.dependency()
 def test_tunnel_init(tunnel: Tunnel) -> None:
-    tunnel.__init__(TUNNEL_NAME, TUNNEL_DIRECTION)
+    tunnel.__init__(TUNNEL_NAME, TUNNEL_ADDRESS, TUNNEL_NETMASK, TUNNEL_SVA, TUNNEL_DIRECTION)  # type: ignore
 
     ip_links = check_output(["ip", "link", "show"]).decode()
     ip_matches = [match for match in finditer(IP_LINK_ENTRY, ip_links)]

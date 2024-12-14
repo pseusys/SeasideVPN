@@ -31,7 +31,7 @@ message WhirlpoolAuthenticationResponse {
 message ControlHandshakeRequest {
     // Encrypted user token
     bytes token = 1;
-    // User client version
+    // Viridian version
     string version = 2;
     // Node authentication payload
     optional string payload = 3;
@@ -39,6 +39,7 @@ message ControlHandshakeRequest {
     bytes address = 4;
     // User seaside port number
     int32 port = 5;
+    // TODO: Add viridian type to signin protocol.
 }
 
 // Handshake response, containing user ID

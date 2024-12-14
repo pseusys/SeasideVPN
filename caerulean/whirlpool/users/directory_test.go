@@ -16,11 +16,13 @@ import (
 
 const (
 	DIRECTORY_CYCLE_MTU          = "1500"
+	DIRECTORY_CYCLE_NAME         = "dirtesttun"
 	DIRECTORY_CYCLE_VIRIDIAN_UID = "test_user_uid"
 )
 
 func TestDirectoryCycle(test *testing.T) {
 	test.Setenv("SEASIDE_TUNNEL_MTU", DIRECTORY_CYCLE_MTU)
+	test.Setenv("SEASIDE_TUNNEL_NAME", DIRECTORY_CYCLE_NAME)
 
 	tunnelConfig := tunnel.Preserve()
 	err := tunnelConfig.Open()

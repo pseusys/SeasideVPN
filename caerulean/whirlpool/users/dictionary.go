@@ -21,16 +21,16 @@ import (
 // Consists of the dictionary itself and limits that should be applied to users.
 type ViridianDict struct {
 	// A multiplier for maximum healthcheck waiting time for viridian (before deletion).
-	viridianWaitingOvertime uint
+	viridianWaitingOvertime uint16
 
 	// Time before the first healthcheck message from viridian.
 	firstHealthcheckDelay time.Duration
 
 	// Maximum number of viridians (not admins).
-	maxViridians uint
+	maxViridians uint16
 
 	// Maximum number of privileged viridian (admin).
-	maxOverhead uint
+	maxOverhead uint16
 
 	// The viridian dictionary itself.
 	entries map[uint16]*Viridian
@@ -44,8 +44,8 @@ type ViridianDict struct {
 // Accept context, return viridian dictionary pointer.
 func NewViridianDict(ctx context.Context) *ViridianDict {
 	// Retrieve limits from environment variables
-	maxViridians := uint16(utils.GetIntEnv("SEASIDE_MAX_VIRIDIANS"))
-	maxAdmins := uint16(utils.GetIntEnv("SEASIDE_MAX_ADMINS"))
+	maxViridians := uint16(utils.GetIntEnv("SEASIDE_MAX_VIRIDIANS", 16))
+	maxAdmins := uint16(utils.GetIntEnv("SEASIDE_MAX_ADMINS", 16))
 	maxTotal := maxViridians + maxAdmins
 
 	// Exit if limit configuration is inconsistant
@@ -54,8 +54,8 @@ func NewViridianDict(ctx context.Context) *ViridianDict {
 	}
 
 	// Retrieve time limits from environment variables
-	viridianWaitingOvertime := uint(utils.GetIntEnv("SEASIDE_WAITING_OVERTIME"))
-	firstHealthcheckDelayMultiplier := uint(utils.GetIntEnv("SEASIDE_FIRST_HEALTHCHECK_DELAY"))
+	viridianWaitingOvertime := uint16(utils.GetIntEnv("SEASIDE_WAITING_OVERTIME", 16))
+	firstHealthcheckDelayMultiplier := uint16(utils.GetIntEnv("SEASIDE_FIRST_HEALTHCHECK_DELAY", 16))
 	firstHealthcheckDelay := time.Second * time.Duration(viridianWaitingOvertime*firstHealthcheckDelayMultiplier)
 
 	// Retrieve tunnel configurations from context
@@ -68,8 +68,8 @@ func NewViridianDict(ctx context.Context) *ViridianDict {
 	dict := ViridianDict{
 		viridianWaitingOvertime: viridianWaitingOvertime,
 		firstHealthcheckDelay:   firstHealthcheckDelay,
-		maxViridians:            uint(maxViridians),
-		maxOverhead:             uint(maxAdmins),
+		maxViridians:            maxViridians,
+		maxOverhead:             maxAdmins,
 		entries:                 make(map[uint16]*Viridian, maxTotal),
 	}
 	go dict.SendPacketsToViridians(ctx, tunnelConfig.Tunnel, tunnelConfig.Network)
@@ -196,7 +196,7 @@ func (dict *ViridianDict) Update(userID uint16, nextIn int32) error {
 		dict.Delete(userID, false)
 		return status.Errorf(codes.DeadlineExceeded, "viridian %d subscription outdated", userID)
 	} else {
-		viridian.reset.Reset(time.Duration(nextIn*int32(dict.viridianWaitingOvertime)) * time.Second)
+		viridian.reset.Reset(time.Duration(nextIn+int32(dict.viridianWaitingOvertime)) * time.Second)
 		return nil
 	}
 }

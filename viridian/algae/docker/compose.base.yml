@@ -22,21 +22,22 @@ services:
     sysctls:
       - net.ipv6.conf.all.disable_ipv6=1
     volumes:
-      - ../certificates/client:/seaside/viridian/ca:ro
+      - ../certificates/viridian:/seaside/viridian/ca:ro
 
   whirlpool:
     image: seaside-whirlpool-smoke
     container_name: seaside-whirlpool
     privileged: true
     build:
-      dockerfile: Dockerfile.whirlpool
+      dockerfile: viridian/algae/docker/Dockerfile.whirlpool
+      context: ../../..
       target: smoke
     env_file:
       - test.conf.env
     sysctls:
       - net.ipv6.conf.all.disable_ipv6=1
     volumes:
-      - ../certificates/server:/seaside/caerulean/certificates:ro
+      - ../certificates/caerulean:/seaside/caerulean/certificates:ro
 
   echo:
     image: seaside-echo-smoke
