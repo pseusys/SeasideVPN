@@ -48,22 +48,26 @@ PyYAML = "^6.0.2"
 betterproto = { version = "^2.0.0b6", extras = ["compiler"] }
 
 
-[tool.poetry.scripts]
-generate = "__init__:generate"
-lint = "__init__:lint"
-format = "__init__:format"
-test-unit = "scripts:test_unit"
-test-integration = "scripts:test_integration"
-test-smoke = "scripts:test_smoke"
-test-local = "scripts:test_local"
-test-remote = "scripts:test_remote"
-test-domain = "scripts:test_domain"
-test-all = "scripts:test_all"
-compile = "__init__:compile"
-execute = "__init__:execute"
-bundle = "__init__:bundle"
-clean = "__init__:clean"
-help = "__init__:help"
+[tool.poe.poetry_hooks]
+pre_install = "generate"
+
+
+[tool.poe.tasks]
+generate.script = "__init__:generate"
+lint.script = "__init__:lint"
+format.script = "__init__:format"
+test-unit.script = "scripts:test_unit"
+test-integration.script = "scripts:test_integration"
+test-smoke.script = "scripts:test_smoke"
+test-local.script = "scripts:test_local"
+test-remote.script = "scripts:test_remote"
+test-domain.script = "scripts:test_domain"
+test-all.script = "scripts:test_all"
+compile.script = "__init__:compile"
+execute.script = "__init__:execute"
+bundle.script = "__init__:bundle"
+clean.script = "__init__:clean"
+help.script = "__init__:help"
 
 
 

@@ -229,7 +229,7 @@ These are the most important of them:
   > - Dependencies for `algae` running, testing and linting are listed in the [dedicated README](./viridian/algae/README.md#dependencies).
   > - Dependencies for `whirlpool` code generation and running are listed in the [dedicated README](./caerulean/whirlpool/README.md#dependencies).
   > - [`NodeJS18+`](https://nodejs.org/en) for scripts (in `./github/scripts`) execution.
-  > - `install.pyz` installation script in "viridian/algae" directory, can be generated with `poetry run bundle` command.
+  > - `install.pyz` installation script in "viridian/algae" directory, can be generated with `poetry poe bundle` command.
 
 ## Future development
 

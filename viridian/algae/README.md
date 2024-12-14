@@ -15,8 +15,10 @@ Also contains caerulean installation [script](#caerulean-installation-script).
   Installation guide can be found [here](https://www.python.org/downloads/).
 2. `protobuf` (compiler) version >= 24.4
   Installation guide example can be found [here](https://grpc.io/docs/protoc-installation/#install-pre-compiled-binaries-any-os).
-3. `poetry` (build system) version >= 1.0.0
+3. `poetry` (build system) version >= 1.0
   Installation guide can be found [here](https://python-poetry.org/docs/#installation).
+4. `poethepoet` (task runner) version >= 0.31
+  Installation guide can be found [here](https://poethepoet.natn.io/installation.html#installation).
 
 ## Implementation details
 
@@ -71,7 +73,7 @@ poetry install --without devel
 Algae can be executed with following command:
 
 ```bash
-sudo poetry run execute [PAYLOAD_VALUE]
+sudo poetry poe execute [PAYLOAD_VALUE]
 ```
 
 Superuser rights required for tunnel interface creation.
@@ -110,7 +112,7 @@ It also is not demanding in terms of interpreter version: some reasonably-old `p
 The script can be used as-is or compressed for uploading to a remote server using the following command:
 
 ```bash
-sudo poetry run bundle [INSTALLATION_SCRIPT_NAME]
+sudo poetry poe bundle [INSTALLATION_SCRIPT_NAME]
 ```
 
 The script is flexible and accepts multiple different parameters, that will not be described here.
@@ -140,32 +142,32 @@ Examples of this script usage can be found in [whirlpool make](../../caerulean/w
 Lint all python files:
 
 ```bash
-sudo poetry run lint
+sudo poetry poe lint
 ```
 
 Test (all types of tests):
 
 ```bash
-sudo poetry run test-all
+sudo poetry poe test-all
 ```
 
 Build standalone executable (OS-specific):
 
 ```bash
-sudo poetry run build [EXECUTABLE_NAME]
+sudo poetry poe build [EXECUTABLE_NAME]
 ```
 
 Clean build artifacts:
 
 ```bash
-sudo poetry run clean
+sudo poetry poe clean
 poetry env remove --all
 ```
 
 There are other commands available, run this to get the full list:
 
 ```bash
-sudo poetry run help
+sudo poetry poe help
 ```
 
 ## Test sets

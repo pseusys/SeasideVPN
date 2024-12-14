@@ -23,7 +23,7 @@ jobs:
 
       - name: Install Dependencies 🔮
         run: |
-          pip3 install poetry
+          pip3 install poetry poethepoet[poetry_plugin]
           poetry -C viridian/algae install --without client,devel
 
       - name: Test Viridian Algae (unit) 🧪
