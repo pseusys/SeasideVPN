@@ -32,7 +32,7 @@ jobs:
       - name: Install NodeJS 🪢
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 22
 
       - name: Install Dependencies 🔮
         run: npm install --prefix .github/scripts
@@ -55,7 +55,7 @@ jobs:
           name_is_regexp: true
 
       - name: Rename Artifact Files ⭕
-        run: npm run --prefix .github/scripts prepare-release-artifacts -- *.run *.pyz
+        run: npm run --prefix .github/scripts prepare-release-artifacts -- "*.run" "*.pyz"
 
       - name: Create Release 🪅
         uses: marvinpinto/action-automatic-releases@v1.2.1
@@ -81,7 +81,7 @@ jobs:
       - name: Install NodeJS 🪢
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 22
 
       - name: Setup Python 3.10 🐍
         uses: actions/setup-python@v5

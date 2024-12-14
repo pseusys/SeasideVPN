@@ -1,5 +1,7 @@
+import { dirname, join } from "node:path";
 import { parseArgs } from "node:util";
 import { renameSync } from "node:fs";
+import { execSync } from "node:child_process";
 
 import { globSync } from "glob";
 
@@ -53,7 +55,8 @@ function getVersionValue() {
  * @param {string} version Git version to remove
  */
 function renameFileGlob(glob, version) {
-	for (const file of globSync(glob)) {
+	const globPath = join(dirname(import.meta.dirname), "..", "..", glob);
+	for (const file of globSync(globPath)) {
 		const newName = file.replaceAll(`-${version}`, "");
 		console.log(`Renaming '${file}' to '${newName}'...`);
 		renameSync(file, newName);
@@ -65,4 +68,4 @@ function renameFileGlob(glob, version) {
 const positionals = parseArguments();
 const version = getVersionValue();
 
-for (const glob of positionals) renameFileGlob(glob, version, verbos);
+for (const glob of positionals) renameFileGlob(glob, version);

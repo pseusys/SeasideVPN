@@ -2,6 +2,7 @@
 	"name": "seasidevpn-action-scripts",
 	"version": "0.0.3",
 	"description": "Scripts for SeasideVPN GitHub Actions",
+	"type": "module",
 	"scripts": {
 		"deploy-whirlpool-beget": "node deploy_whirlpool_beget.mjs",
 		"prepare-release-artifacts": "node prepare_release_artifacts.mjs",
