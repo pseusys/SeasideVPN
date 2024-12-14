@@ -5,7 +5,7 @@ from re import search
 from subprocess import DEVNULL, SubprocessError, check_call, check_output
 from typing import Optional
 
-from setup.utils import Logging, semver_to_tuple
+from utils import Logging, semver_to_tuple
 
 # See "https://github.com/chef/os_release" for different "os_release" formats
 _BASE_DISTROS = {"debian", "alpine"}

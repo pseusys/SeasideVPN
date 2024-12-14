@@ -8,11 +8,11 @@ from typing import Dict, Optional, Tuple
 from urllib.request import urlretrieve
 from zipfile import ZipFile
 
-from setup.base import Installer
-from setup.certificates import GENERATE_CERTIFICATES_PATH, generate_certificates
-from setup.default import DEFAULT_GENERATED_VALUE, local_ip, logging_level, payload_value, port_number
-from setup.specific import check_install_packages, check_package, get_arch
-from setup.utils import BLUE, BOLD, GREEN, RED, RESET, UNDER, YELLOW
+from base import Installer
+from certificates import GENERATE_CERTIFICATES_PATH, generate_certificates
+from default import DEFAULT_GENERATED_VALUE, local_ip, logging_level, payload_value, port_number
+from specific import check_install_packages, check_package, get_arch
+from utils import BLUE, BOLD, GREEN, RED, RESET, UNDER, YELLOW
 
 _PARSER_NAME = "whirlpool"
 _VERSION = '"0.0.3"'

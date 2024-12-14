@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from argparse import ArgumentParser, _SubParsersAction
 from typing import Any, Dict
 
-from setup.utils import Logging
+from utils import Logging
 
 
 class Installer(ABC):

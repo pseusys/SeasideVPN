@@ -112,7 +112,7 @@ function printHelpMessage() {
 function ensureInstallationScript() {
 	if (!existsSync(INSTALL_SCRIPT)) {
 		console.log("Installation script not found, generating...");
-		execSync("python3 -m zipapp setup -c -o install.pyz", { cwd: dirname(INSTALL_SCRIPT) });
+		execSync("poetry poe bundle", { cwd: dirname(INSTALL_SCRIPT) });
 	} else console.log("Installation script found!");
 }
 

@@ -5,7 +5,7 @@ from shutil import rmtree
 from subprocess import DEVNULL, check_call
 from typing import Union
 
-from setup.utils import Logging
+from utils import Logging
 
 _GENERATE_CERTIFICATES_ALGORITHM = "rsa:2048"
 _GENERATE_CERTIFICATES_SUBJECT = "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPN"

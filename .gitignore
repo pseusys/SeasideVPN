@@ -58,3 +58,6 @@ caerulean/whirlpool/**/go.sum
 
 ## Go generated files:
 caerulean/whirlpool/**/*.pb.go
+
+# Server certificates
+caerulean/whirlpool/certificates

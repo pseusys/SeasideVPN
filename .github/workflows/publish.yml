@@ -89,7 +89,10 @@ jobs:
           python-version: "3.10"
 
       - name: Install Dependencies 🔮
-        run: npm install --prefix .github/scripts
+        run: |
+          npm install --prefix .github/scripts
+          pip3 install poetry poethepoet[poetry_plugin]
+          poetry --no-plugins -C viridian/algae install --with script
 
       - name: Deploy Caerulean Whirlpool 🚀
         env:
