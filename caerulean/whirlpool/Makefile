@@ -2,9 +2,11 @@
 .EXPORT_ALL_VARIABLES:
 .DEFAULT_GOAL := help
 
-PYTHON=python3
 SHELL=/bin/bash
 .SHELLFLAGS=-c -e
+
+PYTHON=python3
+PYTHONPATH=../../viridian/algae
 
 BOLD=\033[1m
 BLUE=\033[34m
@@ -49,7 +51,7 @@ build:
 run: build
 	@ # Run executable
 	if [ ! -d "certificates" ]; then
-		${PYTHON} ../../viridian/algae/setup/main.py --just-certs
+		${PYTHON} -m setup --just-certs
 	fi
 	sudo build/$(EXEC_NAME)
 .PHONY: run

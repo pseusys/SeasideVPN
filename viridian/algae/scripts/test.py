@@ -50,7 +50,7 @@ def _test_set(docker_path: Path, profile: Profile, hosted: bool, test_detached: 
     whirlpool_conf = safe_load(compose_file.read_text())["services"].get("whirlpool", None)
     if whirlpool_conf is not None:
         logger.debug("Generating self-signed testing certificates...")
-        generate_certificates(logger, IPv4Address(whirlpool_conf["environment"]["SEASIDE_ADDRESS"]), certificates_path, True)
+        generate_certificates(IPv4Address(whirlpool_conf["environment"]["SEASIDE_ADDRESS"]), certificates_path, True)
         logger.debug("Self-signed certificates generated!")
 
     try:
@@ -170,6 +170,6 @@ def test_all() -> int:
     just_fix_windows_console()
     with docker_test() as (docker_path, hosted):
         result = 0
-        for test_set in ("unit", "integration", "local", "remote"):
+        for test_set in ("unit", "integration", "local", "remote", "domain"):
             result = result or _test_set(docker_path, test_set, hosted, test_set != "domain")  # type: ignore[arg-type]
         return result

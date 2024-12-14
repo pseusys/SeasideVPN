@@ -1,13 +1,13 @@
 from argparse import ArgumentParser
-from asyncio import create_task, get_event_loop, run
+from asyncio import create_task, get_event_loop
 from signal import SIGINT, SIGTERM
 from sys import argv, exit
 from typing import Sequence
 
 from colorama import just_fix_windows_console
 
-from .coordinator import VERSION, Coordinator
-from .utils import logger, parse_connection_link
+from sources.coordinator import VERSION, Coordinator
+from sources.utils import logger, parse_connection_link
 
 # Default tunnel interface IP address.
 _DEFAULT_ADDRESS = "127.0.0.1"
@@ -63,7 +63,3 @@ async def finish() -> None:
     global coordinator
     await coordinator.interrupt()
     exit(1)
-
-
-if __name__ == "__main__":
-    run(main())

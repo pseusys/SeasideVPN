@@ -2,7 +2,7 @@ from asyncio import run as async_run
 from glob import glob
 from pathlib import Path
 from shutil import rmtree
-from subprocess import run as subprocess_run
+from subprocess import DEVNULL, check_call
 from sys import argv, executable
 from typing import List, Union
 from zipapp import create_archive
@@ -31,7 +31,7 @@ def generate() -> None:
     command = f"{executable} -m grpc_tools.protoc -I=vessels --python_betterproto_out=viridian/algae/sources vessels/*.proto"
     generated_dir = ALGAE_ROOT / "sources" / "generated"
     rmtree(generated_dir, ignore_errors=True)
-    subprocess_run(command, cwd=ALGAE_ROOT.parent.parent, shell=True, check=True)
+    check_call(command, cwd=ALGAE_ROOT.parent.parent, stdout=DEVNULL, stderr=DEVNULL, shell=True)
 
 
 def compile() -> None:
@@ -82,7 +82,7 @@ def clean() -> None:
     docker = DockerClient()
     unique_containers: List[Union[str, Container]] = ["seaside-algae", "seaside-whirlpool", "seaside-echo", "seaside-internal-router", "seaside-external-router", "network-disruptor"]
     copy_containers: List[Union[str, Container]] = [f"docker-algae-copy-{n + 1}" for n in range(3)]
-    docker.container.remove(unique_containers + copy_containers, True, True)
+    docker.container.remove(unique_containers + copy_containers, force=True, volumes=True)
     algae_images: List[ValidImage] = [f"seaside-algae-{mode}" for mode in ("default", "smoke", "smoke-sleeping", "default-sleeping", "smoke-local", "smoke-remote", "smoke-domain")]
     whirlpool_images: List[ValidImage] = [f"seaside-whirlpool-{mode}" for mode in ("default", "smoke", "integration", "smoke-local", "smoke-remote")]
     docker.image.remove(["seaside-echo-smoke", "seaside-router-smoke", "seaside-router-smoke-sleeping", "seaside-echo-default", "seaside-echo"] + algae_images + whirlpool_images, True, True)

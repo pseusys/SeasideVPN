@@ -2,8 +2,8 @@ from logging import getLogger
 
 from Crypto.Random import get_random_bytes
 
-from ..sources.crypto import Cipher
-from ..sources.utils import parse_connection_link
+from sources.crypto import Cipher
+from sources.utils import parse_connection_link
 
 logger = getLogger(__file__)
 
@@ -28,9 +28,9 @@ def test_encrypt_cycle() -> None:
     message = get_random_bytes(ENCRYPTION_CYCLE_MESSAGE_LENGTH)
 
     ciphertext = cipher.encrypt(message)
-    logger.info(f"message ciphertext: {ciphertext}")
+    logger.info(f"message ciphertext: {ciphertext!r}")
 
     plaintext = cipher.decrypt(ciphertext)
-    logger.info(f"message plaintext: {plaintext}")
+    logger.info(f"message plaintext: {plaintext!r}")
 
     assert plaintext == message, f"encrypted bytes ({message!r}) don't match decrypted bytes ({plaintext!r})"

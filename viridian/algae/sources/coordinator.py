@@ -11,10 +11,10 @@ from Crypto.Random import get_random_bytes
 from Crypto.Random.random import randint
 from grpclib.exceptions import GRPCError
 
-from .generated import ControlHandshakeRequest, ControlHealthcheck, WhirlpoolAuthenticationRequest, WhirlpoolViridianStub
-from .tunnel import Tunnel
-from .utils import MAX_TAIL_LENGTH, SYMM_KEY_LENGTH, create_grpc_secure_channel, logger
-from .viridian import Viridian
+from sources.generated import ControlHandshakeRequest, ControlHealthcheck, WhirlpoolAuthenticationRequest, WhirlpoolViridianStub
+from sources.tunnel import Tunnel
+from sources.utils import MAX_TAIL_LENGTH, SYMM_KEY_LENGTH, create_grpc_secure_channel, logger
+from sources.viridian import Viridian
 
 # Current algae distribution version.
 VERSION = "0.0.2"
@@ -123,6 +123,12 @@ class Coordinator:
             raise
 
     async def _run_vpn_loop(self) -> None:
+        """
+        Create VPN connection.
+        Receive viridian connection token, initialize and manage control.
+        Upon receiving an error message, client is re-initialized, token is received once again and control is re-initialized.
+        NB! This method should be run while VPN is active.
+        """
         logger.info("Running VPN loop...")
         while self._tunnel.operational:
             try:
@@ -138,6 +144,11 @@ class Coordinator:
                 raise exc
 
     async def _run_vpn_command(self, cmd: str) -> None:
+        """
+        Execute command asynchronously, wait for the result, print the result code.
+        In case command produces STDOUT or STDERR output, it will also be printed.
+        :param cmd: command that will be run.
+        """
         proc = await create_subprocess_shell(cmd, stdout=PIPE, stderr=PIPE)
         stdout, stderr = await proc.communicate()
         print(f"The command exited with: {proc.returncode}")
@@ -148,10 +159,11 @@ class Coordinator:
 
     async def start(self, cmd: Optional[str]) -> None:
         """
-        Create VPN connection.
-        Receive viridian connection token, initialize and manage control.
-        Upon receiving an error message, client is re-initialized, token is received once again and control is re-initialized.
-        NB! This method is blocking, should be run while VPN is active.
+        Start VPN.
+        Will open a VPN connection and launch the command that should be executed while VPN is active.
+        If the command is specified, VPN connection will be terminated once it is finished (no matter what was the result).
+        Also, a DNS probe will be made once connection is opened to ensure DNS servers are still accessible.
+        :param cmd: command that will be run while VPN is active.
         """
         logger.info("Initializing connection...")
         await self._initialize_connection()
@@ -176,6 +188,7 @@ class Coordinator:
         """
         Generate gRPC tail metadata.
         It consists of random number of random bytes.
+        :return: gRPC metadata dictionary.
         """
         tail_metadata = ("seaside-tail-bin", get_random_bytes(randint(1, MAX_TAIL_LENGTH)))
         return {"timeout": self._max_timeout, "metadata": (tail_metadata,)}
@@ -251,7 +264,6 @@ class Coordinator:
         Interrupt VPN connection gracefully.
         Includes not only tunnel closing ("interface", "viridian" and seaside socket), but also sending termination request to caerulean.
         Finally, removes tunnel interface.
-        :param exception: optional exception, if not terminating successfully.
         """
         logger.debug(f"Interrupting connection to caerulean {self._address}:{self._ctrl_port}...")
 

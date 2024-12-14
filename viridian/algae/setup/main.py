@@ -1,15 +1,15 @@
-
 from argparse import ArgumentParser
 from os import getcwd
 from pathlib import Path
 from sys import argv
 from typing import Sequence
 
-from base import Installer
-from certificates import check_certificates, generate_certificates
-from default import DEFAULT_GENERATED_VALUE, DefaultOptionalAction, local_ip, logging_level
-from utils import get_logger, is_64_bit, is_admin, is_linux
-from whirlpool import WhirlpoolInstaller
+from setup.base import Installer
+from setup.certificates import check_certificates, generate_certificates
+from setup.default import DEFAULT_GENERATED_VALUE, DefaultOptionalAction, local_ip, logging_level
+from setup.specific import is_64_bit, is_admin, is_linux
+from setup.utils import Logging
+from setup.whirlpool import WhirlpoolInstaller
 
 _RAC_NO = "no"
 _RAC_BACK = "back"
@@ -36,8 +36,12 @@ WhirlpoolInstaller.create_parser(subparsers)
 
 
 def main(args: Sequence[str] = argv[1:]) -> None:
+    """
+    Run the installation script with given args.
+    :param args: arguments list for argument parser.
+    """
     namespace = vars(parser.parse_args(args))
-    logger = get_logger(__name__, namespace["verbose"])
+    logger = Logging.init(namespace["verbose"], __name__)
 
     if not is_linux() or not is_64_bit():
         logger.error("Installer can run on 64 bit Linux platforms only!")
@@ -46,7 +50,7 @@ def main(args: Sequence[str] = argv[1:]) -> None:
     certs_address = namespace.pop("just_certs", None)
     if certs_address is not None:
         logger.info("Just generating certificates...")
-        generate_certificates(logger, certs_address, remove_existing=True)
+        generate_certificates(certs_address, remove_existing=True)
         logger.info("Certificates generated successfully!")
         exit(0)
 
@@ -59,7 +63,7 @@ def main(args: Sequence[str] = argv[1:]) -> None:
         logger.error("No caerulean selected for installation!")
         exit(1)
 
-    installer: Installer = installer_class(logger, namespace)
+    installer: Installer = installer_class(namespace)
     logger.info(f"Running using selected caerulean installer: {type(installer).__name__}")
 
     if not installer.verify():
@@ -88,7 +92,3 @@ def main(args: Sequence[str] = argv[1:]) -> None:
         installer.run(namespace["run_after_config"] == _RAC_RUN)
     else:
         logger.warning(f"Configuration is done! Run this command to launch the server when you're ready:\n{installer.run_command}")
-
-
-if __name__ == "__main__":
-    main()

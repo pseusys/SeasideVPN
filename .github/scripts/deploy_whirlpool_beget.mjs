@@ -271,14 +271,11 @@ async function runDeployCommand(sshConn, certsPath, ownerPayload, viridianPayloa
 	console.log("Copying whirlpool installation script to beget test server...");
 	await sshConn.putFile(INSTALL_SCRIPT, "install.pyz");
 	console.log("Running whirlpool installation script on beget test server...");
-	const installRes = await sshConn.execCommand(`python3 install.pyz -o -g whirlpool -s ${gitBranch} -o ${ownerPayload} -v ${viridianPayload} -p ${ctrlport}`);
+	const installRes = await sshConn.execCommand(`python3 install.pyz -o -g -a back whirlpool -s ${gitBranch} -o ${ownerPayload} -v ${viridianPayload} -p ${ctrlport}`);
 	if (installRes.code != 0) throw new Error(`Installation script failed, error code: ${installRes.code}`);
 	console.log("Downloading viridian certificates from host...");
 	const clientCertsLoaded = await getPromiseResultOrNull(sshConn.getDirectory(certsPath, `${DEFAULT_CERTS}/client`));
 	if (clientCertsLoaded !== true) throw new Error("Viridian certificates moving failed");
-	console.log("Running whirlpool executable on beget test server...");
-	const execRes = await sshConn.execCommand('set -a && source conf.env && bash -c "nohup whirlpool.run &" &>/dev/null </dev/null');
-	if (execRes.code != 0) throw new Error(`Running executable failed, error code: ${execRes.code}`);
 	console.log("Closing connection to beget test server...");
 	sshConn.dispose();
 }

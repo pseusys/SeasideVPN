@@ -8,11 +8,11 @@ from typing import Dict, Optional, Tuple
 from urllib.request import urlretrieve
 from zipfile import ZipFile
 
-from base import Installer
-from certificates import GENERATE_CERTIFICATES_PATH, generate_certificates
-from default import DEFAULT_GENERATED_VALUE, local_ip, logging_level, payload_value, port_number
-from specific import check_install_packages, check_package
-from utils import BLUE, BOLD, GREEN, RED, RESET, UNDER, YELLOW, get_arch
+from setup.base import Installer
+from setup.certificates import GENERATE_CERTIFICATES_PATH, generate_certificates
+from setup.default import DEFAULT_GENERATED_VALUE, local_ip, logging_level, payload_value, port_number
+from setup.specific import check_install_packages, check_package, get_arch
+from setup.utils import BLUE, BOLD, GREEN, RED, RESET, UNDER, YELLOW
 
 _PARSER_NAME = "whirlpool"
 _VERSION = '"0.0.2"'
@@ -68,9 +68,9 @@ class WhirlpoolInstaller(Installer):
     @classmethod
     def create_parser(cls, subparser: "_SubParsersAction[ArgumentParser]") -> None:
         parser = subparser.add_parser(_PARSER_NAME, help="Install whirlpool caerulean")
-        parser.add_argument("-s", "--source-tag", default=_DEFAULT_SOURCE_TAG, help=f"GitHub branch name for code pulling (default: {_DEFAULT_SOURCE_TAG})")
-        parser.add_argument("-d", "--docker-label", default=_DEFAULT_DOCKER_LABEL, help=f"Docker image label (default: {_DEFAULT_DOCKER_LABEL})")
-        parser.add_argument("-b", "--binary-name", default=_DEFAULT_BINARY_NAME, help=f"Pre-compiled binary type (default: {_DEFAULT_BINARY_NAME})")
+        parser.add_argument("-s", "--source-tag", default=_DEFAULT_SOURCE_TAG, help=f"GitHub branch name for code pulling (will be used only with '--distribution-type={_DT_COMPILE}' and has no effect otherwise, default: {_DEFAULT_SOURCE_TAG})")
+        parser.add_argument("-d", "--docker-label", default=_DEFAULT_DOCKER_LABEL, help=f"Docker image label (will be used only with '--distribution-type={_DT_DOCKER}' and has no effect otherwise, default: {_DEFAULT_DOCKER_LABEL})")
+        parser.add_argument("-b", "--binary-name", default=_DEFAULT_BINARY_NAME, help=f"Pre-compiled binary type (will be used only with '--distribution-type={_DT_BINARY}' and has no effect otherwise, default: {_DEFAULT_BINARY_NAME})")
         parser.add_argument("-r", "--distribution-type", choices=(_DT_COMPILE, _DT_DOCKER, _DT_BINARY), default=_DEFAULT_DISTRIBUTION_TYPE, help=f"Distribution type to run ('{_DT_COMPILE}' for compiling from source, '{_DT_DOCKER}' for running in Docker, '{_DT_BINARY}' for running a binary, default: {_DEFAULT_DISTRIBUTION_TYPE})")
         parser.add_argument("-o", "--payload-owner", type=payload_value(_PAYLOAD_SIZE), default=DEFAULT_GENERATED_VALUE, help="Whirlpool owner payload value (should be a secure long ASCII string, default: [will be generated])")
         parser.add_argument("-v", "--payload-viridian", nargs="*", action="extend", default=list(), help="Whirlpool viridian payload value (should be secure long ASCII strings, default: empty list)")
@@ -101,7 +101,7 @@ class WhirlpoolInstaller(Installer):
             raise RuntimeError(f"Unknown distribution type: {self._args['distribution_type']}")
 
     def verify(self) -> bool:
-        if self._args["distribution_type"] == _DT_DOCKER and not check_package(self._logger, "docker"):
+        if self._args["distribution_type"] == _DT_DOCKER and not check_package("docker"):
             self._logger.error("Docker not found, can not run in docker!")
             return False
         return True
@@ -129,7 +129,7 @@ class WhirlpoolInstaller(Installer):
 
     def refresh_certificates(self) -> None:
         self._logger.debug("Generating certificates...")
-        generate_certificates(self._logger, self._args["internal_address"], remove_existing=True)
+        generate_certificates(self._args["internal_address"], remove_existing=True)
         self._logger.debug("Copying certificates to the server root...")
         server_certs = GENERATE_CERTIFICATES_PATH / "server"
         copy(server_certs / "cert.key", GENERATE_CERTIFICATES_PATH)
@@ -157,8 +157,8 @@ class WhirlpoolInstaller(Installer):
         self._logger.debug(f"Downloading GO from {go_url}...")
         path, _ = urlretrieve(go_url)
         self._logger.debug(f"Extracting GO archive: {str(path)}...")
-        with open_tar(path, "r:gz") as arch:
-            arch.extractall(_GO_ROOT.parent)
+        with open_tar(path, "r:gz") as archive:
+            archive.extractall(_GO_ROOT.parent)
         go_path = _GO_ROOT / "bin"
         with open(_SHELL_LOGIN, "a+") as file:
             file.write(f"export PATH={str(go_path)}:$PATH")
@@ -172,8 +172,8 @@ class WhirlpoolInstaller(Installer):
         self._logger.debug(f"Downloading PROTOC from {protoc_url}...")
         path, _ = urlretrieve(protoc_url)
         self._logger.debug(f"Extracting PROTOC archive: {str(path)}...")
-        with ZipFile(path, "r") as arch:
-            arch.extractall(_PROTOC_ROOT)
+        with ZipFile(path, "r") as archive:
+            archive.extractall(_PROTOC_ROOT)
         protoc_path = _PROTOC_ROOT / "bin"
         with open(_SHELL_LOGIN, "a+") as file:
             file.write(f"export PATH={str(protoc_path)}:$PATH")
@@ -191,16 +191,16 @@ class WhirlpoolInstaller(Installer):
             check_call(f"{go_exec} install {package}@latest", stdout=DEVNULL, stderr=DEVNULL, shell=True)
             self._logger.debug(f"GO package '{package}' installed!")
 
-    def _prepare_environment(self) -> Tuple[Path, Path]:
+    def _prepare_environment(self) -> Tuple[Optional[Path], Optional[Path]]:
         """Prepare environment for building whirlpool executable: install GO and PROTOC (and also some GO packages)."""
-        if not check_package(self._logger, "go", _GO_VERSION, "version"):
+        if not check_package("go", _GO_VERSION, "version"):
             self._logger.info("Installing GO...")
             go_path = self._install_go()
             self._logger.info(f"GO installed to {go_path}!")
         else:
             self._logger.info("Global GO found!")
             go_path = None
-        if not check_package(self._logger, "protoc", _PROTOC_VERSION):
+        if not check_package("protoc", _PROTOC_VERSION):
             self._logger.info("Installing PROTOC...")
             protoc_path = self._install_protoc()
             self._logger.info(f"PROTOC installed to {protoc_path}!")
@@ -214,12 +214,12 @@ class WhirlpoolInstaller(Installer):
         self._logger.info("All the GO packages installed!")
         return go_path, protoc_path
 
-    def _download_and_build_sources(self, *paths: str) -> None:
+    def _download_and_build_sources(self, *paths: Optional[Path]) -> None:
         """Download source code from GitHub to ./SeasideVPN directory and build the whirlpool executable."""
-        check_install_packages(self._logger, "git", "make")
+        check_install_packages("git", "make")
         seapath = Path("SeasideVPN")
         go_env = environ.copy()
-        go_env["PATH"] = ":".join([*paths, environ["PATH"]])
+        go_env["PATH"] = ":".join([*(str(path) for path in paths if path is not None), environ["PATH"]])
         self._logger.debug(f"PATH prepared for caerulean building: {go_env['PATH']}")
         self._logger.debug("Cloning SeasideVPN repository...")
         check_call(f"git clone -n --branch {self._args['source_tag']} --depth=1 --filter=tree:0 {_SEASIDE_REPO}", stdout=DEVNULL, stderr=DEVNULL, shell=True)
@@ -251,7 +251,7 @@ class WhirlpoolInstaller(Installer):
             self._logger.info("Preparing Seaside Whirlpool build environment...")
             go, protoc = self._prepare_environment()
             self._logger.info("Environment prepared, starting build...")
-            self._download_and_build_sources(str(go), str(protoc))
+            self._download_and_build_sources(go, protoc)
             self._logger.info("Seaside Whirlpool built!")
         elif self._args["distribution_type"] == _DT_DOCKER:
             self._logger.info("Pulling Seaside Whirlpool Docker image...")

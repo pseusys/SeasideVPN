@@ -49,21 +49,21 @@ betterproto = { version = "^2.0.0b6", extras = ["compiler"] }
 
 
 [tool.poetry.scripts]
-generate = "scripts.process:generate"
-lint = "scripts.codestyle:lint"
-format = "scripts.codestyle:format"
-test-unit = "scripts.test:test_unit"
-test-integration = "scripts.test:test_integration"
-test-smoke = "scripts.test:test_smoke"
-test-local = "scripts.test:test_local"
-test-remote = "scripts.test:test_remote"
-test-domain = "scripts.test:test_domain"
-test-all = "scripts.test:test_all"
-compile = "scripts.process:compile"
-execute = "scripts.process:execute"
-bundle = "scripts.process:bundle"
-clean = "scripts.process:clean"
-help = "scripts.process:help"
+generate = "__init__:generate"
+lint = "__init__:lint"
+format = "__init__:format"
+test-unit = "scripts:test_unit"
+test-integration = "scripts:test_integration"
+test-smoke = "scripts:test_smoke"
+test-local = "scripts:test_local"
+test-remote = "scripts:test_remote"
+test-domain = "scripts:test_domain"
+test-all = "scripts:test_all"
+compile = "__init__:compile"
+execute = "__init__:execute"
+bundle = "__init__:bundle"
+clean = "__init__:clean"
+help = "__init__:help"
 
 
 

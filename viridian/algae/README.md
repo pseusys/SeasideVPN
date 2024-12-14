@@ -5,6 +5,7 @@
 Small CLI-based client application, written in `Python`.
 It can be run on linux (in for- and background), it's highly customizable.
 Created mainly for development and testing purposes.
+Also contains caerulean installation [script](#caerulean-installation-script).
 
 > Target platform: _linux_ only
 
@@ -98,7 +99,41 @@ It also sensitive to the following environmental variable:
 
 ## Caerulean installation script
 
-TODO!!
+> NB! Viridian algae is a python module, so all the commands in this section should be:
+> - Either run from `viridian/algae` root.
+> - Or have environmental variable `PYTHONPATH` set to the `viridian/algae` root path.
+
+Caerulean installation script consists of several python files in `setup` directory.
+It can deploy different caerulean server apps on Linux machines with different architectures.
+The script itself has no external dependencies, does not require installation or building and can be used as a deployment entrypoint.
+It also is not demanding in terms of interpreter version: some reasonably-old `python3` (like `3.8`, available on most of the systems) should be just enough.
+The script can be used as-is or compressed for uploading to a remote server using the following command:
+
+```bash
+sudo poetry run bundle [INSTALLATION_SCRIPT_NAME]
+```
+
+The script is flexible and accepts multiple different parameters, that will not be described here.
+Detailed parameter description can be received by running this command:
+
+```bash
+python3 -m setup --help
+```
+
+For each individual caerulean, the options closely resemble the environment variables they depend on.
+The option description for each individual caerulean in the following list: (`whirlpool`) can be received by running this command:
+
+```bash
+python3 -m setup CAERULEAN_NAME --help
+```
+
+In order to achieve reproducible caerulean deployments, `conf.env` and `certificates` files can be uploaded before deployment.
+Combined with relevant script arguments, they will prevent script from regenerating system settings.
+
+> NB! A special case of using the script is generating self-signed certificates set (for local testing or no-DNS deployment).
+> It can be done with the following command: `python3 -m setup --just-certs`.
+
+Examples of this script usage can be found in [whirlpool make](../../caerulean/whirlpool/Makefile) and [Beget deployment script](../../.github/scripts//deploy_whirlpool_beget.mjs).
 
 ## Other commands
 
@@ -117,13 +152,7 @@ sudo poetry run test-all
 Build standalone executable (OS-specific):
 
 ```bash
-sudo poetry run build
-```
-
-Bundle installation script:
-
-```bash
-sudo poetry run bundle
+sudo poetry run build [EXECUTABLE_NAME]
 ```
 
 Clean build artifacts:

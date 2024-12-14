@@ -188,6 +188,7 @@ There are several client options:
 #### Algae
 
 A client in `Python` written for development and integration testing purposes.
+Also, contains [`setup`](./viridian/algae/setup) package for easy caerulean deployment.
 
 See detailed documentation [here](./viridian/algae/README.md).
 
@@ -282,4 +283,4 @@ Proxy to Surface connection:
 
 - [Claimed-to-be undetectable VPN](https://github.com/vpnhood/VpnHood)
 - [Simple Golang VPN](https://github.com/skx/simple-vpn)
-- [Chinese-grade VPN](https://github.com/bigeagle/gohop) and [article about it](https://www.researchgate.net/publication/269310871_GoHop_Personal_VPN_to_defend_from_censorship)
+- [Chinese VPN](https://github.com/bigeagle/gohop) and [article about it](https://www.researchgate.net/publication/269310871_GoHop_Personal_VPN_to_defend_from_censorship)

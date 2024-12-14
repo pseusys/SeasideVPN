@@ -1,6 +1,5 @@
 from logging import Logger, StreamHandler, getLogger
-from os import getuid
-from platform import machine, system
+from typing import Optional, Tuple
 
 BOLD = "\033[1m"
 UNDER = "\033[4m"
@@ -11,36 +10,34 @@ RED = "\033[31m"
 RESET = "\033[0m"
 
 
-def get_logger(name: str, level: int) -> Logger:
-    logger = getLogger(name)
-    logger.setLevel(level)
-    stream = StreamHandler()
-    stream.setLevel(level)
-    logger.addHandler(stream)
-    return logger
+def semver_to_tuple(semver: str) -> Tuple[int, int, int]:
+    """
+    Convert semantic version string to a 3-integer tuple.
+    :param semver: semantic version string, in form of "A.B.C", where A, B and C are integers.
+    :return: a tuple of three integers.
+    """
+    return tuple(int(part) for part in semver.split(".")[:3])  # type: ignore
 
 
-def is_linux() -> bool:
-    return system() == "Linux"
+class Logging:
+    """
+    Logging singleton, creates a sublogger as a child of the root logger on request.
+    The root logger can be initialized with the given logging level, console handler will be added to it.
+    If no root logger is initialized, the default root logger will be used.
+    """
 
+    _root: Optional[Logger] = None
 
-def is_64_bit() -> bool:
-    return machine().endswith("64")
+    @classmethod
+    def init(cls, level: int, name: str) -> Logger:
+        cls._root = getLogger(name)
+        cls._root.setLevel(level)
+        stream = StreamHandler()
+        stream.setLevel(level)
+        cls._root.addHandler(stream)
+        return cls._root
 
-
-def is_admin() -> bool:
-    try:
-        return getuid() == 0
-    except AttributeError:
-        return False
-
-
-# See "https://superuser.com/a/1757852" for different possible architecture names (the list might be not complete though)
-def get_arch() -> str:
-    arch = machine()
-    if arch.startswith("amd") or arch.startswith("x86_64"):
-        return "amd"
-    elif arch.startswith("arm") or arch.startswith("aarch"):
-        return "arm"
-    else:
-        raise RuntimeError(f"Unknown processor architecture: {arch}!")
+    @classmethod
+    def logger_for(cls, name: str) -> Logger:
+        root = getLogger() if cls._root is None else cls._root
+        return root.getChild(name)

@@ -5,7 +5,7 @@ from typing import Generator
 
 import pytest
 
-from ..sources.tunnel import Tunnel
+from sources.tunnel import Tunnel
 
 TUNNEL_NAME = "test-tun"
 TUNNEL_ADDRESS = IPv4Address("10.0.0.2")
@@ -24,7 +24,7 @@ def tunnel() -> Generator[Tunnel, None, None]:
 
 @pytest.mark.dependency()
 def test_tunnel_init(tunnel: Tunnel) -> None:
-    tunnel.__init__(TUNNEL_NAME, TUNNEL_ADDRESS, TUNNEL_NETMASK, TUNNEL_SVA, TUNNEL_DIRECTION)
+    tunnel.__init__(TUNNEL_NAME, TUNNEL_ADDRESS, TUNNEL_NETMASK, TUNNEL_SVA, TUNNEL_DIRECTION)  # type: ignore
 
     ip_links = check_output(["ip", "link", "show"]).decode()
     ip_matches = [match for match in finditer(IP_LINK_ENTRY, ip_links)]

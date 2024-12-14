@@ -1,7 +1,6 @@
 from asyncio import AbstractEventLoop, Future
 from logging import StreamHandler, getLogger
 from os import getenv, read, write
-from pathlib import Path
 from socket import socket
 from ssl import PROTOCOL_TLS_CLIENT, SSLContext
 from sys import stdout
@@ -32,7 +31,7 @@ SYMM_KEY_LENGTH = 32
 MAX_TWO_BYTES_VALUE = (1 << 16) - 1
 
 
-def create_grpc_secure_channel(host: str, port: int, ca: Optional[Path]) -> Channel:
+def create_grpc_secure_channel(host: str, port: int, ca: Optional[str]) -> Channel:
     """
     Create secure gRPC channel.
     Retrieve and add certificated to avoid probkems with self-signed connection.

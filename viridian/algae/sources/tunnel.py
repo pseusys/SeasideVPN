@@ -8,7 +8,7 @@ from colorama import Fore
 from iptc import Chain, Rule, Table, Target
 from pyroute2 import IPRoute
 
-from .utils import logger
+from sources.utils import logger
 
 # Unix TUN device set name number.
 _UNIX_TUNSETIFF = 0x400454CA
@@ -140,7 +140,7 @@ class Tunnel:
         :param seaside_address: seaside server address.
         """
         self._name = name
-        seaside_address = str(seaside_address)
+        seaside_adr_str = str(seaside_address)
 
         self._tunnel_ip = str(address)
         tunnel_ip_tail = int(self._tunnel_ip.split(".")[-1])
@@ -148,7 +148,7 @@ class Tunnel:
             raise ValueError(f"Tunnel address can not end with {tunnel_ip_tail}!!")
 
         self._tunnel_cidr = IPv4Network(f"{address}/{netmask}", strict=False).prefixlen
-        self._def_iface, def_iface_name, self._mtu = _get_default_interface(seaside_address)
+        self._def_iface, def_iface_name, self._mtu = _get_default_interface(seaside_adr_str)
 
         self._sva_code = sva_code
         self._active = True
@@ -157,7 +157,7 @@ class Tunnel:
         self._descriptor, self._tunnel_dev = _create_tunnel(name)
         logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} created")
 
-        self._send_to_caerulean_rule = _create_caerulean_rule(self._def_iface, seaside_address, def_iface_name)
+        self._send_to_caerulean_rule = _create_caerulean_rule(self._def_iface, seaside_adr_str, def_iface_name)
         self._send_to_internet_rule_mark = _create_internet_rule_mark(self._def_iface, def_iface_name, sva_code)
         self._send_to_internet_rule_accept = _create_internet_rule_accept(self._def_iface, def_iface_name)
         logger.info(f"Packet capturing rules {Fore.GREEN}created{Fore.RESET}")

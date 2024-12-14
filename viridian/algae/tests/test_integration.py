@@ -9,9 +9,9 @@ import pytest_asyncio
 from Crypto.Random import get_random_bytes
 from Crypto.Random.random import randint
 
-from ..sources.coordinator import Coordinator
-from ..sources.generated import ControlHealthcheck
-from ..sources.utils import MAX_TAIL_LENGTH, MAX_TWO_BYTES_VALUE
+from sources.coordinator import Coordinator
+from sources.generated import ControlHealthcheck
+from sources.utils import MAX_TAIL_LENGTH, MAX_TWO_BYTES_VALUE
 
 logger = getLogger(__name__)
 
@@ -82,8 +82,8 @@ async def test_open_tunnel(coordinator: Coordinator) -> None:
 @pytest.mark.dependency(depends=["test_open_tunnel"])
 async def test_open_viridian(coordinator: Coordinator) -> None:
     logger.info("Testing opening the viridian")
-    coordinator._viridian.open()
-    assert coordinator._viridian._operational, "Client processes aren't operational!"
+    coordinator._viridian.open()  # type: ignore
+    assert coordinator._viridian._operational, "Client processes aren't operational!"  # type: ignore
 
 
 @pytest.mark.asyncio(loop_scope="session")
@@ -129,13 +129,13 @@ async def test_no_vpn_rerequest() -> None:
 async def test_reconnect(coordinator: Coordinator) -> None:
     logger.info("Testing reconnecting to caerulean")
     logger.info("Closing client...")
-    coordinator._viridian.close()
+    coordinator._viridian.close()  # type: ignore
     logger.info("Receiving user token...")
     await coordinator._receive_token()
     logger.info("Exchanging basic information...")
     await coordinator._initialize_control()
     logger.info("Opening client back...")
-    coordinator._viridian.open()
+    coordinator._viridian.open()  # type: ignore
 
 
 @pytest.mark.asyncio(loop_scope="session")

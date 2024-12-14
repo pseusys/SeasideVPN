@@ -44,7 +44,6 @@ RUN pip install --upgrade --no-cache-dir pip -r requirements.txt
 COPY --from=builder /seaside/algae/ ./sources/
 COPY viridian/algae/sources/*.py ./sources/
 COPY viridian/algae/tests/*.py ./tests/
-RUN touch __init__.py sources/__init__.py tests/__init__.py
 
 ENV SEASIDE_PAYLOAD_OWNER=
 ENV SEASIDE_ADDRESS=
@@ -62,7 +61,7 @@ ENTRYPOINT sleep infinity
 FROM default-sleeping AS default
 
 # Run viridian algae in the background.
-ENTRYPOINT python3 -m sources.main $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -c $SEASIDE_CTRLPORT
+ENTRYPOINT python3 -m sources $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -c $SEASIDE_CTRLPORT
 
 HEALTHCHECK --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s CMD ls /sys/class/net | grep $SEASIDE_TUNNEL_NAME
 
@@ -80,7 +79,7 @@ FROM smoke-sleeping AS smoke
 
 # Setup default route IP and run viridian algae in the background.
 ENTRYPOINT ip route replace default via $ARG_NETWORK_GATEWAY \
-    && python3 -m sources.main $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -c $SEASIDE_CTRLPORT
+    && python3 -m sources $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -c $SEASIDE_CTRLPORT
 
 HEALTHCHECK --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s CMD ls /sys/class/net | grep $SEASIDE_TUNNEL_NAME
 
@@ -93,4 +92,4 @@ ENV COMMAND=$COMMAND
 
 # Setup default route IP and run viridian algae in the background.
 ENTRYPOINT ip route replace default via $ARG_NETWORK_GATEWAY \
-    && python3 -m sources.main $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -c $SEASIDE_CTRLPORT -e "$COMMAND"
+    && python3 -m sources $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -c $SEASIDE_CTRLPORT -e "$COMMAND"
