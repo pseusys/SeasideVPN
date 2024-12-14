@@ -46,12 +46,12 @@ jobs:
       - name: Build Algae Executable 🏗️
         env:
           EXEC_NAME: ${{ format('viridian-algae-executable-{0}-{1}', env.BRANCH, env.ARCH) }}
-        run: poetry -C viridian/algae poe compile ${{ env.EXEC_NAME }}.run
+        run: poetry poe -C viridian/algae compile ${{ env.EXEC_NAME }}.run
 
       - name: Build Caerulean Installer 📥
         env:
           EXEC_NAME: ${{ format('caerulean-installer-{0}', env.BRANCH) }}
-        run: poetry -C viridian/algae poe bundle ${{ env.EXEC_NAME }}.pyz
+        run: poetry poe -C viridian/algae bundle ${{ env.EXEC_NAME }}.pyz
 
       - name: Save Artifact 🏺
         uses: actions/upload-artifact@v4
