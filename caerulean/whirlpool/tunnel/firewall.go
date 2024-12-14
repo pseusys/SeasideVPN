@@ -16,12 +16,12 @@ import (
 // Burst multiplier is applied when large amount of data comes at the same time, doesn't last for long.
 // At that time, packet limit is getting multiplied by this multiplier.
 // Return rule appendix string array.
-func readLimit(envVar, template string, userNumber, burstMultiplier int) []string {
+func readLimit(envVar, template string, userNumber int32, burstMultiplier uint32) []string {
 	acceptRuleTemplate := []string{"-j", "ACCEPT"}
 	hashlimitRuleTemplate := []string{"-m", "hashlimit", "--hashlimit-mode", "dstip,dstport"}
-	limitNumber := utils.GetIntEnv(envVar) * userNumber
+	limitNumber := int32(utils.GetIntEnv(envVar, 32)) * userNumber
 	if limitNumber > 0 {
-		ruleSlice := []string{"--hashlimit-name", strings.ToLower(envVar), "--hashlimit-upto", fmt.Sprintf(template, limitNumber), "--hashlimit-burst", strconv.Itoa(limitNumber * burstMultiplier)}
+		ruleSlice := []string{"--hashlimit-name", strings.ToLower(envVar), "--hashlimit-upto", fmt.Sprintf(template, limitNumber), "--hashlimit-burst", strconv.FormatUint(uint64(limitNumber)*uint64(burstMultiplier), 10)}
 		return utils.ConcatSlices(hashlimitRuleTemplate, ruleSlice, acceptRuleTemplate)
 	} else {
 		return acceptRuleTemplate
@@ -55,10 +55,10 @@ func (conf *TunnelConfig) storeForwarding() {
 // Should be applied for TunnelConf object.
 // Accept internal and external IP addresses as strings, seaside, network and control ports as integers.
 // Return error if configuration was not successful, nil otherwise.
-func (conf *TunnelConfig) openForwarding(intIP, extIP string, ctrlPort int) error {
+func (conf *TunnelConfig) openForwarding(intIP, extIP string, ctrlPort uint16) error {
 	// Prepare interface names and port numbers as strings
 	tunIface := conf.Tunnel.Name()
-	ctrlStr := strconv.Itoa(ctrlPort)
+	ctrlStr := strconv.FormatUint(uint64(ctrlPort), 10)
 
 	// Find internal network interface name
 	intIface, err := findInterfaceByIP(intIP)

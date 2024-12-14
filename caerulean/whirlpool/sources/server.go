@@ -63,7 +63,7 @@ func createWhirlpoolServer(ctx context.Context) *WhirlpoolServer {
 	nodeViridianPayloads := utils.GetEnv("SEASIDE_PAYLOAD_VIRIDIAN")
 
 	// Read max nextIn delay from environment
-	maxNextIn := int32(utils.GetIntEnv("SEASIDE_MAXIMUM_NEXTIN"))
+	maxNextIn := int32(utils.GetIntEnv("SEASIDE_MAXIMUM_NEXTIN", 32))
 
 	// Generate private node cipher
 	privateKey, err := crypto.GenerateCipher()
