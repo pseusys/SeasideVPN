@@ -3,6 +3,7 @@ name = "SeasideVPN"
 version = "0.0.2"
 description = "A simple PPTP UDP VPN system"
 license = "MIT"
+package-mode = false
 authors = [
     "Alexander Sergeev <alexander.sergeev@onmail.com>",
 ]

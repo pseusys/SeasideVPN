@@ -59,7 +59,7 @@ def bundle() -> None:
     Bundle caerulean installation script.
     """
     installer_name = argv[1] if len(argv) > 1 else _INSTALLER_NAME
-    create_archive(ALGAE_ROOT / "setup", ALGAE_ROOT / installer_name, main="main:main", compressed=True)
+    create_archive(ALGAE_ROOT / "setup", ALGAE_ROOT / installer_name, compressed=True)
 
 
 def clean() -> None:

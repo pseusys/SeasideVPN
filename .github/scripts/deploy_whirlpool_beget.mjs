@@ -113,7 +113,7 @@ function printHelpMessage() {
 function ensureInstallationScript() {
 	if (!existsSync(INSTALL_SCRIPT)) {
 		console.log("Installation script not found, generating...");
-		execSync("python3 -m zipapp setup -c -o install.pyz -m main:main", { cwd: dirname(INSTALL_SCRIPT) });
+		execSync("python3 -m zipapp setup -c -o install.pyz", { cwd: dirname(INSTALL_SCRIPT) });
 	} else console.log("Installation script found!");
 }
 
