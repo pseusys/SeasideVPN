@@ -102,6 +102,7 @@ It also sensitive to the following environmental variable:
 ## Caerulean installation script
 
 > NB! Viridian algae is a python module, so all the commands in this section should be:
+>
 > - Either run from `viridian/algae` root.
 > - Or have environmental variable `PYTHONPATH` set to the `viridian/algae` root path.
 

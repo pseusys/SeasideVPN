@@ -49,7 +49,7 @@ betterproto = { version = "^2.0.0b6", extras = ["compiler"] }
 
 
 [tool.poe.poetry_hooks]
-pre_install = "generate"
+post_install = "generate"
 
 
 [tool.poe.tasks]
