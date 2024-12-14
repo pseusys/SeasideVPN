@@ -281,8 +281,6 @@ async function runDeployCommand(sshConn, certsPath, ownerPayload, viridianPayloa
 
 // Script body:
 
-ensureInstallationScript()
-
 const args = parseArguments();
 const token = await getToken(args.login, args.password);
 
