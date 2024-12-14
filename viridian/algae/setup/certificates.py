@@ -32,10 +32,10 @@ def generate_certificates(address: Union[IPv4Address, str], cert_path: Path = GE
     The following file tree will be generated:
     ```txt
     --- cert_path
-     |--- client
+     |--- viridian
      | |--- rootCA.key
      | '--- rootCA.crt
-     '--- server
+     '--- caerulean
        |--- cert.key
        '--- cert.crt
     ```
@@ -51,21 +51,21 @@ def generate_certificates(address: Union[IPv4Address, str], cert_path: Path = GE
         return
 
     altnames = f"subjectAltName = {'IP' if isinstance(address, IPv4Address) else 'DNS'}:{address}"
-    client_dir = cert_path / "client"
-    server_dir = cert_path / "server"
-    client_key = client_dir / "rootCA.key"
-    client_cert = client_dir / "rootCA.crt"
-    server_request = server_dir / "cert.csr"
-    server_key = server_dir / "cert.key"
-    server_cert = server_dir / "cert.crt"
+    viridian_dir = cert_path / "viridian"
+    caerulean_dir = cert_path / "caerulean"
+    viridian_key = viridian_dir / "rootCA.key"
+    viridian_cert = viridian_dir / "rootCA.crt"
+    caerulean_request = caerulean_dir / "cert.csr"
+    caerulean_key = caerulean_dir / "cert.key"
+    caerulean_cert = caerulean_dir / "cert.crt"
 
     rmtree(cert_path, ignore_errors=True)
-    client_dir.mkdir(parents=True, exist_ok=True)
-    server_dir.mkdir(parents=True, exist_ok=True)
+    viridian_dir.mkdir(parents=True, exist_ok=True)
+    caerulean_dir.mkdir(parents=True, exist_ok=True)
 
     logger.debug("Creating caerulean certificates...")
-    check_call(f'openssl req -digest -newkey {_GENERATE_CERTIFICATES_ALGORITHM} -sha256 -nodes -keyout {str(server_key)} -out {str(server_request)} -subj "{_GENERATE_CERTIFICATES_SUBJECT}" -addext "{altnames}" -addext keyUsage=critical,digitalSignature,nonRepudiation -addext extendedKeyUsage=serverAuth', stdout=DEVNULL, stderr=DEVNULL, shell=True)
+    check_call(f'openssl req -digest -newkey {_GENERATE_CERTIFICATES_ALGORITHM} -sha256 -nodes -keyout {str(caerulean_key)} -out {str(caerulean_request)} -subj "{_GENERATE_CERTIFICATES_SUBJECT}" -addext "{altnames}" -addext keyUsage=critical,digitalSignature,nonRepudiation -addext extendedKeyUsage=serverAuth', stdout=DEVNULL, stderr=DEVNULL, shell=True)
     logger.debug("Creating viridian certificates...")
-    check_call(f'openssl req -digest -new -x509 -sha256 -nodes -keyout {str(client_key)} -out {str(client_cert)} -days {_GENERATE_CERTIFICATES_VALIDITY} -newkey {_GENERATE_CERTIFICATES_ALGORITHM} -subj "{_GENERATE_CERTIFICATES_SUBJECT}" -addext keyUsage=critical,digitalSignature,nonRepudiation,keyEncipherment,dataEncipherment,keyAgreement,keyCertSign,cRLSign -addext extendedKeyUsage=serverAuth,clientAuth', stdout=DEVNULL, stderr=DEVNULL, shell=True)
+    check_call(f'openssl req -digest -new -x509 -sha256 -nodes -keyout {str(viridian_key)} -out {str(viridian_cert)} -days {_GENERATE_CERTIFICATES_VALIDITY} -newkey {_GENERATE_CERTIFICATES_ALGORITHM} -subj "{_GENERATE_CERTIFICATES_SUBJECT}" -addext keyUsage=critical,digitalSignature,nonRepudiation,keyEncipherment,dataEncipherment,keyAgreement,keyCertSign,cRLSign -addext extendedKeyUsage=serverAuth,clientAuth', stdout=DEVNULL, stderr=DEVNULL, shell=True)
     logger.debug("Signing viridian certificates with caerulean certificates...")
-    check_call(f"openssl x509 -req -CA {str(client_cert)} -CAkey {str(client_key)} -in {str(server_request)} -out {str(server_cert)} -days {_GENERATE_CERTIFICATES_VALIDITY} -CAcreateserial -copy_extensions=copyall", stdout=DEVNULL, stderr=DEVNULL, shell=True)
+    check_call(f"openssl x509 -req -CA {str(viridian_cert)} -CAkey {str(viridian_key)} -in {str(caerulean_request)} -out {str(caerulean_cert)} -days {_GENERATE_CERTIFICATES_VALIDITY} -CAcreateserial -copy_extensions=copyall", stdout=DEVNULL, stderr=DEVNULL, shell=True)

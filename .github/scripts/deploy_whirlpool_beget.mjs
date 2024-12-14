@@ -274,8 +274,8 @@ async function runDeployCommand(sshConn, certsPath, ownerPayload, viridianPayloa
 	const installRes = await sshConn.execCommand(`python3 install.pyz -o -g -a back whirlpool -s ${gitBranch} -o ${ownerPayload} -v ${viridianPayload} -p ${ctrlport}`);
 	if (installRes.code != 0) throw new Error(`Installation script failed, error code: ${installRes.code}`);
 	console.log("Downloading viridian certificates from host...");
-	const clientCertsLoaded = await getPromiseResultOrNull(sshConn.getDirectory(certsPath, `${DEFAULT_CERTS}/client`));
-	if (clientCertsLoaded !== true) throw new Error("Viridian certificates moving failed");
+	const viridianCertsLoaded = await getPromiseResultOrNull(sshConn.getDirectory(certsPath, `${DEFAULT_CERTS}/viridian`));
+	if (viridianCertsLoaded !== true) throw new Error("Viridian certificates moving failed");
 	console.log("Closing connection to beget test server...");
 	sshConn.dispose();
 }

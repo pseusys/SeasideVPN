@@ -130,10 +130,10 @@ class WhirlpoolInstaller(Installer):
     def refresh_certificates(self) -> None:
         self._logger.debug("Generating certificates...")
         generate_certificates(self._args["internal_address"], remove_existing=True)
-        self._logger.debug("Copying certificates to the server root...")
-        server_certs = GENERATE_CERTIFICATES_PATH / "server"
-        copy(server_certs / "cert.key", GENERATE_CERTIFICATES_PATH)
-        copy(server_certs / "cert.crt", GENERATE_CERTIFICATES_PATH)
+        self._logger.debug("Copying certificates to the caerulean root...")
+        caerulean_certs = GENERATE_CERTIFICATES_PATH / "caerulean"
+        copy(caerulean_certs / "cert.key", GENERATE_CERTIFICATES_PATH)
+        copy(caerulean_certs / "cert.crt", GENERATE_CERTIFICATES_PATH)
         self._logger.debug("Certificates ready!")
 
     def _configure_server(self) -> None:

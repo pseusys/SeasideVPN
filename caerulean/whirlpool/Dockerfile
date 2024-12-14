@@ -60,7 +60,7 @@ VOLUME /seaside/caerulean/certificates
 
 # Expose ports and set entrypoint.
 EXPOSE $SEASIDE_CTRLPORT/tcp
-ENTRYPOINT ./whirlpool.run
+ENTRYPOINT ["./whirlpool.run"]
 
 # Establish healthcheck: netstat on seaside port.
 HEALTHCHECK --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s CMD netstat -tulpn | grep -q ":$SEASIDE_CTRLPORT"

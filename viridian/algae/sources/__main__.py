@@ -1,6 +1,6 @@
 from asyncio import run
 
-from sources import main
+from sources.main import main
 
 
 if __name__ == "__main__":

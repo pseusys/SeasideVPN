@@ -27,9 +27,9 @@ def _print_container_logs(docker: DockerClient, container: str, last: int = 100)
     """
     try:
         logger.error(f"{Style.BRIGHT}{Fore.YELLOW}Container {container} logs:{Style.RESET_ALL}")
-        logger.error(docker.compose.logs(container, tail=str(last)))
-    except DockerException:
-        logger.error(f"{Style.BRIGHT}{Fore.RED}No container {container} found!{Style.RESET_ALL}")
+        logger.error(docker.logs(container, tail=last))
+    except DockerException as e:
+        logger.error(f"{Style.BRIGHT}{Fore.RED}No container {container} found!{Style.RESET_ALL}:\n\n{e}")
 
 
 def _test_set(docker_path: Path, profile: Profile, hosted: bool, test_detached: bool = True) -> int:
@@ -69,13 +69,13 @@ def _test_set(docker_path: Path, profile: Profile, hosted: bool, test_detached: 
         logger.error(f"Testing {profile}: {Style.BRIGHT}{Fore.RED}failed{Fore.RESET}!{Style.RESET_ALL}")
         logger.error(f"Error message: {exc}")
 
-        _print_container_logs(docker, "algae")
-        _print_container_logs(docker, "whirlpool")
+        _print_container_logs(docker, "seaside-algae")
+        _print_container_logs(docker, "seaside-whirlpool")
         if profile == "local":
             _print_container_logs(docker, "seaside-echo")
             _print_container_logs(docker, "network-disruptor")
-            for i in range(3):
-                _print_container_logs(docker, f"algae-copy-{i}")
+            for i in range(1, 4):
+                _print_container_logs(docker, f"seaside-algae-local-algae-copy-{i}")
 
         docker.compose.kill()
         exit_code = 1

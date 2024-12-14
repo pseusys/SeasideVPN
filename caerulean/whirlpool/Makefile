@@ -52,6 +52,7 @@ run: build
 	@ # Run executable
 	if [ ! -d "certificates" ]; then
 		${PYTHON} -m setup --just-certs
+		mv certificates/caerulean/cert.key certificates/caerulean/cert.cert caertificates/
 	fi
 	sudo build/$(EXEC_NAME)
 .PHONY: run

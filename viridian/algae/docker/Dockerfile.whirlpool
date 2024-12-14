@@ -8,5 +8,4 @@ ARG NETWORK_GATEWAY
 ENV ARG_NETWORK_GATEWAY=$NETWORK_GATEWAY
 
 # Setup default route IP and run caerulean whirlpool.
-ENTRYPOINT ip route replace default via $ARG_NETWORK_GATEWAY && \
-    ./whirlpool.run
+ENTRYPOINT ["sh", "-c", "ip route replace default via $ARG_NETWORK_GATEWAY && ./whirlpool.run"]
