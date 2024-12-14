@@ -48,12 +48,12 @@ build:
 	go build -o build/$(EXEC_NAME) ./sources
 .PHONY: build
 
-run: build
+certificates:
+	${PYTHON} -m setup --just-certs
+	mv certificates/caerulean/cert.key certificates/caerulean/cert.crt certificates/
+
+run: build certificates
 	@ # Run executable
-	if [ ! -d "certificates" ]; then
-		${PYTHON} -m setup --just-certs
-		mv certificates/caerulean/cert.key certificates/caerulean/cert.cert caertificates/
-	fi
 	sudo build/$(EXEC_NAME)
 .PHONY: run
 

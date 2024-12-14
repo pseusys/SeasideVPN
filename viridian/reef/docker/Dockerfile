@@ -58,7 +58,6 @@ ENV SEASIDE_ADDRESS=
 ENV SEASIDE_CTRLPORT=
 
 ENV TEST_COMMAND="pytest --log-cli-level=INFO tests/test_local.py"
-ENTRYPOINT ip route replace default via "$ARG_NETWORK_GATEWAY" && \
-    ./CLI_executable -a "$SEASIDE_ADDRESS" -c "$SEASIDE_CTRLPORT" -p "$SEASIDE_PAYLOAD_VIRIDIAN" -e "$TEST_COMMAND"
+ENTRYPOINT ["sh", "-c", "ip route replace default via '$ARG_NETWORK_GATEWAY' && ./CLI_executable -a '$SEASIDE_ADDRESS' -c '$SEASIDE_CTRLPORT' -p '$SEASIDE_PAYLOAD_VIRIDIAN' -e '$TEST_COMMAND'"]
 
 HEALTHCHECK --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s CMD ls /sys/class/net | grep tun0

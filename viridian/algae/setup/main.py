@@ -49,7 +49,7 @@ def main(args: Sequence[str] = argv[1:]) -> None:
 
     certs_address = namespace.pop("just_certs", None)
     if certs_address is not None:
-        logger.info("Just generating certificates...")
+        logger.info(f"Just generating certificates for {certs_address}...")
         generate_certificates(certs_address, remove_existing=True)
         logger.info("Certificates generated successfully!")
         exit(0)

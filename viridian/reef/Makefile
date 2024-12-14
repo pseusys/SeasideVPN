@@ -5,6 +5,9 @@
 SHELL=/bin/bash
 .SHELLFLAGS=-c -e
 
+PYTHON=python3
+PYTHONPATH=../../viridian/algae
+
 BOLD=\033[1m
 BLUE=\033[34m
 GREEN=\033[32m
@@ -25,7 +28,10 @@ build:
 	cargo build --all-features
 .PHONY: build
 
-run: build
+certificates:
+	${PYTHON} -m setup --just-certs "$$(yq -r '.services.whirlpool.environment.SEASIDE_ADDRESS' docker/compose.yml)"
+
+run: build certificates
 	@ # Run reef locally
 	cargo run --features cli-exec --bin cli
 .PHONY: run
@@ -42,12 +48,10 @@ endif
 	docker run --privileged --rm --name seaside-reef-test --sysctl net.ipv6.conf.all.disable_ipv6=1 --entrypoint cargo seaside-reef-test test --package reef --lib -- --nocapture --show-output
 .PHONY: test-unit
 
-test-integration:
+test-integration: certificates
 	@ # Run reef integration tests in Docker
-	bash ../../caerulean/whirlpool/whirlpool.sh -za "$$(yq -r '.services.whirlpool.environment.SEASIDE_ADDRESS' docker/compose.yml)" 2> /dev/null
 	docker compose -f ../algae/docker/compose.default.yml build whirlpool echo 2> /dev/null
 	docker compose -f docker/compose.yml up --build --abort-on-container-exit --exit-code-from reef
-	rm -rf certificates
 .PHONY: test-integration
 
 test: test-unit test-integration

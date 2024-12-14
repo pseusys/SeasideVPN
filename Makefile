@@ -23,6 +23,11 @@ help-algae:
 	poetry poe -C viridian/algae help
 .PHONY: help-algae
 
+help-reef:
+	@ # Print help message of viridian reef
+	make -C viridian/reef -s help
+.PHONY: help-reef
+
 help:
 	@ # Print general help message
 	echo -e "$(BOLD)Welcome to SeasideVPN project version $(VERSION)!$(RESET)"
@@ -69,16 +74,21 @@ install-algae-all:
 
 
 test-whirlpool:
-	@ # Run caerulean algae tests (in a docker container)
+	@ # Run caerulean whirlpool tests (in a docker container)
 	make -C caerulean/whirlpool -s test
 .PHONY: test-whirlpool
 
 test-algae: install-algae
-	@ # Run caerulean algae tests (in a docker container)
+	@ # Run viridian algae tests (in a docker container)
 	poetry poe -C viridian/algae test-all
 .PHONY: test-algae
 
-test: test-whirlpool test-algae
+test-reef:
+	@ # Run viridian reef tests (in a docker container)
+	make -C viridian/reef -s test
+.PHONY: test-reef
+
+test: test-whirlpool test-algae test-reef
 	@ # Run all the system part tests
 .PHONY: test
 
@@ -121,6 +131,11 @@ clean-algae: install-algae
 	poetry poe -C viridian/algae clean
 .PHONY: clean-algae
 
-clean: clean-whirlpool clean-algae
+clean-reef: install-algae
+	@ # Clean viridian reef (including build and docker artifacts)
+	make -C viridian/reef -s clean
+.PHONY: clean-reef
+
+clean: clean-whirlpool clean-algae clean-reef
 	@ # Clean all the system parts
 .PHONY: clean

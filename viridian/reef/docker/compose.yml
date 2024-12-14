@@ -24,7 +24,7 @@ services:
       sea-cli-int:
         ipv4_address: 10.82.0.82
     volumes:
-      - ../certificates/client:/seaside/viridian/ca:ro
+      - ../certificates/viridian:/seaside/viridian/ca:ro
     sysctls:
       - net.ipv6.conf.all.disable_ipv6=1
     depends_on:
@@ -60,7 +60,7 @@ services:
       SEASIDE_CTRLPORT: 8587
       SEASIDE_LOG_LEVEL: DEBUG
     volumes:
-      - ../certificates/server:/seaside/caerulean/certificates:ro
+      - ../certificates/caerulean:/seaside/caerulean/certificates:ro
     sysctls:
       - net.ipv6.conf.all.disable_ipv6=1
     networks:

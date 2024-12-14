@@ -1,6 +1,6 @@
 from argparse import Action, ArgumentParser, Namespace
 from base64 import b64encode
-from ipaddress import IPv4Address
+from ipaddress import AddressValueError, IPv4Address
 from logging import NOTSET, _nameToLevel
 from os import urandom
 from random import randint
@@ -34,12 +34,14 @@ def local_ip(enforce_ip: bool) -> Callable[[str], Union[IPv4Address, str]]:
     """
 
     def internal(value: str) -> Union[IPv4Address, str]:
-        if len(value) == 0:
-            return IPv4Address(gethostbyname(gethostname()))
-        elif enforce_ip:
+        try:
+            value = gethostbyname(gethostname() if len(value) == 0 else value)
             return IPv4Address(gethostbyname(value))
-        else:
-            return value
+        except AddressValueError:
+            if enforce_ip:
+                raise
+            else:
+                return value
 
     return internal
 
