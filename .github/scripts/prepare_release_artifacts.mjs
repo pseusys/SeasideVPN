@@ -55,7 +55,7 @@ function getVersionValue() {
  * @param {string} version Git version to remove
  */
 function renameFileGlob(glob, version) {
-	const globPath = join(dirname(import.meta.dirname), "..", "..", glob);
+	const globPath = join(dirname(import.meta.dirname), "..", glob);
 	for (const file of globSync(globPath)) {
 		const newName = file.replaceAll(`-${version}`, "");
 		console.log(`Renaming '${file}' to '${newName}'...`);

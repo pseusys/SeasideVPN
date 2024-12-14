@@ -21,7 +21,7 @@ const SLEEP_TIME = 15;
 // Ubuntu version to reinstall on the server
 const UBUNTU_VERISON = "22.04";
 // Local path to the 'install.pyz' Whirlpool node installation script
-const INSTALL_SCRIPT = join(dirname(import.meta.dirname), "..", "..", "viridian", "algae", "install.pyz");
+const INSTALL_SCRIPT = join(dirname(import.meta.dirname), "..", "viridian", "algae", "install.pyz");
 // Default ctrlport for whirlpool.
 const DEFAULT_CTRLPORT = 8587;
 // Default certificates path.
@@ -112,7 +112,7 @@ function printHelpMessage() {
 function ensureInstallationScript() {
 	if (!existsSync(INSTALL_SCRIPT)) {
 		console.log("Installation script not found, generating...");
-		execSync("python3 -m zipapp viridian/algae/setup -c -o viridian/algae/install.pyz", { cwd: dirname(INSTALL_SCRIPT) });
+		execSync("python3 -m zipapp setup -c -o install.pyz", { cwd: dirname(INSTALL_SCRIPT) });
 	} else console.log("Installation script found!");
 }
 
