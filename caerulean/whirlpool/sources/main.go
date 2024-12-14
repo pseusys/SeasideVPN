@@ -40,7 +40,7 @@ func init() {
 	}
 	logrus.SetLevel(level)
 
-	hook, err := logrus_syslog.NewSyslogHook("udp", "localhost:514", syslog.LOG_INFO, "")
+	hook, err := logrus_syslog.NewSyslogHook("udp", "localhost:514", syslog.LOG_INFO, "seaside-whirlpool")
 	if err != nil {
 		logrus.Error("Unable to connect to local syslog daemon!")
 	} else {
