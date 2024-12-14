@@ -53,9 +53,9 @@ post_install = "generate"
 
 
 [tool.poe.tasks]
-generate.script = "__init__:generate"
-lint.script = "__init__:lint"
-format.script = "__init__:format"
+generate.script = "scripts:generate"
+lint.script = "scripts:lint"
+format.script = "scripts:format"
 test-unit.script = "scripts:test_unit"
 test-integration.script = "scripts:test_integration"
 test-smoke.script = "scripts:test_smoke"
@@ -63,11 +63,11 @@ test-local.script = "scripts:test_local"
 test-remote.script = "scripts:test_remote"
 test-domain.script = "scripts:test_domain"
 test-all.script = "scripts:test_all"
-compile.script = "__init__:compile"
-execute.script = "__init__:execute"
-bundle.script = "__init__:bundle"
-clean.script = "__init__:clean"
-help.script = "__init__:help"
+compile.script = "scripts:compile"
+execute.script = "scripts:execute"
+bundle.script = "scripts:bundle"
+clean.script = "scripts:clean"
+help.script = "scripts:help"
 
 
 

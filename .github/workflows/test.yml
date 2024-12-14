@@ -67,5 +67,4 @@ jobs:
       - name: Run Installer Script 📥
         env:
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
-          PYTHONPATH: viridian/algae
-        run: sudo python3 -m setup -g -a no ${{ matrix.caerulean }} -r ${{ matrix.dist }} -s ${{ env.BRANCH_NAME }}
+        run: PYTHONPATH=viridian/algae sudo python3 -m setup -g -a no ${{ matrix.caerulean }} -r ${{ matrix.dist }} -s ${{ env.BRANCH_NAME }}
