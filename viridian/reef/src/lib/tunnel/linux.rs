@@ -1,5 +1,5 @@
 #[cfg(test)]
-#[path = "../../tests/tunnel.rs"]
+#[path = "../../../tests/tunnel.rs"]
 mod tunnel_test;
 
 use std::str;
@@ -13,8 +13,9 @@ use neli::socket::NlSocketHandle;
 use simple_error::{bail, require_with};
 use tun::{create_as_async, AbstractDevice, AsyncDevice, Configuration};
 
-use crate::nl_utils::{bytes_to_int, bytes_to_ip_address, bytes_to_string, copy_rtmsg, create_address_message, create_attr, create_header, create_interface_message, create_socket, create_routing_message, send_netlink_message, send_netlink_stream};
 use crate::DynResult;
+use super::nl_utils::{bytes_to_int, bytes_to_ip_address, bytes_to_string, copy_rtmsg, create_address_message, create_attr, create_header, create_interface_message, create_socket, create_routing_message, send_netlink_message, send_netlink_stream};
+use super::{Creatable, Tunnel};
 
 const FRA_MASK: Rta = Rta::UnrecognizedConst(10);
 
@@ -166,19 +167,16 @@ fn disable_firewall(default_name: &str, default_address: &Ipv4Addr, default_cidr
 }
 
 
-pub struct Tunnel {
-    def_ip: Ipv4Addr,
-    def_cidr: u8,
-    tun_device: AsyncDevice,
 
+pub struct PlatformInternalConfig {
     svr_idx: u8,
     svr_data: Vec<Rtmsg>,
     def_name: String,
     sea_ip: Ipv4Addr
 }
 
-impl Tunnel {
-    pub async fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_address: Ipv4Addr, tunnel_netmask: Ipv4Addr, svr_index: u8) -> DynResult<Tunnel> {
+impl Creatable for Tunnel {
+    async fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_address: Ipv4Addr, tunnel_netmask: Ipv4Addr, svr_index: u8) -> DynResult<Tunnel> {
         if [0, 1, 255].contains(&tunnel_address.octets()[3]) {
             bail!("Last byte of tunnel address should not be equal to {}!", tunnel_address.octets()[3])
         }
@@ -199,25 +197,8 @@ impl Tunnel {
         debug!("Enabling firewall...");
         enable_firewall(&default_name, &default_address, default_cidr, &seaside_address, svr_index)?;
 
-        Ok(Tunnel {def_ip: default_address, def_cidr: default_cidr, tun_device: tunnel_device, svr_idx: svr_index, svr_data, def_name: default_name, sea_ip: seaside_address})
-    }
-
-    pub fn default_interface(&self) -> (Ipv4Addr, u8) {
-        (self.def_ip, self.def_cidr)
-    }
-
-    pub async fn read_bytes(&self, bytes: &mut [u8]) -> DynResult<usize> {
-        match self.tun_device.recv(bytes).await {
-            Ok(res) => Ok(res),
-            Err(res) => bail!("Error reading bytes from tunnel: {}", res)
-        }
-    }
-
-    pub async fn write_bytes(&self, bytes: &[u8]) -> DynResult<usize> {
-        match self.tun_device.send(&bytes).await {
-            Ok(res) => Ok(res),
-            Err(res) => bail!("Error writing bytes to tunnel: {}", res)
-        }
+        let internal = PlatformInternalConfig {svr_idx: svr_index, svr_data, def_name: default_name, sea_ip: seaside_address};
+        Ok(Tunnel {def_ip: default_address, def_cidr: default_cidr, tun_device: tunnel_device, internal})
     }
 }
 
@@ -225,17 +206,17 @@ impl Drop for Tunnel {
     #[allow(unused_must_use)]
     fn drop(&mut self) {
         debug!("Disabling firewall...");
-        disable_firewall(&self.def_name, &self.def_ip, self.def_cidr, &self.sea_ip, self.svr_idx).inspect_err(|e| error!("Error disabling firewall: {}", e));
+        disable_firewall(&self.internal.def_name, &self.def_ip, self.def_cidr, &self.internal.sea_ip, self.internal.svr_idx).inspect_err(|e| error!("Error disabling firewall: {}", e));
 
         debug!("Resetting routing...");
         match self.tun_device.address() {
             Ok(IpAddr::V4(ripv4)) => {
-                disable_routing(ripv4, self.svr_idx).inspect_err(|e| error!("Error resetting routing: {}", e));
+                disable_routing(ripv4, self.internal.svr_idx).inspect_err(|e| error!("Error resetting routing: {}", e));
             },
             _ => error!("Tunnel device has unknown address type!")
         };
 
         debug!("Restoring seaside-viridian-reef routing table...");
-        restore_svr_table(&mut self.svr_data).inspect_err(|e| error!("Error restoring seaside-viridian-reef routing table: {}", e));
+        restore_svr_table(&mut self.internal.svr_data).inspect_err(|e| error!("Error restoring seaside-viridian-reef routing table: {}", e));
     }
 }

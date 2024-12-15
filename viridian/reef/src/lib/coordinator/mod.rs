@@ -4,17 +4,15 @@ use std::time::Duration;
 use std::fs::read_to_string;
 use std::cmp::min;
 
-use log::{debug, info, error, warn};
+use log::{debug, info, warn};
 use rand::{Rng, RngCore};
 use chacha20poly1305::aead::generic_array::GenericArray;
 use chacha20poly1305::aead::generic_array::typenum::U32;
 use chacha20poly1305::aead::OsRng;
 use chacha20poly1305::{XChaCha20Poly1305, KeyInit};
 use simple_error::{bail, require_with};
-use tokio::net::{UdpSocket, lookup_host};
+use tokio::net::UdpSocket;
 use tokio::process::Command;
-use tokio::select;
-use tokio::signal::unix::{SignalKind, signal};
 use tokio::time::sleep;
 use tonic::metadata::MetadataValue;
 use tonic::transport::{Certificate, Channel, ClientTlsConfig};
@@ -24,8 +22,7 @@ use generated::whirlpool_viridian_client::WhirlpoolViridianClient;
 use generated::{WhirlpoolAuthenticationRequest, ControlHandshakeRequest, ControlHealthcheck};
 
 use crate::DynResult;
-
-use super::tunnel::Tunnel;
+use super::tunnel::{Creatable, Tunnel};
 use super::viridian::Viridian;
 use super::VERSION;
 
@@ -33,10 +30,22 @@ mod generated {
     tonic::include_proto!("generated");
 }
 
+
+#[cfg(target_os = "linux")]
+mod linux;
+
+#[cfg(target_os = "windows")]
+mod windows;
+
+
 const GRPC_PROTOCOL: &str = "https";
 const MAX_TAIL_LENGTH: usize = 64;
 const SEASIDE_TAIL_HEADER: &str = "seaside-tail-bin";
 
+
+pub trait Startable {
+    async fn start(&mut self, command: Option<String>) -> DynResult<()>;
+}
 
 pub struct Coordinator {
     viridian: Viridian,
@@ -117,35 +126,6 @@ impl Coordinator {
             debug!("Sending healthcheck message...");
             control = self.perform_control(user_id).await;
         }
-    }
-
-    pub async fn start(&mut self, command: Option<String>) -> DynResult<()> {
-        debug!("Creating signal handlers...");
-        let mut signal_terminate = signal(SignalKind::terminate())?;
-        let mut signal_interrupt = signal(SignalKind::interrupt())?;
-
-        debug!("Initiating connection...");
-        let user_id = self.initialize_connection().await?;
-
-        debug!("Running DNS probe to check for globally available DNS servers...");
-        if lookup_host("example.com").await.is_err() {
-            error!("WARNING! DNS probe failed! It is very likely that you have local DNS servers configured only!");
-        }
-
-        debug!("Running VPN processes asynchronously...");
-        select! {
-            res = Self::run_vpn_command(command), if command.is_some() => match res {
-                Ok(status) => println!("The command exited with: {status}"),
-                Err(err) => return Err(err)
-            },
-            err = self.run_vpn_loop(user_id) => {
-                return Ok(err?)
-            },
-            _ = signal_terminate.recv() => info!("Received SIGTERM, terminating gracefully..."),
-            _ = signal_interrupt.recv() => info!("Received SIGINT, terminating gracefully..."),
-        };
-
-        Ok(())
     }
 
     fn make_grpc_request<T>(&mut self, message: T) -> Request<T> {

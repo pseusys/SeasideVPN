@@ -7,7 +7,7 @@ use gethostname::gethostname;
 use structopt::StructOpt;
 use env_logger::init;
 
-use reeflib::coordinator::Coordinator;
+use reeflib::coordinator::{Coordinator, Startable};
 use reeflib::DynResult;
 
 mod generated {

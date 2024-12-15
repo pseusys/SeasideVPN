@@ -1,5 +1,5 @@
 #[cfg(test)]
-#[path = "../../tests/nl_utils.rs"]
+#[path = "../../../tests/nl_utils.rs"]
 mod nl_utils_test;
 
 use core::str;
