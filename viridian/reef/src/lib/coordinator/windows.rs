@@ -7,6 +7,7 @@ use tokio::signal::windows::{ctrl_c, ctrl_break, ctrl_close, ctrl_shutdown};
 use crate::DynResult;
 use super::{Coordinator, Startable};
 
+
 impl Startable for Coordinator {
     async fn start(&mut self, command: Option<String>) -> DynResult<()> {
         debug!("Creating signal handlers...");

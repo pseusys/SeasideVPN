@@ -24,6 +24,10 @@ mod windows;
 use windows::*;
 
 
+mod utils;
+pub use utils::*;
+
+
 pub trait Creatable: Sized {
     fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_address: Ipv4Addr, tunnel_netmask: Ipv4Addr, svr_index: u8) -> impl Future<Output = DynResult<Self>> + Send;
 }
@@ -55,11 +59,4 @@ impl Tunnel {
             Err(res) => bail!("Error writing bytes to tunnel: {}", res)
         }
     }
-}
-
-fn verify_ip_address(address: &Ipv4Addr) -> DynResult<()> {
-    if [0, 1, 255].contains(&address.octets()[3]) {
-        bail!("Last byte of tunnel address should not be equal to {}!", address.octets()[3])
-    }
-    Ok(())
 }

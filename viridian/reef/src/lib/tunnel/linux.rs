@@ -167,7 +167,6 @@ fn disable_firewall(default_name: &str, default_address: &Ipv4Addr, default_cidr
 }
 
 
-
 pub struct PlatformInternalConfig {
     svr_idx: u8,
     svr_data: Vec<Rtmsg>,
@@ -177,7 +176,7 @@ pub struct PlatformInternalConfig {
 
 impl Creatable for Tunnel {
     async fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_address: Ipv4Addr, tunnel_netmask: Ipv4Addr, svr_index: u8) -> DynResult<Tunnel> {
-        verify_ip_address(seaside_address);
+        verify_ip_address(seaside_address)?;
 
         debug!("Checking system default network properties...");
         let (default_address, default_cidr, default_name, default_mtu) = get_default_interface(seaside_address)?;

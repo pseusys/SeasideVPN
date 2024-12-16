@@ -7,6 +7,7 @@ use tokio::signal::unix::{SignalKind, signal};
 use crate::DynResult;
 use super::{Coordinator, Startable};
 
+
 impl Startable for Coordinator {
     async fn start(&mut self, command: Option<String>) -> DynResult<()> {
         debug!("Creating signal handlers...");
