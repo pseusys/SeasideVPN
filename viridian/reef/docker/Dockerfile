@@ -5,13 +5,9 @@ FROM ubuntu:22.04 AS downloader
 WORKDIR /seaside
 
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential wget unzip ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential ca-certificates && rm -rf /var/lib/apt/lists/*
 RUN wget -qO- https://sh.rustup.rs | sh -s -- --default-toolchain 1.81.0 -y
 ENV PATH="/root/.cargo/bin:${PATH}"
-
-ENV PROTOC_VERSION=24.4
-ENV PROTOC_ZIP=protoc-$PROTOC_VERSION-linux-x86_64.zip
-RUN wget -qO "$PROTOC_ZIP" https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_VERSION/$PROTOC_ZIP && unzip -o "$PROTOC_ZIP" -d /usr/local bin/protoc && unzip -o "$PROTOC_ZIP" -d /usr/local 'include/*' && rm -f "$PROTOC_ZIP"
 
 COPY vessels vessels
 COPY viridian/reef/Cargo.toml viridian/reef/Cargo.toml
