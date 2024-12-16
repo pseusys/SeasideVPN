@@ -8,6 +8,8 @@ SHELL=/bin/bash
 PYTHON=python3
 PYTHONPATH=../../viridian/algae
 
+COMPILE_FLAGS=""
+
 BOLD=\033[1m
 BLUE=\033[34m
 GREEN=\033[32m
@@ -45,7 +47,7 @@ build:
 	@ # Generate protobuf files, install dependencies and build executable
 	protoc -I=../../ --go_out=. --go-grpc_out=. ../../vessels/*.proto
 	go mod tidy
-	go build -o build/$(EXEC_NAME) ./sources
+	go build -ldflags ${COMPILE_FLAGS} -o build/$(EXEC_NAME) ./sources
 .PHONY: build
 
 certificates:

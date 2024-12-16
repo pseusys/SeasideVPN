@@ -43,7 +43,8 @@ jobs:
           workflow: publish.yml
           run_id: ${{ github.run_id }}
           allow_forks: false
-          name: algae-executable
+          name: algae-executable-.+
+          name_is_regexp: true
   
       - name: Download Caerulean Whirlpool Artifact 🌌
         uses: dawidd6/action-download-artifact@v6
@@ -54,8 +55,14 @@ jobs:
           name: whirlpool-executable-.+
           name_is_regexp: true
 
-      - name: Rename Artifact Files ⭕
-        run: npm run --prefix .github/scripts prepare-release-artifacts -- "**/*.run" "**/*.pyz"
+      - name: Download Viridian Reef Artifact 🪸
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          workflow: publish.yml
+          run_id: ${{ github.run_id }}
+          allow_forks: false
+          name: reef-executable-.+
+          name_is_regexp: true
 
       - name: Create Release 🪅
         uses: marvinpinto/action-automatic-releases@v1.2.1
@@ -64,6 +71,7 @@ jobs:
           prerelease: false
           files: |
             **/*.run
+            **/*.exe
             **/*.pyz
 
   caerulean-whirlpool-deploy:
