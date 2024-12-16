@@ -144,6 +144,7 @@ jobs:
       - name: Build Viridian Reef 🏗️
         uses: actions-rs/cargo@v1
         env:
+          CROSS_CONFIG: viridian/reef/Cross.toml
           TARGET: ${{ matrix.arch == 'amd64' && 'x86_64' || 'aarch64' }}-${{ matrix.os == 'linux' && 'unknown-linux-gnu' || 'pc-windows-msvc' }}
         with:
           command: build
