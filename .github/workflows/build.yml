@@ -122,6 +122,8 @@ jobs:
   viridian-reef-build:
     name: Build Viridian Reef Client Executable
     runs-on: ${{ matrix.os == 'linux' && 'ubuntu-latest' || 'windows-latest' }}
+    env:
+      TARGET: ${{ matrix.arch == 'amd64' && 'x86_64' || 'aarch64' }}-${{ matrix.os == 'linux' && 'unknown-linux-gnu' || 'pc-windows-msvc' }}
     strategy:
       fail-fast: false
       matrix:
@@ -134,8 +136,6 @@ jobs:
 
       - name: Setup Rust 🦀
         uses: actions-rs/toolchain@v1
-        env:
-          TARGET: ${{ matrix.arch == 'amd64' && 'x86_64' || 'aarch64' }}-${{ matrix.os == 'linux' && 'unknown-linux-gnu' || 'pc-windows-msvc' }}
         with:
           toolchain: stable
           target: ${{ env.TARGET }}
@@ -143,8 +143,6 @@ jobs:
 
       - name: Build Viridian Reef 🏗️
         uses: actions-rs/cargo@v1
-        env:
-          TARGET: ${{ matrix.arch == 'amd64' && 'x86_64' || 'aarch64' }}-${{ matrix.os == 'linux' && 'unknown-linux-gnu' || 'pc-windows-msvc' }}
         with:
           command: build
           use-cross: true
@@ -154,8 +152,8 @@ jobs:
         env:
           EXEC_SRC: ${{ matrix.os == 'linux' && 'cli' || 'cli.exe' }}
           EXEC_STEM: ${{ format('caerulean-whirlpool-executable-{0}-{1}', matrix.os, matrix.arch) }}
-          EXEC_EXT: ${{ matrix.os == 'linux' && 'run' || 'exe' }}
-        run: mv viridian/reef/target/release/${{ env.EXEC_SRC }} viridian/reef/target/${{ env.EXEC_STEM }}.${{ env.EXEC_EXT }}
+          EXEC_EXT: ${{ matrix.os == 'linux' && '.run' || '' }}
+        run: mv viridian/reef/target/${{ env.TARGET }}/release/${{ env.EXEC_SRC }} viridian/reef/target/${{ env.EXEC_STEM }}${{ env.EXEC_EXT }}
 
       - name: Create Artifact Name From Branch Name 🌱
         uses: mad9000/actions-find-and-replace-string@5
@@ -172,6 +170,6 @@ jobs:
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
         with:
           name: reef-executable-${{ steps.branch-name.outputs.value }}-${{ matrix.os }}-${{ matrix.arch }}
-          path: viridian/reef/target/release/cli.run
+          path: viridian/reef/target/cli.*
           retention-days: 3
           if-no-files-found: error
