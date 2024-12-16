@@ -13,9 +13,9 @@ use neli::socket::NlSocketHandle;
 use simple_error::{bail, require_with};
 use tun::{create_as_async, AbstractDevice, AsyncDevice, Configuration};
 
-use crate::DynResult;
 use super::nl_utils::{bytes_to_int, bytes_to_ip_address, bytes_to_string, copy_rtmsg, create_address_message, create_attr, create_header, create_interface_message, create_socket, create_routing_message, send_netlink_message, send_netlink_stream};
-use super::{Creatable, Tunnel};
+use super::{verify_ip_address, Creatable, Tunnel};
+use crate::DynResult;
 
 const FRA_MASK: Rta = Rta::UnrecognizedConst(10);
 
