@@ -44,12 +44,21 @@ jobs:
           EXEC_NAME: caerulean-installer
         run: poetry poe -C viridian/algae bundle ${{ env.EXEC_NAME }}.pyz
 
+      - name: Create Artifact Name From Branch Name 🌱
+        uses: mad9000/actions-find-and-replace-string@5
+        id: branch-name
+        with:
+          source: ${{ github.head_ref || github.ref_name }}
+          find: '/'
+          replace: '_'
+          replaceAll: true
+
       - name: Save Artifact 🏺
         uses: actions/upload-artifact@v4
         env:
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
         with:
-          name: algae-executable-${{ env.BRANCH_NAME }}
+          name: algae-executable-${{ steps.branch-name.outputs.value }}
           retention-days: 3
           if-no-files-found: error
           path: |
@@ -90,12 +99,21 @@ jobs:
           EXEC_NAME: ${{ format('caerulean-whirlpool-executable-{0}', matrix.arch) }}
         run: make -C caerulean/whirlpool build EXEC_NAME=${{ env.EXEC_NAME }}.run
 
+      - name: Create Artifact Name From Branch Name 🌱
+        uses: mad9000/actions-find-and-replace-string@5
+        id: branch-name
+        with:
+          source: ${{ github.head_ref || github.ref_name }}
+          find: '/'
+          replace: '_'
+          replaceAll: true
+
       - name: Save Artifact 🏺
         uses: actions/upload-artifact@v4
         env:
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
         with:
-          name: whirlpool-executable-${{ env.BRANCH_NAME }}-${{ matrix.arch }}
+          name: whirlpool-executable-${{ steps.branch-name.outputs.value }}-${{ matrix.arch }}
           path: caerulean/whirlpool/build/*.run
           retention-days: 3
           if-no-files-found: error
@@ -150,12 +168,21 @@ jobs:
         if: ${{ matrix.os == 'linux' }}
         run: mv viridian/reef/target/release/cli viridian/reef/target/release/cli.run
 
+      - name: Create Artifact Name From Branch Name 🌱
+        uses: mad9000/actions-find-and-replace-string@5
+        id: branch-name
+        with:
+          source: ${{ github.head_ref || github.ref_name }}
+          find: '/'
+          replace: '_'
+          replaceAll: true
+
       - name: Save Artifact 🏺
         uses: actions/upload-artifact@v4
         env:
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
         with:
-          name: reef-executable-${{ env.BRANCH_NAME }}-${{ matrix.os }}-${{ matrix.arch }}
+          name: reef-executable-${{ steps.branch-name.outputs.value }}-${{ matrix.os }}-${{ matrix.arch }}
           path: viridian/reef/target/release/cli.run
           retention-days: 3
           if-no-files-found: error
