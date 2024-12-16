@@ -115,7 +115,7 @@ jobs:
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
         with:
           name: whirlpool-executable-${{ steps.branch-name.outputs.value }}-${{ matrix.arch }}
-          path: caerulean/whirlpool/build/*.run
+          path: caerulean/whirlpool/build/caerulean-whirlpool-executable-*.run
           retention-days: 3
           if-no-files-found: error
 
@@ -151,7 +151,7 @@ jobs:
       - name: Rename Executable 📛
         env:
           EXEC_SRC: ${{ matrix.os == 'linux' && 'cli' || 'cli.exe' }}
-          EXEC_STEM: ${{ format('caerulean-whirlpool-executable-{0}-{1}', matrix.os, matrix.arch) }}
+          EXEC_STEM: ${{ format('viridian-reef-executable-{0}-{1}', matrix.os, matrix.arch) }}
           EXEC_EXT: ${{ matrix.os == 'linux' && '.run' || '' }}
         run: mv viridian/reef/target/${{ env.TARGET }}/release/${{ env.EXEC_SRC }} viridian/reef/target/${{ env.EXEC_STEM }}${{ env.EXEC_EXT }}
 
@@ -170,6 +170,6 @@ jobs:
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
         with:
           name: reef-executable-${{ steps.branch-name.outputs.value }}-${{ matrix.os }}-${{ matrix.arch }}
-          path: viridian/reef/target/cli.*
+          path: viridian/reef/target/viridian-reef-executable-*.*
           retention-days: 3
           if-no-files-found: error

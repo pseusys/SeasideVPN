@@ -83,8 +83,12 @@ fn init_logging() {
 }
 
 
-fn parse_link(_link: Option<String>) -> (Option<String>, Option<Ipv4Addr>, Option<u16>, Option<String>) {
-    todo!();
+fn parse_link(link: Option<String>) -> (Option<String>, Option<Ipv4Addr>, Option<u16>, Option<String>) {
+    if link.is_some() {
+        todo!();
+    } else {
+        (None, None, None, None)
+    }
 }
 
 #[tokio::main]
