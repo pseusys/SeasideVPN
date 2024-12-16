@@ -132,20 +132,21 @@ jobs:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
 
-      - name: Install Protoc 💾
-        uses: arduino/setup-protoc@v3
+      - name: Setup Rust 🦀
+        uses: actions-rs/toolchain@v1
+        env:
+          TARGET: ${{ matrix.arch == 'amd64' && 'x86_64' || 'aarch64' }}-${{ matrix.os == 'linux' && 'unknown-linux-gnu' || 'pc-windows-msvc' }}
         with:
-          version: "24.4"
+          toolchain: ${{ env.TARGET }}
 
       - name: Build Viridian Reef 🏗️
-        uses: houseabsolute/actions-rust-cross@v0
+        uses: actions-rs/cargo@v1
         env:
           TARGET: ${{ matrix.arch == 'amd64' && 'x86_64' || 'aarch64' }}-${{ matrix.os == 'linux' && 'unknown-linux-gnu' || 'pc-windows-msvc' }}
         with:
           command: build
-          target: ${{ env.TARGET }}
-          args: --release --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml
-          strip: true
+          use-cross: true
+          args: --release --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml --target ${{ env.TARGET }}
 
       - name: Rename Executable 📛
         env:
