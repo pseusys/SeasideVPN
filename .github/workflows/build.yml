@@ -158,15 +158,15 @@ jobs:
 
       - name: Build Viridian Reef 🏗️
         env:
-          ARCHITECTURE: ${{ matrix.arch == 'amd64' && 'x86_64' || 'aarch64' }}
-          TARGET_OS: ${{ matrix.os == 'linux' && 'unknown-linux-gnu' || 'pc-windows-msvc' }}
-          BUILD_TARGET: ${{ env.ARCHITECTURE }}-${{ env.TARGET_OS }}
-          EXEC_NAME: ${{ format('caerulean-whirlpool-executable-{0}-{1}', env.TARGET_OS, env.ARCHITECTURE) }}
-        run: cargo build --release --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml --target ${{ env.BUILD_TARGET }}
+          TARGET: ${{ matrix.arch == 'amd64' && 'x86_64' || 'aarch64' }}-${{ matrix.os == 'linux' && 'unknown-linux-gnu' || 'pc-windows-msvc' }}
+        run: cargo build --release --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml --target ${{ env.TARGET }}
 
-      - name: Rename Executable On Linux 📛
-        if: ${{ matrix.os == 'linux' }}
-        run: mv viridian/reef/target/release/cli viridian/reef/target/release/cli.run
+      - name: Rename Executable 📛
+        env:
+          EXEC_SRC: ${{ matrix.os == 'linux' && 'cli' || 'cli.exe' }}
+          EXEC_STEM: ${{ format('caerulean-whirlpool-executable-{0}-{1}', matrix.os, matrix.arch) }}
+          EXEC_EXT: ${{ matrix.os == 'linux' && 'run' || 'exe' }}
+        run: mv viridian/reef/target/release/${{ env.EXEC_SRC }} viridian/reef/target/${{ env.EXEC_STEM }}.${{ env.EXEC_EXT }}
 
       - name: Create Artifact Name From Branch Name 🌱
         uses: mad9000/actions-find-and-replace-string@5
