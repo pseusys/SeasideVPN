@@ -1,3 +1,4 @@
+use std::future::Future;
 use std::net::Ipv4Addr;
 use std::process::ExitStatus;
 use std::time::Duration;
@@ -44,7 +45,7 @@ const SEASIDE_TAIL_HEADER: &str = "seaside-tail-bin";
 
 
 pub trait Startable {
-    async fn start(&mut self, command: Option<String>) -> DynResult<()>;
+    fn start(&mut self, command: Option<String>) -> impl Future<Output = DynResult<()>> + Send;
 }
 
 pub struct Coordinator {
