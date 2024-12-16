@@ -53,11 +53,11 @@ required-features = ["cli-exec"]
 
 [workspace.metadata.cross.target.x86_64-unknown-linux-gnu]
 pre-build = [
-    "apt-get update && apt-get --y install protobuf-compiler"
+    "apt-get update && apt-get -y install protobuf-compiler"
 ]
 
 [workspace.metadata.cross.target.aarch64-unknown-linux-gnu]
 pre-build = [
     "dpkg --add-architecture $CROSS_DEB_ARCH",
-    "apt-get update && apt-get --y install protobuf-compiler"
+    "apt-get update && apt-get -y install protobuf-compiler"
 ]
