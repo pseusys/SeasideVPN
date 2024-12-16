@@ -27,16 +27,22 @@ structopt = { version = "^0.3.26", optional = true }
 neli = "^0.6.4"
 iptables = "^0.5.1"
 
-
-
-[features]
-cli-exec = ["structopt"]
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { version = "0.58.0", features = ["Win32_Foundation", "Win32_NetworkManagement_WindowsFilteringPlatform", "Win32_Security", "Win32_System_Rpc"] }
 
 [build-dependencies]
 tonic-build = "^0.12.3"
 
+[target.'cfg(target_os = "windows")'.build-dependencies]
+bindgen = "^0.71.1"
+
 [dev-dependencies]
 regex = "^1.11.1"
+
+
+
+[features]
+cli-exec = ["structopt"]
 
 
 
