@@ -137,7 +137,9 @@ jobs:
         env:
           TARGET: ${{ matrix.arch == 'amd64' && 'x86_64' || 'aarch64' }}-${{ matrix.os == 'linux' && 'unknown-linux-gnu' || 'pc-windows-msvc' }}
         with:
-          toolchain: ${{ env.TARGET }}
+          toolchain: stable
+          target: ${{ env.TARGET }}
+          override: true
 
       - name: Build Viridian Reef 🏗️
         uses: actions-rs/cargo@v1
