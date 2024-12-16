@@ -138,9 +138,7 @@ jobs:
 
       - name: Install Compiler (Linux) 🤖
         if: ${{ matrix.os == 'linux' }}
-        uses: rlalik/setup-cpp-compiler@v1.2
-        with:
-          compiler: ${{ matrix.arch == 'arm64' && 'gcc-aarch64-linux-gnu' || 'gcc' }}
+        run: sudo apt-get install ${{ matrix.arch == 'arm64' && 'gcc-aarch64-linux-gnu' || 'gcc' }}
 
       - name: Install Compiler (Windows) 🤖
         if: ${{ matrix.os == 'windows' }}
