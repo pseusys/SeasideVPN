@@ -96,6 +96,7 @@ jobs:
       - name: Build Caerulean Whirlpool 🏗️
         env:
           GOARCH: ${{ matrix.arch }}
+          COMPILE_FLAGS: -s
           EXEC_NAME: ${{ format('caerulean-whirlpool-executable-{0}', matrix.arch) }}
         run: make -C caerulean/whirlpool build EXEC_NAME=${{ env.EXEC_NAME }}.run
 
@@ -136,28 +137,15 @@ jobs:
         with:
           version: "24.4"
 
-      - name: Install Compiler (Linux) 🤖
-        if: ${{ matrix.os == 'linux' }}
-        run: sudo apt-get install ${{ matrix.arch == 'arm64' && 'gcc-aarch64-linux-gnu' || 'gcc' }}
-
-      - name: Install Compiler (Windows) 🤖
-        if: ${{ matrix.os == 'windows' }}
-        uses: TheMrMilchmann/setup-msvc-dev@v3
-        with:
-          arch: ${{ matrix.arch == 'arm64' && 'x64_arm64' || 'x64' }}
-
-      - name: Setup Nightly Rust 🦀
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-        env:
-          TARGET: ${{ matrix.arch == 'amd64' && 'x86_64' || 'aarch64' }}-${{ matrix.os == 'linux' && 'unknown-linux-gnu' || 'pc-windows-msvc' }}
-        with:
-          toolchain: nightly
-          target: ${{ env.TARGET }}
-
       - name: Build Viridian Reef 🏗️
+        uses: houseabsolute/actions-rust-cross@v0
         env:
           TARGET: ${{ matrix.arch == 'amd64' && 'x86_64' || 'aarch64' }}-${{ matrix.os == 'linux' && 'unknown-linux-gnu' || 'pc-windows-msvc' }}
-        run: cargo build --release --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml --target ${{ env.TARGET }}
+        with:
+          command: build
+          target: ${{ env.TARGET }}
+          args: --release --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml
+          strip: true
 
       - name: Rename Executable 📛
         env:

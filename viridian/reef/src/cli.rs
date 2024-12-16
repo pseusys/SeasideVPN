@@ -83,8 +83,8 @@ fn init_logging() {
 }
 
 
-fn parse_link(link: Option<String>) -> (Option<String>, Option<Ipv4Addr>, Option<u16>, Option<String>) {
-    (None, None, None, None)
+fn parse_link(_link: Option<String>) -> (Option<String>, Option<Ipv4Addr>, Option<u16>, Option<String>) {
+    todo!();
 }
 
 #[tokio::main]
@@ -94,7 +94,7 @@ async fn main() -> DynResult<()> {
     if opt.version {
         println!("Seaside Viridian Reef version {}", env!("CARGO_PKG_VERSION"));
     } else {
-        let (link_node, link_address, link_ctrl_port, link_payload) = parse_link(opt.link);
+        let (_link_node, link_address, link_ctrl_port, link_payload) = parse_link(opt.link);
         let address = link_address.unwrap_or(opt.address);
         let port = link_ctrl_port.unwrap_or(opt.ctrl_port);
         let payload = link_payload.unwrap_or_else(|| opt.payload.expect("Caerulean payload value was not specified!"));
