@@ -7,15 +7,15 @@ WORKDIR /seaside/caerulean
 
 # Protobuf development library are required for executable building.
 # Go lint and iptables are required for testing.
+ENV PROTOGO_PROTOC_VERSION=24.4
 RUN apk add --no-cache iptables protobuf protobuf-dev \
-    && go install google.golang.org/protobuf/cmd/protoc-gen-go@latest \
-    && go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest \
+    && go install github.com/pseusys/protogo@latest \
     && go install golang.org/x/lint/golint@latest
 
 # Copy whirlpool go.mod, protobuf files and generate protobuf sources.
 COPY caerulean/whirlpool/go.mod ./
 COPY vessels ./vessels
-RUN protoc -I=vessels --go_out=. --go-grpc_out=. vessels/*.proto
+RUN protogo -- -I=vessels --go_out=. --go-grpc_out=. vessels/*.proto
 
 # Copy whirlpool code and install required libraries.
 COPY caerulean/whirlpool ./

@@ -8,6 +8,7 @@ SHELL=/bin/bash
 PYTHON=python3
 PYTHONPATH=../../viridian/algae
 
+PROTOGO_PROTOC_VERSION=24.4
 COMPILE_FLAGS=""
 
 BOLD=\033[1m
