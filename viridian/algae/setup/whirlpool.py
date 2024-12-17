@@ -56,10 +56,8 @@ _PACKET_FORWARDING_CONF = Path("/proc/sys/net/ipv4/ip_forward")
 
 _SHELL_LOGIN = Path("/etc/profile")
 _GO_ROOT = Path("/usr/local/go")
-_PROTOC_ROOT = Path("/usr/local/protoc")
 
-_PROTOC_GEN_PACKAGE = "google.golang.org/protobuf/cmd/protoc-gen-go"
-_PROTOC_GRPC_PACKAGE = "google.golang.org/grpc/cmd/protoc-gen-go-grpc"
+_PROTOGO_PACKAGE = "github.com/pseusys/protogo"
 
 _logging_type = logging_level(_DEFAULT_LOG_LEVEL, False)
 
@@ -165,21 +163,6 @@ class WhirlpoolInstaller(Installer):
         check_call(f"chmod +x {str(go_path / 'go')}", stdout=DEVNULL, stderr=DEVNULL, shell=True)
         return go_path
 
-    def _install_protoc(self) -> Path:
-        arch = "aarch_64" if get_arch() == "arm" else "x86_64"
-        rmtree(_PROTOC_ROOT, ignore_errors=True)
-        protoc_url = _PROTOC_DISTRIBUTION.format(ver=_PROTOC_VERSION, arch=arch)
-        self._logger.debug(f"Downloading PROTOC from {protoc_url}...")
-        path, _ = urlretrieve(protoc_url)
-        self._logger.debug(f"Extracting PROTOC archive: {str(path)}...")
-        with ZipFile(path, "r") as archive:
-            archive.extractall(_PROTOC_ROOT)
-        protoc_path = _PROTOC_ROOT / "bin"
-        with open(_SHELL_LOGIN, "a+") as file:
-            file.write(f"export PATH={str(protoc_path)}:$PATH")
-        check_call(f"chmod +x {str(protoc_path / 'protoc')}", stdout=DEVNULL, stderr=DEVNULL, shell=True)
-        return protoc_path
-
     def _install_go_package(self, go_exec: Optional[str], package: str) -> None:
         """Install one GO package with given executable."""
         try:
@@ -191,7 +174,7 @@ class WhirlpoolInstaller(Installer):
             check_call(f"{go_exec} install {package}@latest", stdout=DEVNULL, stderr=DEVNULL, shell=True)
             self._logger.debug(f"GO package '{package}' installed!")
 
-    def _prepare_environment(self) -> Tuple[Optional[Path], Optional[Path]]:
+    def _prepare_environment(self) -> Optional[Path]:
         """Prepare environment for building whirlpool executable: install GO and PROTOC (and also some GO packages)."""
         if not check_package("go", _GO_VERSION, "version"):
             self._logger.info("Installing GO...")
@@ -200,26 +183,18 @@ class WhirlpoolInstaller(Installer):
         else:
             self._logger.info("Global GO found!")
             go_path = None
-        if not check_package("protoc", _PROTOC_VERSION):
-            self._logger.info("Installing PROTOC...")
-            protoc_path = self._install_protoc()
-            self._logger.info(f"PROTOC installed to {protoc_path}!")
-        else:
-            self._logger.info("Global PROTOC found!")
-            protoc_path = None
         go_exec = "go" if go_path is None else str(go_path / "go")
         self._logger.info(f"Installing GO packages with {go_exec} executable...")
-        self._install_go_package(go_exec, _PROTOC_GEN_PACKAGE)
-        self._install_go_package(go_exec, _PROTOC_GRPC_PACKAGE)
+        self._install_go_package(go_exec, _PROTOGO_PACKAGE)
         self._logger.info("All the GO packages installed!")
-        return go_path, protoc_path
+        return go_path
 
-    def _download_and_build_sources(self, *paths: Optional[Path]) -> None:
+    def _download_and_build_sources(self, go_path: Optional[Path]) -> None:
         """Download source code from GitHub to ./SeasideVPN directory and build the whirlpool executable."""
         check_install_packages("git", "make")
         seapath = Path("SeasideVPN")
         go_env = environ.copy()
-        go_env["PATH"] = ":".join([*(str(path) for path in paths if path is not None), environ["PATH"]])
+        go_env["PATH"] = f"{str(go_path)}:{environ['PATH']}" if go_path is not None else environ["PATH"]
         self._logger.debug(f"PATH prepared for caerulean building: {go_env['PATH']}")
         self._logger.debug("Cloning SeasideVPN repository...")
         check_call(f"git clone -n --branch {self._args['source_tag']} --depth=1 --filter=tree:0 {_SEASIDE_REPO}", stdout=DEVNULL, stderr=DEVNULL, shell=True)
@@ -249,9 +224,9 @@ class WhirlpoolInstaller(Installer):
     def install(self) -> None:
         if self._args["distribution_type"] == _DT_COMPILE:
             self._logger.info("Preparing Seaside Whirlpool build environment...")
-            go, protoc = self._prepare_environment()
+            go_executable = self._prepare_environment()
             self._logger.info("Environment prepared, starting build...")
-            self._download_and_build_sources(go, protoc)
+            self._download_and_build_sources(go_executable)
             self._logger.info("Seaside Whirlpool built!")
         elif self._args["distribution_type"] == _DT_DOCKER:
             self._logger.info("Pulling Seaside Whirlpool Docker image...")
