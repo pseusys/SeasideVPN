@@ -45,8 +45,7 @@ help:
 
 build:
 	@ # Generate protobuf files, install dependencies and build executable
-	protoc -I=../../ --go_out=. --go-grpc_out=. ../../vessels/*.proto
-	go mod tidy
+	protogo mod tidy -- -I=../../ --go_out=. --go-grpc_out=. ../../vessels/*.proto
 	go build -ldflags ${COMPILE_FLAGS} -o build/$(EXEC_NAME) ./sources
 .PHONY: build
 

@@ -82,16 +82,8 @@ jobs:
         with:
           go-version: "^1.22.0"
 
-      - name: Install Protoc 💾
-        uses: arduino/setup-protoc@v3
-        with:
-          version: "24.4"
-
       - name: Install Dependencies 🔮
-        run: |
-          go install golang.org/x/lint/golint@latest
-          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+        run: go install github.com/pseusys/protogo@latest
 
       - name: Build Caerulean Whirlpool 🏗️
         env:
@@ -166,8 +158,6 @@ jobs:
 
       - name: Save Artifact 🏺
         uses: actions/upload-artifact@v4
-        env:
-          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
         with:
           name: reef-executable-${{ steps.branch-name.outputs.value }}-${{ matrix.os }}-${{ matrix.arch }}
           path: viridian/reef/target/viridian-reef-executable-*.*

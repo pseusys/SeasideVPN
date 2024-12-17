@@ -13,12 +13,8 @@ It doesn't manage payments and authentication.
 
 1. `go` (compiler) version >= 1.22
   Installation guide can be found [here](https://go.dev/doc/install).
-2. `protobuf` (compiler) version >= 24.4
-  Installation guide example can be found [here](https://grpc.io/docs/protoc-installation/#install-pre-compiled-binaries-any-os).
-3. `protoc-gen-go` (`protobuf` code generator for golang) version >= 1.25
-  Regularily can be installed with this command: `go install google.golang.org/protobuf/cmd/protoc-gen-go@latest`.
-4. `protoc-gen-go-grpc` (`gRPC` code generator for golang)
-  Regularily can be installed with this command: `go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest`
+2. `protogo` (`protoc` automated installer) version >= 0.1.0
+  Regularily can be installed with this command: `go install github.com/pseusys/protogo@latest`.
 
 ## Whirlpool structure
 
