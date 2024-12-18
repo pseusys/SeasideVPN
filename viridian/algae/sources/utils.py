@@ -1,7 +1,6 @@
 from asyncio import AbstractEventLoop, Future
 from logging import StreamHandler, getLogger
 from os import getenv, read, write
-from pathlib import Path
 from socket import socket
 from ssl import PROTOCOL_TLS_CLIENT, SSLContext
 from sys import stdout

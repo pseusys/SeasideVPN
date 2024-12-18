@@ -13,9 +13,9 @@ Also contains caerulean installation [script](#caerulean-installation-script).
 
 1. `python3` (interpreter) version >= 3.10
   Installation guide can be found [here](https://www.python.org/downloads/).
-3. `poetry` (build system) version >= 1.0
+2. `poetry` (build system) version >= 1.0
   Installation guide can be found [here](https://python-poetry.org/docs/#installation).
-4. `poethepoet` (task runner) version >= 0.31
+3. `poethepoet` (task runner) version >= 0.31
   Installation guide can be found [here](https://poethepoet.natn.io/installation.html#installation).
 
 ## Implementation details

@@ -4,9 +4,8 @@ from pathlib import Path
 from shutil import copy, move, rmtree
 from subprocess import DEVNULL, Popen, SubprocessError, check_call
 from tarfile import open as open_tar
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional
 from urllib.request import urlretrieve
-from zipfile import ZipFile
 
 from base import Installer
 from certificates import GENERATE_CERTIFICATES_PATH, generate_certificates

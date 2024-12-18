@@ -215,7 +215,6 @@ class Coordinator:
             self._max_hc_time = response.max_next_in
             logger.debug(f"Maximum healthcheck delay updated to: {self._max_hc_time}!")
 
-
         if response.max_next_in < self._min_hc_time:
             self._min_hc_time = response.max_next_in
             logger.debug(f"Minimum healthcheck delay updated to: {self._min_hc_time}!")

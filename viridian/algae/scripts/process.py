@@ -6,8 +6,9 @@ from sys import argv
 from typing import List, Union
 from zipapp import create_archive
 
-from grpc_tools.protoc import main as protoc_main, _get_resource_file_name
 from colorama import Fore, Style, just_fix_windows_console
+from grpc_tools.protoc import _get_resource_file_name
+from grpc_tools.protoc import main as protoc_main
 from PyInstaller.__main__ import run as install
 from python_on_whales import Container, DockerClient
 from python_on_whales.components.image.cli_wrapper import ValidImage
@@ -22,7 +23,7 @@ _EXECUTABLE_NAME = "algae.run"
 _INSTALLER_NAME = "install.pyz"
 
 
-def generate() -> None:
+def generate() -> int:
     """
     Generate protobuf source files.
     Previous generation results will be removed.
@@ -36,7 +37,7 @@ def generate() -> None:
     proto_include = _get_resource_file_name("grpc_tools", "_proto")
     vessels = [str(file) for file in glob(f"{str(vessels_root)}/*.proto", recursive=True)]
     params = [protoc_main.__module__, f"-I={proto_include}", f"-I={str(vessels_root)}", f"--python_betterproto_out={str(sources_root)}"]
-    protoc_main(params + vessels)
+    return int(protoc_main(params + vessels))
 
 
 def compile() -> None:
