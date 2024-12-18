@@ -2,12 +2,11 @@ from asyncio import run as async_run
 from glob import glob
 from pathlib import Path
 from shutil import rmtree
-from subprocess import DEVNULL, check_call
-from sys import argv, executable
+from sys import argv
 from typing import List, Union
 from zipapp import create_archive
 
-from grpc_tools.protoc import main as protoc_main
+from grpc_tools.protoc import main as protoc_main, _get_resource_file_name
 from colorama import Fore, Style, just_fix_windows_console
 from PyInstaller.__main__ import run as install
 from python_on_whales import Container, DockerClient
@@ -34,10 +33,10 @@ def generate() -> None:
     rmtree(generated_root, ignore_errors=True)
 
     vessels_root = ALGAE_ROOT.parent.parent / "vessels"
+    proto_include = _get_resource_file_name("grpc_tools", "_proto")
     vessels = [str(file) for file in glob(f"{str(vessels_root)}/*.proto", recursive=True)]
-    params = [protoc_main.__module__, f"-I={str(vessels_root)}", f"--python_betterproto_out={str(sources_root)}"]
+    params = [protoc_main.__module__, f"-I={proto_include}", f"-I={str(vessels_root)}", f"--python_betterproto_out={str(sources_root)}"]
     protoc_main(params + vessels)
-    exit(1)
 
 
 def compile() -> None:
