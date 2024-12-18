@@ -130,6 +130,8 @@ jobs:
 
       - name: Build Viridian Reef 🏗️
         uses: actions-rs/cargo@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           command: build
           use-cross: true
