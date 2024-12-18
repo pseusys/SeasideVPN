@@ -21,6 +21,7 @@ include example.conf.env
 
 EXEC_NAME := whirlpool.run
 PATH := $(PATH):$(shell go env GOPATH)/bin
+PROJECT_ROOT := ../..
 
 
 
@@ -46,7 +47,7 @@ help:
 
 build:
 	@ # Generate protobuf files, install dependencies and build executable
-	protogo mod tidy -- -I=../../ --go_out=. --go-grpc_out=. ../../vessels/*.proto
+	protogo mod tidy -- -I=${PROJECT_ROOT} --go_out=. --go-grpc_out=. ${PROJECT_ROOT}/vessels/*.proto
 	go build -ldflags ${COMPILE_FLAGS} -o build/$(EXEC_NAME) ./sources
 .PHONY: build
 

@@ -36,8 +36,6 @@ viridian/algae/dist
 viridian/algae/docker/compose.*.yml
 viridian/algae/docker/Dockerfile.*
 viridian/algae/docker/test.conf.env
-viridian/algae/scripts
 viridian/algae/sources/generated
-viridian/algae/sources/__init__.py
 viridian/algae/poetry.lock
 viridian/algae/README.md

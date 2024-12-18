@@ -44,12 +44,10 @@ _DEFAULT_BURST_LIMIT_MULTIPLIER = 3
 _DEFAULT_LOG_LEVEL = "WARNING"
 
 _GO_VERSION = "1.22.0"
-_PROTOC_VERSION = "24.4"
 
 _SEASIDE_REPO = "https://github.com/pseusys/SeasideVPN"
 _SEASIDE_IMAGE = "ghcr.io/pseusys/seasidevpn/caerulean-whirlpool"
 _GO_DISTRIBUTION = "https://go.dev/dl/go{ver}.linux-{arch}.tar.gz"
-_PROTOC_DISTRIBUTION = "https://github.com/protocolbuffers/protobuf/releases/download/v{ver}/protoc-{ver}-linux-{arch}.zip"
 
 _ACCEPT_IPV6_CONF = Path("/proc/sys/net/ipv6/conf/default/accept_ra")
 _PACKET_FORWARDING_CONF = Path("/proc/sys/net/ipv4/ip_forward")
@@ -175,7 +173,7 @@ class WhirlpoolInstaller(Installer):
             self._logger.debug(f"GO package '{package}' installed!")
 
     def _prepare_environment(self) -> Optional[Path]:
-        """Prepare environment for building whirlpool executable: install GO and PROTOC (and also some GO packages)."""
+        """Prepare environment for building whirlpool executable: install GO (and also some GO packages)."""
         if not check_package("go", _GO_VERSION, "version"):
             self._logger.info("Installing GO...")
             go_path = self._install_go()

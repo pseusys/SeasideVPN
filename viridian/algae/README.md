@@ -13,8 +13,6 @@ Also contains caerulean installation [script](#caerulean-installation-script).
 
 1. `python3` (interpreter) version >= 3.10
   Installation guide can be found [here](https://www.python.org/downloads/).
-2. `protobuf` (compiler) version >= 24.4
-  Installation guide example can be found [here](https://grpc.io/docs/protoc-installation/#install-pre-compiled-binaries-any-os).
 3. `poetry` (build system) version >= 1.0
   Installation guide can be found [here](https://python-poetry.org/docs/#installation).
 4. `poethepoet` (task runner) version >= 0.31

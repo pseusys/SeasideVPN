@@ -7,6 +7,7 @@ from sys import argv, executable
 from typing import List, Union
 from zipapp import create_archive
 
+from grpc_tools.protoc import main as protoc_main
 from colorama import Fore, Style, just_fix_windows_console
 from PyInstaller.__main__ import run as install
 from python_on_whales import Container, DockerClient
@@ -28,10 +29,15 @@ def generate() -> None:
     Previous generation results will be removed.
     Library `betterproto` is used for generation.
     """
-    command = f"{executable} -m grpc_tools.protoc -I=vessels --python_betterproto_out=viridian/algae/sources vessels/*.proto"
-    generated_dir = ALGAE_ROOT / "sources" / "generated"
-    rmtree(generated_dir, ignore_errors=True)
-    check_call(command, cwd=ALGAE_ROOT.parent.parent, stdout=DEVNULL, stderr=DEVNULL, shell=True)
+    sources_root = ALGAE_ROOT / "sources"
+    generated_root = sources_root / "generated"
+    rmtree(generated_root, ignore_errors=True)
+
+    vessels_root = ALGAE_ROOT.parent.parent / "vessels"
+    vessels = [str(file) for file in glob(f"{str(vessels_root)}/*.proto", recursive=True)]
+    params = [protoc_main.__module__, f"-I={str(vessels_root)}", f"--python_betterproto_out={str(sources_root)}"]
+    protoc_main(params + vessels)
+    exit(1)
 
 
 def compile() -> None:
