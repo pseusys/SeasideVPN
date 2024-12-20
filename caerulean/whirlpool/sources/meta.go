@@ -36,8 +36,13 @@ type MetaServer struct {
 // Certificates are expected to be in `certificates/cert.crt` and `certificates/cert.key` files.
 // Certificates should be valid and contain `subjectAltName` for the current SEASIDE_ADDRESS.
 func loadTLSCredentials() (credentials.TransportCredentials, error) {
+	// Format server key and certificate paths
+	certificatesPath := utils.GetEnv("SEASIDE_CERTIFICATE_PATH")
+	keyPath := fmt.Sprintf("%s/key.crt", certificatesPath)
+	certPath := fmt.Sprintf("%s/cert.crt", certificatesPath)
+
 	// Load server's certificate and private key
-	serverCert, err := tls.LoadX509KeyPair("certificates/cert.crt", "certificates/cert.key")
+	serverCert, err := tls.LoadX509KeyPair(certPath, keyPath)
 	if err != nil {
 		return nil, fmt.Errorf("error reading certificates: %v", err)
 	}

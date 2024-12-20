@@ -29,6 +29,8 @@ _PAYLOAD_SIZE = 16
 _MIN_PORT_VALUE = 1024
 _MAX_PORT_VALUE = (1 << 16) - 1
 
+_DEFAULT_CERTIFICATES_PATH = "certificates"
+_DEFAULT_LOG_PATH = "log"
 _DEFAULT_MAX_VIRIDIANS = 10
 _DEFAULT_MAX_ADMINS = 5
 _DEFAULT_WAITING_OVERTIME = 15
@@ -72,6 +74,8 @@ class WhirlpoolInstaller(Installer):
         parser.add_argument("-a", "--internal-address", type=local_ip(True), default=DEFAULT_GENERATED_VALUE, help="Internal whirlpool address (default: first host address)")
         parser.add_argument("-e", "--external-address", type=local_ip(True), default=DEFAULT_GENERATED_VALUE, help="External whirlpool address (default: same as local address)")
         parser.add_argument("-p", "--control-port", type=port_number(_MIN_PORT_VALUE, _MAX_PORT_VALUE), default=DEFAULT_GENERATED_VALUE, help=f"Seaside control port number (default: random, between {_MIN_PORT_VALUE} and {_MAX_PORT_VALUE})")
+        parser.add_argument("--certificates-path", type=str, default=_DEFAULT_CERTIFICATES_PATH, help=f"Path for storing certificates, two files should be present there, 'cert.crt' and 'key.crt' (default: {_DEFAULT_CERTIFICATES_PATH})")
+        parser.add_argument("--logs-path", type=str, default=_DEFAULT_LOG_PATH, help=f"Path for storing logs, two files will be created there, 'danger.log' and 'safe.log' (default: {_DEFAULT_LOG_PATH})")
         parser.add_argument("--max-viridians", type=int, default=_DEFAULT_MAX_VIRIDIANS, help=f"Maximum network viridian number (default: {_DEFAULT_MAX_VIRIDIANS})")
         parser.add_argument("--max-admins", type=int, default=_DEFAULT_MAX_ADMINS, help=f"Maximum privileged viridian number (default: {_DEFAULT_MAX_ADMINS})")
         parser.add_argument("--waiting-overtime", type=int, default=_DEFAULT_WAITING_OVERTIME, help=f"Maximum additional waiting time for healthcheck message (default: {_DEFAULT_WAITING_OVERTIME})")
@@ -108,6 +112,8 @@ class WhirlpoolInstaller(Installer):
         environment["SEASIDE_ADDRESS"] = self._args["internal_address"]
         environment["SEASIDE_EXTERNAL"] = self._args["external_address"]
         environment["SEASIDE_CTRLPORT"] = self._args["control_port"]
+        environment["SEASIDE_CERTIFICATE_PATH"] = self._args["certificates_path"]
+        environment["SEASIDE_LOG_PATH"]= self._args["logs_path"]
         environment["SEASIDE_MAX_VIRIDIANS"] = self._args["max_viridians"]
         environment["SEASIDE_MAX_ADMINS"] = self._args["max_admins"]
         environment["SEASIDE_WAITING_OVERTIME"] = self._args["waiting_overtime"]

@@ -37,7 +37,8 @@ COPY --from=builder /seaside/caerulean/whirlpool.run ./
 # Setup environmental variables.
 ENV SEASIDE_CTRLPORT=8587
 
-ENV SEASIDE_AUTH=auth
+ENV SEASIDE_CERTIFICATE_PATH=certificates
+ENV SEASIDE_LOG_PATH=logs
 
 ENV SEASIDE_MAX_VIRIDIANS=10
 ENV SEASIDE_MAX_ADMINS=5

@@ -23,13 +23,8 @@ import (
 	"github.com/sirupsen/logrus/hooks/writer"
 )
 
-const (
-	// Current Whirlpool distribution version.
-	VERSION = "0.0.3"
-
-	// Path for storing logs, two files will be created there: "danger.log" and "safe.log".
-	LOG_PATH = "logs"
-)
+// Current Whirlpool distribution version.
+const VERSION = "0.0.3"
 
 // Initialize package variables from environment variables and setup logging level.
 func init() {
@@ -57,8 +52,10 @@ func init() {
 			logrus.WarnLevel,
 		},
 	})
-	safeLogPath := fmt.Sprintf("%s/safe.log", LOG_PATH)
-	dangerLogPath := fmt.Sprintf("%s/danger.log", LOG_PATH)
+
+	logPath := utils.GetEnv("SEASIDE_LOG_PATH")
+	safeLogPath := fmt.Sprintf("%s/safe.log", logPath)
+	dangerLogPath := fmt.Sprintf("%s/danger.log", logPath)
 	logrus.AddHook(lfshook.NewHook(
 		lfshook.PathMap{
 			logrus.PanicLevel: dangerLogPath,

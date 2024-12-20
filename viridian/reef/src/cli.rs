@@ -53,7 +53,7 @@ struct Opt {
     #[structopt(short = "c", long, default_value = DEFAULT_CAERULEAN_PORT)]
     ctrl_port: u16,
 
-    /// Caerulean payload value (required!)
+    /// Admin or caerulean payload value (required, if not provided by 'link' argument!)
     #[structopt(short = "p", long)]
     payload: Option<String>,
 

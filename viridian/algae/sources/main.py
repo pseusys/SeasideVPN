@@ -18,9 +18,9 @@ _DEFAULT_CTRL_PORT = 8587
 
 # Command line arguments parser.
 parser = ArgumentParser()
-parser.add_argument("payload", help="Whirlpool node owner key (required!)")
 parser.add_argument("-a", "--address", dest="addr", default=_DEFAULT_ADDRESS, type=str, help=f"Caerulean remote IP address (default: {_DEFAULT_ADDRESS})")
 parser.add_argument("-c", "--ctrl-port", dest="ctrl_port", default=_DEFAULT_CTRL_PORT, type=int, help=f"Caerulean control port number (default: {_DEFAULT_CTRL_PORT})")
+parser.add_argument("-p", "--payload", dest="payload", default=None, help="Whirlpool node owner or viridian payload (required, if not provided by 'link' argument!)")
 parser.add_argument("-l", "--link", dest="link", default=None, help="Connection link, will be used instead of other arguments if specified")
 parser.add_argument("-v", "--version", action="version", version=f"Seaside Viridian Algae version {VERSION}", help="Print algae version number and exit")
 parser.add_argument("-e", "--command", dest="cmd", default=None, help="Command to execute and exit (will run forever if not specified)")
@@ -42,6 +42,9 @@ async def main(args: Sequence[str] = argv[1:]) -> None:
     connection_link = arguments.pop("link")
     if connection_link is not None:
         arguments.update(parse_connection_link(connection_link))
+
+    if arguments.get("payload", None) is None:
+        raise RuntimeError("Connection payload should be provided!")
 
     command = arguments.pop("cmd")
     logger.debug(f"Initializing coordinator with parameters: {arguments}")
