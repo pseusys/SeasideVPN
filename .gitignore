@@ -21,6 +21,9 @@
 ## Dependency lock file:
 .github/scripts/package-lock.json
 
+## Testing utilities cache files:
+.github/scripts/.reef_test_cache
+
 
 
 # Python:

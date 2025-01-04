@@ -51,7 +51,7 @@ endif
 test-integration: certificates
 	@ # Run reef integration tests in Docker
 	docker compose -f ../algae/docker/compose.default.yml build whirlpool echo 2> /dev/null
-	docker compose -f docker/compose.yml up --build --abort-on-container-exit --exit-code-from reef
+	docker compose -f docker/compose.yml --profile client up --build --abort-on-container-exit --exit-code-from reef
 .PHONY: test-integration
 
 test: test-unit test-integration

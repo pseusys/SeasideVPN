@@ -35,6 +35,67 @@ jobs:
       - name: Test Viridian Algae (smoke) 😶‍🌫️
         run: poetry poe -C viridian/algae test-smoke
 
+  viridian-reef-test:
+    name: Test Viridian Reef
+    runs-on: ${{ format('{0}-latest', matrix.os) }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu
+            target: x86_64-unknown-linux-gnu
+          - os: windows
+            target: x86_64-pc-windows-msvc
+
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v4
+
+      - name: Install NodeJS 🪢
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup Python 3.10 🐍
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install Python Dependencies 🔮
+        run: |
+          npm install --prefix .github/scripts
+          pip3 install poetry poethepoet[poetry_plugin]
+          poetry -C viridian/algae install --without client,devel
+
+      - name: Setup Rust 🦀
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+          override: true
+
+      - name: Prepare Host
+        run: npm run --prefix .github/scripts configure-viridian-test -- -v
+
+      - name: Test Viridian Reef (unit) 🧪
+        uses: actions-rs/cargo@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          command: test
+          use-cross: true
+          args: --package SeasideVPN-Reef --lib --manifest-path viridian/reef/Cargo.toml --target ${{ matrix.target }}
+
+      - name: Test Viridian Reef (integration) 🧪
+        uses: actions-rs/cargo@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TEST_COMMAND: poetry run pytest viridian/algae/tests/test_local.py
+        with:
+          command: run
+          use-cross: true
+          args: run --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml --target ${{ matrix.target }} -- --command "${{ env.TEST_COMMAND }}"
+
   caerulean-whirlpool-test:
     name: Test Caerulean Whirlpool
     runs-on: ubuntu-latest

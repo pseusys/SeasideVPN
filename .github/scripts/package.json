@@ -5,6 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"deploy-whirlpool-beget": "node deploy_whirlpool_beget.mjs",
+		"configure-viridian-test": "node configure_viridian_test.mjs",
 		"lint-scripts": "npx prettier . --check",
 		"format-scripts": "npx prettier . --write"
 	},
@@ -20,7 +21,8 @@
 	"homepage": "https://github.com/pseusys/SeasideVPN#README",
 	"dependencies": {
 		"node-fetch": "^3.3.2",
-		"node-ssh": "^13.1.0"
+		"node-ssh": "^13.1.0",
+		"yaml": "^2.7.0"
 	},
 	"devDependencies": {
 		"prettier": "^3.2.5"

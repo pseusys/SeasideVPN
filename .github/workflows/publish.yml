@@ -29,14 +29,6 @@ jobs:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
 
-      - name: Install NodeJS 🪢
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Install Dependencies 🔮
-        run: npm install --prefix .github/scripts
-
       - name: Download Viridian Algae Artifact 🌿
         uses: dawidd6/action-download-artifact@v6
         with:
