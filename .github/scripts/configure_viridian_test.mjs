@@ -126,6 +126,7 @@ async function launchDockerCompose(seasideIP) {
 		console.log("Waiting for Docker compose process to initiate...");
         await sleep(10);
 		process.unref();
+		process.disconnect();
 		console.log("Disconnected from Docker compose process!");
 		return pid;
 	}
