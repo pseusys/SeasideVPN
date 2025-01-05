@@ -40,7 +40,7 @@ jobs:
     runs-on: ${{ format('{0}-latest', matrix.os) }}
     env:
       TARGET: ${{ matrix.os == 'ubuntu' && 'x86_64-unknown-linux-gnu' || 'x86_64-pc-windows-msvc' }}
-      PREFIX: ${{ matrix.os == 'ubuntu' && '.github/scripts' || '.github\\scripts' }}
+      PREFIX: ${{ matrix.os == 'ubuntu' && '.github/scripts' || '.github\scripts' }}
     strategy:
       fail-fast: false
       matrix:
