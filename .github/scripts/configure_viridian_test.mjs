@@ -6,8 +6,6 @@ import { platform } from "process";
 
 import { parse } from "yaml";
 
-import { sleep } from "./script_utils.mjs";
-
 const BLUE = "\x1b[34m";
 const GREEN = "\x1b[32m";
 const RED = "\x1b[31m";
@@ -38,6 +36,15 @@ function printHelpMessage() {
 	console.log(`\t${GREEN}WHIRLPOOL_PAYLOAD${RESET}: Whirlpool viridian poyload (default: will be generated).`);
 	console.log(`\t${GREEN}WHIRLPOOL_CTRLPORT${RESET}: Whirlpool control port (default: ${DEFAULT_CTRLPORT}).`);
 	process.exit(0);
+}
+
+/**
+ * Sleep for the specified time (in seconds).
+ * @param {int} time to sleep (in seconds)
+ * @returns {Promise<void>}
+ */
+async function sleep(seconds) {
+	return new Promise(r => setTimeout(r, seconds * 1000));
 }
 
 function runCommandForSystem(linuxCommand = undefined, windowsCommand = undefined) {
@@ -126,6 +133,8 @@ async function launchDockerCompose(seasideIP) {
 		child.kill();
 		throw Error("Docker compose command failed!");
 	} else {
+		console.log("Waiting for Docker compose process to initiate...");
+        await sleep(DOCKER_COMPOSE_INITIALIZATION_TIMEOUT);
 		console.log("Disconnecting from Docker compose process...");
 		child.unref();
 		return pid;

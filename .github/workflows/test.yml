@@ -38,14 +38,13 @@ jobs:
   viridian-reef-test:
     name: Test Viridian Reef
     runs-on: ${{ format('{0}-latest', matrix.os) }}
+    env:
+      TARGET: ${{ matrix.os == 'ubuntu' && 'x86_64-unknown-linux-gnu' || 'x86_64-pc-windows-msvc' }}
+      PREFIX: ${{ matrix.os == 'ubuntu' && '.github/scripts' || '.github\\scripts' }}
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: ubuntu
-            target: x86_64-unknown-linux-gnu
-          - os: windows
-            target: x86_64-pc-windows-msvc
+        os: [ubuntu, windows]
 
     steps:
       - name: Checkout 🛎️
@@ -64,7 +63,7 @@ jobs:
       - name: Install Dependencies 🔮
         shell: bash
         run: |
-          npm install --prefix .github/scripts
+          npm install --prefix ${{ env.PREFIX }}
           pip3 install poetry poethepoet[poetry_plugin]
           poetry -C viridian/algae install --without client,devel
 
@@ -72,12 +71,12 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-          target: ${{ matrix.target }}
+          target: ${{ env.TARGET }}
           override: true
 
       - name: Prepare Host
         shell: bash
-        run: npm run --prefix .github/scripts configure-viridian-test
+        run: npm run --prefix ${{ env.PREFIX }} configure-viridian-test
 
       - name: Test Viridian Reef (unit) 🧪
         uses: actions-rs/cargo@v1
@@ -86,7 +85,7 @@ jobs:
         with:
           command: test
           use-cross: true
-          args: --package SeasideVPN-Reef --lib --manifest-path viridian/reef/Cargo.toml --target ${{ matrix.target }}
+          args: --package SeasideVPN-Reef --lib --manifest-path viridian/reef/Cargo.toml --target ${{ env.TARGET }}
 
       - name: Test Viridian Reef (integration) 🧪
         uses: actions-rs/cargo@v1
@@ -96,7 +95,7 @@ jobs:
         with:
           command: run
           use-cross: true
-          args: run --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml --target ${{ matrix.target }} -- --command "${{ env.TEST_COMMAND }}"
+          args: run --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml --target ${{ env.TARGET }} -- --command "${{ env.TEST_COMMAND }}"
 
   caerulean-whirlpool-test:
     name: Test Caerulean Whirlpool
