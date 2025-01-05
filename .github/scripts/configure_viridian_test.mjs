@@ -47,6 +47,15 @@ function runCommandForSystem(linuxCommand = undefined, windowsCommand = undefine
 }
 
 /**
+ * Sleep for the specified time (in seconds).
+ * @param {int} time to sleep (in seconds)
+ * @returns {Promise<void>}
+ */
+async function sleep(seconds) {
+	return new Promise((r) => setTimeout(r, seconds * 1000));
+}
+
+/**
  * Parse CLI and environment flags and arguments.
  * @returns {object} object, containing all the arguments parsed
  */
@@ -111,8 +120,9 @@ function dockerErrorCallback(error, stdout, stderr) {
 	}
 }
 
-function launchDockerCompose(composePath) {
+async function launchDockerCompose(composePath) {
 	const process = exec(`docker compose -f ${composePath} up --build`, dockerErrorCallback);
+    await sleep(10);
     console.log(execSync("ip route show").toString());
 	const pid = process.pid;
 	if (pid === undefined) {
@@ -145,7 +155,7 @@ function resetRouting(defaultRoute) {
 const args = parseArguments();
 if (!args.reset) {
     const { gatewayIP, gatewayNetwork } = parseGatewayContainerIP(args.composePath, args.gatewayContainer, args.gatewayNetwork);
-	const pid = launchDockerCompose(args.composePath);
+	const pid = await launchDockerCompose(args.composePath);
 	const route = setupRouting(gatewayIP, args.networkRegex, gatewayNetwork);
 	storeCache(args.composePID, { route, pid });
 } else {
