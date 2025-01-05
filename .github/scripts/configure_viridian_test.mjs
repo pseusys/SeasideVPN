@@ -11,8 +11,6 @@ const GREEN = "\x1b[32m";
 const YELLOW = "\x1b[33m";
 const RESET = "\x1b[0m";
 
-const PRIORITY_METRIC = 1;
-
 const DOCKER_COMPOSE_GATEWAY_NETWORK = "sea-cli-int";
 const DOCKER_COMPOSE_GATEWAY_CONTAINER = "int-router";
 const DOCKER_COMPOSE_BLOCK_NETWORKS_REGEX = platform === "linux" ? "10\\.\\d+\\.\\d+\\.\\d+\\/24" : "10.*";
@@ -83,18 +81,23 @@ function parseArguments() {
 
 function parseGatewayContainerIP(composePath, gatewayName, gatewayNetwork) {
     const composeDict = parse(readFileSync(composePath).toString());
-    return composeDict["services"][gatewayName]["networks"][gatewayNetwork]["ipv4_address"];
+    const gatewayIP = composeDict["services"][gatewayName]["networks"][gatewayNetwork]["ipv4_address"];
+    const gatewayNetwork = composeDict["networks"][gatewayNetwork]["ipam"]["config"][0]["subnet"];
+    return { gatewayIP, gatewayNetwork };
 }
 
-function setupRouting(gatewayContainerIP, networkRegex) {
+function setupRouting(gatewayContainerIP, networkRegex, gatewayNetwork) {
     const defaultRoute = runCommandForSystem("ip route show default", "route print 0.0.0.0");
     if (platform === "linux") {
         const routes = execSync("ip route show").toString();
-        for (let line of routes.split('\n')) if (line.match(networkRegex) !== null) execSync(`ip route delete ${line.trim()}`);
-        execSync(`ip route replace default via ${gatewayContainerIP} metric ${PRIORITY_METRIC}`);
+        execSync(`sudo ip route replace default via ${gatewayContainerIP}`);
+        for (let line of routes.split('\n')) {
+            const match = line.match(networkRegex);
+            if (match !== null && match[0] !== gatewayNetwork) execSync(`sudo ip route delete ${line.trim()}`);
+        }
     } else if (platform === "windows") {
         execSync(`route delete ${networkRegex} && route delete ${defaultRoute}`);
-        execSync(`route add 0.0.0.0 ${gatewayContainerIP} metric ${PRIORITY_METRIC}`);
+        execSync(`route add 0.0.0.0 ${gatewayContainerIP}`);
     } else throw Error(`Command for platform ${platform} is not defined!`);
     return defaultRoute;
 }
@@ -137,7 +140,7 @@ function killDockerCompose(pid) {
 function resetRouting(defaultRoute, gatewayContainerIP) {
     console.log(defaultRoute);
     runCommandForSystem(
-        `ip route replace ${defaultRoute}`,
+        `sudo ip route replace ${defaultRoute}`,
         `route delete 0.0.0.0 && route add ${defaultRoute}`
     );
 }
@@ -145,10 +148,10 @@ function resetRouting(defaultRoute, gatewayContainerIP) {
 // Script body:
 
 const args = parseArguments();
-const gatewayIP = parseGatewayContainerIP(args.composePath, args.gatewayContainer, args.gatewayNetwork);
+const { gatewayIP, gatewayNetwork } = parseGatewayContainerIP(args.composePath, args.gatewayContainer, args.gatewayNetwork);
 if (!args.reset) {
     const pid = launchDockerCompose(args.composePath);
-    const route = setupRouting(gatewayIP, args.networkRegex);
+    const route = setupRouting(gatewayIP, args.networkRegex, gatewayNetwork);
     storeCache(args.composePID, { route, pid });
 } else {
     const { route, pid } = loadCache(args.composePID);
