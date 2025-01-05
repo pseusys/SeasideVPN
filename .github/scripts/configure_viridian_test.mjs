@@ -13,6 +13,7 @@ const GREEN = "\x1b[32m";
 const RED = "\x1b[31m";
 const RESET = "\x1b[0m";
 
+const DOCKER_COMPOSE_INITIALIZATION_TIMEOUT = 10;
 const DOCKER_COMPOSE_GATEWAY_NETWORK = "sea-cli-int";
 const DOCKER_COMPOSE_GATEWAY_CONTAINER = "int-router";
 const DOCKER_COMPOSE_BLOCK_NETWORKS_REGEX = platform === "linux" ? "10\\.\\d+\\.\\d+\\.\\d+\\/24" : "10.*";
@@ -117,17 +118,18 @@ async function launchDockerCompose(seasideIP) {
     execSync(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} build whirlpool echo`);
 	console.log("Spawning Docker compose process...");
 	const process = spawn(`docker compose -f ${DOCKER_COMPOSE_REEF_PATH} up --build`, { detached: true, shell: true, stdio: "ignore" });
+	console.log("Reading Docker compose process PID...");
 	const pid = process.pid;
 	console.log(`Docker compose process spawned, PID: ${pid}`);
 	if (pid === undefined) {
+		console.log("Killing Docker compose process...");
 		process.kill();
 		throw Error("Docker compose command failed!");
 	} else {
 		console.log("Waiting for Docker compose process to initiate...");
-        await sleep(10);
+        await sleep(DOCKER_COMPOSE_INITIALIZATION_TIMEOUT);
+		console.log("Disconnecting from Docker compose process...");
 		process.unref();
-		process.disconnect();
-		console.log("Disconnected from Docker compose process!");
 		return pid;
 	}
 }
