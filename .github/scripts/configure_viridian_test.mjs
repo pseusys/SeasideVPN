@@ -90,6 +90,7 @@ function setupRouting(gatewayContainerIP, networkRegex, gatewayNetwork) {
 	const defaultRoute = runCommandForSystem("ip route show default", "route print 0.0.0.0");
 	if (platform === "linux") {
 		const routes = execSync("ip route show").toString();
+        console.log(routes);
 		execSync(`sudo ip route replace default via ${gatewayContainerIP}`);
 		for (let line of routes.split("\n")) {
 			const match = line.match(networkRegex);
