@@ -1,7 +1,7 @@
 import { parseArgs } from "node:util";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { exec, execSync } from "node:child_process";
+import { spawn, execSync } from "node:child_process";
 import { platform } from "process";
 
 import { parse } from "yaml";
@@ -110,14 +110,14 @@ function dockerErrorCallback(error, stdout, stderr) {
 async function launchDockerCompose(seasideIP) {
     execSync(`python3 -m setup --just-certs ${seasideIP}`, { env: { "PYTHONPATH": PYTHON_LIB_ALGAE_PATH } })
     execSync(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} build whirlpool echo`);
-	const process = exec(`docker compose -f ${DOCKER_COMPOSE_REEF_PATH} up --build`, dockerErrorCallback);
+	const childConf = { detached: true, stdio: [ "ignore", "ignore", "ignore" ] };
+	const process = spawn(`docker compose -f ${DOCKER_COMPOSE_REEF_PATH} up --build`, childConf);
 	const pid = process.pid;
 	if (pid === undefined) {
 		process.kill();
 		throw Error("Docker compose command failed!");
 	} else {
         await sleep(10);
-        process.disconnect();
 		process.unref();
 		return pid;
 	}
