@@ -113,6 +113,7 @@ function dockerErrorCallback(error, stdout, stderr) {
 
 function launchDockerCompose(composePath) {
 	const process = exec(`docker compose -f ${composePath} up --build`, dockerErrorCallback);
+    console.log(execSync("ip route show").toString());
 	const pid = process.pid;
 	if (pid === undefined) {
 		process.kill();
