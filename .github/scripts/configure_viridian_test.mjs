@@ -82,20 +82,22 @@ function parseArguments() {
 }
 
 function parseGatewayContainerIP(composePath, gatewayName, gatewayNetwork) {
-    const composeDict = parse(readFileSync(composePath));
+    const composeDict = parse(readFileSync(composePath).toString());
     return composeDict["services"][gatewayName]["networks"][gatewayNetwork]["ipv4_address"];
 }
 
 function setupRouting(gatewayContainerIP, networkRegex) {
+    const defaultRoute = runCommandForSystem("ip route show default", "route print 0.0.0.0");
     if (platform == "linux") {
         const routes = execSync("ip route show").toString();
         for (let line of routes.split('\n')) if (line.match(networkRegex) !== null) execSync(`ip route delete ${line.trim()}`);
-    } else if (platform == "linux") execSync(`route delete ${networkRegex}`);
-    else throw Error(`Command for platform ${platform} is not defined!`);
-    runCommandForSystem(
-        `ip route add default via ${gatewayContainerIP} metric ${PRIORITY_METRIC}`,
-        `route add 0.0.0.0 ${gatewayContainerIP} metric ${PRIORITY_METRIC}`
-    );
+        execSync(`ip route replace default via ${gatewayContainerIP} metric ${PRIORITY_METRIC}`);
+    } else if (platform == "windows") {
+        execSync(`route delete ${defaultRoute}`);
+        execSync(`route delete ${networkRegex}`);
+        execSync(`route add 0.0.0.0 ${gatewayContainerIP} metric ${PRIORITY_METRIC}`);
+    } else throw Error(`Command for platform ${platform} is not defined!`);
+    return defaultRoute;
 }
 
 function dockerErrorCallback(error, stdout, stderr) {
@@ -106,20 +108,27 @@ function dockerErrorCallback(error, stdout, stderr) {
     }
 }
 
-function launchDockerCompose(composePath, cachePID) {
+function launchDockerCompose(composePath) {
     const process = exec(`docker compose -f ${composePath} up --build`, dockerErrorCallback);
     const pid = process.pid;
     if (pid === undefined) { 
         process.kill();
         throw Error("Docker compose command failed!");
     } else {
-        writeFileSync(cachePID, pid);
         process.disconnect();
+        return pid;
     }
 }
 
-function killDockerCompose(cachePID) {
-    const pid = parseInt(readFileSync(cachePID));
+function storeCache(cachePID, { route, pid }) {
+    writeFileSync(cachePID, JSON.stringify({ route, pid }));
+}
+
+function loadCache(cachePID) {
+    return JSON.parse(readFileSync(composePath).toString());
+}
+
+function killDockerCompose(pid) {
     runCommandForSystem(
         `kill -2 ${pid}`,
         `taskkill /pid ${pid}`
@@ -138,9 +147,11 @@ function resetRouting(gatewayContainerIP) {
 const args = parseArguments();
 const gatewayIP = parseGatewayContainerIP(args.composePath, args.gatewayContainer, args.gatewayNetwork);
 if (!args.reset) {
-    launchDockerCompose(args.composePath, args.composePID);
-    setupRouting(gatewayIP);
+    const pid = launchDockerCompose(args.composePath);
+    const route = setupRouting(gatewayIP);
+    storeCache(args.composePID, { route, pid });
 } else {
+    const { route, pid } = loadCache(args.composePID);
     resetRouting(gatewayIP);
-    killDockerCompose(args.composePID);
+    killDockerCompose(pid);
 }
