@@ -16,8 +16,10 @@ const RESET = "\x1b[0m";
 const DOCKER_COMPOSE_GATEWAY_NETWORK = "sea-cli-int";
 const DOCKER_COMPOSE_GATEWAY_CONTAINER = "int-router";
 const DOCKER_COMPOSE_BLOCK_NETWORKS_REGEX = platform === "linux" ? "10\\.\\d+\\.\\d+\\.\\d+\\/24" : "10.*";
-const DOCKER_COMPOSE_PATH = join(dirname(import.meta.dirname), "..", "viridian", "reef", "docker", "compose.yml");
-const DOCKER_COMPOSE_PROCESS_FILE_NAME = ".reef_test_cache";
+const PYTHON_LIB_ALGAE_PATH = join(dirname(import.meta.dirname), "..", "viridian", "algae");
+const DOCKER_COMPOSE_ALGAE_PATH = join(PYTHON_LIB_ALGAE_PATH, "docker", "compose.yml");
+const DOCKER_COMPOSE_REEF_PATH = join(dirname(import.meta.dirname), "..", "viridian", "reef", "docker", "compose.yml");
+const DOCKER_COMPOSE_CACHE_FILE_NAME = ".setup_test_cache";
 
 /**
  * Print usage help message and exit with code 0.
@@ -67,39 +69,32 @@ function parseArguments() {
 	};
 	const { values } = parseArgs({ options });
 	if (values.help) printHelpMessage();
-	if (process.env.DOCKER_COMPOSE_GATEWAY_NETWORK === undefined) values["gatewayNetwork"] = DOCKER_COMPOSE_GATEWAY_NETWORK;
-	else values["gatewayNetwork"] = process.env.DOCKER_COMPOSE_GATEWAY_NETWORK;
-	if (process.env.DOCKER_COMPOSE_BLOCK_NETWORKS_REGEX === undefined) values["networkRegex"] = DOCKER_COMPOSE_BLOCK_NETWORKS_REGEX;
-	else values["networkRegex"] = process.env.DOCKER_COMPOSE_BLOCK_NETWORKS_REGEX;
-	if (process.env.DOCKER_COMPOSE_GATEWAY_CONTAINER === undefined) values["gatewayContainer"] = DOCKER_COMPOSE_GATEWAY_CONTAINER;
-	else values["gatewayContainer"] = process.env.DOCKER_COMPOSE_GATEWAY_CONTAINER;
-	if (process.env.DOCKER_COMPOSE_PATH === undefined) values["composePath"] = DOCKER_COMPOSE_PATH;
-	else values["composePath"] = process.env.DOCKER_COMPOSE_PATH;
-	if (process.env.DOCKER_COMPOSE_PROCESS_FILE_NAME === undefined) values["composePID"] = DOCKER_COMPOSE_PROCESS_FILE_NAME;
-	else values["composePID"] = process.env.DOCKER_COMPOSE_PROCESS_FILE_NAME;
-	values["composePID"] = join(dirname(import.meta.dirname), values["composePID"]);
+	if (process.env.DOCKER_COMPOSE_CACHE_FILE_NAME === undefined) values["cacheFile"] = DOCKER_COMPOSE_CACHE_FILE_NAME;
+	else values["cacheFile"] = process.env.DOCKER_COMPOSE_CACHE_FILE_NAME;
+	values["cacheFile"] = join(dirname(import.meta.dirname), values["cacheFile"]);
 	return values;
 }
 
-function parseGatewayContainerIP(composePath, gatewayName, gatewayNetworkName) {
-	const composeDict = parse(readFileSync(composePath).toString());
-	const gatewayIP = composeDict["services"][gatewayName]["networks"][gatewayNetworkName]["ipv4_address"];
-	const gatewayNetwork = composeDict["networks"][gatewayNetworkName]["ipam"]["config"][0]["subnet"];
-	return { gatewayIP, gatewayNetwork };
+function parseGatewayContainerIP() {
+	const composeDict = parse(readFileSync(DOCKER_COMPOSE_REEF_PATH).toString());
+    const seasideIP = composeDict["services"]["whirlpool"]["environment"]["SEASIDE_ADDRESS"];
+	const gatewayIP = composeDict["services"][DOCKER_COMPOSE_GATEWAY_CONTAINER]["networks"][DOCKER_COMPOSE_GATEWAY_NETWORK]["ipv4_address"];
+	const gatewayNetwork = composeDict["networks"][DOCKER_COMPOSE_GATEWAY_NETWORK]["ipam"]["config"][0]["subnet"];
+	return { seasideIP, gatewayIP, gatewayNetwork };
 }
 
-function setupRouting(gatewayContainerIP, networkRegex, gatewayNetwork) {
+function setupRouting(gatewayContainerIP, gatewayNetwork) {
 	const defaultRoute = runCommandForSystem("ip route show default", "route print 0.0.0.0");
 	if (platform === "linux") {
 		const routes = execSync("ip route show").toString();
         console.log(routes);
 		execSync(`sudo ip route replace default via ${gatewayContainerIP}`);
 		for (let line of routes.split("\n")) {
-			const match = line.match(networkRegex);
+			const match = line.match(DOCKER_COMPOSE_BLOCK_NETWORKS_REGEX);
 			if (match !== null && match[0] !== gatewayNetwork) execSync(`sudo ip route delete ${line.trim()}`);
 		}
 	} else if (platform === "windows") {
-		execSync(`route delete ${networkRegex} && route delete ${defaultRoute}`);
+		execSync(`route delete ${DOCKER_COMPOSE_BLOCK_NETWORKS_REGEX} && route delete ${defaultRoute}`);
 		execSync(`route add 0.0.0.0 ${gatewayContainerIP}`);
 	} else throw Error(`Command for platform ${platform} is not defined!`);
 	return defaultRoute;
@@ -113,8 +108,10 @@ function dockerErrorCallback(error, stdout, stderr) {
 	}
 }
 
-async function launchDockerCompose(composePath) {
-	const process = exec(`docker compose -f ${composePath} up --build`, dockerErrorCallback);
+async function launchDockerCompose(seasideIP) {
+    execSync(`python3 -m setup --just-certs ${seasideIP}`, { env: { "PYTHONPATH": PYTHON_LIB_ALGAE_PATH } })
+    execSync(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} build whirlpool echo`);
+	const process = exec(`docker compose -f ${DOCKER_COMPOSE_REEF_PATH} up --build`, dockerErrorCallback);
     await sleep(10);
 	const pid = process.pid;
 	if (pid === undefined) {
@@ -126,12 +123,12 @@ async function launchDockerCompose(composePath) {
 	}
 }
 
-function storeCache(cachePID, { route, pid }) {
-	writeFileSync(cachePID, JSON.stringify({ route, pid }));
+function storeCache(cacheFile, { route, pid }) {
+	writeFileSync(cacheFile, JSON.stringify({ route, pid }));
 }
 
-function loadCache(cachePID) {
-	return JSON.parse(readFileSync(cachePID).toString());
+function loadCache(cacheFile) {
+	return JSON.parse(readFileSync(cacheFile).toString());
 }
 
 function killDockerCompose(pid) {
@@ -146,12 +143,12 @@ function resetRouting(defaultRoute) {
 
 const args = parseArguments();
 if (!args.reset) {
-    const { gatewayIP, gatewayNetwork } = parseGatewayContainerIP(args.composePath, args.gatewayContainer, args.gatewayNetwork);
-	const pid = await launchDockerCompose(args.composePath);
-	const route = setupRouting(gatewayIP, args.networkRegex, gatewayNetwork);
-	storeCache(args.composePID, { route, pid });
+    const { seasideIP, gatewayIP, gatewayNetwork } = parseGatewayContainerIP();
+	const pid = await launchDockerCompose(seasideIP);
+	const route = setupRouting(gatewayIP, gatewayNetwork);
+	storeCache(args.cacheFile, { route, pid });
 } else {
-	const { route, pid } = loadCache(args.composePID);
+	const { route, pid } = loadCache(args.cacheFile);
 	resetRouting(route);
 	killDockerCompose(pid);
 }
