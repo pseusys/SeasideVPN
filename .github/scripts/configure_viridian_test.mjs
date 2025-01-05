@@ -15,7 +15,7 @@ const PRIORITY_METRIC = 1;
 
 const DOCKER_COMPOSE_GATEWAY_NETWORK = "sea-cli-int";
 const DOCKER_COMPOSE_GATEWAY_CONTAINER = "int-router";
-const DOCKER_COMPOSE_BLOCK_NETWORKS_REGEX = platform === "linux" ? "10\.\d+\.\d+\.\d+\/24" : "10.*";
+const DOCKER_COMPOSE_BLOCK_NETWORKS_REGEX = platform === "linux" ? "10\\.\\d+\\.\\d+\\.\\d+\\/24" : "10.*";
 const DOCKER_COMPOSE_PATH = join(dirname(import.meta.dirname), "..", "viridian", "reef", "docker", "compose.yml");
 const DOCKER_COMPOSE_PROCESS_FILE_NAME = ".reef_test_cache";
 
@@ -88,13 +88,12 @@ function parseGatewayContainerIP(composePath, gatewayName, gatewayNetwork) {
 
 function setupRouting(gatewayContainerIP, networkRegex) {
     const defaultRoute = runCommandForSystem("ip route show default", "route print 0.0.0.0");
-    if (platform == "linux") {
+    if (platform === "linux") {
         const routes = execSync("ip route show").toString();
         for (let line of routes.split('\n')) if (line.match(networkRegex) !== null) execSync(`ip route delete ${line.trim()}`);
         execSync(`ip route replace default via ${gatewayContainerIP} metric ${PRIORITY_METRIC}`);
-    } else if (platform == "windows") {
-        execSync(`route delete ${defaultRoute}`);
-        execSync(`route delete ${networkRegex}`);
+    } else if (platform === "windows") {
+        execSync(`route delete ${networkRegex} && route delete ${defaultRoute}`);
         execSync(`route add 0.0.0.0 ${gatewayContainerIP} metric ${PRIORITY_METRIC}`);
     } else throw Error(`Command for platform ${platform} is not defined!`);
     return defaultRoute;
@@ -115,7 +114,7 @@ function launchDockerCompose(composePath) {
         process.kill();
         throw Error("Docker compose command failed!");
     } else {
-        process.disconnect();
+        process.unref();
         return pid;
     }
 }
@@ -125,7 +124,7 @@ function storeCache(cachePID, { route, pid }) {
 }
 
 function loadCache(cachePID) {
-    return JSON.parse(readFileSync(composePath).toString());
+    return JSON.parse(readFileSync(cachePID).toString());
 }
 
 function killDockerCompose(pid) {
@@ -135,10 +134,11 @@ function killDockerCompose(pid) {
     );
 }
 
-function resetRouting(gatewayContainerIP) {
+function resetRouting(defaultRoute, gatewayContainerIP) {
+    console.log(defaultRoute);
     runCommandForSystem(
-        `ip route delete default via ${gatewayContainerIP} metric ${PRIORITY_METRIC}`,
-        `route delete 0.0.0.0 ${gatewayContainerIP} metric ${PRIORITY_METRIC}`
+        `ip route replace ${defaultRoute}`,
+        `route delete 0.0.0.0 && route add ${defaultRoute}`
     );
 }
 
@@ -148,10 +148,10 @@ const args = parseArguments();
 const gatewayIP = parseGatewayContainerIP(args.composePath, args.gatewayContainer, args.gatewayNetwork);
 if (!args.reset) {
     const pid = launchDockerCompose(args.composePath);
-    const route = setupRouting(gatewayIP);
+    const route = setupRouting(gatewayIP, args.networkRegex);
     storeCache(args.composePID, { route, pid });
 } else {
     const { route, pid } = loadCache(args.composePID);
-    resetRouting(gatewayIP);
+    resetRouting(route, gatewayIP);
     killDockerCompose(pid);
 }
