@@ -71,7 +71,7 @@ function parseArguments() {
 	if (values.help) printHelpMessage();
 	if (process.env.DOCKER_COMPOSE_CACHE_FILE_NAME === undefined) values["cacheFile"] = DOCKER_COMPOSE_CACHE_FILE_NAME;
 	else values["cacheFile"] = process.env.DOCKER_COMPOSE_CACHE_FILE_NAME;
-	values["cacheFile"] = join(dirname(import.meta.dirname), values["cacheFile"]);
+	values["cacheFile"] = join(dirname(import.meta.filename), values["cacheFile"]);
 	return values;
 }
 
@@ -87,7 +87,6 @@ function setupRouting(gatewayContainerIP, gatewayNetwork) {
 	const defaultRoute = runCommandForSystem("ip route show default", "route print 0.0.0.0");
 	if (platform === "linux") {
 		const routes = execSync("ip route show").toString();
-        console.log(routes);
 		execSync(`sudo ip route replace default via ${gatewayContainerIP}`);
 		for (let line of routes.split("\n")) {
 			const match = line.match(DOCKER_COMPOSE_BLOCK_NETWORKS_REGEX);
@@ -118,6 +117,7 @@ async function launchDockerCompose(seasideIP) {
 		throw Error("Docker compose command failed!");
 	} else {
         await sleep(10);
+        process.disconnect();
 		process.unref();
 		return pid;
 	}
