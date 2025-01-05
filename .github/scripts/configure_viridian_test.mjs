@@ -99,18 +99,10 @@ function setupRouting(gatewayContainerIP, gatewayNetwork) {
 	return defaultRoute;
 }
 
-function dockerErrorCallback(error, stdout, stderr) {
-	if (error) {
-		console.log(`${RED}Docker compose command error: ${error}\n\n${stderr}\n\n${stdout}${RESET}`);
-	} else {
-		console.log(`${GREEN}Docker compose command terminated correctly!${RESET}`);
-	}
-}
-
 async function launchDockerCompose(seasideIP) {
     execSync(`python3 -m setup --just-certs ${seasideIP}`, { env: { "PYTHONPATH": PYTHON_LIB_ALGAE_PATH } })
     execSync(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} build whirlpool echo`);
-	const childConf = { detached: true, stdio: [ "ignore", "ignore", "ignore" ] };
+	const childConf = { detached: true, shell: true, stdio: [ "ignore", "ignore", "ignore" ] };
 	const process = spawn(`docker compose -f ${DOCKER_COMPOSE_REEF_PATH} up --build`, childConf);
 	const pid = process.pid;
 	if (pid === undefined) {
