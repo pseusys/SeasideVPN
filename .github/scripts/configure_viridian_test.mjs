@@ -76,59 +76,84 @@ function parseArguments() {
 }
 
 function parseGatewayContainerIP() {
+	console.log("Reading Docker compose file...");
 	const composeDict = parse(readFileSync(DOCKER_COMPOSE_REEF_PATH).toString());
     const seasideIP = composeDict["services"]["whirlpool"]["environment"]["SEASIDE_ADDRESS"];
 	const gatewayIP = composeDict["services"][DOCKER_COMPOSE_GATEWAY_CONTAINER]["networks"][DOCKER_COMPOSE_GATEWAY_NETWORK]["ipv4_address"];
 	const gatewayNetwork = composeDict["networks"][DOCKER_COMPOSE_GATEWAY_NETWORK]["ipam"]["config"][0]["subnet"];
+	console.log(`Extracted compose parameters: Seaside IP (${seasideIP}), Gateway IP (${gatewayIP}) and Gateway network (${gatewayNetwork})`);
 	return { seasideIP, gatewayIP, gatewayNetwork };
 }
 
 function setupRouting(gatewayContainerIP, gatewayNetwork) {
+	console.log("Looking for the default route...");
 	const defaultRoute = runCommandForSystem("ip route show default", "route print 0.0.0.0");
 	if (platform === "linux") {
 		const routes = execSync("ip route show").toString();
+		console.log("Replacing default route...");
 		execSync(`sudo ip route replace default via ${gatewayContainerIP}`);
+		console.log("Deleting Docker routes...");
 		for (let line of routes.split("\n")) {
 			const match = line.match(DOCKER_COMPOSE_BLOCK_NETWORKS_REGEX);
-			if (match !== null && match[0] !== gatewayNetwork) execSync(`sudo ip route delete ${line.trim()}`);
+			if (match !== null && match[0] !== gatewayNetwork) {
+				console.log(`\tDeleting route: ${line}`);
+				execSync(`sudo ip route delete ${line.trim()}`);
+			}
 		}
 	} else if (platform === "windows") {
+		console.log("Deleting Docker routes and the default route...");
 		execSync(`route delete ${DOCKER_COMPOSE_BLOCK_NETWORKS_REGEX} && route delete ${defaultRoute}`);
+		console.log("Adding new default route...");
 		execSync(`route add 0.0.0.0 ${gatewayContainerIP}`);
 	} else throw Error(`Command for platform ${platform} is not defined!`);
+	console.log(`Routing set up, default route: ${defaultRoute}`);
 	return defaultRoute;
 }
 
 async function launchDockerCompose(seasideIP) {
-    execSync(`python3 -m setup --just-certs ${seasideIP}`, { env: { "PYTHONPATH": PYTHON_LIB_ALGAE_PATH } })
+	console.log("Generating certificates...");
+    execSync(`python3 -m setup --just-certs ${seasideIP}`, { env: { "PYTHONPATH": PYTHON_LIB_ALGAE_PATH } });
+	console.log("Building 'whirlpool' and 'echo' images...");
     execSync(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} build whirlpool echo`);
-	const childConf = { detached: true, shell: true, stdio: [ "ignore", "ignore", "ignore" ] };
-	const process = spawn(`docker compose -f ${DOCKER_COMPOSE_REEF_PATH} up --build`, childConf);
+	console.log("Spawning Docker compose process...");
+	const process = spawn(`docker compose -f ${DOCKER_COMPOSE_REEF_PATH} up --build`, { detached: true, shell: true, stdio: "ignore" });
 	const pid = process.pid;
+	console.log(`Docker compose process spawned, PID: ${pid}`);
 	if (pid === undefined) {
 		process.kill();
 		throw Error("Docker compose command failed!");
 	} else {
+		console.log("Waiting for Docker compose process to initiate...");
         await sleep(10);
 		process.unref();
+		console.log("Disconnected from Docker compose process!");
 		return pid;
 	}
 }
 
 function storeCache(cacheFile, { route, pid }) {
+	console.log("Writing cache file...");
 	writeFileSync(cacheFile, JSON.stringify({ route, pid }));
+	console.log(`Cache written: default route (${route}), PID (${pid})`);
 }
 
 function loadCache(cacheFile) {
-	return JSON.parse(readFileSync(cacheFile).toString());
+	console.log("Reading cache file...");
+	const cache = JSON.parse(readFileSync(cacheFile).toString());
+	console.log(`Cache read: default route (${cache.route}), PID (${cache.pid})`);
+	return cache;
 }
 
 function killDockerCompose(pid) {
+	console.log("Killing Docker compose process...");
 	runCommandForSystem(`kill -2 ${pid}`, `taskkill /pid ${pid}`);
+	console.log("Docker compose process killed!");
 }
 
 function resetRouting(defaultRoute) {
+	console.log("Resetting default route...");
 	runCommandForSystem(`sudo ip route replace ${defaultRoute}`, `route delete 0.0.0.0 && route add ${defaultRoute}`);
+	console.log("Default route reset!");
 }
 
 // Script body:
