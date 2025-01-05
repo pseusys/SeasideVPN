@@ -15,6 +15,7 @@ const PRIORITY_METRIC = 1;
 
 const DOCKER_COMPOSE_GATEWAY_NETWORK = "sea-cli-int";
 const DOCKER_COMPOSE_GATEWAY_CONTAINER = "int-router";
+const DOCKER_COMPOSE_BLOCK_NETWORKS_REGEX = platform === "linux" ? "10\.\d+\.\d+\.\d+\/24" : "10.*";
 const DOCKER_COMPOSE_PATH = join(dirname(import.meta.dirname), "..", "viridian", "reef", "docker", "compose.yml");
 const DOCKER_COMPOSE_PROCESS_FILE_NAME = ".reef_test_cache";
 
@@ -36,23 +37,12 @@ function printHelpMessage() {
 	process.exit(0);
 }
 
-function runCommandForSystem(linuxCommand = undefined, windowsCommand = undefined, macosCommand = undefined, defaulCommand = undefined) {
+function runCommandForSystem(linuxCommand = undefined, windowsCommand = undefined) {
     switch (platform) {
-        case "darwin":
-            if (macosCommand !== undefined) {
-                execSync(macosCommand);
-                break;
-            }
         case "linux":
-            if (linuxCommand !== undefined) {
-                execSync(linuxCommand);
-                break;
-            }
+            if (linuxCommand !== undefined) return execSync(linuxCommand).toString();
         case "win32":
-            if (windowsCommand !== undefined) {
-                execSync(windowsCommand);
-                break;
-            }
+            if (windowsCommand !== undefined) return execSync(windowsCommand).toString();
         default:
             throw Error(`Command for platform ${platform} is not defined!`);
     }
@@ -77,8 +67,10 @@ function parseArguments() {
 	};
 	const { values } = parseArgs({ options });
 	if (values.help) printHelpMessage();
-	if (process.env.DOCKER_COMPOSE_GATEWAY_NETWORK === undefined) values["gatewayNetwork"] = DOCKER_COMPOSE_GATEWAY_NETWORK;
+    if (process.env.DOCKER_COMPOSE_GATEWAY_NETWORK === undefined) values["gatewayNetwork"] = DOCKER_COMPOSE_GATEWAY_NETWORK;
 	else values["gatewayNetwork"] = process.env.DOCKER_COMPOSE_GATEWAY_NETWORK;
+	if (process.env.DOCKER_COMPOSE_BLOCK_NETWORKS_REGEX === undefined) values["networkRegex"] = DOCKER_COMPOSE_BLOCK_NETWORKS_REGEX;
+	else values["networkRegex"] = process.env.DOCKER_COMPOSE_BLOCK_NETWORKS_REGEX;
     if (process.env.DOCKER_COMPOSE_GATEWAY_CONTAINER === undefined) values["gatewayContainer"] = DOCKER_COMPOSE_GATEWAY_CONTAINER;
 	else values["gatewayContainer"] = process.env.DOCKER_COMPOSE_GATEWAY_CONTAINER;
     if (process.env.DOCKER_COMPOSE_PATH === undefined) values["composePath"] = DOCKER_COMPOSE_PATH;
@@ -94,9 +86,14 @@ function parseGatewayContainerIP(composePath, gatewayName, gatewayNetwork) {
     return composeDict["services"][gatewayName]["networks"][gatewayNetwork]["ipv4_address"];
 }
 
-function setupRouting(gatewayContainerIP) {
+function setupRouting(gatewayContainerIP, networkRegex) {
+    if (platform == "linux") {
+        const routes = execSync("ip route show").toString();
+        for (let line of routes.split('\n')) if (line.match(networkRegex) !== null) execSync(`ip route delete ${line.trim()}`);
+    } else if (platform == "linux") execSync(`route delete ${networkRegex}`);
+    else throw Error(`Command for platform ${platform} is not defined!`);
     runCommandForSystem(
-        `ip route add default via ${gatewayContainerIP} metric ${PRIORITY_METRIC}`
+        `ip route add default via ${gatewayContainerIP} metric ${PRIORITY_METRIC}`,
         `route add 0.0.0.0 ${gatewayContainerIP} metric ${PRIORITY_METRIC}`
     );
 }
@@ -123,7 +120,7 @@ function launchDockerCompose(composePath, cachePID) {
 
 function killDockerCompose(cachePID) {
     const pid = parseInt(readFileSync(cachePID));
-    execSync(
+    runCommandForSystem(
         `kill -2 ${pid}`,
         `taskkill /pid ${pid}`
     );

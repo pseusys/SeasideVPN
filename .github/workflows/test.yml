@@ -75,7 +75,7 @@ jobs:
           override: true
 
       - name: Prepare Host
-        run: npm run --prefix .github/scripts configure-viridian-test -- -v
+        run: npm run --prefix .github/scripts configure-viridian-test
 
       - name: Test Viridian Reef (unit) 🧪
         uses: actions-rs/cargo@v1
