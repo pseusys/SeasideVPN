@@ -17,7 +17,7 @@ const DOCKER_COMPOSE_GATEWAY_NETWORK = "sea-cli-int";
 const DOCKER_COMPOSE_GATEWAY_CONTAINER = "int-router";
 const DOCKER_COMPOSE_BLOCK_NETWORKS_REGEX = platform === "linux" ? "10\\.\\d+\\.\\d+\\.\\d+\\/24" : "10.*";
 const PYTHON_LIB_ALGAE_PATH = join(dirname(import.meta.dirname), "..", "viridian", "algae");
-const DOCKER_COMPOSE_ALGAE_PATH = join(PYTHON_LIB_ALGAE_PATH, "docker", "compose.yml");
+const DOCKER_COMPOSE_ALGAE_PATH = join(PYTHON_LIB_ALGAE_PATH, "docker", "compose.default.yml");
 const DOCKER_COMPOSE_REEF_PATH = join(dirname(import.meta.dirname), "..", "viridian", "reef", "docker", "compose.yml");
 const DOCKER_COMPOSE_CACHE_FILE_NAME = ".setup_test_cache";
 
@@ -112,12 +112,12 @@ async function launchDockerCompose(seasideIP) {
     execSync(`python3 -m setup --just-certs ${seasideIP}`, { env: { "PYTHONPATH": PYTHON_LIB_ALGAE_PATH } })
     execSync(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} build whirlpool echo`);
 	const process = exec(`docker compose -f ${DOCKER_COMPOSE_REEF_PATH} up --build`, dockerErrorCallback);
-    await sleep(10);
 	const pid = process.pid;
 	if (pid === undefined) {
 		process.kill();
 		throw Error("Docker compose command failed!");
 	} else {
+        await sleep(10);
 		process.unref();
 		return pid;
 	}
