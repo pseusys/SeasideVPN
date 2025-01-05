@@ -117,19 +117,20 @@ async function launchDockerCompose(seasideIP) {
 	console.log("Building 'whirlpool' and 'echo' images...");
     execSync(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} build whirlpool echo`);
 	console.log("Spawning Docker compose process...");
-	const process = spawn(`docker compose -f ${DOCKER_COMPOSE_REEF_PATH} up --build`, { detached: true, shell: true, stdio: "ignore" });
+	const child = spawn(`docker compose -f ${DOCKER_COMPOSE_REEF_PATH} up --build`, { detached: true, shell: true, stdio: "ignore" });
 	console.log("Reading Docker compose process PID...");
-	const pid = process.pid;
+	const pid = child.pid;
 	console.log(`Docker compose process spawned, PID: ${pid}`);
 	if (pid === undefined) {
 		console.log("Killing Docker compose process...");
-		process.kill();
+		child.kill();
 		throw Error("Docker compose command failed!");
 	} else {
 		console.log("Waiting for Docker compose process to initiate...");
         await sleep(DOCKER_COMPOSE_INITIALIZATION_TIMEOUT);
+		exit(1);
 		console.log("Disconnecting from Docker compose process...");
-		process.unref();
+		child.unref();
 		return pid;
 	}
 }

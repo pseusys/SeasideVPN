@@ -4,5 +4,5 @@
  * @returns {Promise<void>}
  */
 export async function sleep(seconds) {
-	return new Promise((r) => setTimeout(r, seconds * 1000));
+	return new Promise(r => setTimeout(r, seconds * 1000));
 }
