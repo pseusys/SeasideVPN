@@ -6,9 +6,11 @@ import { platform } from "process";
 
 import { parse } from "yaml";
 
+import { sleep } from "./script_utils.mjs";
+
 const BLUE = "\x1b[34m";
 const GREEN = "\x1b[32m";
-const YELLOW = "\x1b[33m";
+const RED = "\x1b[31m";
 const RESET = "\x1b[0m";
 
 const DOCKER_COMPOSE_GATEWAY_NETWORK = "sea-cli-int";
@@ -44,15 +46,6 @@ function runCommandForSystem(linuxCommand = undefined, windowsCommand = undefine
 		default:
 			throw Error(`Command for platform ${platform} is not defined!`);
 	}
-}
-
-/**
- * Sleep for the specified time (in seconds).
- * @param {int} time to sleep (in seconds)
- * @returns {Promise<void>}
- */
-async function sleep(seconds) {
-	return new Promise((r) => setTimeout(r, seconds * 1000));
 }
 
 /**
@@ -123,7 +116,6 @@ function dockerErrorCallback(error, stdout, stderr) {
 async function launchDockerCompose(composePath) {
 	const process = exec(`docker compose -f ${composePath} up --build`, dockerErrorCallback);
     await sleep(10);
-    console.log(execSync("ip route show").toString());
 	const pid = process.pid;
 	if (pid === undefined) {
 		process.kill();

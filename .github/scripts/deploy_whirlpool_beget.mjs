@@ -7,6 +7,8 @@ import { execSync } from "node:child_process";
 import fetch from "node-fetch";
 import { NodeSSH } from "node-ssh";
 
+import { sleep } from "./script_utils.mjs";
+
 const BOLD = "\x1b[1m";
 const UNDER = "\x1b[4m";
 const BLUE = "\x1b[34m";
@@ -65,15 +67,6 @@ async function post(url, data = {}, token = null) {
  */
 async function get(url, token = null) {
 	return await request(url, "GET", null, token);
-}
-
-/**
- * Sleep for the specified time (in seconds).
- * @param {int} time to sleep (in seconds)
- * @returns {Promise<void>}
- */
-async function sleep(seconds) {
-	return new Promise((r) => setTimeout(r, seconds * 1000));
 }
 
 /**
