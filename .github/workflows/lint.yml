@@ -8,7 +8,7 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  shell-scripts-lint:
+  scripts-lint:
     name: Lint Shell Scripts Everywhere
     runs-on: ubuntu-latest
 
@@ -19,11 +19,11 @@ jobs:
       - name: Install Dependencies 🔮
         run: sudo apt-get install shellcheck
 
-      - name: Lint Shell Scripts 🧪
+      - name: Lint Scripts 🧪
         run: make lint-scripts
 
-  misc-scripts-lint:
-    name: Lint Misc Scripts Everywhere
+  misc-lint:
+    name: Lint Everything Else Everywhere
     runs-on: ubuntu-latest
 
     steps:

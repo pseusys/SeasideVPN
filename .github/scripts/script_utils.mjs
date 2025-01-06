@@ -1,6 +1,6 @@
 /**
  * Sleep for the specified time (in seconds).
- * @param {int} time to sleep (in seconds)
+ * @param {int} seconds to sleep (in seconds)
  * @returns {Promise<void>}
  */
 export async function sleep(seconds) {

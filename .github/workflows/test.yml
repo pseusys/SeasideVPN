@@ -61,7 +61,6 @@ jobs:
           python-version: "3.10"
 
       - name: Install Dependencies 🔮
-        shell: bash
         run: |
           npm install --prefix ${{ env.PREFIX }}
           pip3 install poetry poethepoet[poetry_plugin]
@@ -75,7 +74,6 @@ jobs:
           override: true
 
       - name: Prepare Host
-        shell: bash
         run: npm run --prefix ${{ env.PREFIX }} configure-viridian-test
 
       - name: Test Viridian Reef (unit) 🧪
