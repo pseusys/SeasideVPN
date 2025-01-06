@@ -67,7 +67,7 @@ jobs:
 
       - name: Install Linux Dependencies
         if: ${{ matrix.os == 'ubuntu' }}
-        run: apt-get install -y --no-install-recommends iptables iproute2
+        run: sudo apt-get install -y --no-install-recommends iptables iproute2
 
       - name: Setup Rust 🦀
         uses: actions-rs/toolchain@v1
