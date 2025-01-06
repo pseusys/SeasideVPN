@@ -92,13 +92,13 @@ function setupRouting(gatewayContainerIP, gatewayNetwork) {
 	if (platform === "linux") {
 		const routes = execSync("ip route show").toString();
 		console.log("Replacing default route...");
-		execSync(`sudo ip route replace default via ${gatewayContainerIP}`);
+		execSync(`ip route replace default via ${gatewayContainerIP}`);
 		console.log("Deleting Docker routes...");
 		for (let line of routes.split("\n")) {
 			const match = line.match(DOCKER_COMPOSE_BLOCK_NETWORKS_REGEX);
 			if (match !== null && match[0] !== gatewayNetwork) {
 				console.log(`\tDeleting route: ${line}`);
-				execSync(`sudo ip route delete ${line.trim()}`);
+				execSync(`ip route delete ${line.trim()}`);
 			}
 		}
 	} else if (platform === "windows") {
@@ -130,7 +130,6 @@ async function launchDockerCompose(seasideIP) {
         await sleep(DOCKER_COMPOSE_INITIALIZATION_TIMEOUT);
 		console.log("Disconnecting from Docker compose process...");
 		child.unref();
-		process.exit(1);
 		return pid;
 	}
 }
@@ -156,7 +155,7 @@ function killDockerCompose(pid) {
 
 function resetRouting(defaultRoute) {
 	console.log("Resetting default route...");
-	runCommandForSystem(`sudo ip route replace ${defaultRoute}`, `route delete 0.0.0.0 && route add ${defaultRoute}`);
+	runCommandForSystem(`ip route replace ${defaultRoute}`, `route delete 0.0.0.0 && route add ${defaultRoute}`);
 	console.log("Default route reset!");
 }
 
