@@ -74,7 +74,13 @@ jobs:
           override: true
 
       - name: Test Viridian Reef (unit) 🧪
-        run: make -C viridian/reef -s test-unit
+        uses: actions-rs/cargo@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          command: test
+          use-cross: true
+          args: --package SeasideVPN-Reef --lib --manifest-path viridian/reef/Cargo.toml --target ${{ env.TARGET }} -- --nocapture --show-output
 
       - name: Prepare Host
         run: npm run --prefix ${{ env.PREFIX }} configure-viridian-test
@@ -87,7 +93,7 @@ jobs:
         with:
           command: run
           use-cross: true
-          args: run --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml --target ${{ env.TARGET }} -- --command "${{ env.TEST_COMMAND }}"
+          args: --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml --target ${{ env.TARGET }} -- --command "${{ env.TEST_COMMAND }}"
 
   caerulean-whirlpool-test:
     name: Test Caerulean Whirlpool

@@ -40,11 +40,7 @@ run: build certificates
 
 test-unit:
 	@ # Run unit tests inside of the testing docker container
-ifndef CI
 	docker build -f docker/Dockerfile --target test -t seaside-reef-test ../..
-else
-	docker build -f docker/Dockerfile --target test -t seaside-reef-test -q ../..
-endif
 	docker run --privileged --rm --name seaside-reef-test --sysctl net.ipv6.conf.all.disable_ipv6=1 --entrypoint cargo seaside-reef-test test --package SeasideVPN-Reef --lib -- --nocapture --show-output
 .PHONY: test-unit
 
