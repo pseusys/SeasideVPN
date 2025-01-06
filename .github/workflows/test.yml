@@ -40,7 +40,6 @@ jobs:
     runs-on: ${{ format('{0}-latest', matrix.os) }}
     env:
       TARGET: ${{ matrix.os == 'ubuntu' && 'x86_64-unknown-linux-gnu' || 'x86_64-pc-windows-msvc' }}
-      PREFIX: ${{ matrix.os == 'ubuntu' && '.github/scripts' || '.github\scripts' }}
     strategy:
       fail-fast: false
       matrix:
@@ -62,7 +61,7 @@ jobs:
 
       - name: Install Dependencies 🔮
         run: |
-          npm install --prefix ${{ env.PREFIX }} --cwd .github/scripts
+          npm install --prefix .github/scripts
           pip3 install poetry poethepoet[poetry_plugin]
           poetry -C viridian/algae install --without client,devel
 
@@ -87,7 +86,7 @@ jobs:
           args: --package SeasideVPN-Reef --lib --manifest-path viridian/reef/Cargo.toml --target ${{ env.TARGET }} -- --nocapture --show-output
 
       - name: Prepare Host
-        run: npm run --prefix ${{ env.PREFIX }} --cwd .github/scripts configure-viridian-test
+        run: npm run --prefix .github/scripts configure-viridian-test
 
       - name: Test Viridian Reef (integration) 🧪
         uses: actions-rs/cargo@v1
