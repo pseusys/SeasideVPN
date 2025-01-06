@@ -62,9 +62,13 @@ jobs:
 
       - name: Install Dependencies 🔮
         run: |
-          npm install --prefix ${{ env.PREFIX }}
+          npm install --prefix ${{ env.PREFIX }} --cwd .github/scripts
           pip3 install poetry poethepoet[poetry_plugin]
           poetry -C viridian/algae install --without client,devel
+
+      - name: Install Linux Dependencies
+        if: ${{ matrix.os == 'ubuntu' }}
+        run: apt-get install -y --no-install-recommends iptables iproute2
 
       - name: Setup Rust 🦀
         uses: actions-rs/toolchain@v1
@@ -83,7 +87,7 @@ jobs:
           args: --package SeasideVPN-Reef --lib --manifest-path viridian/reef/Cargo.toml --target ${{ env.TARGET }} -- --nocapture --show-output
 
       - name: Prepare Host
-        run: npm run --prefix ${{ env.PREFIX }} configure-viridian-test
+        run: npm run --prefix ${{ env.PREFIX }} --cwd .github/scripts configure-viridian-test
 
       - name: Test Viridian Reef (integration) 🧪
         uses: actions-rs/cargo@v1

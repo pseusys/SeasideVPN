@@ -90,7 +90,7 @@ jobs:
 
       - name: Install Dependencies 🔮
         run: |
-          npm install --prefix .github/scripts
+          npm install --prefix .github/scripts --cwd .github/scripts
           pip3 install poetry poethepoet[poetry_plugin]
           poetry --no-plugins -C viridian/algae install --with script
 
@@ -100,4 +100,4 @@ jobs:
           BEGET_API_PASSWORD: ${{ secrets.BEGET_API_PASSWORD }}
           BEGET_SERVER_KEY: ${{ secrets.BEGET_SERVER_KEY }}
           WHIRLPOOL_PAYLOAD: ${{ secrets.WHIRLPOOL_DEPLOYMENT_PAYLOAD }}
-        run: npm run --prefix .github/scripts deploy-whirlpool-beget -- -v
+        run: npm run --prefix .github/scripts --cwd .github/scripts deploy-whirlpool-beget -- -v

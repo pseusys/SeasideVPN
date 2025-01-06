@@ -107,7 +107,7 @@ lint-algae: install-algae-all
 lint-scripts:
 	@ # Lint all the scripts in project (*.sh and .github/*.mjs scripts)
 	shellcheck -x -e SC1091,SC2129,SC2002,SC2091 **/*.sh
-	npm run --prefix .github/scripts lint-scripts
+	npm run --prefix .github/scripts --cwd .github/scripts lint-scripts
 .PHONY: lint-scripts
 
 lint-markdown:
