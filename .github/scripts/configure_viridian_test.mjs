@@ -1,7 +1,7 @@
 import { parseArgs } from "node:util";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { spawn, execSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { platform } from "process";
 
 import { parse } from "yaml";
@@ -43,9 +43,9 @@ function printHelpMessage() {
 function runCommandForSystem(linuxCommand = undefined, windowsCommand = undefined) {
 	switch (platform) {
 		case "linux":
-			if (linuxCommand !== undefined) return execSync(linuxCommand).toString();
+			if (linuxCommand !== undefined) return spawnSync(linuxCommand, { shell: true }).stdout.toString();
 		case "win32":
-			if (windowsCommand !== undefined) return execSync(windowsCommand).toString();
+			if (windowsCommand !== undefined) return spawnSync(windowsCommand, { shell: true }).stdout.toString();
 		default:
 			throw Error(`Command for platform ${platform} is not defined!`);
 	}
@@ -90,22 +90,22 @@ function setupRouting(gatewayContainerIP, gatewayNetwork) {
 	console.log("Looking for the default route...");
 	const defaultRoute = runCommandForSystem("ip route show default", "route print 0.0.0.0");
 	if (platform === "linux") {
-		const routes = execSync("ip route show").toString();
+		const routes = spawnSync("ip route show", { shell: true }).stdout.toString();
 		console.log("Replacing default route...");
-		execSync(`sudo ip route replace default via ${gatewayContainerIP}`);
+		spawnSync(`ip route replace default via ${gatewayContainerIP}`, { shell: true });
 		console.log("Deleting Docker routes...");
 		for (let line of routes.split("\n")) {
 			const match = line.match(DOCKER_COMPOSE_BLOCK_NETWORKS_REGEX);
 			if (match !== null && match[0] !== gatewayNetwork) {
 				console.log(`\tDeleting route: ${line}`);
-				execSync(`sudo ip route delete ${line.trim()}`);
+				spawnSync(`ip route delete ${line.trim()}`, { shell: true });
 			}
 		}
 	} else if (platform === "windows") {
 		console.log("Deleting Docker routes and the default route...");
-		execSync(`route delete ${DOCKER_COMPOSE_BLOCK_NETWORKS_REGEX} && route delete ${defaultRoute}`);
+		spawnSync(`route delete ${DOCKER_COMPOSE_BLOCK_NETWORKS_REGEX} && route delete ${defaultRoute}`, { shell: true });
 		console.log("Adding new default route...");
-		execSync(`route add 0.0.0.0 ${gatewayContainerIP}`);
+		spawnSync(`route add 0.0.0.0 ${gatewayContainerIP}`, { shell: true });
 	} else throw Error(`Command for platform ${platform} is not defined!`);
 	console.log(`Routing set up, default route: ${defaultRoute}`);
 	return defaultRoute;
@@ -113,9 +113,9 @@ function setupRouting(gatewayContainerIP, gatewayNetwork) {
 
 async function launchDockerCompose(seasideIP) {
 	console.log("Generating certificates...");
-    execSync(`python3 -m setup --just-certs ${seasideIP} -v ERROR`, { env: { "PYTHONPATH": PYTHON_LIB_ALGAE_PATH } });
+    spawnSync(`python3 -m setup --just-certs ${seasideIP} -v ERROR`, { shell: true, env: { "PYTHONPATH": PYTHON_LIB_ALGAE_PATH } });
 	console.log("Building 'whirlpool' and 'echo' images...");
-    execSync(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} build whirlpool echo`);
+    spawnSync(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} build whirlpool echo`, { shell: true });
 	console.log("Spawning Docker compose process...");
 	const child = spawn(`docker compose -f ${DOCKER_COMPOSE_REEF_PATH} up --build`, { detached: true, shell: true, stdio: "ignore" });
 	console.log("Reading Docker compose process PID...");
@@ -149,13 +149,13 @@ function loadCache(cacheFile) {
 
 function killDockerCompose(pid) {
 	console.log("Killing Docker compose process...");
-	runCommandForSystem(`sudo kill -2 ${pid}`, `taskkill /pid ${pid}`);
+	runCommandForSystem(`kill -2 ${pid}`, `taskkill /pid ${pid}`);
 	console.log("Docker compose process killed!");
 }
 
 function resetRouting(defaultRoute) {
 	console.log("Resetting default route...");
-	runCommandForSystem(`sudo ip route replace ${defaultRoute}`, `route delete 0.0.0.0 && route add ${defaultRoute}`);
+	runCommandForSystem(`ip route replace ${defaultRoute}`, `route delete 0.0.0.0 && route add ${defaultRoute}`);
 	console.log("Default route reset!");
 }
 
