@@ -88,7 +88,7 @@ function parseGatewayContainerIP() {
 
 function setupRouting(gatewayContainerIP, gatewayNetwork) {
 	console.log("Looking for the default route...");
-	const defaultRoute = runCommandForSystem("ip route show default", "route print 0.0.0.0");
+	const defaultRoute = runCommandForSystem("ip route show default", "route print 0.0.0.0").trim();
 	if (platform === "linux") {
 		const routes = spawnSync("ip route show", { shell: true }).stdout.toString();
 		console.log("Replacing default route...");
