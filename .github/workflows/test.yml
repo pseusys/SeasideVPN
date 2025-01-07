@@ -75,7 +75,7 @@ jobs:
           override: true
 
       - name: Test Viridian Reef (unit) 🧪
-        run: sudo -E cargo test --package SeasideVPN-Reef --lib --manifest-path viridian/reef/Cargo.toml -- --nocapture --show-output
+        run: sudo -E /home/runner/.cargo/bin/cargo test --package SeasideVPN-Reef --lib --manifest-path viridian/reef/Cargo.toml -- --nocapture --show-output
 
       - name: Prepare Host
         run: npm run --prefix .github/scripts configure-viridian-test
@@ -83,7 +83,7 @@ jobs:
       - name: Test Viridian Reef (integration) 🧪
         env:
           TEST_COMMAND: poetry run pytest viridian/algae/tests/test_local.py
-        run: sudo -E cargo run --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml -- --command "${{ env.TEST_COMMAND }}"
+        run: sudo -E /home/runner/.cargo/bin/cargo run --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml -- --command "${{ env.TEST_COMMAND }}"
 
       - name: Reset Host
         run: npm run --prefix .github/scripts configure-viridian-test -- -r
