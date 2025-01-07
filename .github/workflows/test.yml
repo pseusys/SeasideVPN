@@ -76,7 +76,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends iptables iproute2
 
 #      - name: Test Viridian Reef (unit) 🧪
-#        run: sudo env "PATH=$PATH" cargo test --package SeasideVPN-Reef --lib --manifest-path viridian/reef/Cargo.toml -- --nocapture --show-output
+#        run: sudo -E env "PATH=$PATH" cargo test --package SeasideVPN-Reef --lib --manifest-path viridian/reef/Cargo.toml -- --nocapture --show-output
 
       - name: Prepare Host
         run: npm run --prefix .github/scripts configure-viridian-test
@@ -93,7 +93,7 @@ jobs:
           ECHO_PORT: 5000
           BUFFER_SIZE: 8192
           TEST_COMMAND: poetry run pytest viridian/algae/tests/test_local.py
-        run: sudo env "PATH=$PATH" cargo run --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml -- --command "${{ env.TEST_COMMAND }}"
+        run: sudo -E env "PATH=$PATH" cargo run --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml -- --command "${{ env.TEST_COMMAND }}"
 
       - name: Reset Host
         run: npm run --prefix .github/scripts configure-viridian-test -- -r
