@@ -67,7 +67,7 @@ jobs:
 
       - name: Install Linux Dependencies
         if: ${{ matrix.os == 'ubuntu' }}
-        run: sudo apt-get install -y --no-install-recommends iptables iproute2
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends iptables iproute2
 
       - name: Setup Rust 🦀
         uses: actions-rs/toolchain@v1
@@ -77,26 +77,15 @@ jobs:
           override: true
 
       - name: Test Viridian Reef (unit) 🧪
-        uses: actions-rs/cargo@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          command: test
-          use-cross: true
-          args: --package SeasideVPN-Reef --lib --manifest-path viridian/reef/Cargo.toml --target ${{ env.TARGET }} -- --nocapture --show-output
+        run: cargo test --package SeasideVPN-Reef --lib --manifest-path viridian/reef/Cargo.toml -- --nocapture --show-output
 
       - name: Prepare Host
         run: npm run --prefix .github/scripts configure-viridian-test
 
       - name: Test Viridian Reef (integration) 🧪
-        uses: actions-rs/cargo@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TEST_COMMAND: poetry run pytest viridian/algae/tests/test_local.py
-        with:
-          command: run
-          use-cross: true
-          args: --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml --target ${{ env.TARGET }} -- --command "${{ env.TEST_COMMAND }}"
+        run: cargo run --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml -- --command "${{ env.TEST_COMMAND }}"
 
   caerulean-whirlpool-test:
     name: Test Caerulean Whirlpool
