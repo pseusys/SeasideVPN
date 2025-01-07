@@ -73,6 +73,7 @@ jobs:
           toolchain: stable
           target: ${{ matrix.os == 'ubuntu' && 'x86_64-unknown-linux-gnu' || 'x86_64-pc-windows-msvc' }}
           override: true
+          default: true
 
 #      - name: Test Viridian Reef (unit) 🧪
 #        run: sudo env "PATH=$PATH" cargo test --package SeasideVPN-Reef --lib --manifest-path viridian/reef/Cargo.toml -- --nocapture --show-output
