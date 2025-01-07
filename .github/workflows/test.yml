@@ -57,6 +57,14 @@ jobs:
         with:
           python-version: "3.10"
 
+      - name: Setup Rust 🦀
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.os == 'ubuntu' && 'x86_64-unknown-linux-gnu' || 'x86_64-pc-windows-msvc' }}
+          cache-workspaces: viridian/reef
+          override: true
+
       - name: Install Dependencies 🔮
         run: |
           npm install --prefix .github/scripts
@@ -66,14 +74,6 @@ jobs:
       - name: Install Linux Dependencies
         if: ${{ matrix.os == 'ubuntu' }}
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends iptables iproute2
-
-      - name: Setup Rust 🦀
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          target: ${{ matrix.os == 'ubuntu' && 'x86_64-unknown-linux-gnu' || 'x86_64-pc-windows-msvc' }}
-          override: true
-          default: true
 
 #      - name: Test Viridian Reef (unit) 🧪
 #        run: sudo env "PATH=$PATH" cargo test --package SeasideVPN-Reef --lib --manifest-path viridian/reef/Cargo.toml -- --nocapture --show-output
