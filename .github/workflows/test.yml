@@ -79,7 +79,7 @@ jobs:
 #        run: sudo -E env "PATH=$PATH" cargo test --package SeasideVPN-Reef --lib --manifest-path viridian/reef/Cargo.toml -- --nocapture --show-output
 
       - name: Prepare Host
-        run: npm run --prefix .github/scripts configure-viridian-test
+        run: npm run --prefix .github/scripts configure-viridian-test && ls . && ls certificates && ls certificates/viridian && exit 1
 
       - name: Test Viridian Reef (integration) 🧪
         env:
