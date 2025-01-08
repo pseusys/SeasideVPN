@@ -87,11 +87,12 @@ jobs:
           SEASIDE_ADDRESS: 10.87.82.87
           SEASIDE_CTRLPORT: 8587
           SEASIDE_ROOT_CERTIFICATE_AUTHORITY: .github/scripts/certificates/viridian/rootCA.crt
-          SEASIDE_LOG_LEVEL: reeflib=DEBUG,INFO
+          SEASIDE_LOG_LEVEL: DEBUG
           LOCAL_ADDRESS: 10.82.0.82
           ECHO_ADDRESS: 10.42.0.42
           ECHO_PORT: 5000
           BUFFER_SIZE: 8192
+          RUST_BACKTRACE: 1
           RUNNER_COMMAND: sudo -E env "PATH=$PATH" cargo
           TEST_COMMAND: poetry run pytest viridian/algae/tests/test_local.py
         run: ${{ env.RUNNER_COMMAND }} run --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml -- -a "${{ env.SEASIDE_ADDRESS}}" -c "${{ env.SEASIDE_CTRLPORT }}" -p "${{ env.SEASIDE_PAYLOAD_VIRIDIAN }}" -e "${{ env.TEST_COMMAND }}"
