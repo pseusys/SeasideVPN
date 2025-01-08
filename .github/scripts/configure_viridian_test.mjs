@@ -97,7 +97,7 @@ function setupRouting(gatewayContainerIP, dockerNetworks) {
 	console.log("Adding new default route via specified Docker container router...");
 	runCommandForSystem(`ip route add default via ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}`, `route add 0.0.0.0 ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}`);
 	console.log("Deleting Docker routes to the networks that should become unreachable...");
-	for (const network of dockerNetworks) runCommandForSystem(`ip route delete ${network}`, `route delete ${network}`);
+	dockerNetworks.forEach(v => runCommandForSystem(`ip route delete ${v}`, `route delete ${v}`));
 	console.log(`Routing set up, saved default route: ${defaultRoute}`);
 	return defaultRoute;
 }

@@ -50,14 +50,14 @@ def compile() -> None:
     install(paths + ["-F", "-c", "-y", "-n", executable_name, str(ALGAE_ROOT / "sources" / "main.py")])
 
 
-def execute() -> None:
+def execute() -> int:
     """
     Import and execute main function of algae module.
     Pass console arguments to it.
     """
     from sources.main import main
 
-    async_run(main(argv[1:]))
+    return async_run(main(argv[1:]))
 
 
 def bundle() -> None:

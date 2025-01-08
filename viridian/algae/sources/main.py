@@ -2,7 +2,7 @@ from argparse import ArgumentParser
 from asyncio import create_task, get_event_loop
 from signal import SIGINT, SIGTERM
 from sys import argv, exit
-from typing import Sequence
+from typing import Optional, Sequence
 
 from colorama import just_fix_windows_console
 
@@ -29,7 +29,7 @@ parser.add_argument("-e", "--command", dest="cmd", default=None, help="Command t
 coordinator: Coordinator
 
 
-async def main(args: Sequence[str] = argv[1:]) -> None:
+async def main(args: Sequence[str] = argv[1:]) -> Optional[int]:
     """
     Run algae client.
     Setup graceful termination handler on SIGTERM and SIGINT signals.
@@ -55,7 +55,7 @@ async def main(args: Sequence[str] = argv[1:]) -> None:
     loop.add_signal_handler(SIGINT, lambda: create_task(finish()))
 
     logger.warning("Starting algae client coordinator...")
-    await coordinator.start(command)
+    return await coordinator.start(command)
 
 
 async def finish() -> None:

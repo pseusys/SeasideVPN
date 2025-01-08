@@ -143,7 +143,7 @@ class Coordinator:
                 await self.interrupt()
                 raise exc
 
-    async def _run_vpn_command(self, cmd: str) -> None:
+    async def _run_vpn_command(self, cmd: str) -> int:
         """
         Execute command asynchronously, wait for the result, print the result code.
         In case command produces STDOUT or STDERR output, it will also be printed.
@@ -156,8 +156,9 @@ class Coordinator:
             print(f"STDOUT: {stdout.decode()}")
         if len(stderr) > 0:
             print(f"STDERR: {stderr.decode()}")
+        return proc.returncode
 
-    async def start(self, cmd: Optional[str]) -> None:
+    async def start(self, cmd: Optional[str]) -> Optional[int]:
         """
         Start VPN.
         Will open a VPN connection and launch the command that should be executed while VPN is active.
@@ -178,11 +179,17 @@ class Coordinator:
         if cmd is not None:
             task_set.add(create_task(self._run_vpn_command(cmd)))
 
-        _, pending = await wait(task_set, return_when=FIRST_COMPLETED)
+        failed = False
+        successful, pending = await wait(task_set, return_when=FIRST_COMPLETED)
+        for c in successful:
+            outcode = await c
+            if isinstance(outcode, int) and outcode != 0:
+                failed = True
         for p in pending:
             p.cancel()
             with suppress(CancelledError):
                 await p
+        return 1 if failed else 0
 
     def _grpc_metadata(self) -> Dict[str, Any]:
         """

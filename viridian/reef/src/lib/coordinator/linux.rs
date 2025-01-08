@@ -1,5 +1,6 @@
 use log::{error, debug, info};
 
+use simple_error::bail;
 use tokio::net::lookup_host;
 use tokio::select;
 use tokio::signal::unix::{SignalKind, signal};
@@ -25,7 +26,11 @@ impl Startable for Coordinator {
         debug!("Running VPN processes asynchronously...");
         select! {
             res = Self::run_vpn_command(command), if command.is_some() => match res {
-                Ok(status) => println!("The command exited with: {status}"),
+                Ok(status) => if status.success() {
+                    println!("The command exited successfully!")
+                } else {
+                    bail!("The command exited with error code: {status}")
+                },
                 Err(err) => return Err(err)
             },
             err = self.run_vpn_loop(user_id) => {
