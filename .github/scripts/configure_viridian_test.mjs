@@ -84,7 +84,7 @@ function parseGatewayContainerIP() {
 	const gatewayIP = composeDict["services"][DOCKER_COMPOSE_GATEWAY_CONTAINER]["networks"][DOCKER_COMPOSE_GATEWAY_NETWORK]["ipv4_address"];
 	const gatewayNetwork = composeDict["networks"][DOCKER_COMPOSE_GATEWAY_NETWORK]["ipam"]["config"][0]["subnet"];
 	console.log(`Extracted compose parameters: Seaside IP (${seasideIP}), gateway IP (${gatewayIP}) and gateway network (${gatewayNetwork})`);
-	const dockerNetworks = Object.values(composeDict["networks"]).map(value => value["ipam"]["config"][0]["subnet"]).filter(value !== gatewayNetwork);
+	const dockerNetworks = Object.values(composeDict["networks"]).map(v => v["ipam"]["config"][0]["subnet"]).filter(v => v !== gatewayNetwork);
 	console.log(`Extracted networks that will be disconnected: ${dockerNetworks}`);
 	return { seasideIP, gatewayIP, dockerNetworks };
 }
