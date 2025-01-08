@@ -69,7 +69,7 @@ jobs:
         run: |
           npm install --prefix .github/scripts
           pip3 install poetry poethepoet[poetry_plugin]
-          poetry -C viridian/algae install --without client,devel
+          poetry -C viridian/algae install --without client,script
 
       - name: Install Linux Dependencies
         if: ${{ matrix.os == 'ubuntu' }}
