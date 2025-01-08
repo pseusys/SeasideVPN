@@ -67,7 +67,7 @@ jobs:
 
       - name: Install Dependencies 🔮
         run: |
-          npm install --workspace .github/scripts
+          npm install --prefix .github/scripts
           pip3 install poetry poethepoet[poetry_plugin]
           poetry -C viridian/algae install --without client,devel
 
@@ -79,14 +79,14 @@ jobs:
 #        run: sudo -E env "PATH=$PATH" cargo test --package SeasideVPN-Reef --lib --manifest-path viridian/reef/Cargo.toml -- --nocapture --show-output
 
       - name: Prepare Host
-        run: npm run --workspace .github/scripts configure-viridian-test && ls . && ls certificates && ls certificates/viridian && exit 1
+        run: npm run --prefix .github/scripts configure-viridian-test
 
       - name: Test Viridian Reef (integration) 🧪
         env:
           SEASIDE_PAYLOAD_VIRIDIAN: super_secret_user_payload_data
           SEASIDE_ADDRESS: 10.87.82.87
           SEASIDE_CTRLPORT: 8587
-          SEASIDE_ROOT_CERTIFICATE_AUTHORITY: certificates/viridian/rootCA.crt
+          SEASIDE_ROOT_CERTIFICATE_AUTHORITY: .github/scripts/certificates/viridian/rootCA.crt
           SEASIDE_LOG_LEVEL: reeflib=DEBUG,INFO
           LOCAL_ADDRESS: 10.82.0.82
           ECHO_ADDRESS: 10.42.0.42
@@ -97,7 +97,7 @@ jobs:
         run: ${{ env.RUNNER_COMMAND }} run --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml -- -a "${{ env.SEASIDE_ADDRESS}}" -c "${{ env.SEASIDE_CTRLPORT }}" -p "${{ env.SEASIDE_PAYLOAD_VIRIDIAN }}" -e "${{ env.TEST_COMMAND }}"
 
       - name: Reset Host
-        run: npm run --workspace .github/scripts configure-viridian-test -- -r
+        run: npm run --prefix .github/scripts configure-viridian-test -- -r
 
   caerulean-whirlpool-test:
     name: Test Caerulean Whirlpool
