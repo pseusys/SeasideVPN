@@ -22,6 +22,7 @@ const DOCKER_COMPOSE_ALGAE_PATH = join(PYTHON_LIB_ALGAE_PATH, "docker", "compose
 const PYTHON_LIB_REEF_PATH = join(dirname(import.meta.dirname), "..", "viridian", "reef");
 const DOCKER_COMPOSE_REEF_PATH = join(PYTHON_LIB_REEF_PATH, "docker", "compose.yml");
 const DOCKER_COMPOSE_CACHE_FILE_NAME = ".setup_test_cache";
+const DOCKER_COMPOSE_SOURCE_ENV_FILE_NAME = ".env";
 
 /**
  * Print usage help message and exit with code 0.
@@ -74,10 +75,13 @@ function parseArguments() {
 	if (process.env.DOCKER_COMPOSE_CACHE_FILE_NAME === undefined) values["cacheFile"] = DOCKER_COMPOSE_CACHE_FILE_NAME;
 	else values["cacheFile"] = process.env.DOCKER_COMPOSE_CACHE_FILE_NAME;
 	values["cacheFile"] = join(dirname(import.meta.filename), values["cacheFile"]);
+	if (process.env.DOCKER_COMPOSE_SOURCE_ENV_FILE_NAME === undefined) values["envFile"] = DOCKER_COMPOSE_SOURCE_ENV_FILE_NAME;
+	else values["envFile"] = process.env.DOCKER_COMPOSE_SOURCE_ENV_FILE_NAME;
+	values["envFile"] = join(dirname(import.meta.filename), values["envFile"]);
 	return values;
 }
 
-function parseGatewayContainerIP() {
+function parseDockerComposeFile(envFileName) {
 	console.log("Reading Docker compose file...");
 	const composeDict = parse(readFileSync(DOCKER_COMPOSE_REEF_PATH).toString());
     const seasideIP = composeDict["services"]["whirlpool"]["environment"]["SEASIDE_ADDRESS"];
@@ -86,6 +90,8 @@ function parseGatewayContainerIP() {
 	console.log(`Extracted compose parameters: Seaside IP (${seasideIP}), gateway IP (${gatewayIP}) and gateway network (${gatewayNetwork})`);
 	const dockerNetworks = Object.values(composeDict["networks"]).map(v => v["ipam"]["config"][0]["subnet"]).filter(v => v !== gatewayNetwork);
 	console.log(`Extracted networks that will be disconnected: ${dockerNetworks}`);
+	writeFileSync(envFileName, Object.entries(composeDict["services"]["reef"]["environment"]).map(([k, v]) => `${k}=${v}`).join("\n"));
+	console.log(`Default environment variables written to: ${envFileName}`);
 	return { seasideIP, gatewayIP, dockerNetworks };
 }
 
@@ -148,7 +154,7 @@ function resetRouting(defaultRoute) {
 
 const args = parseArguments();
 if (!args.reset) {
-    const { seasideIP, gatewayIP, dockerNetworks } = parseGatewayContainerIP();
+    const { seasideIP, gatewayIP, dockerNetworks } = parseDockerComposeFile(args.envFile);
 	const pid = await launchDockerCompose(seasideIP);
 	const route = setupRouting(gatewayIP, dockerNetworks);
 	storeCache(args.cacheFile, { route, pid });
