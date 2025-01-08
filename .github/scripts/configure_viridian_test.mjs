@@ -13,10 +13,10 @@ const GREEN = "\x1b[32m";
 const RED = "\x1b[31m";
 const RESET = "\x1b[0m";
 
+const REASONABLY_LOW_METRIC_VALUE = 10;
 const DOCKER_COMPOSE_INITIALIZATION_TIMEOUT = 15;
 const DOCKER_COMPOSE_GATEWAY_NETWORK = "sea-cli-int";
 const DOCKER_COMPOSE_GATEWAY_CONTAINER = "int-router";
-const DOCKER_COMPOSE_BLOCK_NETWORKS_REGEX = platform === "linux" ? "10\\.\\d+\\.\\d+\\.\\d+\\/24" : "10.*";
 const PYTHON_LIB_ALGAE_PATH = join(dirname(import.meta.dirname), "..", "viridian", "algae");
 const DOCKER_COMPOSE_ALGAE_PATH = join(PYTHON_LIB_ALGAE_PATH, "docker", "compose.default.yml");
 const PYTHON_LIB_REEF_PATH = join(dirname(import.meta.dirname), "..", "viridian", "reef");
@@ -83,32 +83,22 @@ function parseGatewayContainerIP() {
     const seasideIP = composeDict["services"]["whirlpool"]["environment"]["SEASIDE_ADDRESS"];
 	const gatewayIP = composeDict["services"][DOCKER_COMPOSE_GATEWAY_CONTAINER]["networks"][DOCKER_COMPOSE_GATEWAY_NETWORK]["ipv4_address"];
 	const gatewayNetwork = composeDict["networks"][DOCKER_COMPOSE_GATEWAY_NETWORK]["ipam"]["config"][0]["subnet"];
-	console.log(`Extracted compose parameters: Seaside IP (${seasideIP}), Gateway IP (${gatewayIP}) and Gateway network (${gatewayNetwork})`);
-	return { seasideIP, gatewayIP, gatewayNetwork };
+	console.log(`Extracted compose parameters: Seaside IP (${seasideIP}), gateway IP (${gatewayIP}) and gateway network (${gatewayNetwork})`);
+	const dockerNetworks = Object.values(composeDict["networks"]).map(value => value["ipam"]["config"][0]["subnet"]).filter(value !== gatewayNetwork);
+	console.log(`Extracted networks that will be disconnected: ${dockerNetworks}`);
+	return { seasideIP, gatewayIP, dockerNetworks };
 }
 
-function setupRouting(gatewayContainerIP, gatewayNetwork) {
+function setupRouting(gatewayContainerIP, dockerNetworks) {
 	console.log("Looking for the default route...");
 	const defaultRoute = runCommandForSystem("ip route show default", "route print 0.0.0.0").trim();
-	if (platform === "linux") {
-		const routes = spawnSync("ip route show", { shell: true }).stdout.toString();
-		console.log("Replacing default route...");
-		spawnSync(`ip route replace default via ${gatewayContainerIP}`, { shell: true });
-		console.log("Deleting Docker routes...");
-		for (let line of routes.split("\n")) {
-			const match = line.match(DOCKER_COMPOSE_BLOCK_NETWORKS_REGEX);
-			if (match !== null && match[0] !== gatewayNetwork) {
-				console.log(`\tDeleting route: ${line}`);
-				spawnSync(`ip route delete ${line.trim()}`, { shell: true });
-			}
-		}
-	} else if (platform === "windows") {
-		console.log("Deleting Docker routes and the default route...");
-		spawnSync(`route delete ${DOCKER_COMPOSE_BLOCK_NETWORKS_REGEX} && route delete ${defaultRoute}`, { shell: true });
-		console.log("Adding new default route...");
-		spawnSync(`route add 0.0.0.0 ${gatewayContainerIP}`, { shell: true });
-	} else throw Error(`Command for platform ${platform} is not defined!`);
-	console.log(`Routing set up, default route: ${defaultRoute}`);
+	console.log("Deleting current default route...");
+	runCommandForSystem(`ip route delete ${defaultRoute}`, `route delete ${defaultRoute}`);
+	console.log("Adding new default route via specified Docker container router...");
+	runCommandForSystem(`ip route add default via ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}`, `route add 0.0.0.0 ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}`);
+	console.log("Deleting Docker routes to the networks that should become unreachable...");
+	for (const network of dockerNetworks) runCommandForSystem(`ip route delete ${network}`, `route delete ${network}`);
+	console.log(`Routing set up, saved default route: ${defaultRoute}`);
 	return defaultRoute;
 }
 
@@ -158,9 +148,9 @@ function resetRouting(defaultRoute) {
 
 const args = parseArguments();
 if (!args.reset) {
-    const { seasideIP, gatewayIP, gatewayNetwork } = parseGatewayContainerIP();
+    const { seasideIP, gatewayIP, dockerNetworks } = parseGatewayContainerIP();
 	const pid = await launchDockerCompose(seasideIP);
-	const route = setupRouting(gatewayIP, gatewayNetwork);
+	const route = setupRouting(gatewayIP, dockerNetworks);
 	storeCache(args.cacheFile, { route, pid });
 } else {
 	const { route, pid } = loadCache(args.cacheFile);
