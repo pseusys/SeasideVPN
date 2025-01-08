@@ -86,7 +86,7 @@ jobs:
           SEASIDE_PAYLOAD_VIRIDIAN: super_secret_user_payload_data
           SEASIDE_ADDRESS: 10.87.82.87
           SEASIDE_CTRLPORT: 8587
-          SEASIDE_ROOT_CERTIFICATE_AUTHORITY: .github/scripts/certificates/viridian/rootCA.crt
+          SEASIDE_ROOT_CERTIFICATE_AUTHORITY: viridian/reef/certificates/viridian/rootCA.crt
           SEASIDE_LOG_LEVEL: DEBUG
           LOCAL_ADDRESS: 10.82.0.82
           ECHO_ADDRESS: 10.42.0.42

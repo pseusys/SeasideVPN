@@ -19,7 +19,8 @@ const DOCKER_COMPOSE_GATEWAY_CONTAINER = "int-router";
 const DOCKER_COMPOSE_BLOCK_NETWORKS_REGEX = platform === "linux" ? "10\\.\\d+\\.\\d+\\.\\d+\\/24" : "10.*";
 const PYTHON_LIB_ALGAE_PATH = join(dirname(import.meta.dirname), "..", "viridian", "algae");
 const DOCKER_COMPOSE_ALGAE_PATH = join(PYTHON_LIB_ALGAE_PATH, "docker", "compose.default.yml");
-const DOCKER_COMPOSE_REEF_PATH = join(dirname(import.meta.dirname), "..", "viridian", "reef", "docker", "compose.yml");
+const PYTHON_LIB_REEF_PATH = join(dirname(import.meta.dirname), "..", "viridian", "reef");
+const DOCKER_COMPOSE_REEF_PATH = join(PYTHON_LIB_REEF_PATH, "docker", "compose.yml");
 const DOCKER_COMPOSE_CACHE_FILE_NAME = ".setup_test_cache";
 
 /**
@@ -113,25 +114,19 @@ function setupRouting(gatewayContainerIP, gatewayNetwork) {
 
 async function launchDockerCompose(seasideIP) {
 	console.log("Generating certificates...");
-    spawnSync(`python3 -m setup --just-certs ${seasideIP} -v ERROR`, { shell: true, env: { "PYTHONPATH": PYTHON_LIB_ALGAE_PATH } });
+    spawnSync(`python3 -m setup --just-certs ${seasideIP} -v ERROR`, { shell: true, cwd: PYTHON_LIB_REEF_PATH, env: { "PYTHONPATH": PYTHON_LIB_ALGAE_PATH } });
 	console.log("Building 'whirlpool' and 'echo' images...");
     spawnSync(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} build whirlpool echo`, { shell: true });
 	console.log("Spawning Docker compose process...");
 	const child = spawn(`docker compose -f ${DOCKER_COMPOSE_REEF_PATH} up --build`, { detached: true, shell: true, stdio: "ignore" });
 	console.log("Reading Docker compose process PID...");
-	const pid = child.pid;
-	console.log(`Docker compose process spawned, PID: ${pid}`);
-	if (pid === undefined) {
-		console.log("Killing Docker compose process...");
-		child.kill();
-		throw Error("Docker compose command failed!");
-	} else {
-		console.log("Waiting for Docker compose process to initiate...");
-        await sleep(DOCKER_COMPOSE_INITIALIZATION_TIMEOUT);
-		console.log("Disconnecting from Docker compose process...");
-		child.unref();
-		return pid;
-	}
+	if (child.pid === undefined) throw Error("Docker compose command didn't start successfully!");
+	console.log("Waiting for Docker compose process to initiate...");
+    await sleep(DOCKER_COMPOSE_INITIALIZATION_TIMEOUT);
+	if (child.exitCode !== null) throw Error(`Docker compose command failed, with exit code: ${child.exitCode}`);
+	console.log("Disconnecting from Docker compose process...");
+	child.unref();
+	return child.pid;
 }
 
 function storeCache(cacheFile, { route, pid }) {
