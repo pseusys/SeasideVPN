@@ -71,10 +71,6 @@ jobs:
           pip3 install poetry poethepoet[poetry_plugin]
           poetry -C viridian/algae install --without client
 
-      - name: Install Linux Dependencies
-        if: ${{ matrix.os == 'ubuntu' }}
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends iptables iproute2
-
 #      - name: Test Viridian Reef (unit) 🧪
 #        run: sudo -E env "PATH=$PATH" cargo test --package SeasideVPN-Reef --lib --manifest-path viridian/reef/Cargo.toml -- --nocapture --show-output
 
