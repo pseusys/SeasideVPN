@@ -38,7 +38,7 @@ type MetaServer struct {
 func loadTLSCredentials() (credentials.TransportCredentials, error) {
 	// Format server key and certificate paths
 	certificatesPath := utils.GetEnv("SEASIDE_CERTIFICATE_PATH")
-	keyPath := fmt.Sprintf("%s/cert.crt", certificatesPath)
+	keyPath := fmt.Sprintf("%s/cert.key", certificatesPath)
 	certPath := fmt.Sprintf("%s/cert.crt", certificatesPath)
 
 	// Load server's certificate and private key

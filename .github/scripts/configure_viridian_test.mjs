@@ -13,7 +13,7 @@ const GREEN = "\x1b[32m";
 const RED = "\x1b[31m";
 const RESET = "\x1b[0m";
 
-const DOCKER_COMPOSE_INITIALIZATION_TIMEOUT = 10;
+const DOCKER_COMPOSE_INITIALIZATION_TIMEOUT = 15;
 const DOCKER_COMPOSE_GATEWAY_NETWORK = "sea-cli-int";
 const DOCKER_COMPOSE_GATEWAY_CONTAINER = "int-router";
 const DOCKER_COMPOSE_BLOCK_NETWORKS_REGEX = platform === "linux" ? "10\\.\\d+\\.\\d+\\.\\d+\\/24" : "10.*";
