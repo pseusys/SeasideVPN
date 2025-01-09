@@ -61,5 +61,5 @@ clean:
 	rm -f Cargo.lock
 	docker rm -f seaside-reef seaside-echo seaside-external-router seaside-internal-router seaside-whirlpool
 	docker network rm -f seaside-reef_sea-cli-int seaside-reef_sea-rout-ext seaside-reef_sea-rout-int seaside-reef_sea-serv-ext
-	docker rmi -f seaside-reef-reef seaside-reef-echo seaside-reef-ext-router seaside-reef-int-router seaside-reef-whirlpool
+	docker rmi -f seaside-reef-test seaside-reef-reef seaside-reef-echo seaside-reef-ext-router seaside-reef-int-router seaside-reef-whirlpool
 .PHONY: clean

@@ -71,8 +71,8 @@ jobs:
           pip3 install poetry poethepoet[poetry_plugin]
           poetry -C viridian/algae install --without client
 
-#      - name: Test Viridian Reef (unit) 🧪
-#        run: sudo -E env "PATH=$PATH" cargo test --package SeasideVPN-Reef --lib --manifest-path viridian/reef/Cargo.toml -- --nocapture --show-output
+      - name: Test Viridian Reef (unit) 🧪
+        run: sudo -E env "PATH=$PATH" cargo test --package SeasideVPN-Reef --lib --manifest-path viridian/reef/Cargo.toml -- --nocapture --show-output
 
       - name: Prepare Host
         run: npm run --prefix .github/scripts configure-viridian-test
