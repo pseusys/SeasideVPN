@@ -28,24 +28,46 @@ fn run_command<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(cmd: &str, args: I) -
     }
 }
 
+fn get_route_with_command(command: Vec<&str>) -> (Ipv4Addr, String) {
+    let route_regex = Regex::new(r"via (?<gateway>\d+\.\d+\.\d+\.\d+)[\s\S]*dev (?<device>\S+)").expect("Error compiling default route regex!");
+    let (route_out, _) = run_command("ip", command).expect("Error getting default route!");
+    let route_match = route_regex.captures(route_out.as_str()).expect("Error finding default route in 'ip' output!");
+    let gateway_address = Ipv4Addr::from_str(&route_match["gateway"]).expect("Error parsing gateway IP address!");
+    (gateway_address, (&route_match["device"]).to_string())
+}
+
+fn get_route_to_match(destination: &Ipv4Addr) -> (Ipv4Addr, String) {
+    get_route_with_command(vec!["route", "show", "to", "match", destination.to_string().as_str()])
+}
+
+fn get_default_route() -> (Ipv4Addr, String) {
+    get_route_with_command(vec!["route", "show", "default"])
+}
+
+fn get_address_of_device(device: &str) -> (i32, i32, Ipv4Addr, u32) {
+    let addr_regex = Regex::new(r"(?<index>\d+):[\s\S]*mtu (?<mtu>\d+)[\s\S]*inet (?<address>\d+\.\d+\.\d+\.\d+)/(?<cidr>\d+)").expect("Error compiling default IP address regex!");
+    let (addr_out, _) = run_command("ip", ["addr", "show", device]).expect("Error getting default IP address!");
+    let addr_match = addr_regex.captures(addr_out.as_str()).expect("Error finding default IP address in 'ip' output!");
+    let index = i32::from_str(&addr_match["index"]).expect("Error parsing index number!");
+    let mtu = i32::from_str(&addr_match["mtu"]).expect("Error parsing MTU number!");
+    let address = Ipv4Addr::from_str(&addr_match["address"]).expect("Error parsing IP address!");
+    let cidr = u32::from_str(&addr_match["cidr"]).expect("Error parsing CIDR number!");
+    (index, mtu, address, cidr)
+}
+
 
 #[test]
 async fn test_get_default_interface() {
     let external_address = Ipv4Addr::new(8, 8, 8, 8);
+    let (_, expected_device) = get_route_to_match(&external_address);
+    let (_, expected_mtu, expected_address, expected_cidr) = get_address_of_device(&expected_device);
 
     let (default_address, default_cidr, default_name, default_mtu) = get_default_interface(external_address).expect("Error getting default address!");
 
-    let route_regex = Regex::new(r"dev (?<device>\S+)").expect("Error compiling default route regex!");
-    let (route_out, _) = run_command("ip", ["route", "show", "to", "match", external_address.to_string().as_str()]).expect("Error getting default route!");
-    let route_match = route_regex.captures(route_out.as_str()).expect("Error finding default route in 'ip' output!");
-    assert_eq!(default_name, &route_match["device"], "Default device name doesn't match!");
-
-    let addr_regex = Regex::new(r"mtu (?<mtu>\d+) [\s\S]* inet (?<address>\d+\.\d+\.\d+\.\d+)/(?<cidr>\d+)").expect("Error compiling default IP address regex!");
-    let (addr_out, _) = run_command("ip", ["addr", "show", &route_match["device"]]).expect("Error getting default IP address!");
-    let addr_match = addr_regex.captures(addr_out.as_str()).expect("Error finding default IP address in 'ip' output!");
-    assert_eq!(default_mtu.to_string(), &addr_match["mtu"], "Default MTU doesn't match!");
-    assert_eq!(default_address.to_string(), &addr_match["address"], "Default IP address doesn't match!");
-    assert_eq!(default_cidr.to_string(), &addr_match["cidr"], "Default CIDR doesn't match!");
+    assert_eq!(default_name, expected_device, "Default device name doesn't match!");
+    assert_eq!(default_mtu, expected_mtu, "Default MTU doesn't match!");
+    assert_eq!(default_address, expected_address, "Default IP address doesn't match!");
+    assert_eq!(u32::from(default_cidr), expected_cidr, "Default CIDR doesn't match!");
 }
 
 
@@ -58,12 +80,10 @@ async fn test_create_tunnel() {
 
     let _device = create_tunnel(tun_name, tun_address, tun_netmask, tun_mtu).await.expect("Error creating tunnel!");
 
-    let addr_regex = Regex::new(r"mtu (?<mtu>\d+) [\s\S]* inet (?<address>\d+\.\d+\.\d+\.\d+)/(?<cidr>\d+)").expect("Error compiling default IP address regex!");
-    let (addr_out, _) = run_command("ip", ["addr", "show", tun_name]).expect("Error getting default IP address!");
-    let addr_match = addr_regex.captures(addr_out.as_str()).expect("Error finding default IP address in 'ip' output!");
-    assert_eq!(tun_mtu.to_string(), &addr_match["mtu"], "Default MTU doesn't match!");
-    assert_eq!(tun_address.to_string(), &addr_match["address"], "Default IP address doesn't match!");
-    assert_eq!(tun_netmask.to_bits().count_ones().to_string(), &addr_match["cidr"], "Default CIDR doesn't match!");
+    let (_, expected_mtu, expected_address, expected_cidr) = get_address_of_device(tun_name);
+    assert_eq!(i32::from(tun_mtu), expected_mtu, "Default MTU doesn't match!");
+    assert_eq!(tun_address, expected_address, "Default IP address doesn't match!");
+    assert_eq!(tun_netmask.to_bits().count_ones(), expected_cidr, "Default CIDR doesn't match!");
 }
 
 
