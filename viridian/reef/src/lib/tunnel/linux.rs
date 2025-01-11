@@ -1,6 +1,6 @@
 #[cfg(test)]
-#[path = "../../../tests/tunnel.rs"]
-mod tunnel_test;
+#[path = "../../../tests/tunnel_linux.rs"]
+mod tunnel_linux_test;
 
 use std::str;
 use std::net::Ipv4Addr;
