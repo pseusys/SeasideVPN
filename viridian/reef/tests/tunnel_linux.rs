@@ -241,8 +241,8 @@ async fn test_enable_disable_firewall() {
     let default_net = format!("{}/{}", default_network_address.0, default_network_address.1);
 
     let sia_regex = Regex::new(r"ACCEPT[^\S\n]+(?:all|0)[^\n]+?(?<interface>\S+)[^\S\n]+(?<source>\d+\.\d+\.\d+\.\d+)[^\S\n]+(?<destination>\d+\.\d+\.\d+\.\d+)").expect("Error compiling iptables SIA regex!");
-    let sim_regex = Regex::new(r"MARK^\S\n]+(?:all|0)[^\n]+?(?<interface>\S+)[^\S\n]+(?<source>\d+\.\d+\.\d+\.\d+/\d+)[^\S\n]+!(?<destination>\d+\.\d+\.\d+\.\d+/\d+)[^\S\n]+MARK set (?<mark>\S+)").expect("Error compiling iptables SIM regex!");
-    let sc_regex = Regex::new(r"ACCEPT^\S\n]+(?:all|0)[^\n]+?(?<interface>\S+)[^\S\n]+(?<source>\d+\.\d+\.\d+\.\d+/\d+)[^\S\n]+!(?<destination>\d+\.\d+\.\d+\.\d+/\d+)").expect("Error compiling iptables SC regex!");
+    let sim_regex = Regex::new(r"MARK[^\S\n]+(?:all|0)[^\n]+?(?<interface>\S+)[^\S\n]+(?<source>\d+\.\d+\.\d+\.\d+/\d+)[^\S\n]+!(?<destination>\d+\.\d+\.\d+\.\d+/\d+)[^\S\n]+MARK set (?<mark>\S+)").expect("Error compiling iptables SIM regex!");
+    let sc_regex = Regex::new(r"ACCEPT[^\S\n]+(?:all|0)[^\n]+?(?<interface>\S+)[^\S\n]+(?<source>\d+\.\d+\.\d+\.\d+/\d+)[^\S\n]+!(?<destination>\d+\.\d+\.\d+\.\d+/\d+)").expect("Error compiling iptables SC regex!");
 
     let sia = format!("-o {default_device} ! --dst {default_net} -j ACCEPT");
     let sim = format!("-o {default_device} ! --dst {default_net} -j MARK --set-mark {svr_idx}");
