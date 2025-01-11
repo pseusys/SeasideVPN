@@ -52,6 +52,13 @@ func init() {
 			logrus.WarnLevel,
 		},
 	})
+	logrus.AddHook(&writer.Hook{
+		Writer: os.Stdout,
+		LogLevels: []logrus.Level{
+			logrus.InfoLevel,
+			logrus.DebugLevel,
+		},
+	})
 
 	logPath := utils.GetEnv("SEASIDE_LOG_PATH")
 	safeLogPath := fmt.Sprintf("%s/safe.log", logPath)

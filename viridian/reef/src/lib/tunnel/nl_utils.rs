@@ -122,8 +122,8 @@ pub fn create_header<P: Size>(nl_type: Rtm, dump: bool, payload: P) -> Nlmsghdr<
     Nlmsghdr::new(None, nl_type, NlmFFlags::new(flags.as_slice()), None, None, NlPayload::Payload(payload))
 }
 
-fn create_rtmsg(nl_type: Rtm, table: RtTable, direct: bool, args: &[Rtattr<Rta, Buffer>]) -> DynResult<Rtmsg> {
-    let rtmdl = if nl_type == Rtm::Getroute { 32 } else { 0 };
+pub fn create_rtmsg(table: RtTable, full_length: bool, direct: bool, args: &[Rtattr<Rta, Buffer>]) -> DynResult<Rtmsg> {
+    let rtmdl = if full_length { 32 } else { 0 };
     let rtmp = if direct { Rtprot::Static } else { Rtprot::Unspec };
     let rtmt = if direct { Rtn::Unicast } else { Rtn::Unspec };
     let mut rtbuff = RtBuffer::new();
@@ -134,7 +134,14 @@ fn create_rtmsg(nl_type: Rtm, table: RtTable, direct: bool, args: &[Rtattr<Rta, 
 }
 
 pub fn create_routing_message(table: RtTable, nl_type: Rtm, direct: bool, dump: bool, args: &[Rtattr<Rta, Buffer>]) -> DynResult<Nlmsghdr<Rtm, Rtmsg>> {
-    Ok(create_header(nl_type, dump, create_rtmsg(nl_type, table, direct, args)?))
+    Ok(create_header(nl_type, dump, create_rtmsg(table, nl_type == Rtm::Getroute, direct, args)?))
+}
+
+pub fn create_clear_cache_message(nl_type: Rtm) -> DynResult<Nlmsghdr<Rtm, Rtmsg>> {
+    let flags = vec![NlmF::Replace, NlmF::Echo];
+    let message = create_rtmsg(RtTable::Unspec, false, false, &[])?;
+    let header = Nlmsghdr::new(None, nl_type, NlmFFlags::new(flags.as_slice()), None, None, NlPayload::Payload(message));
+    Ok(header)
 }
 
 pub fn create_address_message(interface: i32, nl_type: Rtm) -> Nlmsghdr<Rtm, Ifaddrmsg> {

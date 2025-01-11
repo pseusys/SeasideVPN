@@ -10,4 +10,4 @@ async fn test_bytes_to_string() {
     assert_eq!(conv, "Hello, World!", "C-style string doesn't match expected!");
 }
 
-async fn test_send_netlink_message() {}
+// async fn test_send_netlink_message() {}

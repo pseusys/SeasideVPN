@@ -11,3 +11,9 @@ pub fn verify_ip_address(address: &Ipv4Addr) -> DynResult<()> {
     }
     Ok(())
 }
+
+pub fn network_address(address: &Ipv4Addr, netmask: &Ipv4Addr) -> (Ipv4Addr, u32) {
+    let cidr = netmask.to_bits().count_ones();
+    let mask = !((1u32 << (32 - cidr)) - 1);
+    (Ipv4Addr::from_bits(u32::from(*address) & mask), cidr)
+}

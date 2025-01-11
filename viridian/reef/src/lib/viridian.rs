@@ -76,7 +76,7 @@ impl Viridian {
                     Err(res) => panic!("Error reading from socket: {res}!"),
                     Ok(res) => res
                 };
-                debug!("Received {length} bytes caerulean");
+                debug!("Received {length} bytes from caerulean");
                 let nonce = GenericArray::from_slice(&buffer[..CIPHER_NONCE_SIZE]);
                 let plaintext = match cipher.decrypt(nonce, &buffer[CIPHER_NONCE_SIZE..length]) {
                     Err(res) => panic!("Error decrypting packet: {res}!"),

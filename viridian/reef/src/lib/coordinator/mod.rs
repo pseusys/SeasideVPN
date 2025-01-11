@@ -90,7 +90,7 @@ impl Coordinator {
 
         let default_interface = (tunnel.default_interface().0, 0);
         debug!("Creating viridian with default interface {default_interface:?}...");
-        let socket = UdpSocket::bind((tunnel.default_interface().0, 0)).await?;
+        let socket = UdpSocket::bind(default_interface).await?;
         let viridian = Viridian::new(socket, tunnel, address);
 
         Ok(Coordinator {
