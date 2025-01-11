@@ -73,7 +73,7 @@ jobs:
 
       - name: Test Viridian Reef (unit) 🧪
         run: |
-          iptables -L FORWARD -v -n -t mangle
+          sudo iptables -L FORWARD -v -n -t mangle
           sudo -E env "PATH=$PATH" cargo test --package SeasideVPN-Reef --lib --manifest-path viridian/reef/Cargo.toml -- --nocapture --show-output
 
       - name: Prepare Host
