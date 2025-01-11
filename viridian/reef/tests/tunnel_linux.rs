@@ -252,7 +252,7 @@ async fn test_enable_disable_firewall() {
     enable_firewall(&rules).expect("Error enabling firewall!");
 
     for chain in ["OUTPUT", "FORWARD"] {
-        let (iptables_out, _) = run_command("iptables-legacy", ["-L", chain, "-v", "-n", "-t", "mangle"]).expect("Error getting 'iptables' data!");
+        let (iptables_out, _) = run_command("iptables", ["-L", chain, "-v", "-n", "-t", "mangle"]).expect("Error getting 'iptables' data!");
         println!("{}", iptables_out);
 
         let sia_match = sia_regex.captures(iptables_out.as_str()).expect("Error finding SIA rule in 'iptables' output!");
@@ -275,7 +275,7 @@ async fn test_enable_disable_firewall() {
     disable_firewall(&rules).expect("Error disabling firewall!");
     
     for chain in ["OUTPUT", "FORWARD"] {
-        let (iptables_out, _) = run_command("iptables-legacy", ["-L", chain, "-v", "-n", "-t", "mangle"]).expect("Error getting 'iptables' data!");
+        let (iptables_out, _) = run_command("iptables", ["-L", chain, "-v", "-n", "-t", "mangle"]).expect("Error getting 'iptables' data!");
 
         let sia_match = sia_regex.captures(iptables_out.as_str());
         assert!(sia_match.is_none(), "SIA rule found in 'iptables'!");
