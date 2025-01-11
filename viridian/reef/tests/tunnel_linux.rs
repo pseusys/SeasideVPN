@@ -240,9 +240,9 @@ async fn test_enable_disable_firewall() {
     let default_network_address = network_address(&default_address, &default_cidr);
     let default_net = format!("{}/{}", default_network_address.0, default_network_address.1);
 
-    let sia_regex = Regex::new(r"ACCEPT +all[\s\S]+?(?<interface>\S+)\s+(?<source>\d+\.\d+\.\d+\.\d+)\s+(?<destination>\d+\.\d+\.\d+\.\d+)").expect("Error compiling iptables SIA regex!");
-    let sim_regex = Regex::new(r"MARK +all[\s\S]+?(?<interface>\S+)\s+(?<source>\d+\.\d+\.\d+\.\d+/\d+)\s+!(?<destination>\d+\.\d+\.\d+\.\d+/\d+)\s+MARK set (?<mark>\S+)").expect("Error compiling iptables SIM regex!");
-    let sc_regex = Regex::new(r"ACCEPT +all[\s\S]+?(?<interface>\S+)\s+(?<source>\d+\.\d+\.\d+\.\d+/\d+)\s+!(?<destination>\d+\.\d+\.\d+\.\d+/\d+)").expect("Error compiling iptables SC regex!");
+    let sia_regex = Regex::new(r"ACCEPT[^\S\n]+(?:all|0)[^\n]+?(?<interface>\S+)[^\S\n]+(?<source>\d+\.\d+\.\d+\.\d+)[^\S\n]+(?<destination>\d+\.\d+\.\d+\.\d+)").expect("Error compiling iptables SIA regex!");
+    let sim_regex = Regex::new(r"MARK^\S\n]+(?:all|0)[^\n]+?(?<interface>\S+)[^\S\n]+(?<source>\d+\.\d+\.\d+\.\d+/\d+)[^\S\n]+!(?<destination>\d+\.\d+\.\d+\.\d+/\d+)[^\S\n]+MARK set (?<mark>\S+)").expect("Error compiling iptables SIM regex!");
+    let sc_regex = Regex::new(r"ACCEPT^\S\n]+(?:all|0)[^\n]+?(?<interface>\S+)[^\S\n]+(?<source>\d+\.\d+\.\d+\.\d+/\d+)[^\S\n]+!(?<destination>\d+\.\d+\.\d+\.\d+/\d+)").expect("Error compiling iptables SC regex!");
 
     let sia = format!("-o {default_device} ! --dst {default_net} -j ACCEPT");
     let sim = format!("-o {default_device} ! --dst {default_net} -j MARK --set-mark {svr_idx}");
@@ -253,7 +253,6 @@ async fn test_enable_disable_firewall() {
 
     for chain in ["OUTPUT", "FORWARD"] {
         let (iptables_out, _) = run_command("iptables", ["-L", chain, "-v", "-n", "-t", "mangle"]).expect("Error getting 'iptables' data!");
-        println!("{}", iptables_out);
 
         let sia_match = sia_regex.captures(iptables_out.as_str()).expect("Error finding SIA rule in 'iptables' output!");
         assert_eq!(default_device, &sia_match["interface"], "SIA rule interface name doesn't match!");
