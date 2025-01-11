@@ -73,7 +73,7 @@ jobs:
 
       - name: Test Viridian Reef (unit) 🧪
         run: |
-          sudo iptables -A INPUT -o lo ! --dst 127.0.0.1 -j ACCEPT
+          sudo iptables -A FORWARD -o lo ! --dst 127.0.0.1 -j ACCEPT
           sudo iptables -L FORWARD -v -n -t mangle
           sudo -E env "PATH=$PATH" cargo test --package SeasideVPN-Reef --lib --manifest-path viridian/reef/Cargo.toml -- --nocapture --show-output
 
