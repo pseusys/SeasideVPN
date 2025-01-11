@@ -253,7 +253,6 @@ async fn test_enable_disable_firewall() {
 
     for chain in ["OUTPUT", "FORWARD"] {
         let (iptables_out, _) = run_command("iptables", ["-L", chain, "-v", "-n", "-t", "mangle"]).expect("Error getting 'iptables' data!");
-        println!("{}", iptables_out);
 
         let sia_match = sia_regex.captures(iptables_out.as_str()).expect("Error finding SIA rule in 'iptables' output!");
         assert_eq!(default_device, &sia_match["interface"], "SIA rule interface name doesn't match!");

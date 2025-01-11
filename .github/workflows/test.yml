@@ -86,7 +86,7 @@ jobs:
         env:
           SEASIDE_ROOT_CERTIFICATE_AUTHORITY: viridian/reef/certificates/viridian/rootCA.crt
           RUNNER_COMMAND: sudo -E env "PATH=$PATH" cargo run --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml
-          TEST_COMMAND: poetry -C viridian/algae run pytest --log-cli-level=INFO viridian/algae/tests/test_local.py
+          TEST_COMMAND: poetry -C viridian/algae run pytest --log-cli-level=INFO tests/test_local.py
         run: ${{ env.RUNNER_COMMAND }} -- -a "${{ env.SEASIDE_ADDRESS}}" -c "${{ env.SEASIDE_CTRLPORT }}" -p "${{ env.SEASIDE_PAYLOAD_VIRIDIAN }}" -e "${{ env.TEST_COMMAND }}"
 
   caerulean-whirlpool-test:
