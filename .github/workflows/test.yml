@@ -1,4 +1,5 @@
 name: TEST
+# TODO: fix "npm --prefix" commands once the windows issue is finally resolved: https://github.com/npm/cli/issues/4511
 
 on:
   push:
@@ -67,15 +68,17 @@ jobs:
 
       - name: Install Dependencies 🔮
         run: |
-          npm install --prefix .github/scripts
+          cd .github/scripts && npm install && ../.. 
           pip3 install poetry poethepoet[poetry_plugin]
           poetry -C viridian/algae install --without client
 
       - name: Test Viridian Reef (unit) 🧪
-        run: sudo -E env "PATH=$PATH" cargo test --package SeasideVPN-Reef --lib --manifest-path viridian/reef/Cargo.toml -- --nocapture --show-output
+        env:
+          RUNNER_COMMAND: sudo -E env "PATH=$PATH" cargo
+        run: ${{ env.RUNNER_COMMAND }} test --package SeasideVPN-Reef --lib --manifest-path viridian/reef/Cargo.toml -- --nocapture --show-output
 
       - name: Prepare Host
-        run: npm run --prefix .github/scripts configure-viridian-test
+        run: cd .github/scripts && npm run configure-viridian-test
 
       - name: Load .ENV File
         uses: aarcangeli/load-dotenv@v1
@@ -87,7 +90,7 @@ jobs:
           SEASIDE_ROOT_CERTIFICATE_AUTHORITY: viridian/reef/certificates/viridian/rootCA.crt
           RUNNER_COMMAND: sudo -E env "PATH=$PATH" cargo run --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml
           TEST_COMMAND: poetry -C viridian/algae run pytest --log-cli-level=INFO tests/test_local.py
-        run: ${{ env.RUNNER_COMMAND }} -- -a "${{ env.SEASIDE_ADDRESS}}" -c "${{ env.SEASIDE_CTRLPORT }}" -p "${{ env.SEASIDE_PAYLOAD_VIRIDIAN }}" -e "${{ env.TEST_COMMAND }}"
+        run: ${{ env.RUNNER_COMMAND }} -- -a "${{ env.SEASIDE_ADDRESS }}" -c "${{ env.SEASIDE_CTRLPORT }}" -p "${{ env.SEASIDE_PAYLOAD_VIRIDIAN }}" -e "${{ env.TEST_COMMAND }}"
 
   caerulean-whirlpool-test:
     name: Test Caerulean Whirlpool
