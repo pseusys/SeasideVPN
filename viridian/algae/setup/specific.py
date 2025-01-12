@@ -1,4 +1,3 @@
-from os import getuid
 from pathlib import Path
 from platform import machine, system
 from re import search
@@ -129,8 +128,9 @@ def is_admin() -> bool:
     :return: `True` if superuser, `False` otherwise.
     """
     try:
+        from os import getuid
         return getuid() == 0
-    except AttributeError:
+    except ImportError:
         return False
 
 
