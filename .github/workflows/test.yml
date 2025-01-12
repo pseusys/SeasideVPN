@@ -68,7 +68,7 @@ jobs:
 
       - name: Install Dependencies 🔮
         run: |
-          cd .github/scripts && npm install && ../.. 
+          cd .github/scripts && npm install && cd ../.. 
           pip3 install poetry poethepoet[poetry_plugin]
           poetry -C viridian/algae install --without client
 
