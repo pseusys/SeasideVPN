@@ -73,9 +73,7 @@ jobs:
           poetry -C viridian/algae install --without client
 
       - name: Test Viridian Reef (unit) 🧪
-        env:
-          RUNNER_COMMAND: sudo -E env "PATH=$PATH" cargo
-        run: ${{ env.RUNNER_COMMAND }} test --package SeasideVPN-Reef --lib --manifest-path viridian/reef/Cargo.toml -- --nocapture --show-output
+        run: cargo test --package SeasideVPN-Reef --lib --manifest-path viridian/reef/Cargo.toml -- --nocapture --show-output
 
       - name: Prepare Host
         run: cd .github/scripts && npm run configure-viridian-test
@@ -88,7 +86,7 @@ jobs:
       - name: Test Viridian Reef (integration) 🧪
         env:
           SEASIDE_ROOT_CERTIFICATE_AUTHORITY: viridian/reef/certificates/viridian/rootCA.crt
-          RUNNER_COMMAND: sudo -E env "PATH=$PATH" cargo run --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml
+          RUNNER_COMMAND: cargo run --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml
           TEST_COMMAND: poetry -C viridian/algae run pytest --log-cli-level=INFO tests/test_local.py
         run: ${{ env.RUNNER_COMMAND }} -- -a "${{ env.SEASIDE_ADDRESS }}" -c "${{ env.SEASIDE_CTRLPORT }}" -p "${{ env.SEASIDE_PAYLOAD_VIRIDIAN }}" -e "${{ env.TEST_COMMAND }}"
 
@@ -123,5 +121,6 @@ jobs:
 
       - name: Run Installer Script 📥
         env:
+          PYTHONPATH: viridian/algae
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
-        run: sudo -E PYTHONPATH=viridian/algae python3 -m setup -g -a no ${{ matrix.caerulean }} -r ${{ matrix.dist }} -s ${{ env.BRANCH_NAME }}
+        run: sudo -E python3 -m setup -g -a no ${{ matrix.caerulean }} -r ${{ matrix.dist }} -s ${{ env.BRANCH_NAME }}
