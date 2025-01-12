@@ -40,7 +40,7 @@ jobs:
     name: Test Viridian Reef
     runs-on: ${{ format('{0}-latest', matrix.os) }}
     env:
-      SUDO: ${{ matrix.os == 'ubuntu' && 'sudo -E' || '' }}
+      SUDO: ${{ matrix.os == 'ubuntu' && 'sudo -E env "PATH=$PATH"' || '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -125,4 +125,4 @@ jobs:
         env:
           PYTHONPATH: viridian/algae
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
-        run: sudo -E python3 -m setup -g -a no ${{ matrix.caerulean }} -r ${{ matrix.dist }} -s ${{ env.BRANCH_NAME }}
+        run: sudo -E env "PYTHONPATH=$PYTHONPATH" python3 -m setup -g -a no ${{ matrix.caerulean }} -r ${{ matrix.dist }} -s ${{ env.BRANCH_NAME }}
