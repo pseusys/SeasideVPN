@@ -2,11 +2,14 @@ from fcntl import ioctl
 from ipaddress import IPv4Address, IPv4Interface, IPv4Network
 from os import O_RDWR, getegid, geteuid, open
 from struct import pack
-from typing import Tuple
+from typing import List, Tuple
 
 from colorama import Fore
 from iptc import Chain, Rule, Table, Target
 from pyroute2 import IPRoute
+from pyroute2.netlink import NLM_F_REQUEST, NLM_F_REPLACE, NLM_F_ECHO
+from pyroute2.netlink.rtnl import RTM_NEWROUTE, RTM_NEWRULE
+from pyroute2.netlink.rtnl.rtmsg import rtmsg
 
 from sources.utils import logger
 
@@ -65,6 +68,16 @@ def _get_default_interface(seaside_address: str) -> Tuple[IPv4Interface, str, in
         default_ip = addr_iface.get_attr("IFA_ADDRESS")
         default_mtu = int(ip.get_links(index=caerulean_dev)[0].get_attr("IFLA_MTU"))
         return IPv4Interface(f"{default_ip}/{default_cidr}"), default_iface, default_mtu
+
+
+def _send_clear_cache_message(iproute: IPRoute):
+    iproute.put(rtmsg(), msg_type=RTM_NEWROUTE, msg_flags=NLM_F_REPLACE | NLM_F_ECHO)
+    iproute.put(rtmsg(), msg_type=RTM_NEWRULE, msg_flags=NLM_F_REPLACE | NLM_F_ECHO)
+
+
+def _restore_table_routes(iproute: IPRoute, routes: List) -> None:
+    for route in routes:
+        iproute.put(route, msg_type=RTM_NEWROUTE, msg_flags=NLM_F_REQUEST)
 
 
 def _create_caerulean_rule(default_ip: IPv4Interface, seaside_address: str, default_interface: str) -> Rule:
@@ -224,16 +237,16 @@ class Tunnel:
         logger.info(f"Packet forwarding with mark {Fore.BLUE}{self._sva_code}{Fore.RESET} via table {Fore.BLUE}{self._sva_code}{Fore.RESET} configured")
 
         with IPRoute() as ip:
-            logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} is created")
             ip.link("set", index=self._tunnel_dev, mtu=self._mtu)
             logger.info(f"Tunnel MTU set to {Fore.BLUE}{self._mtu}{Fore.RESET}")
             ip.addr("replace", index=self._tunnel_dev, address=self._tunnel_ip, prefixlen=self._tunnel_cidr)
             logger.info(f"Tunnel IP address set to {Fore.BLUE}{self._tunnel_ip}{Fore.RESET}")
             ip.link("set", index=self._tunnel_dev, state="up")
             logger.info(f"Tunnel {Fore.GREEN}enabled{Fore.RESET}")
-            ip.flush_routes(table=self._sva_code)  # TODO: save routes when / if possible!
+            self._sva_routes = ip.flush_routes(table=self._sva_code)
             ip.route("add", table=self._sva_code, dst="default", gateway=self._tunnel_ip, oif=self._tunnel_dev)
             ip.rule("add", fwmark=self._sva_code, table=self._sva_code)
+            _send_clear_cache_message(ip)
             logger.info(f"Packet forwarding via tunnel {Fore.GREEN}enabled{Fore.RESET}")
         self._operational = True
 
@@ -249,8 +262,9 @@ class Tunnel:
         logger.info(f"Packet forwarding with mark {Fore.BLUE}{self._sva_code}{Fore.RESET} via table {Fore.BLUE}{self._sva_code}{Fore.RESET} removed")
 
         with IPRoute() as ip:
-            ip.flush_routes(table=self._sva_code)
             ip.rule("remove", fwmark=self._sva_code, table=self._sva_code)
+            _restore_table_routes(ip, self._sva_routes)
+            _send_clear_cache_message(ip)
             logger.info(f"Packet forwarding via tunnel {Fore.GREEN}disabled{Fore.RESET}")
             ip.link("set", index=self._tunnel_dev, state="down")
             logger.info(f"Tunnel {Fore.GREEN}disabled{Fore.RESET}")
