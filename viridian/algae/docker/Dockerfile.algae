@@ -56,7 +56,7 @@ ENTRYPOINT ["sleep", "infinity"]
 FROM default-sleeping AS default
 
 # Run viridian algae in the background.
-ENTRYPOINT ["python3", "-m", "sources", "$SEASIDE_PAYLOAD_OWNER", "-a", "$SEASIDE_ADDRESS", "-c", "$SEASIDE_CTRLPORT"]
+ENTRYPOINT ["python3", "-m", "sources", "-p", "$SEASIDE_PAYLOAD_OWNER", "-a", "$SEASIDE_ADDRESS", "-c", "$SEASIDE_CTRLPORT"]
 
 HEALTHCHECK --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s CMD ls /sys/class/net | grep $SEASIDE_TUNNEL_NAME
 
@@ -73,7 +73,7 @@ ENTRYPOINT ["sh", "-c", "ip route replace default via $ARG_NETWORK_GATEWAY && sl
 FROM smoke-sleeping AS smoke
 
 # Setup default route IP and run viridian algae in the background.
-ENTRYPOINT ["sh", "-c", "ip route replace default via $ARG_NETWORK_GATEWAY && python3 -m sources $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -c $SEASIDE_CTRLPORT"]
+ENTRYPOINT ["sh", "-c", "ip route replace default via $ARG_NETWORK_GATEWAY && python3 -m sources -p $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -c $SEASIDE_CTRLPORT"]
 
 HEALTHCHECK --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s CMD ls /sys/class/net | grep $SEASIDE_TUNNEL_NAME
 
@@ -85,4 +85,4 @@ ARG COMMAND
 ENV COMMAND=$COMMAND
 
 # Setup default route IP and run viridian algae in the background.
-ENTRYPOINT ["sh", "-c", "ip route replace default via $ARG_NETWORK_GATEWAY && python3 -m sources $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -c $SEASIDE_CTRLPORT -e \"$COMMAND\""]
+ENTRYPOINT ["sh", "-c", "ip route replace default via $ARG_NETWORK_GATEWAY && python3 -m sources -p $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -c $SEASIDE_CTRLPORT -e \"$COMMAND\""]
