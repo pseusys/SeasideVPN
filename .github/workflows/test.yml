@@ -25,7 +25,7 @@ jobs:
       - name: Install Dependencies 🔮
         run: |
           pip3 install poetry poethepoet[poetry_plugin]
-          poetry -C viridian/algae install --without client,devel
+          poetry -C viridian/algae install --without client,devel,setup
 
       - name: Test Viridian Algae (unit) 🧪
         run: poetry poe -C viridian/algae test-unit
@@ -71,7 +71,7 @@ jobs:
       - name: Install Dependencies 🔮
         run: |
           cd .github/scripts && npm install && cd ../.. 
-          pip3 install poetry poethepoet[poetry_plugin]
+          pip3 install poetry
           poetry -C viridian/algae install --without client
 
       - name: Test Viridian Reef (unit) 🧪
@@ -121,8 +121,15 @@ jobs:
         with:
           python-version: "3.10"
 
+      - name: Install Dependencies 🔮
+        run: |
+          pip3 install poetry
+          poetry -C viridian/algae install --without client,devel
+
+      - name: Compile Installer Script 🏗️
+        run: poetry poe -C viridian/algae bundle
+
       - name: Run Installer Script 📥
         env:
-          PYTHONPATH: viridian/algae
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
-        run: sudo -E env "PYTHONPATH=$PYTHONPATH" python3 -m setup -g -a no ${{ matrix.caerulean }} -r ${{ matrix.dist }} -s ${{ env.BRANCH_NAME }}
+        run: python3 viridian/algae/install.pyz -g -a no ${{ matrix.caerulean }} -r ${{ matrix.dist }} -s ${{ env.BRANCH_NAME }}
