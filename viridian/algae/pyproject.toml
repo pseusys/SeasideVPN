@@ -52,6 +52,7 @@ grpcio-tools = "^1.62.0"
 PyYAML = "^6.0.2"
 zipapps = "^2024.8.7"
 cryptography = "^44.0.0"
+semver = "^3.0.2"
 betterproto = { version = "^2.0.0b6", extras = ["compiler"] }
 
 [tool.poetry.group.setup.dependencies]

@@ -149,13 +149,13 @@ class Coordinator:
         In case command produces STDOUT or STDERR output, it will also be printed.
         :param cmd: command that will be run.
         """
-        proc = await create_subprocess_shell(cmd, stdout=PIPE, stderr=PIPE)
+        proc = await create_subprocess_shell(cmd, stdout=PIPE, stderr=PIPE, text=False)
         stdout, stderr = await proc.communicate()
         print(f"The command exited with: {proc.returncode}")
         if len(stdout) > 0:
-            print(f"STDOUT: {stdout.decode()}")
+            print(f"STDOUT: {stdout}")
         if len(stderr) > 0:
-            print(f"STDERR: {stderr.decode()}")
+            print(f"STDERR: {stderr}")
         return proc.returncode
 
     async def start(self, cmd: Optional[str]) -> Optional[int]:

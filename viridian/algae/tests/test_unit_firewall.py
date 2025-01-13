@@ -26,7 +26,7 @@ def tunnel() -> Generator[Tunnel, None, None]:
 def test_tunnel_init(tunnel: Tunnel) -> None:
     tunnel.__init__(TUNNEL_NAME, TUNNEL_ADDRESS, TUNNEL_NETMASK, TUNNEL_SVA, TUNNEL_DIRECTION)  # type: ignore
 
-    ip_links = check_output(["ip", "link", "show"]).decode()
+    ip_links = check_output(["ip", "link", "show"], text=True)
     ip_matches = [match for match in finditer(IP_LINK_ENTRY, ip_links)]
     assert len(ip_matches) > 0, "No links found!"
 
@@ -52,7 +52,7 @@ def test_tunnel_init(tunnel: Tunnel) -> None:
 def test_tunnel_up(tunnel: Tunnel) -> None:
     tunnel.up()
 
-    ip_links = check_output(["ip", "link", "show"]).decode()
+    ip_links = check_output(["ip", "link", "show"], text=True)
     ip_matches = [match for match in finditer(IP_LINK_ENTRY, ip_links)]
     assert len(ip_matches) > 0, "No links found!"
 
@@ -65,7 +65,7 @@ def test_tunnel_up(tunnel: Tunnel) -> None:
     else:
         assert "UP" in tunnel_match.group("flags"), "Tunnel link isn't active!"
 
-    ip_addresses = check_output(["ip", "addr", "show"]).decode()
+    ip_addresses = check_output(["ip", "addr", "show"], text=True)
     ip_matches = [match for match in finditer(IP_ADDRESS_ENTRY, ip_addresses)]
 
     tunnel_match = None
@@ -82,7 +82,7 @@ def test_tunnel_up(tunnel: Tunnel) -> None:
 def test_tunnel_down(tunnel: Tunnel) -> None:
     tunnel.down()
 
-    ip_links = check_output(["ip", "link", "show"]).decode()
+    ip_links = check_output(["ip", "link", "show"], text=True)
     ip_matches = [match for match in finditer(IP_LINK_ENTRY, ip_links)]
     assert len(ip_matches) > 0, "No links found!"
 
@@ -95,7 +95,7 @@ def test_tunnel_down(tunnel: Tunnel) -> None:
     else:
         assert "UP" not in tunnel_match.group("flags"), "Tunnel link is still active!"
 
-    ip_addresses = check_output(["ip", "addr", "show"]).decode()
+    ip_addresses = check_output(["ip", "addr", "show"], text=True)
     ip_matches = [match for match in finditer(IP_ADDRESS_ENTRY, ip_addresses)]
 
     tunnel_match = None
@@ -109,7 +109,7 @@ def test_tunnel_down(tunnel: Tunnel) -> None:
 def test_tunnel_delete(tunnel: Tunnel) -> None:
     tunnel.delete()
 
-    ip_links = check_output(["ip", "link", "show"]).decode()
+    ip_links = check_output(["ip", "link", "show"], text=True)
     ip_matches = [match for match in finditer(IP_LINK_ENTRY, ip_links)]
     assert len(ip_matches) > 0, "No links found!"
 

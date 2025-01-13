@@ -176,7 +176,7 @@ async function launchDockerCompose(seasideIP) {
 function storeCache(cacheFile, cacheObject) {
 	console.log("Writing cache file...");
 	writeFileSync(cacheFile, JSON.stringify(cacheObject));
-	console.log(`Cache written: ${cacheObject}`);
+	console.log(`Cache written: ${JSON.stringify(cacheObject)}`);
 }
 
 /**

@@ -42,7 +42,7 @@ def tail() -> Generator[Tuple[str, str], None, None]:
 @pytest.mark.asyncio(loop_scope="session")
 @pytest.mark.dependency()
 async def test_controller_initialization(coordinator: Coordinator) -> None:
-    routes = check_output(["ip", "link", "show"]).decode()
+    routes = check_output(["ip", "link", "show"], text=True)
     assert coordinator._tunnel._name in routes, "Tunnel wasn't created!"
 
 
