@@ -48,10 +48,10 @@ def _create_self_signed_cert(private_key: RSAPrivateKey, subject: Name, validity
     builder = builder.subject_name(subject)
     builder = builder.issuer_name(subject)
     builder = builder.public_key(private_key.public_key())
-    builder = builder.add_extension(KeyUsage(True, True, True, True, True, True, True, True), True)
+    builder = builder.add_extension(KeyUsage(True, True, True, True, True, True, True, True, True), True)
     builder = builder.add_extension(ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH, ExtendedKeyUsageOID.CLIENT_AUTH]), False)
-    builder = builder.not_valid_before(datetime.now(timezone.utc()))
-    builder = builder.not_valid_after(datetime.now(timezone.utc()) + timedelta(days=validity_days))
+    builder = builder.not_valid_before(datetime.now(timezone.utc))
+    builder = builder.not_valid_after(datetime.now(timezone.utc) + timedelta(days=validity_days))
     builder = builder.serial_number(random_serial_number())
     return builder.sign(private_key, SHA256())
 
@@ -64,8 +64,8 @@ def _sign_csr(ca_private_key: RSAPrivateKey, ca_cert: Certificate, csr: Certific
     builder = builder.subject_name(csr.subject)
     builder = builder.issuer_name(ca_cert.subject)
     builder = builder.public_key(csr.public_key())
-    builder = builder.not_valid_before(datetime.now(timezone.utc()))
-    builder = builder.not_valid_after(datetime.now(timezone.utc()) + timedelta(days=validity_days))
+    builder = builder.not_valid_before(datetime.now(timezone.utc))
+    builder = builder.not_valid_after(datetime.now(timezone.utc) + timedelta(days=validity_days))
     builder = builder.serial_number(random_serial_number())
     for extension in csr.extensions:
         builder = builder.add_extension(extension.value, extension.critical)
@@ -80,7 +80,7 @@ def _save_cert_and_key_to_file(certificate: Certificate, private_key: RSAPrivate
     key_path.write_bytes(private_key.private_bytes(Encoding.PEM, PrivateFormat.TraditionalOpenSSL, NoEncryption()))
 
 
-def sigma(address: Union[IPv4Address, str], cert_path: Path = GENERATE_CERTIFICATES_PATH, remove_existing: bool = False) -> None:
+def generate_certificates(address: Union[IPv4Address, str], cert_path: Path = GENERATE_CERTIFICATES_PATH, remove_existing: bool = False) -> None:
     """
     Generate certificates for the given IP address or host name.
     Also generate CA and sign certificates with it.
