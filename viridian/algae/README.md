@@ -115,21 +115,21 @@ The script is flexible and accepts multiple different parameters, that will not 
 Detailed parameter description can be received by running this command:
 
 ```bash
-python3 -m setup --help
+poetry run python3 -m setup --help
 ```
 
 For each individual caerulean, the options closely resemble the environment variables they depend on.
 The option description for each individual caerulean in the following list: (`whirlpool`) can be received by running this command:
 
 ```bash
-python3 -m setup CAERULEAN_NAME --help
+poetry run python3 -m setup CAERULEAN_NAME --help
 ```
 
 In order to achieve reproducible caerulean deployments, `conf.env` and `certificates` files can be uploaded before deployment.
 Combined with relevant script arguments, they will prevent script from regenerating system settings.
 
 > NB! A special case of using the script is generating self-signed certificates set (for local testing or no-DNS deployment).
-> It can be done with the following command: `python3 -m setup --just-certs`.
+> It can be done with the following command: `poetry run python3 -m setup --just-certs`.
 
 Examples of this script usage can be found in [whirlpool make](../../caerulean/whirlpool/Makefile) and [Beget deployment script](../../.github/scripts//deploy_whirlpool_beget.mjs).
 
