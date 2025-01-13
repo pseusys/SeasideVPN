@@ -1,4 +1,5 @@
 name: TEST
+# TODO: fix "poetry poe -C" commands once the issue is finally resolved: https://github.com/nat-n/poethepoet/issues/270
 # TODO: fix "npm --prefix" commands once the windows issue is finally resolved: https://github.com/npm/cli/issues/4511
 
 on:
@@ -28,13 +29,13 @@ jobs:
           poetry -C viridian/algae install --without client,devel,setup
 
       - name: Test Viridian Algae (unit) 🧪
-        run: poetry poe -C viridian/algae test-unit
+        run: cd viridian/algae && poetry poe test-unit
 
       - name: Test Viridian Algae (integration) 📇
-        run: poetry poe -C viridian/algae test-integration
+        run: cd viridian/algae && poetry poe test-integration
 
       - name: Test Viridian Algae (smoke) 😶‍🌫️
-        run: poetry poe -C viridian/algae test-smoke
+        run: cd viridian/algae && poetry poe test-smoke
 
   viridian-reef-test:
     name: Test Viridian Reef
@@ -127,7 +128,7 @@ jobs:
           poetry -C viridian/algae install --without client,devel
 
       - name: Compile Installer Script 🏗️
-        run: poetry poe -C viridian/algae bundle
+        run: cd viridian/algae && poetry poe bundle
 
       - name: Run Installer Script 📥
         env:
