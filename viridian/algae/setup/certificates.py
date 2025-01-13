@@ -5,7 +5,7 @@ from pathlib import Path
 from shutil import rmtree
 from typing import List, Union
 
-from cryptography.x509 import random_serial_number, Certificate, CertificateSigningRequest, CertificateSigningRequestBuilder, SubjectAlternativeName, CertificateBuilder, KeyUsage, ExtendedKeyUsage, IPAddress, DNSName, Name, NameAttribute
+from cryptography.x509 import random_serial_number, Certificate, CertificateSigningRequest, CertificateSigningRequestBuilder, SubjectAlternativeName, CertificateBuilder, KeyUsage, ExtendedKeyUsage, BasicConstraints, IPAddress, DNSName, Name, NameAttribute
 from cryptography.x509.oid import NameOID, ExtendedKeyUsageOID
 from cryptography.hazmat.primitives.hashes import SHA256
 from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, NoEncryption
@@ -16,6 +16,9 @@ from utils import Logging
 _GENERATE_CERTIFICATES_KEY_SIZE = 2048
 _GENERATE_CERTIFICATES_PUBLIC_EXPONENT = 65537
 _GENERATE_CERTIFICATES_VALIDITY = 365250
+_GENERATE_CERTIFICATES_ISSUER = "SeasideTrustableIssuer"
+_GENERATE_CERTIFICATES_SUBJECT = "SeasideTestEnvironment"
+
 GENERATE_CERTIFICATES_PATH = Path(getcwd()) / "certificates"
 
 
@@ -30,40 +33,59 @@ def check_certificates(cert_path: Path = GENERATE_CERTIFICATES_PATH) -> bool:
     return cert_key.exists() and cert_cert.exists()
 
 
-def _create_csr(private_key: RSAPrivateKey, subject: Name, altnames: List[Union[DNSName, IPAddress]]) -> CertificateSigningRequest:
+def _create_self_signed_cert(private_key: RSAPrivateKey, subject: Name, altnames: List[Union[DNSName, IPAddress]], validity_days: int) -> Certificate:
     """
-    Create a Certificate Signing Request (CSR).
-    """
-    builder = CertificateSigningRequestBuilder()
-    builder = builder.subject_name(subject)
-    builder = builder.add_extension(SubjectAlternativeName(altnames), False)
-    return builder.sign(private_key, SHA256())
-
-
-def _create_self_signed_cert(private_key: RSAPrivateKey, subject: Name, validity_days: int) -> Certificate:
-    """
-    Create a self-signed certificate.
+    Create a self-signed CA certificate.
+    :param private_key: CA private key.
+    :param subject: CA subject (should be unique).
+    :param altnames: Alternativa names of the host to authenticate (either names or IP addresses).
+    :param validity_days: Certificate validity days.
+    :return: CA certificate.
     """
     builder = CertificateBuilder()
     builder = builder.subject_name(subject)
     builder = builder.issuer_name(subject)
     builder = builder.public_key(private_key.public_key())
-    builder = builder.add_extension(KeyUsage(True, True, True, True, True, True, True, True, True), True)
-    builder = builder.add_extension(ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH, ExtendedKeyUsageOID.CLIENT_AUTH]), False)
+    builder = builder.add_extension(SubjectAlternativeName(altnames), False)
+    builder = builder.add_extension(KeyUsage(True, True, False, False, False, True, True, False, False), True)
+    builder = builder.add_extension(ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH]), False)
+    builder = builder.add_extension(BasicConstraints(ca=True, path_length=None), critical=True)
     builder = builder.not_valid_before(datetime.now(timezone.utc))
     builder = builder.not_valid_after(datetime.now(timezone.utc) + timedelta(days=validity_days))
     builder = builder.serial_number(random_serial_number())
     return builder.sign(private_key, SHA256())
 
 
+def _create_csr(private_key: RSAPrivateKey, subject: Name, altnames: List[Union[DNSName, IPAddress]]) -> CertificateSigningRequest:
+    """
+    Create a Certificate Signing Request (CSR).
+    :param private_key: certificate private key.
+    :param subject: certificate subject (should be unique).
+    :param altnames: Alternativa names of the host to authenticate (either names or IP addresses).
+    :return: certificate signing request.
+    """
+    builder = CertificateSigningRequestBuilder()
+    builder = builder.subject_name(subject)
+    builder = builder.add_extension(SubjectAlternativeName(altnames), False)
+    builder = builder.add_extension(KeyUsage(True, True, True, True, True, True, True, False, False), True)
+    builder = builder.add_extension(ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH, ExtendedKeyUsageOID.CLIENT_AUTH]), False)
+    return builder.sign(private_key, SHA256())
+
+
 def _sign_csr(ca_private_key: RSAPrivateKey, ca_cert: Certificate, csr: CertificateSigningRequest, validity_days: int) -> Certificate:
     """
     Sign a CSR using the CA's private key and certificate.
+    :param ca_private_key: CA private key.
+    :param ca_cert: CA certificate.
+    :param csr: certificate signing request.
+    :param validity_days: Certificate validity days.
+    :return: certificate.
     """
     builder = CertificateBuilder()
     builder = builder.subject_name(csr.subject)
     builder = builder.issuer_name(ca_cert.subject)
     builder = builder.public_key(csr.public_key())
+    builder = builder.add_extension(BasicConstraints(ca=False, path_length=None), critical=True)
     builder = builder.not_valid_before(datetime.now(timezone.utc))
     builder = builder.not_valid_after(datetime.now(timezone.utc) + timedelta(days=validity_days))
     builder = builder.serial_number(random_serial_number())
@@ -74,7 +96,11 @@ def _sign_csr(ca_private_key: RSAPrivateKey, ca_cert: Certificate, csr: Certific
 
 def _save_cert_and_key_to_file(certificate: Certificate, private_key: RSAPrivateKey, cert_path: Path, key_path: Path) -> None:
     """
-    Save a private key to a file.
+    Save certificate and its private key to files.
+    :param certificate: certificate to save.
+    :param private_key: private key to save.
+    :param cert_path: path to save certificate.
+    :param key_path: path to save private key.
     """
     cert_path.write_bytes(certificate.public_bytes(Encoding.PEM))
     key_path.write_bytes(private_key.private_bytes(Encoding.PEM, PrivateFormat.TraditionalOpenSSL, NoEncryption()))
@@ -113,14 +139,18 @@ def generate_certificates(address: Union[IPv4Address, str], cert_path: Path = GE
     viridian_dir.mkdir(parents=True, exist_ok=True)
     caerulean_dir.mkdir(parents=True, exist_ok=True)
 
+    logger.debug(f"Certificates for {address} will be created in {cert_path} directory...")
     altnames = IPAddress(address) if isinstance(address, IPv4Address) else DNSName(address)
-    subject = Name([NameAttribute(NameOID.COMMON_NAME, "SeasideVPN")])
+    ca_subject = Name([NameAttribute(NameOID.COMMON_NAME, _GENERATE_CERTIFICATES_ISSUER)])
+    cert_subject = Name([NameAttribute(NameOID.COMMON_NAME, _GENERATE_CERTIFICATES_SUBJECT)])
 
+    logger.debug("Creating caerulean certificates...")
     ca_private_key = generate_private_key(_GENERATE_CERTIFICATES_PUBLIC_EXPONENT, _GENERATE_CERTIFICATES_KEY_SIZE)
-    ca_cert = _create_self_signed_cert(ca_private_key, subject, _GENERATE_CERTIFICATES_VALIDITY)
+    ca_cert = _create_self_signed_cert(ca_private_key, ca_subject, [altnames], _GENERATE_CERTIFICATES_VALIDITY)
     _save_cert_and_key_to_file(ca_cert, ca_private_key, viridian_dir / "rootCA.crt", viridian_dir / "rootCA.key")
 
-    client_private_key = generate_private_key(_GENERATE_CERTIFICATES_PUBLIC_EXPONENT, _GENERATE_CERTIFICATES_KEY_SIZE)
-    csr = _create_csr(client_private_key, subject, altnames=[altnames])
-    signed_cert = _sign_csr(ca_private_key, ca_cert, csr, _GENERATE_CERTIFICATES_VALIDITY)
-    _save_cert_and_key_to_file(signed_cert, client_private_key, caerulean_dir / "cert.crt", caerulean_dir / "cert.key")
+    logger.debug("Signing viridian certificates with caerulean certificates...")
+    cert_private_key = generate_private_key(_GENERATE_CERTIFICATES_PUBLIC_EXPONENT, _GENERATE_CERTIFICATES_KEY_SIZE)
+    cert_sign_request = _create_csr(cert_private_key, cert_subject, [altnames])
+    signed_cert = _sign_csr(ca_private_key, ca_cert, cert_sign_request, _GENERATE_CERTIFICATES_VALIDITY)
+    _save_cert_and_key_to_file(signed_cert, cert_private_key, caerulean_dir / "cert.crt", caerulean_dir / "cert.key")

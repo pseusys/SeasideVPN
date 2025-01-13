@@ -72,8 +72,7 @@ jobs:
       - name: Install Dependencies 🔮
         run: |
           cd .github/scripts && npm install && cd ../.. 
-          pip3 install poetry
-          poetry -C viridian/algae install --without client
+          pip3 install poetry && poetry -C viridian/algae install --without client
 
       - name: Test Viridian Reef (unit) 🧪
         run: ${{ env.SUDO }} cargo test --package SeasideVPN-Reef --lib --manifest-path viridian/reef/Cargo.toml -- --nocapture --show-output
