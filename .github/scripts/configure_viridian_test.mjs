@@ -155,7 +155,7 @@ async function launchDockerCompose(seasideIP) {
 	console.log("Generating certificates...");
 	spawnSync(`poetry -C ${PYTHON_LIB_ALGAE_PATH} run python3 -m setup --just-certs ${seasideIP} -v ERROR`, { shell: true });
 	console.log("Moving certificates...");
-	spawnSync(`mv ${join(PYTHON_LIB_ALGAE_PATH, "certificates")}, ${join(PYTHON_LIB_REEF_PATH, "certificates")}`);
+	spawnSync(`mv ${join(PYTHON_LIB_ALGAE_PATH, "certificates")} ${join(PYTHON_LIB_REEF_PATH, "certificates")}`, { shell: true });
 	console.log("Building 'whirlpool' and 'echo' images...");
 	spawnSync(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} build whirlpool echo`, { shell: true });
 	console.log("Spawning Docker compose process...");
