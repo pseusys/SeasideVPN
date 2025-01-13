@@ -7,6 +7,8 @@ from tarfile import open as open_tar
 from typing import Dict, Optional
 from urllib.request import urlretrieve
 
+from semver import Version
+
 from base import Installer
 from certificates import GENERATE_CERTIFICATES_PATH, generate_certificates
 from default import DEFAULT_GENERATED_VALUE, local_ip, logging_level, payload_value, port_number
@@ -44,7 +46,7 @@ _DEFAULT_ICMP_PACKET_LIMIT = 5
 _DEFAULT_BURST_LIMIT_MULTIPLIER = 3
 _DEFAULT_LOG_LEVEL = "WARNING"
 
-_GO_VERSION = "1.22.0"
+_GO_VERSION = Version(1, 22)
 
 _SEASIDE_REPO = "https://github.com/pseusys/SeasideVPN"
 _SEASIDE_IMAGE = "ghcr.io/pseusys/seasidevpn/caerulean-whirlpool"
@@ -154,7 +156,7 @@ class WhirlpoolInstaller(Installer):
     def _install_go(self) -> Path:
         arch = "arm64" if get_arch() == "arm" else "amd64"
         rmtree(_GO_ROOT, ignore_errors=True)
-        go_url = _GO_DISTRIBUTION.format(ver=_GO_VERSION, arch=arch)
+        go_url = _GO_DISTRIBUTION.format(ver=str(_GO_VERSION), arch=arch)
         self._logger.debug(f"Downloading GO from {go_url}...")
         path, _ = urlretrieve(go_url)
         self._logger.debug(f"Extracting GO archive: {str(path)}...")

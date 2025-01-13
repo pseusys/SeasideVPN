@@ -9,10 +9,12 @@ from zipapp import create_archive
 from colorama import Fore, Style, just_fix_windows_console
 from grpc_tools.protoc import _get_resource_file_name
 from grpc_tools.protoc import main as protoc_main
+from poetry.factory import Factory
 from PyInstaller.__main__ import run as install
 from python_on_whales import Container, DockerClient
 from python_on_whales.components.image.cli_wrapper import ValidImage
 from python_on_whales.utils import run as docker_run
+from zipapps import create_app
 
 from scripts.misc import ALGAE_ROOT
 
@@ -64,8 +66,15 @@ def bundle() -> None:
     """
     Bundle caerulean installation script.
     """
+
+    poetry = Factory().create_poetry()
+    dependencies = [(dep.name, str(dep.constraint)) for dep in poetry.package.dependency_group("setup").dependencies]
+    requirements = [f"{name}{version if version != '*' else ''}" for name, version in dependencies]
+
+    install_cache = "$TEMP/seaside_install_cache"
     installer_name = argv[1] if len(argv) > 1 else _INSTALLER_NAME
-    create_archive(ALGAE_ROOT / "setup", ALGAE_ROOT / installer_name, filter=lambda f: f.name != "__init__.py", compressed=True)
+    includes = [str(path) for path in (ALGAE_ROOT / "setup").glob("*.py") if path.name != "__init__.py"]
+    create_app(",".join(includes), output=str(ALGAE_ROOT / installer_name), compressed=True, lazy_install=True, unzip_path=install_cache, pip_args=requirements)
 
 
 def clean() -> None:
