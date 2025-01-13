@@ -32,12 +32,12 @@ jobs:
 
       - name: Build Algae Executable 🏗️
         env:
-          EXEC_NAME: viridian-algae-executable
+          EXEC_NAME: viridian_algae_executable
         run: cd viridian/algae && poetry poe compile ${{ env.EXEC_NAME }}.run
 
       - name: Build Caerulean Installer 📥
         env:
-          EXEC_NAME: caerulean-installer
+          EXEC_NAME: caerulean_installer
         run: cd viridian/algae && poetry poe bundle ${{ env.EXEC_NAME }}.pyz
 
       - name: Create Artifact Name From Branch Name 🌱
@@ -85,7 +85,7 @@ jobs:
         env:
           GOARCH: ${{ matrix.arch }}
           COMPILE_FLAGS: -s
-          EXEC_NAME: ${{ format('caerulean-whirlpool-executable-{0}', matrix.arch) }}
+          EXEC_NAME: ${{ format('caerulean_whirlpool_executable-{0}', matrix.arch) }}
         run: make -C caerulean/whirlpool build EXEC_NAME=${{ env.EXEC_NAME }}.run
 
       - name: Create Artifact Name From Branch Name 🌱
@@ -103,7 +103,7 @@ jobs:
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
         with:
           name: whirlpool-executable-${{ steps.branch-name.outputs.value }}-${{ matrix.arch }}
-          path: caerulean/whirlpool/build/caerulean-whirlpool-executable-*.run
+          path: caerulean/whirlpool/build/caerulean_whirlpool_executable-*.run
           retention-days: 3
           if-no-files-found: error
 
