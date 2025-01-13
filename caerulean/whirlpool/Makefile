@@ -5,9 +5,6 @@
 SHELL=/bin/bash
 .SHELLFLAGS=-c -e
 
-PYTHON=python3
-PYTHONPATH=../../viridian/algae
-
 PROTOGO_PROTOC_VERSION=24.4
 COMPILE_FLAGS=""
 
@@ -52,8 +49,8 @@ build:
 .PHONY: build
 
 certificates:
-	${PYTHON} -m setup --just-certs
-	mv certificates/caerulean/cert.key certificates/caerulean/cert.crt certificates/
+	poetry -C ../../viridian/algae run python3 -m setup --just-certs
+	mv ../../viridian/algae/certificates/caerulean certificates
 
 run: build certificates
 	@ # Run executable

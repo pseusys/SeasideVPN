@@ -5,9 +5,6 @@
 SHELL=/bin/bash
 .SHELLFLAGS=-c -e
 
-PYTHON=python3
-PYTHONPATH=../../viridian/algae
-
 BOLD=\033[1m
 BLUE=\033[34m
 GREEN=\033[32m
@@ -29,7 +26,8 @@ build:
 .PHONY: build
 
 certificates:
-	${PYTHON} -m setup --just-certs "$$(yq -r '.services.whirlpool.environment.SEASIDE_ADDRESS' docker/compose.yml)"
+	poetry -C ../algae run python3 -m setup --just-certs "$$(yq -r '.services.whirlpool.environment.SEASIDE_ADDRESS' docker/compose.yml)"
+	mv ../algae/certificates certificates
 
 run: build certificates
 	@ # Run reef locally
