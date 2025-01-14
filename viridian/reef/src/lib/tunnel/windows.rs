@@ -1,7 +1,12 @@
+use std::borrow::{BorrowMut, Cow};
 use std::net::Ipv4Addr;
 
+use etherparse::{IpHeaders, Ipv4Dscp};
 use log::{debug, error};
 use simple_error::bail;
+use windivert::WinDivert;
+use windivert::prelude::WinDivertFlags;
+use windivert_sys::ChecksumFlags;
 use windows::Win32::Foundation::{ERROR_BUFFER_OVERFLOW, ERROR_SUCCESS, WIN32_ERROR};
 use windows::Win32::NetworkManagement::IpHelper::{CreateIpForwardEntry, DeleteIpForwardEntry, GetAdaptersAddresses, GetBestRoute, GAA_FLAG_INCLUDE_PREFIX, MIB_IPFORWARDROW, IP_ADAPTER_ADDRESSES_LH};
 use tun::{create_as_async, AsyncDevice, Configuration};
@@ -96,6 +101,32 @@ fn get_interface_index(interface_name: &str) -> DynResult<u32> {
     }
 
     bail!("No interfaces found for interface with name {interface_name}!")
+}
+
+
+fn start_routing(default_index: u32, default_address: &Ipv4Addr, default_cidr: u8, svr_idx: u8) -> DynResult<()> {
+    let filter = format!("outbound and ip and ifIdx == {default_index}");
+    let divert = WinDivert::network(filter, 0, WinDivertFlags::new())?;
+
+    let mut data = vec![0u8; u16::MAX.into()];
+    while let Ok(packet) = divert.recv(Some(&mut data)) {
+        let mut owned = packet.into_owned();
+        if let Ok((IpHeaders::Ipv4(mut ipv4, _), _)) = IpHeaders::from_ipv4_slice(&owned.data) {
+            ipv4.dscp = Ipv4Dscp::try_new(svr_idx)?;
+            let header_bytes = ipv4.to_bytes();
+            if let Cow::Owned(ref mut data) = owned.data.borrow_mut() {
+                data[..ipv4.header_len()].copy_from_slice(&header_bytes[..]);
+            } else {
+
+            }
+        } else {
+
+        }
+        owned.recalculate_checksums(ChecksumFlags::new())?;
+        divert.send(&owned)?;
+    }
+
+    Ok(())
 }
 
 
