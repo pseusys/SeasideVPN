@@ -2,7 +2,7 @@
 #[path = "../../../tests/utils.rs"]
 mod utils_test;
 
-use core::str;
+use std::ffi::CStr;
 use std::net::Ipv4Addr;
 
 use crate::DynResult;
@@ -17,6 +17,5 @@ pub fn bytes_to_ip_address(buffer: &[u8]) -> DynResult<Ipv4Addr> {
 }
 
 pub fn bytes_to_string(buffer: &[u8]) -> DynResult<String> {
-    let slice_str = str::from_utf8(buffer)?;
-    Ok(String::from(&slice_str[..slice_str.len() - 1]))
+    Ok(CStr::from_bytes_until_nul(buffer)?.to_str()?.to_string())
 }

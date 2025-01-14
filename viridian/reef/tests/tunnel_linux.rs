@@ -172,16 +172,14 @@ async fn test_save_restore_table() {
 async fn test_get_address_device() {
     let tun_mtu = 4000;
     let tun_name = "tun_tgad";
-    let tun_address = Ipv4Addr::new(192, 168, 4, 4);
-    let tun_netmask = Ipv4Addr::new(255, 255, 255, 0);
-    let tun_network = format!("{}/{}", tun_address.to_string(), tun_netmask.to_bits().count_ones().to_string());
+    let tun_network = Ipv4Net::from_str("192.168.4.4/24").expect("Error parsing tunnel network!");
 
     run_command("ip", ["tuntap", "add", "dev", tun_name, "mode", "tun"]).expect("Error creating tunnel interface!");
-    run_command("ip", ["addr", "replace", &tun_network, "dev", tun_name]).expect("Error setting IP address for tunnel!");
+    run_command("ip", ["addr", "replace", &tun_network.to_string(), "dev", tun_name]).expect("Error setting IP address for tunnel!");
     run_command("ip", ["link", "set", "dev", tun_name, "mtu", &tun_mtu.to_string()]).expect("Error setting MTU for tunnel");
     run_command("ip", ["link", "set", tun_name, "up"]).expect("Error enabling tunnel!");
 
-    let tunnel_device = get_address_device(tun_address, tun_netmask).expect("Getting tunnel device failed!");
+    let tunnel_device = get_address_device(tun_network).expect("Getting tunnel device failed!");
 
     let (tunnel_index, _, _, _) = show_address_info(tun_name).expect("Reading tunnel address failed!");
     assert!(tunnel_index.is_some_and(|v| v == tunnel_device), "Tunnel index doesn't match!")
@@ -192,12 +190,10 @@ async fn test_enable_disable_routing() {
     let table_idx = 5;
     let tun_mtu = 5000;
     let tun_name = "tun_tedr";
-    let tun_address = Ipv4Addr::new(192, 168, 5, 5);
-    let tun_netmask = Ipv4Addr::new(255, 255, 255, 0);
-    let tun_network = format!("{}/{}", tun_address.to_string(), tun_netmask.to_bits().count_ones().to_string());
+    let tun_network = Ipv4Net::from_str("192.168.5.5/24").expect("Error parsing tunnel network!");
 
     run_command("ip", ["tuntap", "add", "dev", tun_name, "mode", "tun"]).expect("Error creating tunnel interface!");
-    run_command("ip", ["addr", "replace", &tun_network, "dev", tun_name]).expect("Error setting IP address for tunnel!");
+    run_command("ip", ["addr", "replace", &tun_network.to_string(), "dev", tun_name]).expect("Error setting IP address for tunnel!");
     run_command("ip", ["link", "set", "dev", tun_name, "mtu",&tun_mtu.to_string()]).expect("Error setting MTU for tunnel");
     run_command("ip", ["link", "set", tun_name, "up"]).expect("Error enabling tunnel!");
 
@@ -206,12 +202,12 @@ async fn test_enable_disable_routing() {
         Ok((None, _, _, _)) | Err(_) => panic!("Reading tunnel address failed!")
     };
 
-    let (route_message, rule_message) = enable_routing(tun_address, tunnel_index, table_idx).expect("Error enabling routing!");
+    let (route_message, rule_message) = enable_routing(tun_network.addr(), tunnel_index, table_idx).expect("Error enabling routing!");
 
     let (routing_destination, routing_device, routing_gateway) = show_route_info(None, Some(table_idx)).expect("Error reading routing info!");
     assert!(routing_destination.is_some_and(|v| v == "default"), "Tunnel destination doesn't match!");
     assert!(routing_device.is_some_and(|v| v == tun_name), "Tunnel IP address doesn't match!");
-    assert!(routing_gateway.is_some_and(|v| v == tun_address), "Tunnel name doesn't match!");
+    assert!(routing_gateway.is_some_and(|v| v == tun_network.addr()), "Tunnel name doesn't match!");
 
     let (routing_fwmark, routing_lookup) = show_rule_info(table_idx).expect("Error reading routing rules info!");
     assert!(routing_fwmark.is_some_and(|v| v == i32::from(table_idx)), "Rule fwmark doesn't match!");
@@ -235,11 +231,10 @@ async fn test_enable_disable_firewall() {
 
     let default_device = get_route_device_info(external_address).expect("Error finding default route!");
     let (default_address, default_cidr) = match show_address_info(&default_device) {
-        Ok((_, _, Some(address), Some(cidr))) => (address, Ipv4Addr::from_bits(cidr)),
+        Ok((_, _, Some(address), Some(cidr))) => (address, cidr),
         Ok((_, _, None, _)) | Ok((_, _, _, None)) | Err(_) => panic!("Error finding default IP address and CIDR!")
     };
-    let default_network_address = Ipv4Net::with_netmask(default_address, default_cidr).expect("Error parsing network address!");
-    let default_net = format!("{}/{}", default_network_address.addr(), default_network_address.prefix_len());
+    let default_net = Ipv4Net::new(default_address, default_cidr as u8).expect("Error parsing network address!");
 
     let sia_regex = Regex::new(r"ACCEPT[^\S\n]+(?:all|0)[^\n]+?(?<interface>\S+)[^\S\n]+(?<source>\d+\.\d+\.\d+\.\d+)[^\S\n]+(?<destination>\d+\.\d+\.\d+\.\d+)").expect("Error compiling iptables SIA regex!");
     let sim_regex = Regex::new(r"MARK[^\S\n]+(?:all|0)[^\n]+?(?<interface>\S+)[^\S\n]+(?<source>\d+\.\d+\.\d+\.\d+/\d+)[^\S\n]+!(?<destination>\d+\.\d+\.\d+\.\d+/\d+)[^\S\n]+MARK set (?<mark>\S+)").expect("Error compiling iptables SIM regex!");
@@ -263,13 +258,13 @@ async fn test_enable_disable_firewall() {
         let sim_match = sim_regex.captures(iptables_out.as_str()).expect("Error finding SIM rule in 'iptables' output!");
         assert_eq!(default_device, &sim_match["interface"], "SIA rule interface name doesn't match!");
         assert_eq!("0.0.0.0/0", &sim_match["source"], "SIA rule source address doesn't match!");
-        assert_eq!(default_net, &sim_match["destination"], "SIA rule destination address doesn't match!");
+        assert_eq!(default_net.trunc().to_string(), &sim_match["destination"], "SIA rule destination address doesn't match!");
         assert_eq!(format!("0x{:x}", svr_idx), &sim_match["mark"], "SIA rule mark value doesn't match!");
 
         let sc_match = sc_regex.captures(iptables_out.as_str()).expect("Error finding SC rule in 'iptables' output!");
         assert_eq!(default_device, &sc_match["interface"], "SIA rule interface name doesn't match!");
         assert_eq!("0.0.0.0/0", &sc_match["source"], "SIA rule source address doesn't match!");
-        assert_eq!(default_net, &sc_match["destination"], "SIA rule destination address doesn't match!");
+        assert_eq!(default_net.trunc().to_string(), &sc_match["destination"], "SIA rule destination address doesn't match!");
     }
 
     disable_firewall(&rules).expect("Error disabling firewall!");
