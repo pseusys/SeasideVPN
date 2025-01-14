@@ -91,7 +91,7 @@ jobs:
       - name: Install Dependencies 🔮
         run: |
           npm install --prefix .github/scripts
-          pip3 install poetry poethepoet[poetry_plugin]
+          pip3 install poetry
           poetry --no-plugins -C viridian/algae install --with script
 
       - name: Deploy Caerulean Whirlpool 🚀

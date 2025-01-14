@@ -1,4 +1,5 @@
 name: TEST
+# TODO: fix "poetry poe -C" commands once the issue is finally resolved: https://github.com/nat-n/poethepoet/issues/270
 # TODO: fix "npm --prefix" commands once the windows issue is finally resolved: https://github.com/npm/cli/issues/4511
 
 on:
@@ -25,16 +26,16 @@ jobs:
       - name: Install Dependencies 🔮
         run: |
           pip3 install poetry poethepoet[poetry_plugin]
-          poetry -C viridian/algae install --without client,devel
+          poetry -C viridian/algae install --without client,devel,setup
 
       - name: Test Viridian Algae (unit) 🧪
-        run: poetry poe -C viridian/algae test-unit
+        run: cd viridian/algae && poetry poe test-unit
 
       - name: Test Viridian Algae (integration) 📇
-        run: poetry poe -C viridian/algae test-integration
+        run: cd viridian/algae && poetry poe test-integration
 
       - name: Test Viridian Algae (smoke) 😶‍🌫️
-        run: poetry poe -C viridian/algae test-smoke
+        run: cd viridian/algae && poetry poe test-smoke
 
   viridian-reef-test:
     name: Test Viridian Reef
@@ -71,8 +72,7 @@ jobs:
       - name: Install Dependencies 🔮
         run: |
           cd .github/scripts && npm install && cd ../.. 
-          pip3 install poetry poethepoet[poetry_plugin]
-          poetry -C viridian/algae install --without client
+          pip3 install poetry && poetry --version && poetry config --list && python -m sysconfig && poetry -C viridian/algae -vvv install --without client
 
       - name: Test Viridian Reef (unit) 🧪
         run: ${{ env.SUDO }} cargo test --package SeasideVPN-Reef --lib --manifest-path viridian/reef/Cargo.toml -- --nocapture --show-output
@@ -121,8 +121,15 @@ jobs:
         with:
           python-version: "3.10"
 
+      - name: Install Dependencies 🔮
+        run: |
+          pip3 install poetry
+          poetry -C viridian/algae install --without client,devel
+
+      - name: Compile Installer Script 🏗️
+        run: cd viridian/algae && poetry poe bundle
+
       - name: Run Installer Script 📥
         env:
-          PYTHONPATH: viridian/algae
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
-        run: sudo -E env "PYTHONPATH=$PYTHONPATH" python3 -m setup -g -a no ${{ matrix.caerulean }} -r ${{ matrix.dist }} -s ${{ env.BRANCH_NAME }}
+        run: python3 viridian/algae/install.pyz -g -a no ${{ matrix.caerulean }} -r ${{ matrix.dist }} -s ${{ env.BRANCH_NAME }}

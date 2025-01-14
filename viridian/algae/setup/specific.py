@@ -4,7 +4,9 @@ from re import search
 from subprocess import DEVNULL, SubprocessError, check_call, check_output
 from typing import Optional
 
-from utils import Logging, semver_to_tuple
+from semver import Version
+
+from utils import Logging
 
 # See "https://github.com/chef/os_release" for different "os_release" formats
 _BASE_DISTROS = {"debian", "alpine"}
@@ -50,7 +52,7 @@ def _install_package_command() -> str:
         raise RuntimeError(f"Current platform '{platform_version}' distribution is either not supported or unknown!")
 
 
-def check_package(package: str, version: Optional[str] = None, version_command: str = "--version") -> bool:
+def check_package(package: str, version: Optional[Version] = None, version_command: str = "--version") -> bool:
     """
     Check if the given package is installed, optionally check its version.
     If the version is not specified, it will not be checked.
@@ -68,10 +70,10 @@ def check_package(package: str, version: Optional[str] = None, version_command: 
         logger.debug(f"Package {package} found!")
         if version is not None:
             logger.debug(f"Checking package {package} version...")
-            semver = search(_SEMVER_REGEX, check_output(f"{package} {version_command}", shell=True).decode())
+            semver = search(_SEMVER_REGEX, check_output(f"{package} {version_command}", shell=True, text=True))
             if semver is not None:
-                package_version = semver.group()
-                versions_match = semver_to_tuple(package_version) >= semver_to_tuple(version)
+                package_version = Version.parse(semver.group())
+                versions_match = version.is_compatible(package_version)
                 logger.debug(f"Found package version '{package_version}', required '{version}', versions match: {versions_match}")
                 return versions_match
             else:

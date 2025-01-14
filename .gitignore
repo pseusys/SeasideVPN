@@ -22,8 +22,9 @@
 .github/scripts/package-lock.json
 
 ## Testing utilities files:
-.github/scripts/.reef_test_cache
+.github/scripts/.setup_test_cache
 .github/scripts/certificates
+.github/scripts/.env
 
 
 

@@ -2,9 +2,9 @@ from asyncio import run as async_run
 from glob import glob
 from pathlib import Path
 from shutil import rmtree
+from subprocess import check_output
 from sys import argv
 from typing import List, Union
-from zipapp import create_archive
 
 from colorama import Fore, Style, just_fix_windows_console
 from grpc_tools.protoc import _get_resource_file_name
@@ -13,6 +13,7 @@ from PyInstaller.__main__ import run as install
 from python_on_whales import Container, DockerClient
 from python_on_whales.components.image.cli_wrapper import ValidImage
 from python_on_whales.utils import run as docker_run
+from zipapps import create_app
 
 from scripts.misc import ALGAE_ROOT
 
@@ -64,8 +65,14 @@ def bundle() -> None:
     """
     Bundle caerulean installation script.
     """
+
+    dependencies = check_output(["poetry", "export", "--without-hashes", "--with-credentials", "--only=setup"], text=True)
+    requirements = [dep.split(";")[0].strip() for dep in dependencies.split("\n") if len(dep) > 0]
+
+    install_cache = "$TEMP/seaside_install_cache"
     installer_name = argv[1] if len(argv) > 1 else _INSTALLER_NAME
-    create_archive(ALGAE_ROOT / "setup", ALGAE_ROOT / installer_name, filter=lambda f: f.name != "__init__.py", compressed=True)
+    includes = [str(path) for path in (ALGAE_ROOT / "setup").glob("*.py") if path.name != "__init__.py"]
+    create_app(",".join(includes), output=str(ALGAE_ROOT / installer_name), compressed=True, lazy_install=True, unzip_path=install_cache, pip_args=requirements)
 
 
 def clean() -> None:
