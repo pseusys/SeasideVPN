@@ -138,7 +138,10 @@ impl Coordinator {
         let signals = create_signal_handlers()?;
         let mut handlers = FuturesUnordered::new();
         for (mut signal, name) in signals {
-            handlers.push(async move { signal.recv().await; info!("Received {name} signal!"); });
+            handlers.push(async move {
+                signal.recv().await;
+                info!("Received {name} signal!");
+            });
         }
 
         debug!("Initiating connection...");

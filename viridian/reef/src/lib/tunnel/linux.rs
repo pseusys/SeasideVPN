@@ -13,8 +13,8 @@ use neli::socket::NlSocketHandle;
 use simple_error::{bail, require_with};
 use tun::{create_as_async, AsyncDevice, Configuration};
 
-use super::nl_utils::{bytes_to_int, bytes_to_ip_address, bytes_to_string, copy_rtmsg, create_address_message, create_attr, create_clear_cache_message, create_header, create_interface_message, create_routing_message, create_rtmsg, create_socket, send_netlink_message, send_netlink_stream};
-use super::{network_address, verify_ip_address, Creatable, Tunnel};
+use super::nl_utils::{copy_rtmsg, create_address_message, create_attr, create_clear_cache_message, create_header, create_interface_message, create_routing_message, create_rtmsg, create_socket, send_netlink_message, send_netlink_stream};
+use super::{bytes_to_int, bytes_to_ip_address, bytes_to_string, network_address, verify_ip_address, Creatable, Tunnel};
 use crate::DynResult;
 
 

@@ -1,24 +1,29 @@
 use std::borrow::{BorrowMut, Cow};
+use std::error::Error;
 use std::net::Ipv4Addr;
+use std::sync::{Arc, Mutex};
 
 use etherparse::{IpHeaders, Ipv4Dscp};
-use log::{debug, error};
+use ipnet::Ipv4Net;
+use log::{debug, info};
 use simple_error::bail;
+use tokio::select;
+use tokio::sync::watch::{channel, Receiver, Sender};
+use tokio::task::{spawn, spawn_blocking};
+use windivert::layer::NetworkLayer;
+use windivert::packet::WinDivertPacket;
 use windivert::WinDivert;
 use windivert::prelude::WinDivertFlags;
 use windivert_sys::ChecksumFlags;
 use windows::Win32::Foundation::{ERROR_BUFFER_OVERFLOW, ERROR_SUCCESS, WIN32_ERROR};
-use windows::Win32::NetworkManagement::IpHelper::{CreateIpForwardEntry, DeleteIpForwardEntry, GetAdaptersAddresses, GetBestRoute, GAA_FLAG_INCLUDE_PREFIX, MIB_IPFORWARDROW, IP_ADAPTER_ADDRESSES_LH};
+use windows::Win32::NetworkManagement::IpHelper::{GetAdaptersAddresses, GetBestRoute, GAA_FLAG_INCLUDE_PREFIX, MIB_IPFORWARDROW, IP_ADAPTER_ADDRESSES_LH};
 use tun::{create_as_async, AsyncDevice, Configuration};
 use windows::Win32::Networking::WinSock::AF_INET;
 
-use super::{verify_ip_address, Creatable, Tunnel};
+use super::{bytes_to_ip_address, verify_ip_address, Creatable, Tunnel};
 use crate::DynResult;
 
 
-const HIGHEST_METRIC: u32 = 1;
-
-const ONE_IP_ADDRESS: Ipv4Addr = Ipv4Addr::new(255, 255, 255, 255);
 const ZERO_IP_ADDRESS: Ipv4Addr = Ipv4Addr::new(0, 0, 0, 0);
 
 
@@ -104,58 +109,68 @@ fn get_interface_index(interface_name: &str) -> DynResult<u32> {
 }
 
 
-fn start_routing(default_index: u32, default_address: &Ipv4Addr, default_cidr: u8, svr_idx: u8) -> DynResult<()> {
-    let filter = format!("outbound and ip and ifIdx == {default_index}");
-    let divert = WinDivert::network(filter, 0, WinDivertFlags::new())?;
+trait RecvProcess {
+    async fn arecv<'a>(self: &Arc<Self>, data: &Arc<Mutex<Vec<u8>>>) -> DynResult<WinDivertPacket<'a, NetworkLayer>>;
+    fn process_packet<'a>(self: &Arc<Self>, packet: &mut WinDivertPacket<'a, NetworkLayer>, default_network: &Ipv4Net, tunnel_index: u32, svr_idx: u8) -> DynResult<()>;
+}
 
-    let mut data = vec![0u8; u16::MAX.into()];
-    while let Ok(packet) = divert.recv(Some(&mut data)) {
-        let mut owned = packet.into_owned();
-        if let Ok((IpHeaders::Ipv4(mut ipv4, _), _)) = IpHeaders::from_ipv4_slice(&owned.data) {
-            ipv4.dscp = Ipv4Dscp::try_new(svr_idx)?;
-            let header_bytes = ipv4.to_bytes();
-            if let Cow::Owned(ref mut data) = owned.data.borrow_mut() {
-                data[..ipv4.header_len()].copy_from_slice(&header_bytes[..]);
-            } else {
-
+impl RecvProcess for WinDivert<NetworkLayer> {
+    async fn arecv<'a>(self: &Arc<Self>, data: &Arc<Mutex<Vec<u8>>>) -> DynResult<WinDivertPacket<'a, NetworkLayer>> {
+        let divert = Arc::clone(self);
+        let buffer = Arc::clone(data);
+        let result = spawn_blocking(move || {
+            match divert.recv(Some(&mut buffer.lock().unwrap())) {
+                Ok(packet) => Ok(packet.into_owned()),
+                Err(err) => Err(err)
             }
-        } else {
-
+        }).await;
+        match result {
+            Ok(Ok(packet)) => Ok(packet),
+            Ok(Err(err)) => Err(Box::new(err)),
+            Err(err) => Err(Box::new(err))
         }
-        owned.recalculate_checksums(ChecksumFlags::new())?;
-        divert.send(&owned)?;
     }
 
-    Ok(())
-}
-
-
-fn add_route(destination: &Ipv4Addr, netmask: &Ipv4Addr, gateway: &Ipv4Addr, interface_index: u32) -> DynResult<MIB_IPFORWARDROW> {
-    let mut route = MIB_IPFORWARDROW::default();
-    route.dwForwardDest = (*destination).into();
-    route.dwForwardMask = (*netmask).into();
-    route.dwForwardNextHop = (*gateway).into();
-    route.dwForwardIfIndex = interface_index;
-    route.dwForwardMetric1 = HIGHEST_METRIC;
-
-    let result = unsafe { CreateIpForwardEntry(&route) };
-    if WIN32_ERROR(result) == ERROR_SUCCESS {
-        Ok(route)
-    } else {
-        bail!("Creating route ({destination}/{} -> {gateway}:{interface_index}) failed with error {}!", netmask.to_bits(), result)
-    }
-}
-
-fn delete_route(route: &MIB_IPFORWARDROW) -> DynResult<()> {
-    let result = unsafe { DeleteIpForwardEntry(route) };
-    if WIN32_ERROR(result) == ERROR_SUCCESS {
+    fn process_packet<'a>(self: &Arc<Self>, packet: &mut WinDivertPacket<'a, NetworkLayer>, default_network: &Ipv4Net, tunnel_index: u32, svr_idx: u8) -> DynResult<()> {
+        packet.address.set_interface_index(tunnel_index);
+        if let Ok((IpHeaders::Ipv4(mut ipv4, _), _)) = IpHeaders::from_ipv4_slice(&packet.data) {
+            let source_address = bytes_to_ip_address(&ipv4.source)?;
+            if !default_network.contains(&source_address) {
+                ipv4.dscp = Ipv4Dscp::try_new(svr_idx)?;
+                let header_bytes = ipv4.to_bytes();
+                if let Cow::Owned(ref mut data) = packet.data.borrow_mut() {
+                    data[..ipv4.header_len()].copy_from_slice(&header_bytes[..]);
+                }
+            }
+        }
+        packet.recalculate_checksums(ChecksumFlags::new())?;
+        self.send(&packet)?;
         Ok(())
-    } else {
-        let destination = Ipv4Addr::from(route.dwForwardDest);
-        let netmask = Ipv4Addr::from(route.dwForwardMask);
-        let gateway = Ipv4Addr::from(route.dwForwardNextHop);
-        bail!("Creating route ({destination}/{} -> {gateway}:{}) failed with error {}!", netmask.to_bits(), route.dwForwardIfIndex, result)
     }
+}
+
+async fn enable_routing(default_index: u32, default_address: Ipv4Addr, default_cidr: u8, tunnel_index: u32, svr_idx: u8, mut stop_signal: Receiver<()>) -> Result<(), Box<dyn Error + Send + Sync>> {
+    let filter = format!("ip and outbound and ifIdx == {default_index}");
+    let divert = WinDivert::network(filter, 0, WinDivertFlags::new())?;
+    let default_network = Ipv4Net::new(default_address, default_cidr.leading_ones().try_into()?)?;
+
+    let data = Arc::new(Mutex::new(vec![0u8; u16::MAX.into()]));
+    let divert_arc = Arc::new(divert);
+    loop {
+        select! {
+            recvd = divert_arc.arecv(&data) => match recvd {
+                Ok(mut packet) => if let Err(err) = divert_arc.process_packet(&mut packet, &default_network, tunnel_index, svr_idx) {
+                    debug!("WinDivert packet processing error: {err}");
+                },
+                Err(err) => debug!("WinDivert packet receiving error: {err}")
+            },
+            _ = stop_signal.changed() => {
+                info!("Terminating WinDivert task...");
+                break;
+            }
+        }
+    }
+    Ok(())
 }
 
 
@@ -170,12 +185,11 @@ async fn create_tunnel(name: &str, address: Ipv4Addr, netmask: Ipv4Addr, mtu: u1
 
 
 pub struct PlatformInternalConfig {
-    sea_route: MIB_IPFORWARDROW,
-    tun_route: MIB_IPFORWARDROW
+    routing_stopper: Sender<()>
 }
 
 impl Creatable for Tunnel {
-    async fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_address: Ipv4Addr, tunnel_netmask: Ipv4Addr, _: u8) -> DynResult<Tunnel> {
+    async fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_address: Ipv4Addr, tunnel_netmask: Ipv4Addr, svr_index: u8) -> DynResult<Tunnel> {
         verify_ip_address(&seaside_address)?;
 
         debug!("Checking system default network properties...");
@@ -188,10 +202,11 @@ impl Creatable for Tunnel {
         let tunnel_index = get_interface_index(tunnel_name)?;
 
         debug!("Setting up routing...");
-        let sea_rt = add_route(&seaside_address, &ONE_IP_ADDRESS, &default_gateway, default_interface)?;
-        let tun_rt = add_route(&ZERO_IP_ADDRESS, &ZERO_IP_ADDRESS, &tunnel_address, tunnel_index)?;
+        let (stop_tx, stop_rx) = channel(());
+        // TODO: implement handle dropping once the feature becomes non-experimental: https://doc.rust-lang.org/std/future/trait.AsyncDrop.html
+        spawn(enable_routing(default_interface, default_address, default_cidr, tunnel_index, svr_index, stop_rx));
 
-        let internal = PlatformInternalConfig {sea_route: sea_rt, tun_route: tun_rt};
+        let internal = PlatformInternalConfig {routing_stopper: stop_tx};
         Ok(Tunnel {def_ip: default_address, def_cidr: default_cidr, tun_device: tunnel_device, internal})
     }
 }
@@ -200,8 +215,7 @@ impl Drop for Tunnel {
     #[allow(unused_must_use)]
     fn drop(&mut self) {
         debug!("Resetting routing...");
-        delete_route(&self.internal.tun_route).inspect_err(|e| error!("Error resetting routing: {}", e));
-        delete_route(&self.internal.sea_route).inspect_err(|e| error!("Error resetting routing: {}", e));
+        self.internal.routing_stopper.send(());
     }
 }
 

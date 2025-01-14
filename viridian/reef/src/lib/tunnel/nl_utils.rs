@@ -1,8 +1,3 @@
-#[cfg(test)]
-#[path = "../../../tests/nl_utils.rs"]
-mod nl_utils_test;
-
-use core::str;
 use std::fmt::Debug;
 use std::net::Ipv4Addr;
 
@@ -18,20 +13,6 @@ use neli::{FromBytesWithInput, Size, ToBytes};
 use simple_error::bail;
 
 use crate::DynResult;
-
-
-pub fn bytes_to_int(buffer: &[u8]) -> DynResult<i32> {
-    Ok(i32::from_ne_bytes(*<&[u8; 4]>::try_from(buffer)?))
-}
-
-pub fn bytes_to_ip_address(buffer: &[u8]) -> DynResult<Ipv4Addr> {
-    Ok(Ipv4Addr::from(*<&[u8; 4]>::try_from(buffer)?))
-}
-
-pub fn bytes_to_string(buffer: &[u8]) -> DynResult<String> {
-    let slice_str = str::from_utf8(buffer)?;
-    Ok(String::from(&slice_str[..slice_str.len() - 1]))
-}
 
 
 // TODO: remove whenever neli-0.7.0 is out!
