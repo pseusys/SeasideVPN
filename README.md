@@ -88,7 +88,7 @@ The numeric identification table can be found below:
 | --- | :-: |
 | Caerulean Whirlpool | 87 |
 | Viridian Algae | 65 |
-| Viridian Reef | 82 |
+| Viridian Reef | 32 |
 | Seaside VPN | 83 |
 
 There are some important notes and conditions that must be fulfilled in order for system to work as expected:
