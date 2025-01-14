@@ -3,56 +3,6 @@
 Viridian is a common name for any Whirlpool VPN client.
 There are several viridians available for different platforms and purposes.
 
-## Viridian structure
-
-Typical viridian client should consist of the following parts:
-
-- `Coordinator`: establishes all connections, manages `healthcheck` control messages and handles connection exceptions (reconnects, updates token, etc.).
-  Also starts and gracefully stops `viridian` and `tunnel`.
-- `Viridian`: runs two separate threads/processes/coroutines for sending and receiving encrypted VPN packets to `whirlpool`.
-- `Tunnel`: manages all packet tunnelling and firewall rules.
-
-## Viridian idea
-
-The basic idea behind every viridian app is the following:
-
-1. Opens a special UDP VPN port (`seaport` or just `port`).
-2. It connects to the caerulean (starts `coordinator` process control message exchange and sends it `seaport` number).
-3. It creates a soecial tunnel network interface (`tunnel` part).
-4. It backs up built-in firewall setup.
-5. It makes a new set of firewall rules:
-   1. All the packets going to local networks are allowed.
-   2. All the packets going to the viridian IP are allowed.
-   3. All the packets going to the `default route` are forwarded to the tunnel interface.
-6. It starts `viridian` processes, that do the following:
-   1. Listen to the tunnel interface, read packets from there, encrypt them and send to caerulean from `seaport`.
-   2. Listen to `seaport`, decrypt any packets coming from it and sends them through the tunnel interface.
-7. Sleeps until the connection is interrupted.
-8. When the connection should be terminated, both `viridian` processes are stopped and terminated.
-9. Firewall rules are restored.
-10. Tunnel interface is stopped and deleted.
-
-## Viridian diagram
-
-```mermaid
-flowchart TB
-  subgraph Viridian
-    receiver(Receiver process)
-    sender(Sender process)
-  end
-  system{Local System} -- Outgoing traffic --> tunnel[Tunnel interface]
-  system{Local System} -- Coordinator --> whirlpool[(Whirlpool)]
-  tunnel[Tunnel interface] -- Incomming traffic --> system{Local System}
-  receiver(Receiver process) -- Raw incomming packets --> tunnel[Tunnel interface]
-  tunnel[Tunnel interface] -- Raw outgoing packets --> sender(Sender process)
-  sender(Sender process) -- Encrypted outgoing packets -->whirlpool[(Whirlpool)]
-  whirlpool[(Whirlpool)] -- Encrypted incomming packets --> receiver(Receiver process)
-  whirlpool[(Whirlpool)] --> internet(((Internet)))
-  internet(((Internet))) --> whirlpool[(Whirlpool)]
-```
-
-In this diagram common viridian structure is shown.
-
 ## VPN packet encryption
 
 For now, only one algorithm for packet encryption is available, that is `XChaCha20-Poly1305`.

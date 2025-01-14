@@ -19,6 +19,35 @@ Also contains caerulean installation [script](#caerulean-installation-script).
 
 ## Implementation details
 
+Viridian algae client should consist of the following parts:
+
+- `Coordinator`: establishes all connections, manages `healthcheck` control messages and handles connection exceptions (reconnects, updates token, etc.).
+  Also starts and gracefully stops `viridian` and `tunnel`.
+- `Viridian`: runs two separate threads/processes/coroutines for sending and receiving encrypted VPN packets to `whirlpool`.
+- `Tunnel`: manages all packet tunnelling and firewall rules.
+
+Having logic separated in three independant parts, also not relying on any external libraries, helps testing the protocol and ensuring it works even on the bare metal systems.
+
+## General idea
+
+The basic idea behind viridian algae app is the following:
+
+1. Opens a special UDP VPN port (`seaport` or just `port`).
+2. It connects to the caerulean (starts `coordinator` process control message exchange and sends it `seaport` number).
+3. It creates a soecial tunnel network interface (`tunnel` part).
+4. It backs up built-in firewall setup.
+5. It makes a new set of firewall rules:
+   1. All the packets going to local networks are allowed.
+   2. All the packets going to the viridian IP are allowed.
+   3. All the packets going to the `default route` are forwarded to the tunnel interface.
+6. It starts `viridian` processes, that do the following:
+   1. Listen to the tunnel interface, read packets from there, encrypt them and send to caerulean from `seaport`.
+   2. Listen to `seaport`, decrypt any packets coming from it and sends them through the tunnel interface.
+7. Sleeps until the connection is interrupted.
+8. When the connection should be terminated, both `viridian` processes are stopped and terminated.
+9. Firewall rules are restored.
+10. Tunnel interface is stopped and deleted.
+
 ### Initialization
 
 Upon initialization, the algae `tunnel` finds out the local **default** network interface, i.e. the interface the packets will be forwarded through if no local destination is found.
@@ -47,8 +76,7 @@ If a non-fatal exception happens, `coordinator` tries to stop algae `viridian` a
 
 ### Termination
 
-Upon connection interruption (fatal exception or manual), `coordinator` tries sending to caerulean whirlpool exception message.
-Then it closes gRPC channel.
+Upon connection interruption (fatal exception or manual), `coordinator` just closes gRPC channel.
 
 Right after that, the algae `tunnel` removes all the `iptables` rules it added (just pops them from the beginning of the tables).
 After that it flushes routing table #65, resets routing lookup for packets marked with number `65` and sets tunnel device state to `DOWN`.
@@ -56,6 +84,25 @@ After that it flushes routing table #65, resets routing lookup for packets marke
 > NB! The same cleanup sequence happens if an error before connection is established.
 
 Finally, the algae `tunnel` deletes the tunnel device.
+
+### System diagram
+
+```mermaid
+flowchart TB
+  subgraph Viridian
+    receiver(Receiver process)
+    sender(Sender process)
+  end
+  system{Local System} -- Outgoing traffic --> tunnel[Tunnel interface]
+  system{Local System} -- Coordinator --> whirlpool[(Whirlpool)]
+  tunnel[Tunnel interface] -- Incomming traffic --> system{Local System}
+  receiver(Receiver process) -- Raw incomming packets --> tunnel[Tunnel interface]
+  tunnel[Tunnel interface] -- Raw outgoing packets --> sender(Sender process)
+  sender(Sender process) -- Encrypted outgoing packets -->whirlpool[(Whirlpool)]
+  whirlpool[(Whirlpool)] -- Encrypted incomming packets --> receiver(Receiver process)
+  whirlpool[(Whirlpool)] --> internet(((Internet)))
+  internet(((Internet))) --> whirlpool[(Whirlpool)]
+```
 
 ## Configuration and running
 
@@ -95,11 +142,6 @@ It also sensitive to the following environmental variable:
 - `SEASIDE_ROOT_CERTIFICATE_AUTHORITY`: Custom certificate authority file path for whirlpool server.
 
 ## Caerulean installation script
-
-> NB! Viridian algae is a python module, so all the commands in this section should be:
->
-> - Either run from `viridian/algae` root.
-> - Or have environmental variable `PYTHONPATH` set to the `viridian/algae` root path.
 
 Caerulean installation script consists of several python files in `setup` directory.
 It can deploy different caerulean server apps on Linux machines with different architectures.
@@ -177,3 +219,11 @@ Four test sets are included:
 5. `domain`: Smoke test for DNS website resolving.
 6. `smoke`: All of the `local`, `remote` and `domain` test sets.
 7. `all`: All the tests specified.
+
+
+
+# TODO!!
+1. Add poetry installation requirements to whirlpool and reef
+2. Add group configuration descriptions here
+3. Change setup struct??
+4. Use poetry in scripts (again)?
