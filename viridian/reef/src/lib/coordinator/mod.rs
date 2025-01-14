@@ -5,6 +5,7 @@ use std::fs::read_to_string;
 use std::cmp::min;
 
 use futures::stream::{FuturesUnordered, StreamExt};
+use ipnet::Ipv4Net;
 use log::{debug, error, info, warn};
 use rand::{Rng, RngCore};
 use chacha20poly1305::aead::generic_array::GenericArray;
@@ -74,6 +75,11 @@ impl Coordinator {
             bail!("Maximum healthcheck time shouldn't be less than 1 second!");
         }
 
+        let tunnel_network = Ipv4Net::with_netmask(tunnel_address, tunnel_netmask)?;
+        if tunnel_address == tunnel_network.network() || tunnel_address == tunnel_network.broadcast() {
+            bail!("Tunnel address {tunnel_address} is reserved in tunnel network {tunnel_network}!");
+        }
+
         debug!("Creating client TLS config with CA {ca:?}...");
         let tls = match ca {
             Some(certificate) => ClientTlsConfig::new().ca_certificate(Certificate::from_pem(read_to_string(certificate)?.as_bytes())),
@@ -86,7 +92,7 @@ impl Coordinator {
         let client = WhirlpoolViridianClient::new(channel);
 
         debug!("Creating tunnel with seaside address {address}, tunnel name {tunnel_name}, tunnel network {tunnel_address}/{tunnel_netmask}, SVR index {svr_index}...");
-        let tunnel = Tunnel::new(address, tunnel_name, tunnel_address, tunnel_netmask, svr_index).await?;
+        let tunnel = Tunnel::new(address, tunnel_name, tunnel_network, svr_index).await?;
 
         let default_interface = (tunnel.default_interface().0, 0);
         debug!("Creating viridian with default interface {default_interface:?}...");

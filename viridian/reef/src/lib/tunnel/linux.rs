@@ -5,6 +5,7 @@ mod tunnel_linux_test;
 use std::str;
 use std::net::Ipv4Addr;
 
+use ipnet::Ipv4Net;
 use log::{debug, error};
 use neli::consts::nl::NlTypeWrapper;
 use neli::consts::rtnl::{Ifa, Ifla, RtTable, Rta, Rtm};
@@ -14,7 +15,7 @@ use simple_error::{bail, require_with};
 use tun::{create_as_async, AsyncDevice, Configuration};
 
 use super::nl_utils::{copy_rtmsg, create_address_message, create_attr, create_clear_cache_message, create_header, create_interface_message, create_routing_message, create_rtmsg, create_socket, send_netlink_message, send_netlink_stream};
-use super::{bytes_to_int, bytes_to_ip_address, bytes_to_string, network_address, verify_ip_address, Creatable, Tunnel};
+use super::{bytes_to_int, bytes_to_ip_address, bytes_to_string, Creatable, Tunnel};
 use crate::DynResult;
 
 
@@ -51,11 +52,10 @@ fn get_device_mtu(socket: &mut NlSocketHandle, device: i32) -> DynResult<i32> {
     Ok(require_with!(default_mtu, "Default network interface MTU was not resolved!"))
 }
 
-fn get_address_device(address: Ipv4Addr, netmask: Ipv4Addr) -> DynResult<i32> {
+fn get_address_device(network: Ipv4Net) -> DynResult<i32> {
     let mut socket = create_socket()?;
 
-    let (netaddr, _) = network_address(&address, &netmask);
-    let tun_router_addr = Vec::from(Ipv4Addr::from_bits(u32::from(netaddr) + 1).octets());
+    let tun_router_addr = Vec::from(network.broadcast().octets());
     let message = create_routing_message(RtTable::Unspec, Rtm::Getroute, false, false, &[create_attr(Rta::Dst, tun_router_addr)?])?;
     let recv_payload = send_netlink_message::<Rtm, Rtmsg, Rtm>(&mut socket, message, false)?.unwrap();
     let tunnel_dev = recv_payload.rtattrs.iter().find(|a| a.rta_type == Rta::Oif).and_then(|a| bytes_to_int(a.rta_payload.as_ref()).ok());
@@ -180,22 +180,20 @@ pub struct PlatformInternalConfig {
 }
 
 impl Creatable for Tunnel {
-    async fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_address: Ipv4Addr, tunnel_netmask: Ipv4Addr, svr_index: u8) -> DynResult<Tunnel> {
-        verify_ip_address(&seaside_address)?;
-
+    async fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_network: Ipv4Net, svr_index: u8) -> DynResult<Tunnel> {
         debug!("Checking system default network properties...");
         let (default_address, default_cidr, default_name, default_mtu) = get_default_interface(seaside_address)?;
         debug!("Default network properties received: address {default_address}, CIDR {default_cidr}, name {default_name}, MTU {default_mtu}");
     
         debug!("Creating tunnel device...");
-        let tunnel_device = create_tunnel(tunnel_name, tunnel_address, tunnel_netmask, default_mtu as u16).await?;
-        let tunnel_index = get_address_device(tunnel_address, tunnel_netmask)?;
+        let tunnel_device = create_tunnel(tunnel_name, tunnel_network.addr(), tunnel_network.netmask(), default_mtu as u16).await?;
+        let tunnel_index = get_address_device(tunnel_network)?;
 
         debug!("Clearing seaside-viridian-reef routing table...");
         let svr_data = save_svr_table(svr_index)?;
 
         debug!("Setting up routing...");
-        let (route_message, rule_message) = enable_routing(tunnel_address, tunnel_index, svr_index)?;
+        let (route_message, rule_message) = enable_routing(tunnel_network.addr(), tunnel_index, svr_index)?;
 
         debug!("Enabling firewall...");
         let firewall_rules = create_firewall_rules(&default_name, &default_address, default_cidr, &seaside_address, svr_index);

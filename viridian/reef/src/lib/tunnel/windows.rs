@@ -20,7 +20,7 @@ use windows::Win32::NetworkManagement::IpHelper::{GetAdaptersAddresses, GetBestR
 use tun::{create_as_async, AsyncDevice, Configuration};
 use windows::Win32::Networking::WinSock::AF_INET;
 
-use super::{bytes_to_ip_address, verify_ip_address, Creatable, Tunnel};
+use super::{bytes_to_ip_address, Creatable, Tunnel};
 use crate::DynResult;
 
 
@@ -152,7 +152,7 @@ impl RecvProcess for WinDivert<NetworkLayer> {
 async fn enable_routing(default_index: u32, default_address: Ipv4Addr, default_cidr: u8, tunnel_index: u32, svr_idx: u8, mut stop_signal: Receiver<()>) -> Result<(), Box<dyn Error + Send + Sync>> {
     let filter = format!("ip and outbound and ifIdx == {default_index}");
     let divert = WinDivert::network(filter, 0, WinDivertFlags::new())?;
-    let default_network = Ipv4Net::new(default_address, default_cidr.leading_ones().try_into()?)?;
+    let default_network = Ipv4Net::with_netmask(default_address, default_cidr)?;
 
     let data = Arc::new(Mutex::new(vec![0u8; u16::MAX.into()]));
     let divert_arc = Arc::new(divert);
@@ -189,16 +189,14 @@ pub struct PlatformInternalConfig {
 }
 
 impl Creatable for Tunnel {
-    async fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_address: Ipv4Addr, tunnel_netmask: Ipv4Addr, svr_index: u8) -> DynResult<Tunnel> {
-        verify_ip_address(&seaside_address)?;
-
+    async fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_network: Ipv4Net, svr_index: u8) -> DynResult<Tunnel> {
         debug!("Checking system default network properties...");
         let (default_gateway, default_interface) = get_default_interface(&seaside_address)?;
         let (default_address, default_cidr, default_mtu) = get_interface_details(default_interface)?;
         debug!("Default network properties received: address {default_address}, CIDR {default_cidr}, MTU {default_mtu}, gateway {default_gateway}");
 
         debug!("Creating tunnel device...");
-        let tunnel_device = create_tunnel(tunnel_name, tunnel_address, tunnel_netmask, default_mtu as u16).await?;
+        let tunnel_device = create_tunnel(tunnel_name, tunnel_network.addr(), tunnel_network.netmask(), default_mtu as u16).await?;
         let tunnel_index = get_interface_index(tunnel_name)?;
 
         debug!("Setting up routing...");

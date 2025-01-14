@@ -155,12 +155,12 @@ class Tunnel:
         self._name = name
         seaside_adr_str = str(seaside_address)
 
-        self._tunnel_ip = str(address)
-        tunnel_ip_tail = int(self._tunnel_ip.split(".")[-1])
-        if tunnel_ip_tail in (0, 1, 255):
-            raise ValueError(f"Tunnel address can not end with {tunnel_ip_tail}!!")
+        tunnel_network = IPv4Network(f"{address}/{netmask}", strict=False)
+        if address == tunnel_network.network_address or address == tunnel_network.broadcast_address:
+            raise ValueError(f"Tunnel address {address} is reserved in tunnel network {tunnel_network}!!")
 
-        self._tunnel_cidr = IPv4Network(f"{address}/{netmask}", strict=False).prefixlen
+        self._tunnel_ip = str(address)
+        self._tunnel_cidr = tunnel_network.prefixlen
         self._def_iface, def_iface_name, self._mtu = _get_default_interface(seaside_adr_str)
 
         self._sva_code = sva_code

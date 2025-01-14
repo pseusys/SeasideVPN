@@ -1,5 +1,4 @@
 use std::fmt::Debug;
-use std::net::Ipv4Addr;
 
 use neli::consts::nl::{NlType, NlmF, NlmFFlags};
 use neli::consts::rtnl::{Arphrd, IfaFFlags, IffFlags, RtAddrFamily, RtScope, RtTable, Rta, Rtm, RtmF, RtmFFlags, Rtn, Rtprot};

@@ -1,6 +1,7 @@
 use std::future::Future;
 use std::net::Ipv4Addr;
 
+use ipnet::Ipv4Net;
 use simple_error::bail;
 use tun::AsyncDevice;
 
@@ -29,7 +30,7 @@ pub use utils::*;
 
 
 pub trait Creatable: Sized {
-    fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_address: Ipv4Addr, tunnel_netmask: Ipv4Addr, svr_index: u8) -> impl Future<Output = DynResult<Self>> + Send;
+    fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_network: Ipv4Net, svr_index: u8) -> impl Future<Output = DynResult<Self>> + Send;
 }
 
 pub struct Tunnel {

@@ -4,11 +4,12 @@ use std::net::Ipv4Addr;
 use std::process::{Command, Stdio};
 use std::str::FromStr;
 
+use ipnet::Ipv4Net;
 use regex::Regex;
 use simple_error::bail;
 use tokio::test;
 
-use super::{create_tunnel, network_address, disable_firewall, disable_routing, enable_firewall, enable_routing, get_address_device, get_default_interface, restore_svr_table, save_svr_table};
+use super::{create_tunnel, disable_firewall, disable_routing, enable_firewall, enable_routing, get_address_device, get_default_interface, restore_svr_table, save_svr_table};
 use super::super::DynResult;
 
 
@@ -237,8 +238,8 @@ async fn test_enable_disable_firewall() {
         Ok((_, _, Some(address), Some(cidr))) => (address, Ipv4Addr::from_bits(cidr)),
         Ok((_, _, None, _)) | Ok((_, _, _, None)) | Err(_) => panic!("Error finding default IP address and CIDR!")
     };
-    let default_network_address = network_address(&default_address, &default_cidr);
-    let default_net = format!("{}/{}", default_network_address.0, default_network_address.1);
+    let default_network_address = Ipv4Net::with_netmask(default_address, default_cidr).expect("Error parsing network address!");
+    let default_net = format!("{}/{}", default_network_address.addr(), default_network_address.prefix_len());
 
     let sia_regex = Regex::new(r"ACCEPT[^\S\n]+(?:all|0)[^\n]+?(?<interface>\S+)[^\S\n]+(?<source>\d+\.\d+\.\d+\.\d+)[^\S\n]+(?<destination>\d+\.\d+\.\d+\.\d+)").expect("Error compiling iptables SIA regex!");
     let sim_regex = Regex::new(r"MARK[^\S\n]+(?:all|0)[^\n]+?(?<interface>\S+)[^\S\n]+(?<source>\d+\.\d+\.\d+\.\d+/\d+)[^\S\n]+!(?<destination>\d+\.\d+\.\d+\.\d+/\d+)[^\S\n]+MARK set (?<mark>\S+)").expect("Error compiling iptables SIM regex!");
