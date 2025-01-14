@@ -152,7 +152,7 @@ impl RecvProcess for WinDivert<NetworkLayer> {
 async fn enable_routing(default_index: u32, default_address: Ipv4Addr, default_cidr: u8, tunnel_index: u32, svr_idx: u8, mut stop_signal: Receiver<()>) -> Result<(), Box<dyn Error + Send + Sync>> {
     let filter = format!("ip and outbound and ifIdx == {default_index}");
     let divert = WinDivert::network(filter, 0, WinDivertFlags::new())?;
-    let default_network = Ipv4Net::with_netmask(default_address, default_cidr)?;
+    let default_network = Ipv4Net::new(default_address, default_cidr)?;
 
     let data = Arc::new(Mutex::new(vec![0u8; u16::MAX.into()]));
     let divert_arc = Arc::new(divert);
