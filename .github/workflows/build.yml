@@ -1,5 +1,6 @@
 name: BUILD
 # TODO: fix "poetry poe -C" commands once the issue is finally resolved: https://github.com/nat-n/poethepoet/issues/270
+# TODO: add ARM64 architecture for Windows build of Reef, once the issue is resolved: https://github.com/basil00/WinDivert/issues/236 
 
 on:
   workflow_call:
@@ -115,8 +116,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [amd64, arm64]
-        os: [linux, windows]
+        include:
+          - arch: amd64
+            os: linux
+          - arch: amd64
+            os: windows
+          - arch: arm64
+            os: linux
 
     steps:
       - name: Checkout 🛎️
