@@ -23,9 +23,9 @@ const DEFAULT_MIN_HC_TIME: &str = "1";
 const DEFAULT_MAX_HC_TIME: &str = "5";
 const DEFAULT_CONNECTION_TIMEOUT: &str = "3.0";
 const DEFAULT_TUNNEL_NAME: &str = "seatun";
-const DEFAULT_TUNNEL_ADDRESS: &str = "192.168.0.32";
+const DEFAULT_TUNNEL_ADDRESS: &str = "192.168.0.82";
 const DEFAULT_TUNNEL_NETMASK: &str = "255.255.255.0";
-const DEFAULT_SVR_INDEX: &str = "32";
+const DEFAULT_SVR_INDEX: &str = "82";
 
 
 fn parse_address(address: &str) -> DynResult<Ipv4Addr> {

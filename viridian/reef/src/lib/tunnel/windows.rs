@@ -1,9 +1,8 @@
-use std::borrow::{BorrowMut, Cow};
 use std::error::Error;
 use std::net::Ipv4Addr;
 use std::sync::{Arc, Mutex};
 
-use etherparse::{IpHeaders, Ipv4Dscp};
+use etherparse::IpHeaders;
 use ipnet::Ipv4Net;
 use log::{debug, info};
 use simple_error::bail;
@@ -14,7 +13,6 @@ use windivert::layer::NetworkLayer;
 use windivert::packet::WinDivertPacket;
 use windivert::WinDivert;
 use windivert::prelude::WinDivertFlags;
-use windivert_sys::ChecksumFlags;
 use windows::Win32::Foundation::{ERROR_BUFFER_OVERFLOW, ERROR_SUCCESS, WIN32_ERROR};
 use windows::Win32::NetworkManagement::IpHelper::{GetAdaptersAddresses, GetBestRoute, GAA_FLAG_INCLUDE_PREFIX, MIB_IPFORWARDROW, IP_ADAPTER_ADDRESSES_LH};
 use tun::{create_as_async, AsyncDevice, Configuration};
@@ -111,7 +109,7 @@ fn get_interface_index(interface_name: &str) -> DynResult<u32> {
 
 trait RecvProcess {
     async fn arecv<'a>(self: &Arc<Self>, data: &Arc<Mutex<Vec<u8>>>) -> DynResult<WinDivertPacket<'a, NetworkLayer>>;
-    fn process_packet<'a>(self: &Arc<Self>, packet: &mut WinDivertPacket<'a, NetworkLayer>, default_network: &Ipv4Net, tunnel_index: u32, svr_idx: u8) -> DynResult<()>;
+    async fn process_packet(self: &Arc<Self>, data: &Arc<Mutex<Vec<u8>>>, default_network: &Ipv4Net, tunnel_index: u32) -> DynResult<()>;
 }
 
 impl RecvProcess for WinDivert<NetworkLayer> {
@@ -131,25 +129,20 @@ impl RecvProcess for WinDivert<NetworkLayer> {
         }
     }
 
-    fn process_packet<'a>(self: &Arc<Self>, packet: &mut WinDivertPacket<'a, NetworkLayer>, default_network: &Ipv4Net, tunnel_index: u32, svr_idx: u8) -> DynResult<()> {
-        packet.address.set_interface_index(tunnel_index);
-        if let Ok((IpHeaders::Ipv4(mut ipv4, _), _)) = IpHeaders::from_ipv4_slice(&packet.data) {
+    async fn process_packet(self: &Arc<Self>, data: &Arc<Mutex<Vec<u8>>>, default_network: &Ipv4Net, tunnel_index: u32) -> DynResult<()> {
+        let mut packet = self.arecv(&data).await?;
+        if let Ok((IpHeaders::Ipv4(ipv4, _), _)) = IpHeaders::from_ipv4_slice(&packet.data) {
             let source_address = bytes_to_ip_address(&ipv4.source)?;
             if !default_network.contains(&source_address) {
-                ipv4.dscp = Ipv4Dscp::try_new(svr_idx)?;
-                let header_bytes = ipv4.to_bytes();
-                if let Cow::Owned(ref mut data) = packet.data.borrow_mut() {
-                    data[..ipv4.header_len()].copy_from_slice(&header_bytes[..]);
-                }
+                packet.address.set_interface_index(tunnel_index);
             }
         }
-        packet.recalculate_checksums(ChecksumFlags::new())?;
         self.send(&packet)?;
         Ok(())
     }
 }
 
-async fn enable_routing(default_index: u32, default_address: Ipv4Addr, default_cidr: u8, tunnel_index: u32, svr_idx: u8, mut stop_signal: Receiver<()>) -> Result<(), Box<dyn Error + Send + Sync>> {
+async fn enable_routing(default_index: u32, default_address: Ipv4Addr, default_cidr: u8, tunnel_index: u32, mut stop_signal: Receiver<()>) -> Result<(), Box<dyn Error + Send + Sync>> {
     let filter = format!("ip and outbound and ifIdx == {default_index}");
     let divert = WinDivert::network(filter, 0, WinDivertFlags::new())?;
     let default_network = Ipv4Net::new(default_address, default_cidr)?;
@@ -158,11 +151,8 @@ async fn enable_routing(default_index: u32, default_address: Ipv4Addr, default_c
     let divert_arc = Arc::new(divert);
     loop {
         select! {
-            recvd = divert_arc.arecv(&data) => match recvd {
-                Ok(mut packet) => if let Err(err) = divert_arc.process_packet(&mut packet, &default_network, tunnel_index, svr_idx) {
-                    debug!("WinDivert packet processing error: {err}");
-                },
-                Err(err) => debug!("WinDivert packet receiving error: {err}")
+            recvd = divert_arc.process_packet(&data, &default_network, tunnel_index) => if let Err(err) = recvd {
+                debug!("WinDivert packet processing error: {err}");
             },
             _ = stop_signal.changed() => {
                 info!("Terminating WinDivert task...");
@@ -189,7 +179,7 @@ pub struct PlatformInternalConfig {
 }
 
 impl Creatable for Tunnel {
-    async fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_network: Ipv4Net, svr_index: u8) -> DynResult<Tunnel> {
+    async fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_network: Ipv4Net, _: u8) -> DynResult<Tunnel> {
         debug!("Checking system default network properties...");
         let (default_gateway, default_interface) = get_default_interface(&seaside_address)?;
         let (default_address, default_cidr, default_mtu) = get_interface_details(default_interface)?;
@@ -202,7 +192,7 @@ impl Creatable for Tunnel {
         debug!("Setting up routing...");
         let (stop_tx, stop_rx) = channel(());
         // TODO: implement handle dropping once the feature becomes non-experimental: https://doc.rust-lang.org/std/future/trait.AsyncDrop.html
-        spawn(enable_routing(default_interface, default_address, default_cidr, tunnel_index, svr_index, stop_rx));
+        spawn(enable_routing(default_interface, default_address, default_cidr, tunnel_index, stop_rx));
 
         let internal = PlatformInternalConfig {routing_stopper: stop_tx};
         Ok(Tunnel {def_ip: default_address, def_cidr: default_cidr, tun_device: tunnel_device, internal})
