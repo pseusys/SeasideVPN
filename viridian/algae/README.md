@@ -13,13 +13,13 @@ Also contains caerulean installation [script](#caerulean-installation-script).
 
 1. `python3` (interpreter) version >= 3.10
   Installation guide can be found [here](https://www.python.org/downloads/).
-2. `poetry` (build system) version >= 1.0
+2. `poetry` (build system) version >= 2.0
   Installation guide can be found [here](https://python-poetry.org/docs/#installation).
 3. System packages: `iptables`, `iproute2`.
 
 ## Implementation details
 
-Viridian algae client should consist of the following parts:
+Viridian algae client consists of the following parts:
 
 - `Coordinator`: establishes all connections, manages `healthcheck` control messages and handles connection exceptions (reconnects, updates token, etc.).
   Also starts and gracefully stops `viridian` and `tunnel`.
