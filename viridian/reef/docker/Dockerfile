@@ -25,7 +25,7 @@ RUN cargo build --features cli-exec --bin cli --manifest-path viridian/reef/Carg
 FROM downloader AS test
 
 ENV RUST_BACKTRACE=1
-RUN apt-get update && apt-get install -y --no-install-recommends net-tools uml-utilities iptables iproute2 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends net-tools uml-utilities nftables iproute2 && rm -rf /var/lib/apt/lists/*
 
 COPY viridian/reef/tests viridian/reef/tests
 WORKDIR /seaside/viridian/reef
@@ -43,7 +43,7 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y --no-install-recommends iptables iproute2 python3-pip && rm -rf /var/lib/apt/lists/* && pip install --no-cache-dir pytest pytest-timeout
+RUN apt-get update && apt-get install -y --no-install-recommends nftables iproute2 python3-pip && rm -rf /var/lib/apt/lists/* && pip install --no-cache-dir pytest pytest-timeout
 COPY viridian/algae/tests/conftest.py viridian/algae/tests/test_local.py tests/
 COPY --from=builder /seaside/viridian/reef/target/debug/cli cli
 

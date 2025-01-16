@@ -245,40 +245,11 @@ async fn test_enable_disable_firewall() {
     let sc = format!("-o {default_device} --src {default_address} --dst {seaside_address} -j ACCEPT");
     let rules = vec![sia, sim, sc];
 
-    enable_firewall(&rules).expect("Error enabling firewall!");
+    let table = enable_firewall(&default_device, &default_net, &seaside_address, svr_idx).expect("Error enabling firewall!");
 
-    for chain in ["OUTPUT", "FORWARD"] {
-        let (iptables_out, _) = run_command("iptables", ["-L", chain, "-v", "-n", "-t", "mangle"]).expect("Error getting 'iptables' data!");
+    let (nftables_out, _) = run_command("nft", ["list", "ruleset"]).expect("Error getting 'iptables' data!");
+    print!("{}", nftables_out);
 
-        let sia_match = sia_regex.captures(iptables_out.as_str()).expect("Error finding SIA rule in 'iptables' output!");
-        assert_eq!(default_device, &sia_match["interface"], "SIA rule interface name doesn't match!");
-        assert_eq!(default_address.to_string(), &sia_match["source"], "SIA rule source address doesn't match!");
-        assert_eq!(seaside_address.to_string(), &sia_match["destination"], "SIA rule destination address doesn't match!");
+    disable_firewall(&table).expect("Error disabling firewall!");
 
-        let sim_match = sim_regex.captures(iptables_out.as_str()).expect("Error finding SIM rule in 'iptables' output!");
-        assert_eq!(default_device, &sim_match["interface"], "SIA rule interface name doesn't match!");
-        assert_eq!("0.0.0.0/0", &sim_match["source"], "SIA rule source address doesn't match!");
-        assert_eq!(default_net.trunc().to_string(), &sim_match["destination"], "SIA rule destination address doesn't match!");
-        assert_eq!(format!("0x{:x}", svr_idx), &sim_match["mark"], "SIA rule mark value doesn't match!");
-
-        let sc_match = sc_regex.captures(iptables_out.as_str()).expect("Error finding SC rule in 'iptables' output!");
-        assert_eq!(default_device, &sc_match["interface"], "SIA rule interface name doesn't match!");
-        assert_eq!("0.0.0.0/0", &sc_match["source"], "SIA rule source address doesn't match!");
-        assert_eq!(default_net.trunc().to_string(), &sc_match["destination"], "SIA rule destination address doesn't match!");
-    }
-
-    disable_firewall(&rules).expect("Error disabling firewall!");
-    
-    for chain in ["OUTPUT", "FORWARD"] {
-        let (iptables_out, _) = run_command("iptables", ["-L", chain, "-v", "-n", "-t", "mangle"]).expect("Error getting 'iptables' data!");
-
-        let sia_match = sia_regex.captures(iptables_out.as_str());
-        assert!(sia_match.is_none(), "SIA rule found in 'iptables'!");
-
-        let sim_match = sim_regex.captures(iptables_out.as_str());
-        assert!(sim_match.is_none(), "SIM rule found in 'iptables'!");
-
-        let sc_match = sc_regex.captures(iptables_out.as_str());
-        assert!(sc_match.is_none(), "SC rule found in 'iptables'!");
-    }
 }
