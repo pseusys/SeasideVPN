@@ -30,8 +30,6 @@ const PYTHON_LIB_REEF_PATH = join(dirname(import.meta.dirname), "..", "viridian"
 const DOCKER_COMPOSE_REEF_PATH = join(PYTHON_LIB_REEF_PATH, "docker", "compose.yml");
 // Host configuration cache file name.
 const DOCKER_COMPOSE_CACHE_FILE_NAME = ".setup_test_cache";
-// VPN client test environment file name.
-const DOCKER_COMPOSE_SOURCE_ENV_FILE_NAME = ".env";
 
 /**
  * Print usage help message and exit with code 0.
@@ -90,9 +88,6 @@ function parseArguments() {
 	if (process.env.DOCKER_COMPOSE_CACHE_FILE_NAME === undefined) values["cacheFile"] = DOCKER_COMPOSE_CACHE_FILE_NAME;
 	else values["cacheFile"] = process.env.DOCKER_COMPOSE_CACHE_FILE_NAME;
 	values["cacheFile"] = join(dirname(import.meta.filename), values["cacheFile"]);
-	if (process.env.DOCKER_COMPOSE_SOURCE_ENV_FILE_NAME === undefined) values["envFile"] = DOCKER_COMPOSE_SOURCE_ENV_FILE_NAME;
-	else values["envFile"] = process.env.DOCKER_COMPOSE_SOURCE_ENV_FILE_NAME;
-	values["envFile"] = join(dirname(import.meta.filename), values["envFile"]);
 	return values;
 }
 
@@ -100,11 +95,9 @@ function parseArguments() {
  * Parse Viridian Reef Docker compose file.
  * Extract Seaside IP and gateway container IP.
  * Also get network addresses of all the networks that should become unreachable.
- * Write Viridian Reef container environment to `.env` file.
- * @param {string} envFileName path where environment file will be saved.
  * @returns {object} containing keys: `seasideIP`, `gatewayIP`, `dockerNetworks`.
  */
-function parseDockerComposeFile(envFileName) {
+function parseDockerComposeFile() {
 	console.log("Reading Docker compose file...");
 	const composeDict = parse(readFileSync(DOCKER_COMPOSE_REEF_PATH).toString());
 	const seasideIP = composeDict["services"]["whirlpool"]["environment"]["SEASIDE_ADDRESS"];
@@ -115,13 +108,6 @@ function parseDockerComposeFile(envFileName) {
 		.map((v) => v["ipam"]["config"][0]["subnet"])
 		.filter((v) => v !== gatewayNetwork);
 	console.log(`Extracted networks that will be disconnected: ${dockerNetworks}`);
-	writeFileSync(
-		envFileName,
-		Object.entries(composeDict["services"]["reef"]["environment"])
-			.map(([k, v]) => `${k}=${v}`)
-			.join("\n")
-	);
-	console.log(`Default environment variables written to: ${envFileName}`);
 	return { seasideIP, gatewayIP, dockerNetworks };
 }
 
@@ -219,7 +205,7 @@ function resetRouting(defaultRoute) {
 
 const args = parseArguments();
 if (!args.reset) {
-	const { seasideIP, gatewayIP, dockerNetworks } = parseDockerComposeFile(args.envFile);
+	const { seasideIP, gatewayIP, dockerNetworks } = parseDockerComposeFile();
 	const pid = await launchDockerCompose(seasideIP);
 	const route = setupRouting(gatewayIP, dockerNetworks);
 	storeCache(args.cacheFile, { route, pid });

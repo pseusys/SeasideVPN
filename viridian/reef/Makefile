@@ -36,19 +36,10 @@ run: build certificates
 
 
 
-test-unit:
-	@ # Run unit tests inside of the testing docker container
+test:
+	@ # Run tests inside of the testing docker container
 	docker build -f docker/Dockerfile --target test -t seaside-reef-test ../..
 	docker run --privileged --rm --name seaside-reef-test --sysctl net.ipv6.conf.all.disable_ipv6=1 --entrypoint cargo seaside-reef-test test --package SeasideVPN-Reef --lib -- --nocapture --show-output
-.PHONY: test-unit
-
-test-integration: certificates
-	@ # Run reef integration tests in Docker
-	docker compose -f ../algae/docker/compose.default.yml build whirlpool echo 2> /dev/null
-	docker compose -f docker/compose.yml --profile client up --build --abort-on-container-exit --exit-code-from reef
-.PHONY: test-integration
-
-test: test-unit test-integration
 .PHONY: test
 
 

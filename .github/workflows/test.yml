@@ -83,7 +83,8 @@ jobs:
       - name: Load .ENV File
         uses: aarcangeli/load-dotenv@v1
         with:
-          path: .github/scripts
+          path: viridian/reef/docker
+          filenames: host.env
 
       - name: Test Viridian Reef (integration) 🧪
         env:
