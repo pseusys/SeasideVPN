@@ -24,9 +24,9 @@ Viridian algae client consists of the following parts:
 - `Coordinator`: establishes all connections, manages `healthcheck` control messages and handles connection exceptions (reconnects, updates token, etc.).
   Also starts and gracefully stops `viridian` and `tunnel`.
 - `Viridian`: runs two separate threads/processes/coroutines for sending and receiving encrypted VPN packets to `whirlpool`.
-- `Tunnel`: manages all packet tunnelling and firewall rules.
+- `Tunnel`: manages all packet tunnelling and `iptables` firewall rules.
 
-Having logic separated in three independant parts, also not relying on any external libraries, helps testing the protocol and ensuring it works even on the bare metal systems.
+NB! Algae uses deprecated `iptables` firewall instead of the newer `nftables`, it can be used and tested inside Docker containers (since recent Docker versions allow containers to have custom `iptables` rules).
 
 ## General idea
 
