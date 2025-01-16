@@ -199,7 +199,7 @@ fn enable_firewall(default_interface: &str, default_network: &Ipv4Net, seaside_a
                     right: Expression::String(seaside_address.to_string()),
                     op: Operator::EQ
                 }),
-                Statement::Drop(Some(nftables::stmt::Drop {}))
+                Statement::Accept(Some(Accept {}))
             ],
             ..Default::default()
         }));

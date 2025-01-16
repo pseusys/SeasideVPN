@@ -9,7 +9,7 @@ use regex::Regex;
 use simple_error::bail;
 use tokio::test;
 
-use super::{create_tunnel, disable_firewall, disable_routing, enable_firewall, enable_routing, get_address_device, get_default_interface, restore_svr_table, save_svr_table};
+use super::{NFTABLES_TABLE_NAME, NFTABLES_CHAIN_NAME, create_tunnel, disable_firewall, disable_routing, enable_firewall, enable_routing, get_address_device, get_default_interface, restore_svr_table, save_svr_table};
 use super::super::DynResult;
 
 
@@ -205,7 +205,7 @@ async fn test_enable_disable_routing() {
     let (route_message, rule_message) = enable_routing(tun_network.addr(), tunnel_index, table_idx).expect("Error enabling routing!");
 
     let (routing_destination, routing_device, routing_gateway) = show_route_info(None, Some(table_idx)).expect("Error reading routing info!");
-    assert!(routing_destination.is_some_and(|v| v == "default"), "Tunnel destination doesn't match!");
+    assert!(routing_destination.is_some_and(|v| v == "default"), "Tunnel destination interface doesn't match!");
     assert!(routing_device.is_some_and(|v| v == tun_name), "Tunnel IP address doesn't match!");
     assert!(routing_gateway.is_some_and(|v| v == tun_network.addr()), "Tunnel name doesn't match!");
 
@@ -216,10 +216,10 @@ async fn test_enable_disable_routing() {
     disable_routing(&route_message, &rule_message).expect("Error disabling routing!");
 
     let (routing_destination, _, _) = show_route_info(None, Some(table_idx)).expect("Error reading routing info!");
-    assert!(routing_destination.is_none(), "Routing table not empty!");
+    assert!(routing_destination.is_none(), "Routing table {table_idx} not empty!");
 
     let (routing_fwmark, _) = show_rule_info(table_idx).expect("Error reading routing rules info!");
-    assert!(routing_fwmark.is_none(), "Routing table not empty!");
+    assert!(routing_fwmark.is_none(), "Rule still exists!");
 }
 
 
@@ -236,19 +236,23 @@ async fn test_enable_disable_firewall() {
     };
     let default_net = Ipv4Net::new(default_address, default_cidr as u8).expect("Error parsing network address!");
 
-    let sia_regex = Regex::new(r"ACCEPT[^\S\n]+(?:all|0)[^\n]+?(?<interface>\S+)[^\S\n]+(?<source>\d+\.\d+\.\d+\.\d+)[^\S\n]+(?<destination>\d+\.\d+\.\d+\.\d+)").expect("Error compiling iptables SIA regex!");
-    let sim_regex = Regex::new(r"MARK[^\S\n]+(?:all|0)[^\n]+?(?<interface>\S+)[^\S\n]+(?<source>\d+\.\d+\.\d+\.\d+/\d+)[^\S\n]+!(?<destination>\d+\.\d+\.\d+\.\d+/\d+)[^\S\n]+MARK set (?<mark>\S+)").expect("Error compiling iptables SIM regex!");
-    let sc_regex = Regex::new(r"ACCEPT[^\S\n]+(?:all|0)[^\n]+?(?<interface>\S+)[^\S\n]+(?<source>\d+\.\d+\.\d+\.\d+/\d+)[^\S\n]+!(?<destination>\d+\.\d+\.\d+\.\d+/\d+)").expect("Error compiling iptables SC regex!");
-
-    let sia = format!("-o {default_device} ! --dst {default_net} -j ACCEPT");
-    let sim = format!("-o {default_device} ! --dst {default_net} -j MARK --set-mark {svr_idx}");
-    let sc = format!("-o {default_device} --src {default_address} --dst {seaside_address} -j ACCEPT");
-    let rules = vec![sia, sim, sc];
+    let nft_regex = Regex::new(r#"table\s+ip\s+(?<table>\S+)\s+\{\s*chain\s+(?<ochain>\S+)\s+\{\s*oifname\s+"(?<osiface>\S+)"\s+ip\s+saddr\s+(?<ossource>\d+\.\d+\.\d+\.\d+)\s+ip\s+daddr\s+(?<osdest>\d+\.\d+\.\d+\.\d+)\s+accept\s+oifname\s+"(?<ooiface>\S+)"\s+ip\s+daddr\s+!=\s+(?<oodest>\d+\.\d+\.\d+\.\d+/\d+)\s+meta\s+mark\s+set\s+(?<omark>\S+)\s+accept\s*}\s*chain\s+(?<fchain>\S+)\s+\{\s*oifname\s+"(?<fsiface>\S+)"\s+ip\s+saddr\s+(?<fssource>\d+\.\d+\.\d+\.\d+)\s+ip\s+daddr\s+(?<fsdest>\d+\.\d+\.\d+\.\d+)\s+accept\s+oifname\s+"(?<foiface>\S+)"\s+ip\s+daddr\s+!=\s+(?<fodest>\d+\.\d+\.\d+\.\d+/\d+)\s+meta\s+mark\s+set\s+(?<fmark>\S+)\s+accept\s*}\s+}"#).expect("Error compiling iptables SIA regex!");
 
     let table = enable_firewall(&default_device, &default_net, &seaside_address, svr_idx).expect("Error enabling firewall!");
 
     let (nftables_out, _) = run_command("nft", ["list", "ruleset"]).expect("Error getting 'iptables' data!");
-    print!("{}", nftables_out);
+    let nftables_match = nft_regex.captures(&nftables_out).expect("NFT rule didn't match anything!");
+
+    assert_eq!(&nftables_match["table"], NFTABLES_TABLE_NAME, "NFT table name doesn't match!");
+    for (pref, name) in vec![("o", "output"), ("f", "forward")] {
+        assert_eq!(&nftables_match[format!("{pref}chain").as_str()], format!("{NFTABLES_CHAIN_NAME}-{name}"), "NFT {name} chain name doesn't match!");
+        assert_eq!(&nftables_match[format!("{pref}siface").as_str()], default_device, "NFT {name} chain Seaside rule output interface doesn't match!");
+        assert_eq!(&nftables_match[format!("{pref}ssource").as_str()], default_address.to_string(), "NFT {name} chain Seaside rule source IP address doesn't match!");
+        assert_eq!(&nftables_match[format!("{pref}sdest").as_str()], seaside_address.to_string(), "NFT {name} chain Seaside rule destination IP address doesn't match!");
+        assert_eq!(&nftables_match[format!("{pref}oiface").as_str()], default_device, "NFT {name} chain tunnel rule output interface doesn't match!");
+        assert_eq!(&nftables_match[format!("{pref}odest").as_str()], default_net.trunc().to_string(), "NFT {name} chain tunnel rule destination IP address range doesn't match!");
+        assert_eq!(&nftables_match[format!("{pref}mark").as_str()], format!("{svr_idx:#010x}"), "NFT {name} chain tunnel rule mark value doesn't match!");
+    }
 
     disable_firewall(&table).expect("Error disabling firewall!");
 
