@@ -69,10 +69,11 @@ def bundle() -> None:
     dependencies = check_output(["poetry", "export", "--without-hashes", "--with-credentials", "--only=setup"], text=True)
     requirements = [dep.split(";")[0].strip() for dep in dependencies.split("\n") if len(dep) > 0]
 
+    main_module = "setup.main:main"
     install_cache = "$TEMP/seaside_install_cache"
-    installer_name = argv[1] if len(argv) > 1 else _INSTALLER_NAME
+    installer_name = str(ALGAE_ROOT / (argv[1] if len(argv) > 1 else _INSTALLER_NAME))
     includes = [str(path) for path in (ALGAE_ROOT / "setup").glob("*.py") if path.name != "__init__.py"]
-    create_app(",".join(includes), output=str(ALGAE_ROOT / installer_name), compressed=True, lazy_install=True, unzip_path=install_cache, pip_args=requirements)
+    create_app(",".join(includes), output=installer_name, main=main_module, compressed=True, lazy_install=True, unzip_path=install_cache, pip_args=requirements)
 
 
 def clean() -> None:
