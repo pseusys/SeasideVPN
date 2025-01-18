@@ -133,4 +133,4 @@ jobs:
       - name: Run Installer Script 📥
         env:
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
-        run: python3 viridian/algae/install.pyz -g -a no ${{ matrix.caerulean }} -r ${{ matrix.dist }} -s ${{ env.BRANCH_NAME }}
+        run: sudo -E python3 viridian/algae/install.pyz -g -a no ${{ matrix.caerulean }} -r ${{ matrix.dist }} -s ${{ env.BRANCH_NAME }}
