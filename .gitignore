@@ -24,7 +24,6 @@
 ## Testing utilities files:
 .github/scripts/.setup_test_cache
 .github/scripts/certificates
-.github/scripts/.env
 
 
 

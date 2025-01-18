@@ -74,7 +74,7 @@ class WhirlpoolInstaller(Installer):
         parser.add_argument("-o", "--payload-owner", type=payload_value(_PAYLOAD_SIZE), default=DEFAULT_GENERATED_VALUE, help="Whirlpool owner payload value (should be a secure long ASCII string, default: [will be generated])")
         parser.add_argument("-v", "--payload-viridian", nargs="*", action="extend", default=list(), help="Whirlpool viridian payload value (should be secure long ASCII strings, default: empty list)")
         parser.add_argument("-a", "--internal-address", type=local_ip(True), default=DEFAULT_GENERATED_VALUE, help="Internal whirlpool address (default: first host address)")
-        parser.add_argument("-e", "--external-address", type=local_ip(True), default=DEFAULT_GENERATED_VALUE, help="External whirlpool address (default: same as local address)")
+        parser.add_argument("-e", "--external-address", type=local_ip(True), default=DEFAULT_GENERATED_VALUE, help="External whirlpool address (default: first host address)")
         parser.add_argument("-p", "--control-port", type=port_number(_MIN_PORT_VALUE, _MAX_PORT_VALUE), default=DEFAULT_GENERATED_VALUE, help=f"Seaside control port number (default: random, between {_MIN_PORT_VALUE} and {_MAX_PORT_VALUE})")
         parser.add_argument("--certificates-path", type=str, default=_DEFAULT_CERTIFICATES_PATH, help=f"Path for storing certificates, two files should be present there, 'cert.crt' and 'key.crt' (default: {_DEFAULT_CERTIFICATES_PATH})")
         parser.add_argument("--logs-path", type=str, default=_DEFAULT_LOG_PATH, help=f"Path for storing logs, two files will be created there, 'danger.log' and 'safe.log' (default: {_DEFAULT_LOG_PATH})")
@@ -95,7 +95,7 @@ class WhirlpoolInstaller(Installer):
     @property
     def run_command(self) -> str:
         if self._args["distribution_type"] in (_DT_COMPILE, _DT_BINARY):
-            return "set -a && source conf.env && ./whirlpool.run"
+            return "set -a && . ./conf.env && sudo ./whirlpool.run && disown -r"
         elif self._args["distribution_type"] == _DT_DOCKER:
             return f"docker run --rm --name seaside-whirlpool --env-file=conf.env --sysctl net.ipv6.conf.all.disable_ipv6=1 --network host --privileged {_SEASIDE_IMAGE}:{self._args['docker_label']}"
         else:
@@ -194,9 +194,14 @@ class WhirlpoolInstaller(Installer):
         self._logger.info("All the GO packages installed!")
         return go_path
 
+    def _mark_binary_as_executable(self, executable: Path) -> None:
+        """Mark executable as executable so that it can be run from console."""
+        check_call(f"chmod +x {str(executable)}", stdout=DEVNULL, stderr=DEVNULL, shell=True)
+
     def _download_and_build_sources(self, go_path: Optional[Path]) -> None:
         """Download source code from GitHub to ./SeasideVPN directory and build the whirlpool executable."""
         check_install_packages("git", "make")
+        exepath = Path("whirlpool.run")
         seapath = Path("SeasideVPN")
         go_env = environ.copy()
         go_env["PATH"] = f"{str(go_path)}:{environ['PATH']}" if go_path is not None else environ["PATH"]
@@ -208,7 +213,9 @@ class WhirlpoolInstaller(Installer):
         self._logger.debug("Building whirlpool...")
         check_call("make build", cwd=seapath / "caerulean" / "whirlpool", env=go_env, stdout=DEVNULL, stderr=DEVNULL, shell=True)
         self._logger.debug("Moving executable...")
-        move(seapath / "caerulean" / "whirlpool" / "build" / "whirlpool.run", "whirlpool.run")
+        move(seapath / "caerulean" / "whirlpool" / "build" / "whirlpool.run", exepath)
+        self._logger.debug("Marking executable as executable...")
+        self._mark_binary_as_executable(exepath)
         self._logger.debug("Deleting build files...")
         rmtree(seapath)
 
@@ -222,9 +229,11 @@ class WhirlpoolInstaller(Installer):
             binary_url = f"{_SEASIDE_REPO}/releases/latest/download/caerulean-whirlpool-executable-{arch}.run"
         else:
             binary_url = f"{_SEASIDE_REPO}/releases/download/{self._args['binary_name']}/caerulean-whirlpool-executable-{arch}.run"
+        exepath = Path("whirlpool.run")
         self._logger.debug(f"Downloading whirlpool binary from {binary_url}...")
-        urlretrieve(binary_url, "whirlpool.run")
-        self._logger.debug("Release downloading completed!")
+        urlretrieve(binary_url, exepath)
+        self._logger.debug("Marking executable as executable...")
+        self._mark_binary_as_executable(exepath)
 
     def install(self) -> None:
         if self._args["distribution_type"] == _DT_COMPILE:

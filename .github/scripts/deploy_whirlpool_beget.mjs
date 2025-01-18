@@ -251,11 +251,12 @@ async function waitForServer(ip, key, waitTimes, sleepTime) {
  * Run the node in the background and close SSH connection.
  * @param {NodeSSH} sshConn SSH connection to use
  * @param {string} certsPath local path to store generated self-signed CA certificates
+ * @param {string} whirlpoolIP server IP address for external VPN connections
  * @param {string} ownerPayload deployment server owner payload
  * @param {string} viridianPayload deployment server viridian payload
  * @param {string} ctrlport whirlpool ctrlport
  */
-async function runDeployCommand(sshConn, certsPath, ownerPayload, viridianPayload, ctrlport) {
+async function runDeployCommand(sshConn, certsPath, whirlpoolIP, ownerPayload, viridianPayload, ctrlport) {
 	console.log("Ensuring installation script exists...");
 	ensureInstallationScript();
 	console.log("Determining current git branch...");
@@ -263,7 +264,8 @@ async function runDeployCommand(sshConn, certsPath, ownerPayload, viridianPayloa
 	console.log("Copying whirlpool installation script to beget test server...");
 	await sshConn.putFile(INSTALL_SCRIPT, "install.pyz");
 	console.log("Running whirlpool installation script on beget test server...");
-	const installRes = await sshConn.execCommand(`python3 install.pyz -o -g -a back whirlpool -s ${gitBranch} -o ${ownerPayload} -v ${viridianPayload} -p ${ctrlport}`);
+	const installArgs = `-s ${gitBranch} -a ${whirlpoolIP} -e ${whirlpoolIP} -o ${ownerPayload} -v ${viridianPayload} -p ${ctrlport}`;
+	const installRes = await sshConn.execCommand(`python3 install.pyz -o -g -a back whirlpool ${installArgs}`);
 	if (installRes.code != 0) throw new Error(`Installation script failed, error code: ${installRes.code}`);
 	console.log("Downloading viridian certificates from host...");
 	const viridianCertsLoaded = await getPromiseResultOrNull(sshConn.getDirectory(certsPath, `${DEFAULT_CERTS}/viridian`));
@@ -283,6 +285,6 @@ const ubuntuID = await getUbuntuAppID(UBUNTU_VERISON, token);
 
 const vps = await reinstallServer(serverID, ssh, args.key, ubuntuID, token);
 const conn = await waitForServer(vps.ip_address, args.key, WAIT_TIMES, SLEEP_TIME);
-await runDeployCommand(conn, args.certs, args.key, args.payload, args.ctrlport);
+await runDeployCommand(conn, args.certs, vps.ip_address, args.key, args.payload, args.ctrlport);
 
 if (args.verbose) console.log(`Viridian connection link is: ${YELLOW}${UNDER}seaside+whirlpool://${vps.ip_address}:${args.ctrlport}/${args.payload}${RESET}`);
