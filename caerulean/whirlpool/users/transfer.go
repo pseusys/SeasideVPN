@@ -60,10 +60,6 @@ func (dict *ViridianDict) ReceivePacketsFromViridian(ctx context.Context, userID
 			continue
 		}
 
-		// Update viridian gateway port and address
-		viridian.Port = uint16(address.Port)
-		viridian.Gateway = address.IP
-
 		// Decode the packet
 		raw, err := crypto.Decrypt(buffer[:r], viridian.AEAD)
 		if err != nil {
@@ -80,7 +76,14 @@ func (dict *ViridianDict) ReceivePacketsFromViridian(ctx context.Context, userID
 
 		// Get IP layer header and change source IP
 		netLayer, _ := packet.Layer(layers.LayerTypeIPv4).(*layers.IPv4)
-		logrus.Infof("Received %d bytes from viridian %d (src: %v, dst: %v)", netLayer.Length, userID, netLayer.SrcIP, netLayer.DstIP)
+		logrus.Infof("Received %d bytes from viridian %d (src: %v, dst: %v, via: %s)", netLayer.Length, userID, netLayer.SrcIP, netLayer.DstIP, address.IP)
+
+		// Update viridian IP and gateway address and port and number
+		viridian.Port = uint16(address.Port)
+		viridian.Address = netLayer.SrcIP
+		viridian.Gateway = address.IP
+
+		// Change source IP address (something similar to SNAT)
 		netLayer.SrcIP = net.IPv4(tunnetwork.IP[0], tunnetwork.IP[1], viridianID[0], viridianID[1])
 
 		// Set the network layer to all the layers that require a network layer

@@ -15,7 +15,7 @@ message SeasideConnectionCertificate {
     // Node HTTP port
     string ctrlport = 3;
     // Node authentication payload
-    string payload = 5;
+    string payload = 5;  // TODO: remove!
 }
 
 // Seaside user token used for connection
