@@ -1,5 +1,3 @@
-# Transfer Your Packets Hidden Over an Observed Network
-
 from abc import ABC
 from asyncio import Lock, TimeoutError, create_task, get_running_loop, sleep, wait_for
 from ipaddress import IPv4Address
@@ -21,6 +19,7 @@ class TyphoonSocket(ABC, TyphoonCore, CalculatingRTT):
     _TYPHOON_NEXT_IN_MAX = 30.0
     _DEFAULT_TIMEOUT = 30.0
     _DEFAULT_RETRIES = 8
+    _MAX_TIMEOUT = 60.0
 
     async def __new__(cls, *args, **kwargs):
         instance = super().__new__(cls)
@@ -48,7 +47,7 @@ class TyphoonClientSocket(TyphoonSocket):
 
     async def __init__(self, key: bytes, token: bytes, server_address: IPv4Address, listener_port: int, timeout: float = TyphoonSocket._DEFAULT_TIMEOUT, max_retries: int = TyphoonSocket._DEFAULT_RETRIES, symmetric_ciphersuite: SymmetricCipherSuite = SymmetricCipherSuite.XCHACHA_POLY1305) -> None:
         await TyphoonSocket.__init__(self, key, server_address, listener_port, timeout)
-        self.asymmetric = Asymmetric(key)
+        self.asymmetric = Asymmetric(key, False)
         self.token = token
         self.max_retries = max_retries
         self.symmetric_ciphersuite = symmetric_ciphersuite
@@ -111,10 +110,11 @@ class TyphoonClientSocket(TyphoonSocket):
                     processing_time, self.next_in = data
                 elif message == MessageType.HANDSHAKE_DATA:
                     processing_time, self.next_in, data = data
-                else:
+                elif message == MessageType.TERMINATION:
                     raise TyphoonTerminationError("Connection was terminated by server!")
 
                 if message == MessageType.HANDSHAKE or message == MessageType.HANDSHAKE_DATA:
+                    self.next_in = max(self.next_in, self._MAX_TIMEOUT)
                     self._update_timeout(time() - self.sent_at - processing_time)
                     async with self._lock:
                         self.lonely = False
@@ -168,6 +168,7 @@ class TyphoonClientSocket(TyphoonSocket):
 
                 packet = await wait_for(sock_read(loop, self.socket), timeout=self.answer_in + self.timeout)
                 user_id, self.next_in = self.parse_server_init(self.symmetric, packet)
+                self.next_in = max(self.next_in, self._MAX_TIMEOUT)
                 return user_id
 
             except TimeoutError | TyphoonParseError:
@@ -184,7 +185,19 @@ class TyphoonClientSocket(TyphoonSocket):
 class TyphoonListenerSocket(TyphoonSocket):
     _SERVER_NAME = "serve_typhoon_{}"
 
-    async def __init__(self, key: bytes, server_address: IPv4Address = IPv4Address(0), listener_port: int = 0, timeout: float = TyphoonSocket._DEFAULT_TIMEOUT) -> None:
+    @property
+    def public_key(self) -> bytes:
+        return self.asymmetric.public_key
+
+    @property
+    def server_address(self) -> IPv4Address:
+        return self.socket
+
+    @property
+    def server_port(self) -> int:
+        return self.socket
+
+    async def __init__(self, key: Optional[bytes] = None, server_address: IPv4Address = IPv4Address(0), listener_port: int = 0, timeout: float = TyphoonSocket._DEFAULT_TIMEOUT) -> None:
         await TyphoonSocket.__init__(self, server_address, listener_port, timeout)
         self.asymmetric = Asymmetric(key)
         self.servers = dict()
@@ -196,8 +209,9 @@ class TyphoonListenerSocket(TyphoonSocket):
         while True:
             try:
                 packet, (client_address, client_port) = await sock_read_from(loop, self.socket)
-                self._packet_number, ciphersuite, client_name, answer_in, key, token = self.parse_client_init(self.asymmetric, packet)
+                self._packet_number, ciphersuite, client_name, self.answer_in, key, token = self.parse_client_init(self.asymmetric, packet)
                 self._update_timeout((time() - self._packet_number) * 2)
+                self.answer_in = max(self.answer_in, self._MAX_TIMEOUT)
 
                 self.next_in = randint(self._TYPHOON_NEXT_IN_MIN, self._TYPHOON_NEXT_IN_MAX)
                 if listen_callback is not None:
@@ -212,7 +226,7 @@ class TyphoonListenerSocket(TyphoonSocket):
 
                 await sleep(self.answer_in)
                 packet = self.build_server_init(cipher, self._packet_number, user_id, self.next_in)
-                await sock_write_to(loop, self.socket, packet), answer_in
+                await sock_write_to(loop, self.socket, packet), self.answer_in
 
             except TyphoonParseError as e:
                 print(f"Received unexpected typhoon message: {e}")
@@ -256,10 +270,11 @@ class TyphoonServerSocket(TyphoonSocket):
                     self._packet_number, self.answer_in = data
                 elif message == MessageType.HANDSHAKE_DATA:
                     self._packet_number, self.answer_in, data = data
-                else:
+                elif message == MessageType.TERMINATION:
                     raise TyphoonTerminationError("Connection was terminated by user!")
 
                 if message == MessageType.HANDSHAKE or message == MessageType.HANDSHAKE_DATA:
+                    self.answer_in = max(self.answer_in, self._MAX_TIMEOUT)
                     self.received_at = time()
                     self._update_timeout((self.received_at - self._packet_number) * 2)
                     async with self._lock:

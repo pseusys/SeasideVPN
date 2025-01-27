@@ -30,19 +30,9 @@ Here's the idea behind the protocol:
 
 ## Encryption and authentication
 
-The initialization message (the one being sent from client to listener) is encrypted using asymmetric [ECIES](https://en.wikipedia.org/wiki/Integrated_Encryption_Scheme)-like algorithm:
-
-1. Shared secret is derived from an ephemeral key.
-2. A secure symmetric key is derived from it using a random salt.
-3. A MAC is calculated from the shared secret using the symmetric key.
-4. The plaintext is encrypted using the symmetric key using selected ciphersuite.
-5. Message is transmitted: (ephemeral public key, key salt, key MAC and ciphertext).
-6. The secure symmetric key is derived from the phemeral public key using the salt.
-7. MAC is calculated from the shared secret using the symmetric key and verified.
-8. Ciphertext is decrypted using the symmetric key using selected ciphersuite.
-9. The same key will be used for all the messages coming after.
-
-All the other messages (and also the initialization message) payload are encrypted using one of the two supported ciphersuites: [XChaCha-Poly1305](https://en.wikipedia.org/wiki/ChaCha20-Poly1305) or [AES](https://en.wikipedia.org/wiki/Advanced_Encryption_Standard)-[GCM](https://en.wikipedia.org/wiki/Galois/Counter_Mode).
+The initialization message (the one being sent from client to listener) is encrypted using asymmetric [ECIES](https://en.wikipedia.org/wiki/Integrated_Encryption_Scheme)-like algorithm.
+All the other messages (and also the initialization message) payload are encrypted using one of the two supported ciphersuites: [XChaCha-Poly1305](https://en.wikipedia.org/wiki/ChaCha20-Poly1305).
+The algorithms are defined in the [Monocypher](https://monocypher.org/) library.
 
 Each user uses the same asymmetric key and private symmetric key.
 Since all the messages are **completely** encrypted, the only way server could attribute a message with a user key is using distinct ports for every user.
@@ -69,7 +59,6 @@ Several different message types of the protocol serve different purposes:
 - The termination message (request and response, sent from a `Client` to `Server` or back) is called `TERM` message.
 
 The type of message is defined by the first field, `Flags`.
-In addition, for the `INIT` messages it carries selected ciphersuite index.
 This field is 1 byte long and has the following binary meaning:
 
 | Message type | Flag value |
@@ -78,8 +67,6 @@ This field is 1 byte long and has the following binary meaning:
 | `HDSK` | `64` |
 | `DATA` | `32` |
 | `TERM` | `16` |
-| `AES-GCM` | `2` |
-| `XChaCha-Poly1305` | `1` |
 
 The different protocol message types have different header structure:
 
@@ -87,7 +74,7 @@ The different protocol message types have different header structure:
 
 | Field name | Byte length | Field description |
 |---|:---:|---|
-| Flags | `1` | Message flags + ciphersuite selection |
+| Flags | `1` | Message flags |
 | Packet number | `2` | Unique number of the packet |
 | Client name | `16` | Client application name (may include version) |
 | Next in | `2` | A random delay until server answer will be expected |

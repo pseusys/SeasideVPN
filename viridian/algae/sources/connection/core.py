@@ -9,7 +9,7 @@ from Crypto.Random import get_random_bytes
 
 from sources.coordinator import VERSION
 from sources.connection.utils import MessageType, TyphoonFlag
-from sources.utils.crypto import Asymmetric, Symmetric, SymmetricCipherSuite
+from sources.utils.crypto import Asymmetric, Symmetric
 from sources.utils.misc import MAX_TWO_BYTES_VALUE
 
 
@@ -113,7 +113,7 @@ class TyphoonCore:
             raise TyphoonParseError(f"Server INIT message flags malformed: {flags:b} != {TyphoonFlag.INIT:b}!")
         return user_id, next_in
 
-    def parse_client_init(self, cipher: Asymmetric, packet: bytes) -> Tuple[int, SymmetricCipherSuite, str, int, bytes, bytes]:
+    def parse_client_init(self, cipher: Asymmetric, packet: bytes) -> Tuple[int, str, int, bytes, bytes]:
         try:
             key, data = cipher.decrypt(packet)
             header_length = calcsize(self._CLIENT_INIT_HEADER)
