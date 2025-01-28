@@ -20,9 +20,8 @@ class Asymmetric:
         else:
             self._private_key, self._public_key = None, b64decode(key)
 
-    @classmethod
-    def _compute_blake2b_hash(cls, shared_secret: bytes, client_key: bytes, server_key: bytes) -> bytes:
-        blake = Blake2b(hash_size=cls._SYMMETRIC_HASH_SIZE)
+    def _compute_blake2b_hash(self, shared_secret: bytes, client_key: bytes, server_key: bytes) -> bytes:
+        blake = Blake2b(hash_size=self._SYMMETRIC_HASH_SIZE)
         blake.update(shared_secret)
         blake.update(client_key)
         blake.update(server_key)

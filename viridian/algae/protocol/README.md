@@ -30,9 +30,9 @@ Here's the idea behind the protocol:
 
 ## Encryption and authentication
 
-The initialization message (the one being sent from client to listener) is encrypted using asymmetric [ECIES](https://en.wikipedia.org/wiki/Integrated_Encryption_Scheme)-like algorithm.
-All the other messages (and also the initialization message) payload are encrypted using one of the two supported ciphersuites: [XChaCha-Poly1305](https://en.wikipedia.org/wiki/ChaCha20-Poly1305).
-The algorithms are defined in the [Monocypher](https://monocypher.org/) library.
+The initialization message (the one being sent from client to listener) is encrypted using asymmetric [ECIES](https://en.wikipedia.org/wiki/Integrated_Encryption_Scheme)-like algorithm (with ephemeral key being hidden by [Elligator](https://elligator.org/) algorithm and symmetric key derived using [Blake2b](https://www.blake2.net/) hash function).
+All the other messages (and also the initialization message) payload are encrypted using [XChaCha-Poly1305](https://en.wikipedia.org/wiki/ChaCha20-Poly1305) symmetric cipher.
+[Monocypher](https://monocypher.org/) library is used for both of the algorithms.
 
 Each user uses the same asymmetric key and private symmetric key.
 Since all the messages are **completely** encrypted, the only way server could attribute a message with a user key is using distinct ports for every user.
@@ -59,7 +59,7 @@ Several different message types of the protocol serve different purposes:
 - The termination message (request and response, sent from a `Client` to `Server` or back) is called `TERM` message.
 
 The type of message is defined by the first field, `Flags`.
-This field is 1 byte long and has the following binary meaning:
+This field is 1 byte long and has the following binary meaning (the other bits are reserved for future use):
 
 | Message type | Flag value |
 |---|:---:|
