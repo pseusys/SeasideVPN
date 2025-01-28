@@ -8,7 +8,7 @@ from Crypto.Random.random import randint
 from Crypto.Random import get_random_bytes
 
 from sources.coordinator import VERSION
-from sources.connection.utils import MessageType, TyphoonFlag
+from sources.typhoon.utils import MessageType, TyphoonFlag
 from sources.utils.crypto import Asymmetric, Symmetric
 from sources.utils.misc import MAX_TWO_BYTES_VALUE
 

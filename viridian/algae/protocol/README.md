@@ -32,9 +32,9 @@ Here's the idea behind the protocol:
 
 The initialization message (the one being sent from client to listener) is encrypted using asymmetric [ECIES](https://en.wikipedia.org/wiki/Integrated_Encryption_Scheme)-like algorithm (with ephemeral key being hidden by [Elligator](https://elligator.org/) algorithm and symmetric key derived using [Blake2b](https://www.blake2.net/) hash function).
 All the other messages (and also the initialization message) payload are encrypted using [XChaCha-Poly1305](https://en.wikipedia.org/wiki/ChaCha20-Poly1305) symmetric cipher.
-[Monocypher](https://monocypher.org/) library is used for both of the algorithms.
+[Monocypher](https://monocypher.org/) library is used normally for both of the algorithms (however, both `Client` and `Server` can use any other faster implementation of XChaCha20-Ploy1305).
 
-Each user uses the same asymmetric key and private symmetric key.
+Each user uses common asymmetric key and private symmetric key.
 Since all the messages are **completely** encrypted, the only way server could attribute a message with a user key is using distinct ports for every user.
 That is why a separate `Server` thread is provided for every user connected to the server.
 

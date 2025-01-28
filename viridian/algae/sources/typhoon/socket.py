@@ -9,8 +9,8 @@ from Crypto.Random.random import randint
 
 from sources.utils.asyncos import sock_read, sock_read_from, sock_write, sock_write_to
 from sources.utils.crypto import Asymmetric, Symmetric, SymmetricCipherSuite
-from sources.connection.core import TyphoonCore, ConnectionCallback, ListenCallback, ServeCallback, ReceiveCallback, TyphoonParseError, TyphoonTerminationError
-from sources.connection.utils import CalculatingRTT, MessageType
+from sources.typhoon.core import TyphoonCore, ConnectionCallback, ListenCallback, ServeCallback, ReceiveCallback, TyphoonParseError, TyphoonTerminationError
+from sources.typhoon.utils import CalculatingRTT, MessageType
 
 
 class TyphoonSocket(ABC, TyphoonCore, CalculatingRTT):

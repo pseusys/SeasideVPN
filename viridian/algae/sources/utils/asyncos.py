@@ -90,7 +90,7 @@ def sock_read_from(loop: AbstractEventLoop, sock: socket, number: int = MAX_TWO_
     :param number: number of bytes to read from socket.
     :return: future that will be resolved in successful read.
     """
-    return _async_read_callback(loop, sock.fileno(), _sock_read_from_callback(sock, number))
+    return _async_read_callback(loop, sock.fileno(), lambda: _sock_read_from_callback(sock, number))
 
 
 def os_write(loop: AbstractEventLoop, fd: int, data: bytes) -> Future[int]:
@@ -130,4 +130,4 @@ def sock_write_to(loop: AbstractEventLoop, sock: socket, data: bytes, address: T
     :param address: address to send data to.
     :return: future that will be resolved in successful write.
     """
-    return _async_write_callback(loop, sock.fileno(), _sock_write_to_callback(sock, data, address))
+    return _async_write_callback(loop, sock.fileno(), lambda: _sock_write_to_callback(sock, data, address))
