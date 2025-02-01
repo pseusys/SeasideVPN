@@ -5,10 +5,9 @@ from socket import SOCK_NONBLOCK, AF_INET, SOCK_DGRAM, IPPROTO_UDP, socket
 from time import time
 from typing import Optional
 
-from Crypto.Random.random import randint
-
 from sources.utils.asyncos import sock_read, sock_read_from, sock_write, sock_write_to
 from sources.utils.crypto import Asymmetric, Symmetric, SymmetricCipherSuite
+from sources.utils.misc import random_number
 from sources.typhoon.core import TyphoonCore, ConnectionCallback, ListenCallback, ServeCallback, ReceiveCallback, TyphoonParseError, TyphoonTerminationError
 from sources.typhoon.utils import CalculatingRTT, MessageType
 
@@ -38,7 +37,7 @@ class TyphoonSocket(ABC, TyphoonCore, CalculatingRTT):
         self.next_in = 0
 
     def _random_sleep(self) -> int:
-        return randint(1, self._TYPHOON_SLEEP)
+        return random_number(min=1.0, max=self._TYPHOON_SLEEP)
 
 
 class TyphoonClientSocket(TyphoonSocket):
@@ -213,7 +212,7 @@ class TyphoonListenerSocket(TyphoonSocket):
                 self._update_timeout((time() - self._packet_number) * 2)
                 self.answer_in = max(self.answer_in, self._MAX_TIMEOUT)
 
-                self.next_in = randint(self._TYPHOON_NEXT_IN_MIN, self._TYPHOON_NEXT_IN_MAX)
+                self.next_in = random_number(min=self._TYPHOON_NEXT_IN_MIN, max=self._TYPHOON_NEXT_IN_MAX)
                 if listen_callback is not None:
                     await listen_callback(client_name, token)
 
@@ -293,7 +292,7 @@ class TyphoonServerSocket(TyphoonSocket):
             if self.shadow_ride:
                 self.shadow_ride = False
         if shadow_sending:
-            self.next_in = randint(self._TYPHOON_NEXT_IN_MIN, self._TYPHOON_NEXT_IN_MAX)
+            self.next_in = random_number(min=self._TYPHOON_NEXT_IN_MIN, max=self._TYPHOON_NEXT_IN_MAX)
             packet = await self.build_server_hdsk_data(self.symmetric, self._packet_number, self._processing_time, self.next_in, packet)
         else:
             packet = await self.build_any_data(self.symmetric, packet)
@@ -331,7 +330,7 @@ class TyphoonServerSocket(TyphoonSocket):
                     shadow_sent = not self.shadow_ride
                     self.shadow_ride = False
                 if not shadow_sent:
-                    self.next_in = randint(self._TYPHOON_NEXT_IN_MIN, self._TYPHOON_NEXT_IN_MAX)
+                    self.next_in = random_number(min=self._TYPHOON_NEXT_IN_MIN, max=self._TYPHOON_NEXT_IN_MAX)
                     packet = self.build_server_hdsk(self.symmetric, self._packet_number, self._processing_time, self.next_in)
                     await sock_write(loop, self.socket, packet)
 

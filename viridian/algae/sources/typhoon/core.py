@@ -1,16 +1,14 @@
 from asyncio import Future
+from secrets import token_bytes
 from struct import calcsize, pack, unpack
 from time import time
 from types import NoneType
 from typing import Callable, Tuple, Union
 
-from Crypto.Random.random import randint
-from Crypto.Random import get_random_bytes
-
 from sources.coordinator import VERSION
 from sources.typhoon.utils import MessageType, TyphoonFlag
 from sources.utils.crypto import Asymmetric, Symmetric
-from sources.utils.misc import MAX_TWO_BYTES_VALUE
+from sources.utils.misc import MAX_TWO_BYTES_VALUE, random_number
 
 
 ConnectionCallback = Callable[[int], Future[None]]
@@ -47,18 +45,18 @@ class TyphoonCore:
     # Build different messages
 
     def build_server_init(self, cipher: Symmetric, packet_number: int, user_id: int, next_in: int) -> bytes:
-        tail_length = randint(0, self._MAX_TAIL_LENGTH)
+        tail_length = random_number(max=self._MAX_TAIL_LENGTH)
         header = pack(self._SERVER_INIT_HEADER, TyphoonFlag.INIT, packet_number, user_id, next_in, tail_length)
-        packet = header + get_random_bytes(tail_length)
+        packet = header + token_bytes(tail_length)
         return cipher.encrypt(packet)
 
     def build_client_init(self, cipher: Asymmetric, answer_in: int, token: bytes) -> Tuple[bytes, bytes]:
         packet_number = self._get_next_packet_number()
         ciphersuite = SymmetricCipherSuite.XCHACHA_POLY1305
         client_name = self._CLIENT_NAME.encode()
-        tail_length = randint(0, self._MAX_TAIL_LENGTH)
+        tail_length = random_number(max=self._MAX_TAIL_LENGTH)
         header = pack(self._CLIENT_INIT_HEADER, TyphoonFlag.INIT, packet_number, ciphersuite, client_name, answer_in, tail_length)
-        packet = header + token + get_random_bytes(tail_length)
+        packet = header + token + token_bytes(tail_length)
         return cipher.encrypt(packet)
 
     def build_server_hdsk_data(self, cipher: Symmetric, packet_number: int, processing_time: int, next_in: int, data: bytes) -> bytes:
@@ -68,9 +66,9 @@ class TyphoonCore:
         return self._build_server_hdsk_with_data(cipher, TyphoonFlag.HDSK, packet_number, processing_time, next_in, bytes())
 
     def _build_server_hdsk_with_data(self, cipher: Symmetric, flags: int, packet_number: int, processing_time: int, next_in: int, data: bytes) -> bytes:
-        tail_length = randint(0, self._MAX_TAIL_LENGTH)
+        tail_length = random_number(max=self._MAX_TAIL_LENGTH)
         header = pack(self._SERVER_HDSK_HEADER, flags, packet_number, processing_time, next_in, tail_length)
-        packet = header + data + get_random_bytes(tail_length)
+        packet = header + data + token_bytes(tail_length)
         return cipher.encrypt(packet)
 
     def build_client_hdsk_data(self, cipher: Symmetric, answer_in: int, data: bytes) -> bytes:
@@ -81,21 +79,21 @@ class TyphoonCore:
 
     def _build_client_hdsk_with_data(self, cipher: Symmetric, flags: int, answer_in: int, data: bytes) -> bytes:
         packet_number = self._get_next_packet_number()
-        tail_length = randint(0, self._MAX_TAIL_LENGTH)
+        tail_length = random_number(max=self._MAX_TAIL_LENGTH)
         header = pack(self._CLIENT_HDSK_HEADER, flags, packet_number, answer_in, tail_length)
-        packet = header + data + get_random_bytes(tail_length)
+        packet = header + data + token_bytes(tail_length)
         return cipher.encrypt(packet)
 
     def build_any_data(self, cipher: Symmetric, data: bytes) -> bytes:
-        tail_length = randint(0, self._MAX_TAIL_LENGTH)
+        tail_length = random_number(max=self._MAX_TAIL_LENGTH)
         header = pack(self._ANY_OTHER_HEADER, TyphoonFlag.DATA, tail_length)
-        packet = header + data + get_random_bytes(tail_length)
+        packet = header + data + token_bytes(tail_length)
         return cipher.encrypt(packet)
 
     def build_any_term(self, cipher: Symmetric) -> bytes:
-        tail_length = randint(0, self._MAX_TAIL_LENGTH)
+        tail_length = random_number(max=self._MAX_TAIL_LENGTH)
         header = pack(self._ANY_OTHER_HEADER, TyphoonFlag.TERM, tail_length)
-        packet = header + get_random_bytes(tail_length)
+        packet = header + token_bytes(tail_length)
         return cipher.encrypt(packet)
 
     # Parse INIT messages, they are parsed separately and can not be confused with the others:

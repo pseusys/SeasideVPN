@@ -1,8 +1,7 @@
 from argparse import Action, ArgumentParser, Namespace
-from base64 import b64encode
 from ipaddress import AddressValueError, IPv4Address
 from logging import NOTSET, _nameToLevel
-from os import urandom
+from secrets import token_urlsafe
 from random import randint
 from socket import gethostbyname, gethostname
 from typing import Any, Callable, List, Optional, Union
@@ -13,13 +12,13 @@ DEFAULT_GENERATED_VALUE = str()
 def payload_value(default_length: int) -> Callable[[str], str]:
     """
     Return the given string or generate one.
-    Random string will be generated using system `urandom` and encoded with base64.
+    Random string will be generated using stdlib `secrets` module and encoded safe for URLs.
     :param default_length: generated random string length.
     :return: the generator function.
     """
 
     def internal(value: str) -> str:
-        return b64encode(urandom(default_length)).decode("ASCII").strip("=") if len(value) == 0 else value
+        return token_urlsafe(default_length) if len(value) == 0 else value
 
     return internal
 

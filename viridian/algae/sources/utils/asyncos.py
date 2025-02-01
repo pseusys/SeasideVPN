@@ -2,7 +2,7 @@ from asyncio import AbstractEventLoop, Future
 from ipaddress import IPv4Address
 from os import read, write
 from socket import socket
-from typing import Any, Callable, Tuple
+from typing import Callable, Tuple
 
 from sources.utils.misc import MAX_TWO_BYTES_VALUE
 

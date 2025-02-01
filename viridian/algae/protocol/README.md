@@ -58,16 +58,6 @@ Several different message types of the protocol serve different purposes:
 - The data (VPN) message (request and response, sent from a `Client` to `Server` and back) is called `DATA` message.
 - The termination message (request and response, sent from a `Client` to `Server` or back) is called `TERM` message.
 
-The type of message is defined by the first field, `Flags`.
-This field is 1 byte long and has the following binary meaning (the other bits are reserved for future use):
-
-| Message type | Flag value |
-|---|:---:|
-| `INIT` | `128` |
-| `HDSK` | `64` |
-| `DATA` | `32` |
-| `TERM` | `16` |
-
 The different protocol message types have different header structure:
 
 ### Client `INIT`
@@ -88,12 +78,13 @@ The different protocol message types have different header structure:
 |---|:---:|---|
 | Flags | `1` | Message flags |
 | Packet number | `2` | Unique number of the packet |
+| Return code | `1` | Initialization return code |
 | User ID | `2` | The port number of the spawned `Server` |
 | Next in | `2` | A random delay until the first handshake |
 | Tail length | `2` | A random tail length that will be appended to the message |
 | Tail | variable | Random length tail |
 
-### Server and server `HDSK`
+### Client and server `HDSK`
 
 | Field name | Byte length | Field description |
 |---|:---:|---|
@@ -120,6 +111,27 @@ The different protocol message types have different header structure:
 | Flags | `1` | Message flags |
 | Tail length | `2` | A random tail length that will be appended to the message |
 | Tail | variable | Random length tail |
+
+## Special field values
+
+The type of message is defined by the first field, `Flags`.
+This field is 1 byte long and has the following binary meaning (the other bits are reserved for future use):
+
+| Message type | Flag value |
+|---|:---:|
+| `INIT` | `128` |
+| `HDSK` | `64` |
+| `DATA` | `32` |
+| `TERM` | `16` |
+
+If an error happens during handshake (e.g. unexpected packet number), the packet is silently ignored.
+If an error occures during initialization process, it is reflected in the special `Return code` field:
+
+| Error code | Field value |
+|---|:---:|
+| `Success` | `0` |
+
+Finally, if any other outer circumstances require any communication party to stop communication, a `TERM` packet should be sent.
 
 ## State machine
 

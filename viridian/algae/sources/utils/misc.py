@@ -1,5 +1,6 @@
 from logging import StreamHandler, getLogger
 from os import getenv
+from secrets import token_bytes
 from ssl import PROTOCOL_TLS_CLIENT, SSLContext
 from sys import stdout
 from typing import Any, Dict, Optional
@@ -19,17 +20,12 @@ logger = getLogger(__name__)
 logger.setLevel(_level)
 logger.addHandler(_handler)
 
-# Maximum random bytes tail length.
-MAX_TAIL_LENGTH = 64
-
-# Symmetric key length.
-SYMM_KEY_LENGTH = 32
-
-# Maximum size of a one byte integer
-MAX_ONE_BYTE_VALUE = (1 << 8) - 1
-
 # Maximum length of message - transport level packet.
 MAX_TWO_BYTES_VALUE = (1 << 16) - 1
+
+
+def random_number(bytes: int = 4, min: int = 0, max: int = (1 << 32) - 1) -> int:
+    return (int.from_bytes(token_bytes(bytes), "big") + min) % max
 
 
 def create_grpc_secure_channel(host: str, port: int, ca: Optional[str]) -> Channel:
