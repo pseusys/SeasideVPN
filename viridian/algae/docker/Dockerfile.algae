@@ -55,7 +55,7 @@ ENTRYPOINT ["sleep", "infinity"]
 FROM default-sleeping AS default
 
 # Run viridian algae in the background.
-ENTRYPOINT ["python3", "-m", "sources", "-p", "$SEASIDE_PAYLOAD_OWNER", "-a", "$SEASIDE_ADDRESS", "-c", "$SEASIDE_CTRLPORT"]
+ENTRYPOINT ["sh", "-c", "python3 -m sources -p $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -c $SEASIDE_CTRLPORT"]
 
 HEALTHCHECK --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s CMD ls /sys/class/net | grep $SEASIDE_TUNNEL_NAME
 

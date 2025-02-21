@@ -145,7 +145,7 @@ stateDiagram
 
   [*] --> Initializing
   Initializing --> Still: Correct response received
-  Initializing --> [*]: Maximum number of retries is reached
+  Initializing --> [*]: Maximum number of retries is reached or termination requested
   Initializing --> Initializing: Timeout expires
   note left of Initializing
     Client sends an init message to Listener.
@@ -154,7 +154,7 @@ stateDiagram
   end note
 
   Still --> Shadowriding: Timeout expires
-  Still --> [*]: A termination message is received
+  Still --> [*]: A termination message is received or sent
   note left of Still
     Client starts sending data to Server.
     "Lonely" state number of retries is reset.
@@ -174,15 +174,17 @@ stateDiagram
     It attaches a handshake header to it if it comes.
   end note
 
-  Lonely --> [*]: Maximum number of retries is reached
+  Lonely --> [*]: Maximum number of retries is reached or termination message is sent
   Lonely --> Still: A handshake message is received from Server
   Lonely --> Shadowriding: Timeout expires
   note left of Lonely
-    Client waits for Server reponse for "next_in + timeout".
+    Client waits for Server reponse for "next_in + timeout - RTT".
     It continues sending data to Server in the meantime.
     A number of retries on entering the state is specified.
   end note
 ```
+
+TODO: add terminating state to everywhere, change server state machine.
 
 ### `Listener` state machine
 
@@ -207,7 +209,7 @@ stateDiagram
 
   [*] --> Still
   Still --> Shadowriding: Timeout expires
-  Still --> [*]: A termination message is received
+  Still --> [*]: A termination message is received or sent
   note left of Still
     Server starts sending data to Client.
     "Lonely" state number of retries is reset.
@@ -227,7 +229,7 @@ stateDiagram
     It attaches a handshake header to it if it comes.
   end note
 
-  Lonely --> [*]: Maximum number of retries is reached
+  Lonely --> [*]: Maximum number of retries is reached or termination message is sent
   Lonely --> Still: A handshake message is received from Server
   Lonely --> Shadowriding: Timeout expires
   note left of Lonely
@@ -247,12 +249,15 @@ Some of the values mentioned above have special constraints on their calculation
 |---|:---:|
 | `ALPHA` | `0.125` |
 | `BETA` | `0.25` |
+| `DEFAULT_RTT` | `5.0` |
 | `MIN_RTT` | `1.0` |
 | `MAX_RTT` | `8.0` |
+| `RTT_MULT` | `4.0` |
 | `MIN_TIMEOUT` | `4.0` |
 | `MAX_TIMEOUT` | `32.0` |
 | `DEFAULT_TIMEOUT` | `30.0` |
 | `MAX_TAIL_LENGTH` | `1024` |
+| `INITIAL_NEXT_IN` | `0.05` |
 | `MIN_NEXT_IN` | `64.0` |
 | `MAX_NEXT_IN` | `256.0` |
 | `MAX_RETRIES` | `5` |
@@ -263,9 +268,14 @@ RTT is calculated using [EWMA](https://en.wikipedia.org/wiki/Moving_average#Expo
 However, since `INIT` packet is only send once and `DATA`-only packets are not tracked and have shortened header, only `HDSK` packets are used for RTT calculation.
 It is also important to substract the `next_in` random delay from the resulting packet RTT on every step.
 Global variables `ALPHA` and `BETA` are used for RTT calculations.
+Timeout will be calculated as smooth RTT + RTT variance * `RTT_MULT`.
+
+The RTT value should be updated upon receiving a `HDSK` packet.
+The packet RTT cna be calculated using this formula: `PacketReceiveTimestamp - PacketSendTimestamp - RequestNextIn`.
 
 Several bounds are implemented for both RTT and timeout values (when they are used in practice).
-RTT should be between `MIN_RTT` and `MAX_RTT`, timeout should be between `MIN_TIMEOUT` and `MAX_TIMEOUT`, the default value can be set to `DEFAULT_TIMEOUT`.
+RTT should be between `MIN_RTT` and `MAX_RTT`, the default value can be set to `DEFAULT_RTT`.
+Timeout should be between `MIN_TIMEOUT` and `MAX_TIMEOUT`, the default value can be set to `DEFAULT_TIMEOUT`.
 
 ### Common random values
 
@@ -273,8 +283,10 @@ Here are some notes on generation of some random values:
 
 - Packet number (part of the `INIT` and `HDSK` packet): calculated as current timestamp modulo $2^{32}$ (2 bytes).  
   It should be unique, although it is not advanced by 1, but derived from current time instead and helps both `Client` and `Server` to calculate RTT.
+  It will reset once per approximately 18 hours, which is perfectly fine, since normally RTT will never be even close to this time.
 - Random tail length: tail length can be any number between `0` and `MAX_TAIL_LENGTH`.
-- Next in: should be greater than timeout value, that's it; can be any number between `MIN_NEXT_IN` and `MAX_NEXT_IN`.
+- Next in: normally it should be greater than timeout value, that's it; can be any number between `MIN_NEXT_IN` and `MAX_NEXT_IN`.
+  The initial next in value should be shorter (otherwise connection would take ages), so the initialial `MIN_NEXT_IN` and `MAX_NEXT_IN` would be multiplied by special `INITIAL_NEXT_IN` multiplier (so that it will be effectively reduced).
 - Retries: number of retries should not be that large, the default one can be used directly: `MAX_RETRIES`.
 
 ## Side notes
@@ -285,3 +297,5 @@ Here are some notes on generation of some random values:
   At one point in time, only one `INIT` or `HDSK` message is expected.
 3. In general `HDSK` messages should be **rare**, there is no need to perform healthchecks often.  
   That is why setting next in values not within the default constants is not advised.
+4. However, it is important for server to limit `next_in` values received from user to some reasonable delay.
+  Otherwise the server might end up polluted with lots of waiting-forever `Server`s.

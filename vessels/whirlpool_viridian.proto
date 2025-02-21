@@ -3,26 +3,21 @@ package generated;
 
 import "google/protobuf/empty.proto";
 
-option go_package = "/generated";
-
 
 
 // User data that is needed for administrator whirlpool node authentication
 message WhirlpoolAuthenticationRequest {
+    // User non-unique name
+    string name = 1;
     // User unique identifier
-    string uid = 1;
-    // User session cipher key
-    bytes session = 2;
-    // Node authentication owner payload
-    string payload = 3;
+    bytes identifier = 2;
 }
 
 // User authentication certificate
 message WhirlpoolAuthenticationResponse {
     // Encrypted user token
     bytes token = 1;
-    // Maximum expected nextIn delay
-    int32 maxNextIn = 2;
+    bytes public_key = 2;
 }
 
 

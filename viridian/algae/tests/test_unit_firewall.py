@@ -5,7 +5,7 @@ from typing import Generator
 
 import pytest
 
-from sources.tunnel import Tunnel
+from viridian.algae.sources.tunnel import Tunnel
 
 TUNNEL_NAME = "test-tun"
 TUNNEL_ADDRESS = IPv4Address("10.0.0.2")

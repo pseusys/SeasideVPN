@@ -8,16 +8,17 @@ from flake8.api.legacy import get_style_guide
 from isort import check_file, file
 from mypy.api import run
 
-from scripts.misc import ALGAE_ROOT
+# Root of algae viridian source files.
+ALGAE_ROOT = Path(__file__).parent.parent
 
 # Maximum python sources line length.
 _MAX_LINE_LEN = 500
 
+# All the project files will be checked, except for "__init__.py"s (the default option)
+_FILES = [str(file) for file in ALGAE_ROOT.glob("*/[!_]*.py")]
+
 # Default logger instance.
 logger = getLogger(__name__)
-
-# All the project files will be checked (the default option)
-_FILES = [str(file) for file in ALGAE_ROOT.glob("*/[!_]*.py")]
 
 
 def lint(files: Optional[List[str]] = None) -> int:

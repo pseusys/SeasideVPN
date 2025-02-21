@@ -29,7 +29,7 @@ VERSIONED_FILES=(
     ".github/scripts/package.json" \
     "viridian/algae/pyproject.toml" \
     "viridian/algae/README.md" \
-    "viridian/algae/sources/coordinator.py" \
+    "viridian/algae/sources/version.py" \
     "viridian/algae/setup/whirlpool.py" \
     "viridian/reef/Cargo.toml" \
     "viridian/reef/src/lib/mod.rs" \

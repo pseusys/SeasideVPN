@@ -1,8 +1,9 @@
+from contextlib import AbstractAsyncContextManager
 from fcntl import ioctl
 from ipaddress import IPv4Address, IPv4Interface, IPv4Network
 from os import O_RDWR, getegid, geteuid, open
 from struct import pack
-from typing import List, Tuple
+from typing import AsyncIterator, List, Tuple
 
 from colorama import Fore
 from iptc import Chain, Rule, Table, Target
@@ -11,7 +12,7 @@ from pyroute2.netlink import NLM_F_REQUEST, NLM_F_REPLACE, NLM_F_ECHO
 from pyroute2.netlink.rtnl import RTM_NEWROUTE, RTM_NEWRULE
 from pyroute2.netlink.rtnl.rtmsg import rtmsg
 
-from sources.utils import logger
+from ..utils.misc import create_logger
 
 # Unix TUN device set name number.
 _UNIX_TUNSETIFF = 0x400454CA
@@ -33,6 +34,9 @@ _UNIX_TUN_DEVICE = "/dev/net/tun"
 
 # Unix TUN device maximal file name length.
 _UNIX_IFNAMSIZ = 16
+
+
+logger = create_logger(__name__)
 
 
 def _create_tunnel(name: str) -> Tuple[int, str]:
@@ -135,7 +139,7 @@ def _create_internet_rule_accept(default_ip: IPv4Interface, default_interface: s
     return rule
 
 
-class Tunnel:
+class Tunnel(AbstractAsyncContextManager):
     """
     Viridian "tunnel" class: it is responsible for iptables rules and unix TUN interface.
     It creates, enables, stops and deletes tunnel interface.
@@ -283,3 +287,11 @@ class Tunnel:
             self._active = False
         else:
             logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} already deleted")
+
+    async def __aenter__(self) -> AsyncIterator[int]:
+        self.up()
+        return self.descriptor
+
+    async def __aexit__(self, _, exc_value, __):
+        self.down()
+        raise exc_value

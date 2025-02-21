@@ -1,0 +1,12 @@
+services:
+  typhoon-server:
+    container_name: server
+    network_mode: host
+    build:
+      dockerfile: viridian/algae/protocol/docker/Dockerfile
+      context: ../../../..
+    environment:
+      TYPHOON_CERTIFICATE: ${TYPHOON_CERTIFICATE}
+      TYPHOON_ADDRESS: 0.0.0.0
+      TYPHOON_PORT: 12345
+      TYPHOON_LOG_LEVEL: DEBUG

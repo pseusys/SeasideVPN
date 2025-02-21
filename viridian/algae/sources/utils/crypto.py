@@ -1,24 +1,29 @@
-from base64 import b64decode, b64encode
 from typing import Optional, Tuple
 
-from monocypher import Blake2b, IncrementalAuthenticatedEncryption, elligator_map, generate_key, generate_key_exchange_key_pair, compute_signing_public_key, elligator_key_pair, key_exchange
+from monocypher import Blake2b, IncrementalAuthenticatedEncryption, elligator_map, generate_key, generate_key_exchange_key_pair, elligator_key_pair, key_exchange
+
+from sources.utils.misc import classproperty
 
 
 class Asymmetric:
     _SYMMETRIC_HASH_SIZE = 32
-    _HIDDEN_PUBLIC_KEY_SIZE = 32
+    _PUBLIC_KEY_SIZE = 32
 
     @property
     def public_key(self) -> bytes:
-        return b64encode(self._public_key)
+        return self._public_key
+
+    @classproperty
+    def ciphertext_overhead(cls) -> int:
+        return cls._PUBLIC_KEY_SIZE + Symmetric.ciphertext_overhead
 
     def __init__(self, key: Optional[bytes] = None, private: bool = True) -> None:
         if key is None:
             self._private_key, self._public_key = generate_key_exchange_key_pair()
         elif private:
-            self._private_key, self._public_key = key, compute_signing_public_key(key)
+            self._private_key, self._public_key = key[:self._PUBLIC_KEY_SIZE], key[self._PUBLIC_KEY_SIZE:]
         else:
-            self._private_key, self._public_key = None, b64decode(key)
+            self._private_key, self._public_key = None, key
 
     def _compute_blake2b_hash(self, shared_secret: bytes, client_key: bytes, server_key: bytes) -> bytes:
         blake = Blake2b(hash_size=self._SYMMETRIC_HASH_SIZE)
@@ -34,7 +39,7 @@ class Asymmetric:
         return symmetric_key, hidden_public_key + Symmetric(symmetric_key).encrypt(plaintext, hidden_public_key)
 
     def decrypt(self, ciphertext: bytes) -> Tuple[bytes, bytes]:
-        hidden_public_key, ciphertext = ciphertext[: self._HIDDEN_PUBLIC_KEY_SIZE], ciphertext[self._HIDDEN_PUBLIC_KEY_SIZE :]
+        hidden_public_key, ciphertext = ciphertext[: self._PUBLIC_KEY_SIZE], ciphertext[self._PUBLIC_KEY_SIZE :]
         ephemeral_public_key = elligator_map(hidden_public_key)
         shared_secret = key_exchange(self._private_key, ephemeral_public_key)
         symmetric_key = self._compute_blake2b_hash(shared_secret, hidden_public_key, self._public_key)
@@ -45,6 +50,10 @@ class Symmetric:
     # A safer version of ChaCha20 cipher is used (XChaCha20) with extended `nonce`, 24 bytes long.
     _CHACHA_NONCE_LENGTH = 24
     _CHACHA_MAC_LENGTH = 16
+
+    @classproperty
+    def ciphertext_overhead(cls) -> int:
+        return cls._CHACHA_NONCE_LENGTH + cls._CHACHA_NONCE_LENGTH
 
     def __init__(self, key: Optional[bytes] = None):
         self._key = generate_key() if key is None else key

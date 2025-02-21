@@ -1,49 +1,96 @@
-from logging import StreamHandler, getLogger
+from asyncio import FIRST_COMPLETED, CancelledError, Future, sleep, wait
+from contextlib import suppress
+from logging import Logger, StreamHandler, getLogger
 from os import getenv
 from secrets import token_bytes
-from ssl import PROTOCOL_TLS_CLIENT, SSLContext
 from sys import stdout
-from typing import Any, Dict, Optional
-from urllib.parse import urlparse
+from types import NoneType
+from typing import Literal, Optional, TypeVar, TypedDict, Union, NotRequired
+from urllib.parse import parse_qs, urlparse
 
-from grpclib.client import Channel
 
-# Logging level, read from environment variable or set to DEBUG by default.
-_level = getenv("SEASIDE_LOG_LEVEL", "DEBUG")
+_T = TypeVar("_T")
 
-# Logging handler that prints logs to stdout.
-_handler = StreamHandler(stdout)
-_handler.setLevel(_level)
 
-# Default algae client logger.
-logger = getLogger(__name__)
-logger.setLevel(_level)
-logger.addHandler(_handler)
+# CONSTANTS:
+
 
 # Maximum length of message - transport level packet.
 MAX_TWO_BYTES_VALUE = (1 << 16) - 1
 
 
+# LOGGING:
+
+
+# Logging level, read from environment variable or set to DEBUG by default.
+_level = getenv("SEASIDE_LOG_LEVEL", "DEBUG")
+
+def create_logger(name: str) -> Logger:
+    handler = StreamHandler(stdout)
+    handler.setLevel(_level)
+    logger = getLogger(name)
+    logger.setLevel(_level)
+    logger.addHandler(handler)
+    return logger
+
+
+# RANDOM:
+
+
 def random_number(bytes: int = 4, min: int = 0, max: int = (1 << 32) - 1) -> int:
-    return (int.from_bytes(token_bytes(bytes), "big") + min) % max
+    return int((int.from_bytes(token_bytes(bytes), "big") + min) % max)
 
 
-def create_grpc_secure_channel(host: str, port: int, ca: Optional[str]) -> Channel:
-    """
-    Create secure gRPC channel.
-    Retrieve and add certificated to avoid probkems with self-signed connection.
-    :param host: caerulean host name.
-    :param port: caerulean control port number.
-    :return: gRPC secure channel.
-    """
-    context = SSLContext(PROTOCOL_TLS_CLIENT)
-    if ca is not None:
-        context.load_verify_locations(cafile=ca)
-    context.set_alpn_protocols(["h2", "http/1.1"])
-    return Channel(host, port, ssl=context)
+# CLASS UTILITIES:
 
 
-def parse_connection_link(link: str) -> Dict[str, Any]:
+class classproperty(object):
+    def __init__(self, f):
+        self.f = f
+
+    def __get__(self, _, owner):
+        return self.f(owner)
+
+
+# ASYNCHRONOUS:
+
+
+async def set_timeout(timeout: float, callback: Optional[Future[_T]] = None) -> _T:
+    await sleep(timeout)
+    return None if callback is None else await callback
+
+
+async def select(*tasks: Future[Union[NoneType, _T]], timeout: Optional[float] = None) -> Optional[_T]:
+    result = None
+    successful, pending = await wait(set(tasks), return_when=FIRST_COMPLETED, timeout=timeout)
+    for coro in successful:
+        output = await coro
+        if output is not None:
+            if result is None:
+                result = output
+            else:
+                raise RuntimeError("Two or more coroutines returned non-None result!")
+    for p in pending:
+        p.cancel()
+        with suppress(CancelledError):
+            await p
+    return result
+
+
+# CONNECTION LINK:
+
+
+ConnectionLinkDict = TypedDict("ConnectionLinkDict", {
+    "node_type": Union[Literal["whirlpool"]],
+    "addr": str,
+    "port": int,
+    "key": NotRequired[str],
+    "proto": NotRequired[str],
+    "token": NotRequired[str],
+})
+
+
+def parse_connection_link(link: str) -> ConnectionLinkDict:
     """
     Parse connection link and return contained data as dict.
     Connection link has the following format:
@@ -64,8 +111,13 @@ def parse_connection_link(link: str) -> Dict[str, Any]:
     if parsed.port is None:
         raise RuntimeError(f"Unknown connection address: {parsed.netloc}")
     else:
-        result.update({"addr": str(parsed.hostname), "ctrl_port": parsed.port})
+        result.update({"addr": str(parsed.hostname), "port": parsed.port})
 
-    result.update({"payload": parsed.path[1:]})
+    query_params = parse_qs(parsed.query)
+    result.update({
+        "key": query_params.setdefault("key", [None])[0],
+        "proto": query_params.setdefault("proto", [None])[0],
+        "token": query_params.setdefault("token", [None])[0]
+    })
 
     return result

@@ -21,7 +21,8 @@ def _async_read_callback(loop: AbstractEventLoop, descriptor: int, reader: Calla
     def reader_func(future: Future[bytes]) -> None:
         try:
             future.set_result(reader())
-        except OSError:
+        except OSError as e:
+            print(e)
             future.cancel()
         finally:
             loop.remove_reader(descriptor)

@@ -29,7 +29,8 @@
 
 # Python:
 
-## Poetry lock file:
+## Poetry lock file and cache:
+viridian/algae/.poetry
 viridian/algae/poetry.lock
 
 ## Pyinstaller build:
@@ -43,7 +44,7 @@ viridian/algae/**/.mypy_cache/
 viridian/algae/**/.pytest-cache/
 
 ## Python generated files:
-viridian/algae/sources/generated/
+viridian/algae/sources/interaction/generated/
 viridian/algae/*.pyz
 
 ## Test files:

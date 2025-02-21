@@ -3,7 +3,6 @@ package generated;
 
 import "google/protobuf/timestamp.proto";
 
-option go_package = "/generated";
 
 
 // Required data for connection to a seaside node
@@ -20,12 +19,10 @@ message SeasideConnectionCertificate {
 
 // Seaside user token used for connection
 message UserToken {
+    // User non-unique name
+    string name = 1;
     // User unique identifier
-    string uid = 1;
-    // User session cipher key
-    bytes session = 2;
-    // Flag if user is privileged
-    bool privileged = 3;
+    bytes identifier = 2;
     // User subscription end timestamp
-    optional google.protobuf.Timestamp subscription = 4;
+    optional google.protobuf.Timestamp subscription = 3;
 }

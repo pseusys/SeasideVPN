@@ -1,21 +1,43 @@
+from contextlib import contextmanager
 from ipaddress import IPv4Address
 from logging import getLogger
 from os import environ
 from pathlib import Path
 from shutil import rmtree
-from typing import Literal, Union
+from typing import Iterator, Literal, Tuple, Union
 
 from colorama import Fore, Style, just_fix_windows_console
 from python_on_whales import DockerClient, DockerException
 from yaml import safe_load
 
-from scripts.misc import docker_test
 from setup.certificates import generate_certificates
 
 Profile = Union[Literal["local"], Literal["remote"], Literal["domain"], Literal["integration"], Literal["unit"]]
 
+# Root of algae viridian source files.
+ALGAE_ROOT = Path(__file__).parent.parent
+
 # Default logger instance.
 logger = getLogger(__name__)
+
+
+@contextmanager
+def docker_test() -> Iterator[Tuple[Path, bool]]:
+    """
+    Build all base Docker images and prepare Docker client.
+    Context manager, yields path to "algae/docker" directory and current docker client.
+    :return: iterator of tuples: path to docker directory and flag if currently in CI environment.
+    """
+    hosted = "CI" in environ
+    docker_path = ALGAE_ROOT / "docker"
+    docker = DockerClient(compose_files=[docker_path / "compose.default.yml"])
+    try:
+        logger.debug("Building default testing images...")
+        docker.compose.build(quiet=hosted)
+        yield docker_path, hosted
+    finally:
+        docker.compose.rm(stop=True)
+
 
 
 def _print_container_logs(docker: DockerClient, container: str, last: int = 100) -> None:

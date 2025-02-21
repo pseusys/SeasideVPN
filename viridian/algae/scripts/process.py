@@ -1,4 +1,4 @@
-from asyncio import run as async_run
+from asyncio import run
 from glob import glob
 from pathlib import Path
 from shutil import rmtree
@@ -7,15 +7,9 @@ from sys import argv
 from typing import List, Union
 
 from colorama import Fore, Style, just_fix_windows_console
-from grpc_tools.protoc import _get_resource_file_name
-from grpc_tools.protoc import main as protoc_main
-from PyInstaller.__main__ import run as install
-from python_on_whales import Container, DockerClient
-from python_on_whales.components.image.cli_wrapper import ValidImage
-from python_on_whales.utils import run as docker_run
-from zipapps import create_app
 
-from scripts.misc import ALGAE_ROOT
+# Root of algae viridian source files.
+ALGAE_ROOT = Path(__file__).parent.parent
 
 # Default algae executable file name.
 _EXECUTABLE_NAME = "algae.run"
@@ -24,21 +18,23 @@ _EXECUTABLE_NAME = "algae.run"
 _INSTALLER_NAME = "install.pyz"
 
 
-def generate() -> int:
+def generate() -> None:
     """
     Generate protobuf source files.
     Previous generation results will be removed.
     Library `betterproto` is used for generation.
     """
-    sources_root = ALGAE_ROOT / "sources"
-    generated_root = sources_root / "generated"
-    rmtree(generated_root, ignore_errors=True)
+    from grpc_tools.protoc import _get_resource_file_name
+    from grpc_tools.protoc import main
+
+    sources_root = ALGAE_ROOT / "sources" / "interaction"
+    rmtree(sources_root / "generated", ignore_errors=True)
 
     vessels_root = ALGAE_ROOT.parent.parent / "vessels"
     proto_include = _get_resource_file_name("grpc_tools", "_proto")
     vessels = [str(file) for file in glob(f"{str(vessels_root)}/*.proto", recursive=True)]
-    params = [protoc_main.__module__, f"-I={proto_include}", f"-I={str(vessels_root)}", f"--python_betterproto_out={str(sources_root)}"]
-    return int(protoc_main(params + vessels))
+    params = [main.__module__, f"-I={proto_include}", f"-I={str(vessels_root)}", f"--python_betterproto_out={str(sources_root)}"]
+    exit(main(params + vessels))
 
 
 def compile() -> None:
@@ -46,25 +42,28 @@ def compile() -> None:
     Generate single algae executable.
     Library `pyinstaller` is used for generation.
     """
+    from PyInstaller.__main__ import run
+
     executable_name = argv[1] if len(argv) > 1 else _EXECUTABLE_NAME
     paths = ["--specpath", str(ALGAE_ROOT), "--distpath", str(ALGAE_ROOT / "dist"), "--workpath", str(ALGAE_ROOT / "build")]
-    install(paths + ["-F", "-c", "-y", "-n", executable_name, str(ALGAE_ROOT / "sources" / "main.py")])
+    run(paths + ["-F", "-c", "-y", "-n", executable_name, str(ALGAE_ROOT / "sources" / "main.py")])
 
 
-def execute() -> int:
+def execute() -> None:
     """
     Import and execute main function of algae module.
     Pass console arguments to it.
     """
-    from sources.main import main
+    from ..sources.automation.simple_client import main
 
-    return async_run(main(argv[1:]))
+    exit(run(main(argv[1:])))
 
 
 def bundle() -> None:
     """
     Bundle caerulean installation script.
     """
+    from zipapps import create_app
 
     dependencies = check_output(["poetry", "export", "--without-hashes", "--with-credentials", "--only=setup"], text=True)
     requirements = [dep.split(";")[0].strip() for dep in dependencies.split("\n") if len(dep) > 0]
@@ -81,6 +80,10 @@ def clean() -> None:
     Delete all algae generated source files, build files and executables.
     Also remove all related Docker conatiners, images and networks.
     """
+    from python_on_whales import Container, DockerClient
+    from python_on_whales.components.image.cli_wrapper import ValidImage
+    from python_on_whales.utils import run
+
     for path in glob("**/__pycache__", recursive=True):
         rmtree(path, ignore_errors=True)
 
@@ -101,7 +104,7 @@ def clean() -> None:
     whirlpool_images: List[ValidImage] = [f"seaside-whirlpool-{mode}" for mode in ("default", "smoke", "integration", "smoke-local", "smoke-remote")]
     docker.image.remove(["seaside-echo-smoke", "seaside-router-smoke", "seaside-router-smoke-sleeping", "seaside-echo-default", "seaside-echo"] + algae_images + whirlpool_images, True, True)
     docker_network = [f"docker_{net}" for net in ("sea-client", "sea-router", "sea-server", "sea-cli-int", "sea-rout-int", "sea-rout-ext", "sea-serv-ext")]
-    docker_run(docker.docker_cmd + ["network", "remove", "--force"] + docker_network)
+    run(docker.docker_cmd + ["network", "remove", "--force"] + docker_network)
 
 
 def help() -> None:
