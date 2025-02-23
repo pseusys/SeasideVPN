@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends python3-pip && 
 
 # Export dependencies to a `requirements.txt` install protobuf compiler.
 COPY viridian/algae/pyproject.toml ./
-RUN poetry install --without client,devel,setup
+RUN poetry install --without client,devel,setup && poetry self add 'poethepoet[poetry_plugin]' poetry-plugin-export
 RUN poetry export -f requirements.txt --with client,devel --without-hashes --output requirements.txt
 
 # Copy protobuf files and generate python code.
