@@ -13,12 +13,11 @@ from .utils import MessageType, TyphoonFlag, TyphoonInitializationError, Typhoon
 class PortCore:
     _CLIENT_NAME = f"algae-tcp-{__version__}"
 
-    _SERVER_INIT_HEADER = ">BBHH"
-    _CLIENT_INIT_HEADER = ">B32sHH"
-    _ANY_OTHER_HEADER = ">BHH"
+    _SERVER_INIT_HEADER = "!BBHH"
+    _CLIENT_INIT_HEADER = "!B32sHH"
+    _ANY_OTHER_HEADER = "!BHH"
 
-    _MAX_TAIL_LENGTH = int(getenv("TYPHOON_MAX_TAIL_LENGTH", "512"))
-
+    _PORT_TAIL_LENGTH = int(getenv("PORT_TAIL_LENGTH", "512"))
     _PORT_KEEPIDLE = int(getenv("PORT_KEEPIDLE", "5"))
     _PORT_KEEPINTVL = int(getenv("PORT_KEEPINTVL", "10"))
     _PORT_KEEPCNT = int(getenv("PORT_KEEPCNT", "5"))
@@ -52,24 +51,24 @@ class PortCore:
     # Build different messages
 
     def build_server_init(self, cipher: Symmetric, user_id: int, status: TyphoonReturnCode) -> bytes:
-        tail_length = random_number(2, max=self._MAX_TAIL_LENGTH)
+        tail_length = random_number(2, max=self._PORT_TAIL_LENGTH)
         header = pack(self._SERVER_INIT_HEADER, TyphoonFlag.INIT, status, user_id, tail_length)
         return cipher.encrypt(header) + token_bytes(tail_length)
 
     def build_client_init(self, cipher: Asymmetric, token: bytes) -> Tuple[bytes, bytes]:
         client_name = self._CLIENT_NAME.encode()
-        tail_length = random_number(2, max=self._MAX_TAIL_LENGTH)
+        tail_length = random_number(2, max=self._PORT_TAIL_LENGTH)
         header = pack(self._CLIENT_INIT_HEADER, TyphoonFlag.INIT, client_name, len(token), tail_length)
         key, asymmetric_part = cipher.encrypt(header)
         return key, asymmetric_part + Symmetric(key).encrypt(token) + token_bytes(tail_length)
 
     def build_any_data(self, cipher: Symmetric, data: bytes) -> bytes:
-        tail_length = random_number(2, max=self._MAX_TAIL_LENGTH)
+        tail_length = random_number(2, max=self._PORT_TAIL_LENGTH)
         header = pack(self._ANY_OTHER_HEADER, TyphoonFlag.DATA, len(data), tail_length)
         return cipher.encrypt(header) + cipher.encrypt(data) + token_bytes(tail_length)
 
     def build_any_term(self, cipher: Symmetric) -> bytes:
-        tail_length = random_number(2, max=self._MAX_TAIL_LENGTH)
+        tail_length = random_number(2, max=self._PORT_TAIL_LENGTH)
         header = pack(self._ANY_OTHER_HEADER, TyphoonFlag.TERM, 0, tail_length)
         return cipher.encrypt(header) + token_bytes(tail_length)
 

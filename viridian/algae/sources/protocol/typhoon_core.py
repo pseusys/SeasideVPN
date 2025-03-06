@@ -14,10 +14,10 @@ from .utils import MessageType, TyphoonFlag, TyphoonInitializationError, Typhoon
 class TyphoonCore:
     _CLIENT_NAME = f"algae-{__version__}"
 
-    _SERVER_INIT_HEADER = ">BHBHHH"
-    _CLIENT_INIT_HEADER = ">BH16sHH"
-    _ANY_HDSK_HEADER = ">BHHH"
-    _ANY_OTHER_HEADER = ">BH"
+    _SERVER_INIT_HEADER = "!BHBHHH"
+    _CLIENT_INIT_HEADER = "!BH16sHH"
+    _ANY_HDSK_HEADER = "!BHHH"
+    _ANY_OTHER_HEADER = "!BH"
 
     _TYPHOON_ALPHA = float(getenv("TYPHOON_ALPHA", "0.125"))
     _TYPHOON_BETA = float(getenv("TYPHOON_BETA", "0.25"))

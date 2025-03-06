@@ -36,10 +36,10 @@ class Asymmetric:
         hidden_public_key, ephemeral_private_key = elligator_key_pair()
         shared_secret = key_exchange(ephemeral_private_key, self._public_key)
         symmetric_key = self._compute_blake2b_hash(shared_secret, hidden_public_key, self._public_key)
-        return symmetric_key, hidden_public_key + Symmetric(symmetric_key).encrypt(plaintext, hidden_public_key)
+        return symmetric_key, Symmetric(symmetric_key).encrypt(plaintext, hidden_public_key) + hidden_public_key
 
     def decrypt(self, ciphertext: bytes) -> Tuple[bytes, bytes]:
-        hidden_public_key, ciphertext = ciphertext[: self._PUBLIC_KEY_SIZE], ciphertext[self._PUBLIC_KEY_SIZE :]
+        ciphertext, hidden_public_key = ciphertext[: -self._PUBLIC_KEY_SIZE], ciphertext[-self._PUBLIC_KEY_SIZE :]
         ephemeral_public_key = elligator_map(hidden_public_key)
         shared_secret = key_exchange(self._private_key, ephemeral_public_key)
         symmetric_key = self._compute_blake2b_hash(shared_secret, hidden_public_key, self._public_key)
@@ -53,7 +53,7 @@ class Symmetric:
 
     @classproperty
     def ciphertext_overhead(cls) -> int:
-        return cls._CHACHA_NONCE_LENGTH + cls._CHACHA_NONCE_LENGTH
+        return cls._CHACHA_NONCE_LENGTH + cls._CHACHA_MAC_LENGTH
 
     def __init__(self, key: Optional[bytes] = None):
         self._key = generate_key() if key is None else key
@@ -62,10 +62,10 @@ class Symmetric:
         nonce = generate_key(self._CHACHA_NONCE_LENGTH)
         cipher = IncrementalAuthenticatedEncryption(self._key, nonce)
         mac, ciphertext = cipher.lock(plaintext, additional_data)
-        return nonce + ciphertext + mac
+        return ciphertext + mac + nonce
 
     def decrypt(self, ciphertext: bytes, additional_data: Optional[bytes] = None) -> bytes:
-        nonce, ciphertext = ciphertext[: self._CHACHA_NONCE_LENGTH], ciphertext[self._CHACHA_NONCE_LENGTH :]
+        ciphertext, nonce = ciphertext[: -self._CHACHA_NONCE_LENGTH], ciphertext[-self._CHACHA_NONCE_LENGTH :]
         ciphertext, mac = ciphertext[: -self._CHACHA_MAC_LENGTH], ciphertext[-self._CHACHA_MAC_LENGTH :]
         cipher = IncrementalAuthenticatedEncryption(self._key, nonce)
         return cipher.unlock(mac, ciphertext, additional_data)

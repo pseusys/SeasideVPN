@@ -9,20 +9,53 @@ import (
 	"strings"
 
 	"github.com/sirupsen/logrus"
+	"github.com/vishvananda/netlink"
 )
 
 // Execute console command.
 // Accept executable name and vararg command arguments.
 // Return stdout and stderr as a string, terminate if command execution failed.
-func runCommand(cmd string, args ...string) string {
+func runCommand(cmd string, args ...string) (string, error) {
 	command := exec.Command(cmd, args...)
 	output, err := command.CombinedOutput()
 	if err != nil {
-		logrus.Infof("Command %s output: %s", cmd, output)
-		logrus.Errorf("Error running command: %v", args)
-		logrus.Fatalf("Error running command: %v", err)
+		logrus.Errorf("Command %s output: %s", cmd, output)
+		return "", fmt.Errorf("error running command: %v", args)
+	} else {
+		return string(output), nil
 	}
-	return string(output)
+}
+
+func findDefaultInterface() (*net.IPNet, error) {
+	routes, err := netlink.RouteList(nil, netlink.FAMILY_ALL)
+	if err != nil {
+		return nil, fmt.Errorf("error getting route list: %v", err)
+	}
+
+	for _, route := range routes {
+		if route.Dst == nil {
+			iface, err := net.InterfaceByIndex(route.LinkIndex)
+			if err != nil {
+				logrus.Warnf("Error resolving interface %d: %v", route.LinkIndex, err)
+				continue
+			}
+
+			addrs, err := iface.Addrs()
+			if err != nil {
+				logrus.Warnf("Error parsing interface IP addresses %s, %v", iface.Name, err)
+				continue
+			}
+
+			for _, addr := range addrs {
+				ipNet, ok := addr.(*net.IPNet)
+				if ok {
+					return ipNet, nil
+				}
+			}
+		}
+	}
+
+	return nil, errors.New("default route not found")
 }
 
 // Find network interface by IP address.

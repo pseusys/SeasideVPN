@@ -12,8 +12,6 @@ from .port_core import PortCore
 
 
 class _PortPeer:
-    _CALLBACK_TASK_NAME = "read-cycle"
-
     def __init__(self, connection: socket, timeout: Optional[float] = None):
         self._core = PortCore(timeout)
         self._socket = self._core.configure_socket(connection)
@@ -56,6 +54,8 @@ class _PortPeer:
 
 
 class PortClient(_PortPeer, SeasideClient):
+    _CALLBACK_TASK_NAME = "read-cycle"
+
     def __init__(self, key: bytes, token: bytes, address: IPv4Address, port: int, timeout: Optional[float] = None):
         super().__init__(socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP), timeout)
         self._peer_address, self._peer_port = address, port

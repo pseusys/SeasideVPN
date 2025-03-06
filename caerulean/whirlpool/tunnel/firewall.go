@@ -10,6 +10,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const DEFAULT_HASHLIMIT_VALUE = -1
+
 // Create "limit" iptable rule appendix (as a string array).
 // Accept environment variable name and template string where the value will be inserted (packet/second or kbyte/second, etc.).
 // Also accept maximum number of user supported by VPN and burst multiplier (integers).
@@ -19,7 +21,7 @@ import (
 func readLimit(envVar, template string, userNumber int32, burstMultiplier uint32) []string {
 	acceptRuleTemplate := []string{"-j", "ACCEPT"}
 	hashlimitRuleTemplate := []string{"-m", "hashlimit", "--hashlimit-mode", "dstip,dstport"}
-	limitNumber := int32(utils.GetIntEnv(envVar, 32)) * userNumber
+	limitNumber := int32(utils.GetIntEnv(envVar, DEFAULT_HASHLIMIT_VALUE, 32)) * userNumber
 	if limitNumber > 0 {
 		ruleSlice := []string{"--hashlimit-name", strings.ToLower(envVar), "--hashlimit-upto", fmt.Sprintf(template, limitNumber), "--hashlimit-burst", strconv.FormatUint(uint64(limitNumber)*uint64(burstMultiplier), 10)}
 		return utils.ConcatSlices(hashlimitRuleTemplate, ruleSlice, acceptRuleTemplate)
@@ -30,11 +32,28 @@ func readLimit(envVar, template string, userNumber int32, burstMultiplier uint32
 
 // Flush all the IP tables.
 // This includes filter, raw, nat and mangle tables.
-func flushIPTables() {
-	runCommand("iptables", "-F")
-	runCommand("iptables", "-t", "raw", "-F")
-	runCommand("iptables", "-t", "nat", "-F")
-	runCommand("iptables", "-t", "mangle", "-F")
+func flushIPTables() error {
+	_, err := runCommand("iptables", "-F")
+	if err != nil {
+		return fmt.Errorf("error flushing filter table: %v", err)
+	}
+
+	_, err = runCommand("iptables", "-t", "raw", "-F")
+	if err != nil {
+		return fmt.Errorf("error flushing raw table: %v", err)
+	}
+
+	_, err = runCommand("iptables", "-t", "nat", "-F")
+	if err != nil {
+		return fmt.Errorf("error flushing nat table: %v", err)
+	}
+
+	_, err = runCommand("iptables", "-t", "mangle", "-F")
+	if err != nil {
+		return fmt.Errorf("error flushing mangle table: %v", err)
+	}
+
+	return nil
 }
 
 // Store iptables configuration.
@@ -55,10 +74,10 @@ func (conf *TunnelConfig) storeForwarding() {
 // Should be applied for TunnelConf object.
 // Accept internal and external IP addresses as strings, seaside, network and control ports as integers.
 // Return error if configuration was not successful, nil otherwise.
-func (conf *TunnelConfig) openForwarding(intIP, extIP string, ctrlPort uint16) error {
+func (conf *TunnelConfig) openForwarding(intIP, extIP string, apiPort uint16, portPort, typhoonPort int32) error {
 	// Prepare interface names and port numbers as strings
 	tunIface := conf.Tunnel.Name()
-	ctrlStr := strconv.FormatUint(uint64(ctrlPort), 10)
+	apiStr := strconv.FormatUint(uint64(apiPort), 10)
 
 	// Find internal network interface name
 	intIface, err := findInterfaceByIP(intIP)
@@ -75,30 +94,110 @@ func (conf *TunnelConfig) openForwarding(intIP, extIP string, ctrlPort uint16) e
 	extName := extIface.Name
 
 	// Flush iptables rules
-	flushIPTables()
+	err = flushIPTables()
+	if err != nil {
+		return fmt.Errorf("error flushing IP tables: %v", err)
+	}
+
 	// Accept localhost connections
-	runCommand("iptables", "-A", "INPUT", "-i", "lo", "-j", "ACCEPT")
-	runCommand("iptables", "-A", "OUTPUT", "-o", "lo", "-j", "ACCEPT")
-	// Allow all the connections that are already established
-	runCommand("iptables", "-A", "INPUT", "-m", "conntrack", "--ctstate", "ESTABLISHED,RELATED", "-j", "ACCEPT")
-	runCommand("iptables", "-A", "OUTPUT", "-m", "conntrack", "--ctstate", "ESTABLISHED", "-j", "ACCEPT")
+	_, err = runCommand("iptables", "-A", "INPUT", "-i", "lo", "-j", "ACCEPT")
+	if err != nil {
+		return err
+	}
+
+	_, err = runCommand("iptables", "-A", "OUTPUT", "-o", "lo", "-j", "ACCEPT")
+	if err != nil {
+		return err
+	}
+
 	// Accept admin connections to private ports (e.g. SSH, HTTP, etc.)
-	runCommand("iptables", "-A", "INPUT", "-p", "tcp", "--dport", "0:1024", "-m", "conntrack", "--ctstate", "NEW,ESTABLISHED,RELATED", "-j", "ACCEPT")
-	runCommand("iptables", "-A", "OUTPUT", "-p", "tcp", "--sport", "0:1024", "-m", "conntrack", "--ctstate", "ESTABLISHED", "-j", "ACCEPT")
+	_, err = runCommand("iptables", "-A", "INPUT", "-p", "tcp", "--dport", "0:1024", "-j", "ACCEPT")
+	if err != nil {
+		return err
+	}
+
+	_, err = runCommand("iptables", "-A", "OUTPUT", "-p", "tcp", "--sport", "0:1024", "-j", "ACCEPT")
+	if err != nil {
+		return err
+	}
+
+	// Allow all the connections that are already established
+	_, err = runCommand("iptables", "-A", "INPUT", "-m", "conntrack", "--ctstate", "ESTABLISHED,RELATED", "-j", "ACCEPT")
+	if err != nil {
+		return err
+	}
+
+	_, err = runCommand("iptables", "-A", "OUTPUT", "-m", "conntrack", "--ctstate", "ESTABLISHED", "-j", "ACCEPT")
+	if err != nil {
+		return err
+	}
+
 	// Accept packets to port network, control and whirlpool ports, also accept PING packets
-	runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "udp", "-d", intIP, "-i", intName}, conf.vpnDataKbyteLimitRule)...)
-	runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "tcp", "-d", intIP, "--dport", ctrlStr, "-i", intName}, conf.controlPacketLimitRule)...)
-	runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "icmp", "-d", intIP, "-i", intName}, conf.icmpPacketPACKETLimitRules)...)
+	if typhoonPort != -1 {
+		typhoonStr := strconv.FormatUint(uint64(typhoonPort), 10)
+		_, err = runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "udp", "-d", intIP, "--dport", typhoonStr, "-i", intName}, conf.controlPacketLimitRule)...)
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err = runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "udp", "-d", intIP, "-i", intName}, conf.vpnDataKbyteLimitRule)...)
+	if err != nil {
+		return err
+	}
+
+	if portPort != -1 {
+		portStr := strconv.FormatUint(uint64(portPort), 10)
+		_, err = runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "tcp", "-d", intIP, "--dport", portStr, "-i", intName}, conf.controlPacketLimitRule)...)
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err = runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "tcp", "-d", intIP, "--dport", apiStr, "-i", intName}, conf.controlPacketLimitRule)...)
+	if err != nil {
+		return err
+	}
+
+	_, err = runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "tcp", "-d", intIP, "-i", intName}, conf.vpnDataKbyteLimitRule)...)
+	if err != nil {
+		return err
+	}
+
+	_, err = runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "icmp", "-d", intIP, "-i", intName}, conf.icmpPacketPACKETLimitRules)...)
+	if err != nil {
+		return err
+	}
+
 	// Else drop all input packets
-	runCommand("iptables", "-P", "INPUT", "DROP")
+	_, err = runCommand("iptables", "-P", "INPUT", "DROP")
+	if err != nil {
+		return err
+	}
+
 	// Enable forwarding from tunnel interface to external interface (forward)
-	runCommand("iptables", "-A", "FORWARD", "-i", tunIface, "-o", extName, "-j", "ACCEPT")
+	_, err = runCommand("iptables", "-A", "FORWARD", "-i", tunIface, "-o", extName, "-j", "ACCEPT")
+	if err != nil {
+		return err
+	}
+
 	// Enable forwarding from external interface to tunnel interface (backward)
-	runCommand("iptables", "-A", "FORWARD", "-i", extName, "-o", tunIface, "-j", "ACCEPT")
+	_, err = runCommand("iptables", "-A", "FORWARD", "-i", extName, "-o", tunIface, "-j", "ACCEPT")
+	if err != nil {
+		return err
+	}
+
 	// Drop all other forwarding packets (e.g. from external interface to external interface)
-	runCommand("iptables", "-P", "FORWARD", "DROP")
+	_, err = runCommand("iptables", "-P", "FORWARD", "DROP")
+	if err != nil {
+		return err
+	}
+
 	// Enable masquerade on all non-claimed output and input from and to external interface
-	runCommand("iptables", "-t", "nat", "-A", "POSTROUTING", "-o", extName, "-j", "MASQUERADE")
+	_, err = runCommand("iptables", "-t", "nat", "-A", "POSTROUTING", "-o", extName, "-j", "MASQUERADE")
+	if err != nil {
+		return err
+	}
 
 	// Return no error
 	logrus.Infof("Forwarding configured: %s <-> %s <-> %s", intName, tunIface, extName)
@@ -108,15 +207,19 @@ func (conf *TunnelConfig) openForwarding(intIP, extIP string, ctrlPort uint16) e
 // Restore iptables configuration.
 // Use iptables-restore command to restore iptables configurations from bytes.
 // Should be applied for TunnelConf object, restore the configurations from .buffer field.
-func (conf *TunnelConfig) closeForwarding() {
+func (conf *TunnelConfig) closeForwarding() error {
 	if conf.buffer.Len() > 0 {
 		command := exec.Command("iptables-restore", "--counters")
 		command.Stdin = &conf.buffer
 		err := command.Run()
 		if err != nil {
-			logrus.Errorf("Error running command %s: %v", command, err)
+			return fmt.Errorf("error running command %s: %v", command, err)
 		}
 	} else {
-		flushIPTables()
+		err := flushIPTables()
+		if err != nil {
+			return fmt.Errorf("error flushing IP tables: %v", err)
+		}
 	}
+	return nil
 }

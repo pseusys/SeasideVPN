@@ -1,0 +1,3 @@
+[submodule "caerulean/whirlpool/monocypher-go"]
+	path = caerulean/whirlpool/monocypher-go
+	url = https://github.com/pseusys/monocypher-go

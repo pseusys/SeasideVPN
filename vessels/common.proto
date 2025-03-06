@@ -3,6 +3,8 @@ package generated;
 
 import "google/protobuf/timestamp.proto";
 
+option go_package = "/generated";
+
 
 
 // Required data for connection to a seaside node
@@ -12,9 +14,9 @@ message SeasideConnectionCertificate {
     // Node IP address
     string address = 2;
     // Node HTTP port
-    string ctrlport = 3;
+    string api_port = 3;
     // Node authentication payload
-    string payload = 5;  // TODO: remove!
+    optional string api_key = 5;
 }
 
 // Seaside user token used for connection
@@ -22,7 +24,9 @@ message UserToken {
     // User non-unique name
     string name = 1;
     // User unique identifier
-    bytes identifier = 2;
+    string identifier = 2;
+    // Whether user was added by admin
+    bool is_admin = 3;
     // User subscription end timestamp
-    optional google.protobuf.Timestamp subscription = 3;
+    optional google.protobuf.Timestamp subscription = 4;
 }
