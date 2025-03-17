@@ -26,15 +26,13 @@ poetry-plugin-export = "^1.9.0"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
+pymonocypher = "^4.0.2.5"
 colorama = "^0.4.6"
 
 [tool.poetry.group.client.dependencies]
 pyroute2 = "^0.7.9"
 python-iptables = "^1.0.1"
 betterproto = "^2.0.0b6"
-
-[tool.poetry.group.typhoon.dependencies]
-pymonocypher = "^4.0.2.5"
 
 [tool.poetry.group.devel.dependencies]
 pytest = "^8.3.2"
@@ -78,7 +76,6 @@ test-integration.script = "scripts:test_integration"
 test-smoke.script = "scripts:test_smoke"
 test-local.script = "scripts:test_local"
 test-remote.script = "scripts:test_remote"
-test-domain.script = "scripts:test_domain"
 test-all.script = "scripts:test_all"
 compile.script = "scripts:compile"
 execute.script = "scripts:execute"

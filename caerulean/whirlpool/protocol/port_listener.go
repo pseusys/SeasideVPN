@@ -2,7 +2,6 @@ package protocol
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"main/crypto"
@@ -21,9 +20,6 @@ type PortListener struct {
 	core    *PortCore
 	address *net.TCPAddr
 	servers map[uint16]*PortServer
-	ctx     *context.Context
-	cancel  *context.CancelFunc
-	wg      *sync.WaitGroup
 }
 
 func NewPortListener(address string, viridianDict *users.ViridianDict) (*PortListener, error) {
@@ -40,30 +36,32 @@ func NewPortListener(address string, viridianDict *users.ViridianDict) (*PortLis
 		core:    core,
 		address: addr,
 		servers: servers,
-		ctx:     nil,
-		cancel:  nil,
-		wg:      nil,
 	}, nil
 }
 
-func (p *PortListener) listenInternal(base context.Context, listener *net.TCPListener, connChan chan *net.TCPConn, errorChan chan error) {
+func (p *PortListener) listenInternal(ctx context.Context, listener *net.TCPListener, connChan chan *net.TCPConn, errorChan chan error) {
 	for {
 		select {
-		case <-base.Done():
+		case <-ctx.Done():
 			return
 		default:
 			conn, err := listener.AcceptTCP()
 
 			if err != nil {
-				errorChan <- err
-				return
+				select {
+				case <-ctx.Done():
+					return
+				default:
+					errorChan <- err
+					return
+				}
 			}
 
 			select {
-			case connChan <- conn:
-				// The receiver is responsible for returning the buffer after usage.
-			case <-base.Done():
+			case <-ctx.Done():
 				return
+			default:
+				connChan <- conn
 			}
 		}
 	}
@@ -72,10 +70,8 @@ func (p *PortListener) listenInternal(base context.Context, listener *net.TCPLis
 func (p *PortListener) Listen(base context.Context, wg *sync.WaitGroup, packetChan chan *utils.Buffer, errorChan chan error) {
 	defer wg.Done()
 
-	ctx, cancel := context.WithCancel(base)
-	p.ctx = &ctx
-	p.cancel = &cancel
-	p.wg = new(sync.WaitGroup)
+	wg = new(sync.WaitGroup)
+	defer wg.Wait()
 
 	listener, err := net.ListenTCP("tcp4", p.address)
 	if err != nil {
@@ -89,15 +85,19 @@ func (p *PortListener) Listen(base context.Context, wg *sync.WaitGroup, packetCh
 	localConnChan := make(chan *net.TCPConn)
 	defer close(localConnChan)
 
-	go p.listenInternal(base, listener, localConnChan, localErrorChan)
+	ctx, cancel := context.WithCancel(base)
+	defer cancel()
+	go p.listenInternal(ctx, listener, localConnChan, localErrorChan)
 
+	logrus.Infof("PORT listener started at %v!", p.address)
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case conn := <-localConnChan:
-			p.wg.Add(1)
-			go p.handleConnection(ctx, conn, packetChan)
+			wg.Add(1)
+			logrus.Debugf("PORT connection accepted from %v!", conn.LocalAddr())
+			go p.handleConnection(ctx, wg, conn, packetChan)
 		case err := <-localErrorChan:
 			logrus.Errorf("Error accepting PORT connection: %v", err)
 			errorChan <- err
@@ -108,6 +108,7 @@ func (p *PortListener) Listen(base context.Context, wg *sync.WaitGroup, packetCh
 
 func (p *PortListener) Write(packet *utils.Buffer, peerID uint16) bool {
 	server, ok := p.servers[peerID]
+	logrus.Debugf("PORT server will accept the packet from tunnel: %t", ok)
 	if ok {
 		server.inputChan <- packet
 	}
@@ -121,6 +122,8 @@ func (p *PortListener) returnWithErrorCode(conn *net.TCPConn, cipher *crypto.Sym
 	} else {
 		returnCode = *code
 	}
+	logrus.Debugf("Finishing viridian %d initialization with error code %d", peerID, returnCode)
+
 	packet, err := p.core.buildServerInit(cipher, peerID, returnCode)
 	defer PacketPool.Put(packet)
 	if err != nil {
@@ -135,44 +138,59 @@ func (p *PortListener) returnWithErrorCode(conn *net.TCPConn, cipher *crypto.Sym
 	}
 }
 
-func (p *PortListener) handleInitMessage(peerID uint16, serverKey *crypto.Symmetric, viridianDict *users.ViridianDict, conn *net.TCPConn) (*crypto.Symmetric, error) {
-	defaultTimeout := time.Duration(p.core.defaultTimeout)
+func (p *PortListener) handleInitMessage(peerID uint16, viridianDict *users.ViridianDict, conn *net.TCPConn) (*crypto.Symmetric, error) {
+	defaultTimeout := time.Second * time.Duration(p.core.defaultTimeout)
+	defer conn.SetReadDeadline(time.Time{})
+	logrus.Debugf("Viridian %d connection deadline set to %v", peerID, defaultTimeout)
 
+	buffer := PacketPool.GetFull()
+	defer PacketPool.Put(buffer)
 	encryptedHeaderLength := CLIENT_INIT_HEADER + crypto.AymmetricCiphertextOverhead
-	header := PacketPool.Get().RebufferEnd(encryptedHeaderLength)
-	defer PacketPool.Put(header)
 
+	header := buffer.RebufferEnd(encryptedHeaderLength)
 	conn.SetReadDeadline(time.Now().Add(defaultTimeout))
-	_, err := io.ReadFull(conn, header.Slice())
+	s, err := io.ReadFull(conn, header.Slice())
 	if err != nil {
 		return nil, fmt.Errorf("error reading viridian header: %v", err)
 	}
+	logrus.Debugf("Viridian %d header read: %d bytes", peerID, s)
 
 	viridianName, key, tokenLength, tailLength, err := p.core.ParseClientInitHeader(crypto.PRIVATE_KEY, header)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing viridian header: %v", err)
 	}
+	logrus.Debugf("Viridian %d header received with info: name %s, key %v", peerID, *viridianName, key)
 
 	cipher, err := crypto.NewSymmetric(key)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing viridian symmetric key: %v", err)
 	}
+	logrus.Debugf("Viridian %d cipher created", peerID)
 
 	registrationCode := UNKNOWN_ERROR
 	defer p.returnWithErrorCode(conn, cipher, peerID, &registrationCode)
 
-	encryptedToken := header.Rebuffer(encryptedHeaderLength, encryptedHeaderLength+uint(tokenLength)+crypto.SymmetricCiphertextOverhead)
+	encryptedToken := buffer.Rebuffer(encryptedHeaderLength, encryptedHeaderLength+int(tokenLength))
 	conn.SetReadDeadline(time.Now().Add(defaultTimeout))
 	_, err = io.ReadFull(conn, encryptedToken.Slice())
 	if err != nil {
 		return nil, fmt.Errorf("error reading viridian token: %v", err)
 	}
+	logrus.Debugf("Viridian %d token read: %d bytes", peerID, encryptedToken.Length())
 
-	tokenBytes, err := serverKey.Decrypt(encryptedToken, nil)
+	decryptedToken, err := cipher.Decrypt(encryptedToken, nil)
 	if err != nil {
 		registrationCode = TOKEN_PARSE_ERROR
-		return nil, fmt.Errorf("error decrypting viridian token: %v", err)
+		return nil, fmt.Errorf("error decrypting viridian token for the first time: %v", err)
 	}
+	logrus.Debugf("Viridian %d token decrypted once: %v", peerID, decryptedToken)
+
+	tokenBytes, err := crypto.SERVER_KEY.Decrypt(decryptedToken, nil)
+	if err != nil {
+		registrationCode = TOKEN_PARSE_ERROR
+		return nil, fmt.Errorf("error decrypting viridian token for the second time: %v", err)
+	}
+	logrus.Debugf("Viridian %d token decrypted twice: %v", peerID, tokenBytes)
 
 	token := new(generated.UserToken)
 	err = proto.Unmarshal(tokenBytes.Slice(), token)
@@ -180,24 +198,27 @@ func (p *PortListener) handleInitMessage(peerID uint16, serverKey *crypto.Symmet
 		registrationCode = TOKEN_PARSE_ERROR
 		return nil, fmt.Errorf("error unmarshalling viridian token: %v", err)
 	}
+	logrus.Debugf("Viridian %d token parsed: name %s, identifier %s", peerID, token.Name, token.Identifier)
 
-	_, err = io.CopyN(io.Discard, conn, int64(tailLength))
+	n, err := io.CopyN(io.Discard, conn, int64(tailLength))
 	if err != nil {
 		return nil, fmt.Errorf("error reading viridian tail: %v", err)
 	}
+	logrus.Debugf("Viridian %d tail read: %d bytes", peerID, n)
 
 	err = viridianDict.Add(peerID, viridianName, token, users.PROTOCOL_PORT)
 	if err != nil {
 		registrationCode = REGISTRATION_ERROR
 		return nil, fmt.Errorf("error registering viridian: %v", err)
 	}
+	logrus.Debugf("Viridian %d added to viridian dictionary", peerID)
 
 	registrationCode = SUCCESS_CODE
 	return cipher, nil
 }
 
-func (p *PortListener) handleConnection(base context.Context, conn *net.TCPConn, packetChan chan *utils.Buffer) {
-	defer p.wg.Done()
+func (p *PortListener) handleConnection(base context.Context, wg *sync.WaitGroup, conn *net.TCPConn, packetChan chan *utils.Buffer) {
+	defer wg.Done()
 	defer conn.Close()
 
 	err := p.core.configureSocket(conn)
@@ -205,12 +226,14 @@ func (p *PortListener) handleConnection(base context.Context, conn *net.TCPConn,
 		logrus.Errorf("Error configuring socket: %v", err)
 		return
 	}
+	logrus.Debugf("Connection socket configured for %v", conn.LocalAddr())
 
-	_, peerID, err := utils.GetIPAndPortFromAddress(conn.LocalAddr())
+	peerIP, peerID, err := utils.GetIPAndPortFromAddress(conn.LocalAddr())
 	if err != nil {
 		logrus.Errorf("Error resolving viridian port number: %v", err)
 		return
 	}
+	logrus.Debugf("Connection peer ID established for %v: %d", conn.LocalAddr(), peerID)
 
 	viridianDict, ok := users.FromContext(base)
 	if !ok {
@@ -218,26 +241,18 @@ func (p *PortListener) handleConnection(base context.Context, conn *net.TCPConn,
 		return
 	}
 
-	cipher, err := p.handleInitMessage(peerID, crypto.SERVER_KEY, viridianDict, conn)
+	cipher, err := p.handleInitMessage(peerID, viridianDict, conn)
 	if err != nil {
 		logrus.Errorf("Error handling viridian init message: %v", err)
 		return
 	}
 	defer viridianDict.Delete(peerID, false)
+	logrus.Debugf("Viridian %d initialized", peerID)
 
-	p.servers[peerID] = NewPortServer(cipher, peerID, conn)
+	p.servers[peerID] = NewPortServer(cipher, peerID, peerIP, conn)
 	defer delete(p.servers, peerID)
+	logrus.Debugf("Viridian %d server created", peerID)
 
 	defer p.servers[peerID].Terminate()
 	p.servers[peerID].Serve(base, packetChan)
-}
-
-func (p *PortListener) Close() error {
-	if p.ctx == nil {
-		return errors.New("PortListener 'close' was called before 'listen'")
-	}
-
-	(*p.cancel)()
-	p.wg.Wait()
-	return nil
 }

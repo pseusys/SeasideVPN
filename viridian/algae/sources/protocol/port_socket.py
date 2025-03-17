@@ -1,11 +1,11 @@
-from asyncio import create_task, get_running_loop
+from asyncio import create_task, get_running_loop, wait_for
 from ipaddress import IPv4Address
 from socket import AF_INET, IPPROTO_TCP, SOCK_NONBLOCK, SOCK_STREAM, socket
 from typing import Optional
 
-from ..utils.asyncos import sock_read, sock_write
+from ..utils.asyncos import sock_connect, sock_read, sock_write
 from ..utils.crypto import Asymmetric, Symmetric
-from ..utils.misc import create_logger, select
+from ..utils.misc import create_logger
 from .utils import MessageType, TyphoonParseError, TyphoonReturnCode, TyphoonTerminationError
 from .socket import ConnectionCallback, ReceiveCallback, SeasideClient, SeasideListener, SeasidePeer, ServeCallback
 from .port_core import PortCore
@@ -18,6 +18,7 @@ class _PortPeer:
         self._logger = create_logger(type(self).__name__)
         self._symmetric = None
         self._data_callback = None
+        self._started = False
 
     async def read(self) -> bytes:
         self._logger.debug("Reading started...")
@@ -25,7 +26,7 @@ class _PortPeer:
         packet = await sock_read(loop, self._socket, self._core.any_other_header_length)
         self._logger.debug(f"Peer packet header read: {len(packet)} bytes")
         type, data_length, tail_length = self._core.parse_any_message_header(self._symmetric, packet)
-        self._logger.info(f"Peer packet of type {type} received!")
+        self._logger.info(f"Peer packet of type {type} received: data length {data_length}, tail length {tail_length}")
         if type == MessageType.DATA:
             data = await sock_read(loop, self._socket, data_length)
             self._logger.debug(f"Peer packet data read: {len(data)} bytes")
@@ -47,10 +48,11 @@ class _PortPeer:
         if self._data_callback is not None:
             self._logger.debug("Cancelling read cycle...")
             self._data_callback.cancel()
-        packet = self._core.build_any_term(self._symmetric)
-        packet_length = await sock_write(get_running_loop(), self._socket, packet)
-        self._logger.info(f"Termination packet sent: {packet_length} bytes")
-        self._socket.close()
+        if self._started:
+            packet = self._core.build_any_term(self._symmetric)
+            packet_length = await sock_write(get_running_loop(), self._socket, packet)
+            self._logger.info(f"Termination packet sent: {packet_length} bytes")
+            self._socket.close()
 
 
 class PortClient(_PortPeer, SeasideClient):
@@ -64,19 +66,19 @@ class PortClient(_PortPeer, SeasideClient):
         self._user_id = None
 
     async def connect(self, callback: Optional[ReceiveCallback] = None):
+        loop = get_running_loop()
+
         self._logger.info(f"Connecting to listener at {str(self._peer_address)}:{self._peer_port}")
-        self._socket.connect((str(self._peer_address), self._peer_port))
+        await sock_connect(loop, self._socket, str(self._peer_address), self._peer_port, self._core._default_timeout)
 
         loop = get_running_loop()
         key, packet = self._core.build_client_init(self._asymmetric, self._token)
         packet_length = await sock_write(loop, self._socket, packet)
         self._logger.debug(f"Initialization packet sent: {packet_length} bytes")
 
-        response = await select(sock_read(loop, self._socket, self._core.server_init_header_length), timeout=self._core._default_timeout)
+        response = await wait_for(sock_read(loop, self._socket, self._core.server_init_header_length), self._core._default_timeout)
         if response is not None:
-            self._logger.info("Connection successful!")
-        else:
-            raise TimeoutError("Listener connection timeout!")
+            self._logger.info(f"Connection successful, header of size {len(response)} received!")
 
         self._symmetric = Symmetric(key)
         self._user_id, tail_length = self._core.parse_server_init(self._symmetric, response)
@@ -84,8 +86,9 @@ class PortClient(_PortPeer, SeasideClient):
         self._logger.debug(f"Initialization packet tail read: {len(tail)} bytes")
 
         self._logger.info(f"Connecting to server at {str(self._peer_address)}:{self._peer_port}")
-        self._socket.connect((str(self._peer_address), self._user_id))
+        await sock_connect(loop, self._socket, str(self._peer_address), self._user_id, self._core._default_timeout)
 
+        self._started = True
         if callback is not None:
             self._logger.info("Installing reading data callback...")
             self._data_callback = create_task(self._read_cycle(callback), name=self._CALLBACK_TASK_NAME)
@@ -136,11 +139,9 @@ class PortListener(SeasideListener):
         self._socket.listen()
 
         connection, (address, port) = self._socket.accept()
-        response = await select(sock_read(loop, connection, self._core.client_init_header_length), timeout=self._core._default_timeout)
+        response = await wait_for(sock_read(loop, connection, self._core.client_init_header_length), self._core._default_timeout)
         if response is not None:
             self._logger.info("Connection successful!")
-        else:
-            raise TimeoutError("Listener connection timeout!")
 
         client_name, key, token_length, tail_length = self._core.parse_client_init_header(self._asymmetric, response)
         self._logger.info(f"User initialization request from '{client_name}' received!")

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from asyncio import CancelledError, Lock, TimeoutError, create_task, get_running_loop, sleep
+from asyncio import CancelledError, Lock, TimeoutError, create_task, get_running_loop, sleep, wait_for
 from contextlib import asynccontextmanager
 from ipaddress import IPv4Address
 from socket import AF_INET, IPPROTO_UDP, SOCK_DGRAM, SOCK_NONBLOCK, socket
@@ -7,7 +7,7 @@ from types import NoneType
 from typing import AsyncIterator, Optional, Tuple, Union
 
 from ..utils.crypto import Asymmetric, Symmetric
-from ..utils.asyncos import sock_read, sock_read_from, sock_write, sock_write_to
+from ..utils.asyncos import sock_connect, sock_read, sock_read_from, sock_write, sock_write_to
 from ..utils.misc import create_logger, select
 from .utils import MessageType, TyphoonParseError, TyphoonReturnCode, TyphoonTerminationError
 from .socket import ConnectionCallback, ReceiveCallback, SeasideClient, SeasideListener, ServeCallback, SeasidePeer
@@ -27,6 +27,7 @@ class _TyphoonPeer(ABC):
         self._shadowriding = False
         self._running_decay = None
         self._data_callback = None
+        self._started = False
         self._logger = create_logger(type(self).__name__)
 
     async def read(self) -> bytes:
@@ -111,6 +112,7 @@ class _TyphoonPeer(ABC):
         raise TimeoutError("Handshake connection timeout!")
 
     def _renew(self, next_in: int):
+        self._started = True
         if self._running_decay is not None:
             self._logger.debug("Cancelling decay cycle...")
             self._running_decay.cancel()
@@ -138,17 +140,18 @@ class TyphoonClient(_TyphoonPeer, SeasideClient):
 
     async def connect(self, callback: Optional[ReceiveCallback] = None):
         current_retries = 0
-        self._logger.info(f"Connecting to listener at {str(self._peer_address)}:{self._peer_port}")
-        self._socket.connect((str(self._peer_address), self._peer_port))
-
         loop = get_running_loop()
+
+        self._logger.info(f"Connecting to listener at {str(self._peer_address)}:{self._peer_port}")
+        await sock_connect(loop, self._socket, str(self._peer_address), self._peer_port, self._core._default_timeout)
+
         key, packet = self._core.build_client_init(self._asymmetric, self._token)
         while current_retries < self._core._max_retries:
             self._logger.debug(f"Trying initialization attempt {current_retries}...")
             await sock_write(loop, self._socket, packet)
             sleeping_timeout = self._core.next_in + self._core.rtt * 2 + self._core.timeout
             self._logger.debug(f"Waiting for server response for {sleeping_timeout} seconds...")
-            response = await select(sock_read(loop, self._socket), timeout=sleeping_timeout)
+            response = await wait_for(sock_read(loop, self._socket), sleeping_timeout)
             if response is not None:
                 self._logger.info("Connection successful!")
                 break
@@ -160,7 +163,7 @@ class TyphoonClient(_TyphoonPeer, SeasideClient):
         self._user_id = self._core.parse_server_init(self._symmetric, response)
 
         self._logger.info(f"Connecting to server at {str(self._peer_address)}:{self._peer_port}")
-        self._socket.connect((str(self._peer_address), self._user_id))
+        await sock_connect(loop, self._socket, str(self._peer_address), self._user_id, self._core._default_timeout)
         self._renew(self._core.next_in)
 
         if callback is not None:
@@ -191,7 +194,6 @@ class TyphoonServer(_TyphoonPeer, SeasidePeer):
     def __init__(self, key: bytes, address: IPv4Address, port: int, packet_number: Optional[int] = None, timeout: Optional[float] = None, retries: Optional[int] = None):
         super().__init__(address, port, packet_number, timeout, retries)
         self._symmetric = Symmetric(key)
-        self._started = False
 
     async def serve(self, callback: Optional[ServeCallback] = None):
         self._logger.info(f"Serving for {str(self._peer_address)}:{self._peer_port}")
@@ -205,10 +207,6 @@ class TyphoonServer(_TyphoonPeer, SeasidePeer):
             data = await self.read()
             self._logger.debug(f"Sending data to read callback: {len(data)} bytes")
             await callback(self.user_id, data)
-
-    def _renew(self, next_in: int):
-        self._started = True
-        super()._renew(next_in)
 
     def _parse_peer_message(self, cipher: Symmetric, packet: bytes) -> Tuple[MessageType, Union[Tuple[int, bytes], int, bytes, NoneType]]:
         return self._core.parse_client_message(cipher, packet)

@@ -2,13 +2,14 @@ name: seaside-algae-remote
 
 services:
   algae:
-    image: seaside-algae-smoke-remote
+    image: seaside-algae-remote
     container_name: seaside-algae
     extends:
       file: compose.base.yml
       service: algae
     build:
       args:
+        RUNNING_TEST_FILE: test_remote.py
         NETWORK_GATEWAY: 10.0.0.100
     environment:
       SEASIDE_ADDRESS: 10.0.0.87
@@ -20,7 +21,7 @@ services:
         condition: service_healthy
 
   whirlpool:
-    image: seaside-whirlpool-smoke-remote
+    image: seaside-whirlpool-remote
     extends:
       file: compose.base.yml
       service: whirlpool

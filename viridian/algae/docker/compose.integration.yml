@@ -2,12 +2,12 @@ name: seaside-algae-integration
 
 services:
   algae:
-    image: seaside-algae-smoke-sleeping
+    image: seaside-algae-default-routed
     privileged: true
     build:
       dockerfile: viridian/algae/docker/Dockerfile.algae
       context: ../../..
-      target: smoke-sleeping
+      target: default-routed
       args:
         NETWORK_GATEWAY: 10.65.0.100
     env_file:

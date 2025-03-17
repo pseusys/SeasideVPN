@@ -14,12 +14,12 @@ const (
 // Viridian structure.
 // Contains all the required information about connected viridian.
 type Viridian struct {
-	name string
+	Name string
 
-	device string
+	Device string
 
 	// Unique user identifier as a string.
-	identifier string
+	Identifier string
 
 	// Flag, whether user is privileged.
 	admin bool

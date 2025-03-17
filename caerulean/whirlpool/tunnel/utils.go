@@ -12,6 +12,8 @@ import (
 	"github.com/vishvananda/netlink"
 )
 
+var DEFAULT_IP_ADDRESS = []byte{0, 0, 0, 0}
+
 // Execute console command.
 // Accept executable name and vararg command arguments.
 // Return stdout and stderr as a string, terminate if command execution failed.
@@ -33,7 +35,7 @@ func findDefaultInterface() (*net.IPNet, error) {
 	}
 
 	for _, route := range routes {
-		if route.Dst == nil {
+		if route.Dst == nil || route.Dst.IP.Equal(DEFAULT_IP_ADDRESS) {
 			iface, err := net.InterfaceByIndex(route.LinkIndex)
 			if err != nil {
 				logrus.Warnf("Error resolving interface %d: %v", route.LinkIndex, err)

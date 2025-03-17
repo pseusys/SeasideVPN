@@ -294,4 +294,5 @@ class Tunnel(AbstractAsyncContextManager):
 
     async def __aexit__(self, _, exc_value, __):
         self.down()
-        raise exc_value
+        if exc_value is not None:
+            raise exc_value

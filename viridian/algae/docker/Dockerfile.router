@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM alpine:3.18 AS smoke
+FROM alpine:3.18 AS default
 
 ARG RESTRICTED_ADDRESS=0.0.0.0
 ENV ARG_RESTRICTED_ADDRESS=$RESTRICTED_ADDRESS

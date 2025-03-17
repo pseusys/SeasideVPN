@@ -15,7 +15,7 @@ func calculateChecksum(dataPieces ...*Buffer) uint16 {
 	var sum uint32
 	for _, data := range dataPieces {
 		for i := 0; i < int(data.Length())-1; i += 2 {
-			sum += uint32(binary.BigEndian.Uint16(data.Reslice(uint(i), uint(i+2))))
+			sum += uint32(binary.BigEndian.Uint16(data.Reslice(i, i+2)))
 		}
 		if data.Length()%2 != 0 {
 			sum += uint32(data.Get(data.Length()-1)) << 8
@@ -49,7 +49,7 @@ func UpdateIPv4(packet *Buffer, newSrc, newDst *net.IP) error {
 		return fmt.Errorf("packet too short for IPv4")
 	}
 
-	ihl := uint((packet.Get(0) & 0x0F) * 4)
+	ihl := int((packet.Get(0) & 0x0F) * 4)
 	if ihl < 20 {
 		return fmt.Errorf("invalid IPv4 header length")
 	}
@@ -76,13 +76,15 @@ func UpdateIPv4(packet *Buffer, newSrc, newDst *net.IP) error {
 		updateICMPChecksum(ihl, packet)
 	case 6, 17: // TCP or UDP
 		updateTransportChecksum(ihl, packet, newSrc, newDst)
+	default:
+		return fmt.Errorf("packet with unknown protocol: %d", protocol)
 	}
 
 	return nil
 }
 
 // UpdateICMPChecksum recalculates the ICMP checksum.
-func updateICMPChecksum(ihl uint, packet *Buffer) error {
+func updateICMPChecksum(ihl int, packet *Buffer) error {
 	icmpPacket := packet.RebufferStart(ihl)
 	if icmpPacket.Length() < 4 {
 		return fmt.Errorf("packet too short for ICMP (%d bytes)", icmpPacket.Length())
@@ -96,7 +98,7 @@ func updateICMPChecksum(ihl uint, packet *Buffer) error {
 }
 
 // UpdateTransportChecksum recalculates TCP/UDP checksum based on new IPs.
-func updateTransportChecksum(ihl uint, packet *Buffer, newSrc, newDst *net.IP) error {
+func updateTransportChecksum(ihl int, packet *Buffer, newSrc, newDst *net.IP) error {
 	transportPacket := packet.RebufferStart(ihl)
 
 	if packet.Length() < ihl+8 {
@@ -117,7 +119,7 @@ func updateTransportChecksum(ihl uint, packet *Buffer, newSrc, newDst *net.IP) e
 	}
 
 	// Pseudo-header fields
-	pseudoHeader := pseudoHeaderPool.Get()
+	pseudoHeader := pseudoHeaderPool.GetFull()
 	copy(pseudoHeader.Reslice(0, 4), source)
 	copy(pseudoHeader.Reslice(4, 8), destination)
 	pseudoHeader.Set(8, 0)

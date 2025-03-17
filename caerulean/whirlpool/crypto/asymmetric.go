@@ -22,7 +22,7 @@ func computeBlake2Hash(shared_secret, client_key, server_key []byte) ([]byte, er
 	}
 
 	hash = hash.Update(shared_secret).Update(client_key).Update(server_key)
-	return hash.Finalize(), nil
+	return hash.Finalize()[:hashSize], nil
 }
 
 type Asymmetric struct {

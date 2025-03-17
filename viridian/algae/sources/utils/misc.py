@@ -5,7 +5,7 @@ from os import getenv
 from secrets import token_bytes
 from sys import stdout
 from types import NoneType
-from typing import Literal, Optional, TypeVar, TypedDict, Union, NotRequired
+from typing import Literal, Optional, TypeVar, TypedDict, Union
 from urllib.parse import parse_qs, urlparse
 
 
@@ -64,7 +64,10 @@ async def select(*tasks: Future[Union[NoneType, _T]], timeout: Optional[float] =
     result = None
     successful, pending = await wait(set(tasks), return_when=FIRST_COMPLETED, timeout=timeout)
     for coro in successful:
-        output = await coro
+        try:
+            output = await coro
+        except CancelledError:
+            continue
         if output is not None:
             if result is None:
                 result = output
@@ -84,9 +87,9 @@ ConnectionLinkDict = TypedDict("ConnectionLinkDict", {
     "node_type": Union[Literal["whirlpool"]],
     "addr": str,
     "port": int,
-    "key": NotRequired[str],
-    "proto": NotRequired[str],
-    "token": NotRequired[str],
+    "key": Optional[str],
+    "proto": Optional[str],
+    "token": Optional[str],
 })
 
 

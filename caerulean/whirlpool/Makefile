@@ -6,7 +6,7 @@ SHELL=/bin/bash
 .SHELLFLAGS=-c -e
 
 PROTOGO_PROTOC_VERSION=24.4
-COMPILE_FLAGS=""
+LINKING_FLAGS=""
 
 BOLD=\033[1m
 BLUE=\033[34m
@@ -44,9 +44,9 @@ help:
 
 build:
 	@ # Generate protobuf files, install dependencies and build executable
-	make -C monocypher-go generate
+	make -C monocypher-go --no-print-directory generate
 	protogo mod tidy -- -I=${PROJECT_ROOT} --go_out=. --go-grpc_out=. ${PROJECT_ROOT}/vessels/*.proto
-	go build -ldflags ${COMPILE_FLAGS} -o build/$(EXEC_NAME) ./sources
+	go build -ldflags ${LINKING_FLAGS} -o build/$(EXEC_NAME) ./sources
 .PHONY: build
 
 certificates:
@@ -94,9 +94,9 @@ lint: build-docker-test
 test: build-docker-test
 	@ # Run tests inside of the testing docker container
 ifndef CI
-	docker run --privileged --rm --name seaside-whirlpool-test --env-file example.conf.env --sysctl net.ipv6.conf.all.disable_ipv6=1 --entrypoint go seaside-whirlpool-test test -v ./...
+	docker run --privileged --rm -e RUNNING_IN_CI=0 --name seaside-whirlpool-test --env-file example.conf.env --sysctl net.ipv6.conf.all.disable_ipv6=1 --entrypoint go seaside-whirlpool-test test -v ./...
 else
-	docker run --privileged --rm -e CI=${CI} --name seaside-whirlpool-test --env-file example.conf.env --sysctl net.ipv6.conf.all.disable_ipv6=1 --entrypoint go seaside-whirlpool-test test ./...
+	docker run --privileged --rm -e RUNNING_IN_CI=1 --name seaside-whirlpool-test --env-file example.conf.env --sysctl net.ipv6.conf.all.disable_ipv6=1 --entrypoint go seaside-whirlpool-test test ./...
 endif
 .PHONY: test
 

@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	SERVER_INIT_HEADER uint = 6
-	CLIENT_INIT_HEADER uint = 35
-	ANY_OTHER_HEADER   uint = 5
+	SERVER_INIT_HEADER int = 6
+	CLIENT_INIT_HEADER int = 37
+	ANY_OTHER_HEADER   int = 5
 
 	DEFAULT_PORT_MAX_TAIL_LENGTH = 512
 	DEFAULT_PORT_KEEPIDLE        = 5
@@ -25,7 +25,7 @@ const (
 )
 
 var (
-	PORT_MAX_TAIL_LENGTH = uint(utils.GetIntEnv("PORT_MAX_TAIL_LENGTH", DEFAULT_PORT_MAX_TAIL_LENGTH, 32))
+	PORT_MAX_TAIL_LENGTH = int(utils.GetIntEnv("PORT_MAX_TAIL_LENGTH", DEFAULT_PORT_MAX_TAIL_LENGTH, 32))
 	PORT_KEEPIDLE        = utils.GetIntEnv("PORT_KEEPIDLE", DEFAULT_PORT_KEEPIDLE, 32)
 	PORT_KEEPINTVL       = utils.GetIntEnv("PORT_KEEPINTVL", DEFAULT_PORT_KEEPINTVL, 32)
 	PORT_KEEPCNT         = utils.GetIntEnv("PORT_KEEPCNT", DEFAULT_PORT_KEEPCNT, 32)
@@ -61,7 +61,7 @@ func (p *PortCore) configureSocket(conn *net.TCPConn) error {
 
 func (p *PortCore) buildServerInit(cipher *crypto.Symmetric, peerID uint16, status ProtocolReturnCode) (*utils.Buffer, error) {
 	tailLength := utils.ReliableTailLength(PORT_MAX_TAIL_LENGTH)
-	header := PacketPool.Get()
+	header := PacketPool.Get(SERVER_INIT_HEADER)
 
 	header.Set(0, byte(FLAG_INIT))
 	header.Set(1, byte(status))
@@ -77,16 +77,17 @@ func (p *PortCore) buildServerInit(cipher *crypto.Symmetric, peerID uint16, stat
 }
 
 func (p *PortCore) buildAnyData(cipher *crypto.Symmetric, data *utils.Buffer) (*utils.Buffer, error) {
+	headerLength := ANY_OTHER_HEADER + crypto.SymmetricCiphertextOverhead
 	tailLength := utils.ReliableTailLength(PORT_MAX_TAIL_LENGTH)
 
-	dataWithHeader, err := data.ExpandBefore(ANY_OTHER_HEADER + crypto.SymmetricCiphertextOverhead)
+	message, err := data.Expand(headerLength, crypto.SymmetricCiphertextOverhead)
 	if err != nil {
 		return nil, fmt.Errorf("error expanding message buffer: %v", err)
 	}
 
-	header := dataWithHeader.RebufferEnd(ANY_OTHER_HEADER)
+	header := message.RebufferEnd(ANY_OTHER_HEADER)
 	header.Set(0, byte(FLAG_DATA))
-	binary.BigEndian.PutUint16(header.ResliceStart(1), uint16(data.Length()))
+	binary.BigEndian.PutUint16(header.ResliceStart(1), uint16(data.Length())+crypto.SymmetricCiphertextOverhead)
 	binary.BigEndian.PutUint16(header.ResliceStart(3), uint16(tailLength))
 
 	_, err = cipher.Encrypt(header, nil)
@@ -94,17 +95,17 @@ func (p *PortCore) buildAnyData(cipher *crypto.Symmetric, data *utils.Buffer) (*
 		return nil, fmt.Errorf("error encrypting data header: %v", err)
 	}
 
-	_, err = cipher.Encrypt(data, nil)
+	_, err = cipher.Encrypt(message.Rebuffer(headerLength, headerLength+data.Length()), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error encrypting data payload: %v", err)
 	}
 
-	return utils.EmbedReliableTailLength(dataWithHeader, tailLength), nil
+	return utils.EmbedReliableTailLength(message, tailLength), nil
 }
 
 func (p *PortCore) buildAnyTerm(cipher *crypto.Symmetric) (*utils.Buffer, error) {
 	tailLength := utils.ReliableTailLength(PORT_MAX_TAIL_LENGTH)
-	header := PacketPool.Get()
+	header := PacketPool.Get(ANY_OTHER_HEADER)
 
 	header.Set(0, byte(FLAG_TERM))
 	binary.BigEndian.PutUint16(header.ResliceStart(1), 0)
@@ -124,8 +125,8 @@ func (p *PortCore) ParseClientInitHeader(cipher *crypto.Asymmetric, packet *util
 		return nil, nil, 0, 0, fmt.Errorf("error parsing init header: %v", err)
 	}
 
-	if header.Length() < CLIENT_INIT_HEADER+crypto.AymmetricCiphertextOverhead {
-		return nil, nil, 0, 0, fmt.Errorf("invalid init header length: %d < %d", header.Length(), CLIENT_INIT_HEADER+crypto.AymmetricCiphertextOverhead)
+	if header.Length() < CLIENT_INIT_HEADER {
+		return nil, nil, 0, 0, fmt.Errorf("invalid init header length: %d < %d", header.Length(), CLIENT_INIT_HEADER)
 	}
 
 	flags := header.Get(0)

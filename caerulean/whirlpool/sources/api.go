@@ -25,18 +25,19 @@ import (
 )
 
 const (
-	DEFAULT_CERTIFICATES_PATH   = "certificates"
-	DEFAULT_ADMIN_TOKEN_TIMEOUT = 24 * 365
+	DEFAULT_CERTIFICATES_PATH = "certificates"
 
+	DEFAULT_ADMIN_KEYS           = ""
+	DEFAULT_ADMIN_TOKEN_TIMEOUT  = 24 * 365
 	DEFAULT_GRPC_MAX_TAIL_LENGTH = 256
 )
 
 var (
 	NODE_OWNER_API_KEY  = utils.RequireEnv("SEASIDE_API_KEY_OWNER")
-	NODE_ADMIN_API_KEYS = strings.Split(utils.RequireEnv("SEASIDE_API_KEY_ADMIN"), ":")
+	NODE_ADMIN_API_KEYS = strings.Split(utils.GetEnv("SEASIDE_API_KEY_ADMIN", DEFAULT_ADMIN_KEYS), ":")
 
 	ADMIN_TOKEN_TIMEOUT  = utils.GetIntEnv("SEASIDE_ADMIN_TOKEN_TIMEOUT", DEFAULT_ADMIN_TOKEN_TIMEOUT, 32)
-	GRPC_MAX_TAIL_LENGTH = uint(utils.GetIntEnv("SEASIDE_GRPC_MAX_TAIL_LENGTH", DEFAULT_GRPC_MAX_TAIL_LENGTH, 32))
+	GRPC_MAX_TAIL_LENGTH = int(utils.GetIntEnv("SEASIDE_GRPC_MAX_TAIL_LENGTH", DEFAULT_GRPC_MAX_TAIL_LENGTH, 32))
 )
 
 // Metaserver structure.
@@ -115,12 +116,17 @@ func NewAPIServer(intAddress string, portPort, typhoonPort int32) (*APIServer, e
 
 // Run metaserver.
 // Accept gRPC server and TCP connection listener.
-func (server *APIServer) Start(wg *sync.WaitGroup, errorChan chan error) {
+func (server *APIServer) Start(ctx context.Context, wg *sync.WaitGroup, errorChan chan error) {
 	defer wg.Done()
 
 	logrus.Infof("Starting gRPC server on address: %v", server.listener.Addr())
 	if err := server.grpcServer.Serve(server.listener); err != nil {
-		errorChan <- fmt.Errorf("failed to serve: %v", err)
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			errorChan <- fmt.Errorf("failed to serve: %v", err)
+		}
 	}
 }
 
@@ -158,7 +164,8 @@ func (server *WhirlpoolServer) Authenticate(ctx context.Context, request *genera
 	}
 
 	// Encrypt token
-	tokenData, err := crypto.SERVER_KEY.Encrypt(utils.NewBufferFromSlice(marshToken), nil)
+	tokenBuffer := utils.NewBufferFromSliceWithCapacity(marshToken, 0, crypto.SymmetricCiphertextOverhead)
+	tokenData, err := crypto.SERVER_KEY.Encrypt(tokenBuffer, nil)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error encrypting token: %v", err)
 	}

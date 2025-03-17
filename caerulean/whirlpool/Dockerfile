@@ -1,27 +1,33 @@
 # syntax=docker/dockerfile:1
 
 # Docker image for building whirlpool executable and testing
-FROM golang:1.22-alpine AS builder
+FROM golang:1.23-alpine AS builder
 
 WORKDIR /seaside/caerulean
 
 # Protobuf development library are required for executable building.
 # Go lint and iptables are required for testing.
 ENV PROTOGO_PROTOC_VERSION=24.4
-RUN apk add --no-cache iptables protobuf protobuf-dev \
+RUN apk add --no-cache make tar wget build-base iptables protobuf protobuf-dev \
     && go install github.com/pseusys/protogo@latest \
-    && go install golang.org/x/lint/golint@latest
+    && go install golang.org/x/lint/golint@latest \
+    && go install github.com/xlab/c-for-go@latest
+
+ENV RUNNING_IN_CI=0
 
 # Copy whirlpool go.mod, protobuf files and generate protobuf sources.
+COPY caerulean/whirlpool/monocypher-go ./monocypher-go
+RUN make -C monocypher-go --no-print-directory generate
+
 COPY caerulean/whirlpool/go.mod ./
+RUN go mod download
+
 COPY vessels ./vessels
 RUN protogo -- -I=vessels --go_out=. --go-grpc_out=. vessels/*.proto
 
-# Copy whirlpool code and install required libraries.
 COPY caerulean/whirlpool ./
 RUN go mod tidy
 
-# Build executable.
 RUN go build -o whirlpool.run ./sources
 
 
@@ -65,3 +71,12 @@ ENTRYPOINT ["./whirlpool.run"]
 
 # Establish healthcheck: netstat on seaside port.
 HEALTHCHECK --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s CMD netstat -tulpn | grep -q ":$SEASIDE_CTRLPORT"
+
+
+FROM default AS default-routed
+
+ARG NETWORK_GATEWAY
+ENV ARG_NETWORK_GATEWAY=$NETWORK_GATEWAY
+
+# Setup default route IP and run viridian algae with command.
+ENTRYPOINT ["sh", "-c", "ip route replace default via $ARG_NETWORK_GATEWAY && ./whirlpool.run"]

@@ -104,9 +104,9 @@ func (dict *ViridianDict) Add(viridianID uint16, viridianDevice *string, token *
 
 	// Create viridian object
 	viridian = &Viridian{
-		name:       token.Name,
-		device:     *viridianDevice,
-		identifier: token.Identifier,
+		Name:       token.Name,
+		Device:     *viridianDevice,
+		Identifier: token.Identifier,
 		admin:      token.IsAdmin,
 		peerID:     viridianID,
 		protocol:   protocol,

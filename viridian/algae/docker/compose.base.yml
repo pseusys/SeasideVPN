@@ -7,53 +7,56 @@ name: seaside-algae-base
 
 services:
   algae:
-    image: seaside-algae-smoke
+    image: seaside-algae
     privileged: true
     build:
       dockerfile: viridian/algae/docker/Dockerfile.algae
       context: ../../..
-      target: smoke
+      target: default-routed
+      args:
+        RUNNING_IN_CI: ${RUNNING_IN_CI:-0}
     env_file:
       - test.conf.env
     environment:
       SEASIDE_ROOT_CERTIFICATE_AUTHORITY: /seaside/viridian/ca/rootCA.crt
-      BUFFER_SIZE: 8192  # Buffer for echo server message storing
-      ECHO_PORT: 5000  # Port for echo server accessing
     sysctls:
       - net.ipv6.conf.all.disable_ipv6=1
     volumes:
       - ../certificates/viridian:/seaside/viridian/ca:ro
 
   whirlpool:
-    image: seaside-whirlpool-smoke
+    image: seaside-whirlpool
     container_name: seaside-whirlpool
     privileged: true
     build:
-      dockerfile: viridian/algae/docker/Dockerfile.whirlpool
+      dockerfile: caerulean/whirlpool/Dockerfile
       context: ../../..
-      target: smoke
+      target: default-routed
     env_file:
       - test.conf.env
+    environment:
+      SEASIDE_PRIVATE_KEY: jZsc3mZlvbxX+MisHjfQjN6pL+oNtDoE3NSkC823cxazKL6Bl3+P5vSADD3pO80l0RPcv6Z9AB1JtM+K+nAkSQ==
+      SEASIDE_SERVER_KEY: c2VjcmV0IGVuY29kZWQgYmFzZTY0IHNlcnZlciBrZXk=
     sysctls:
       - net.ipv6.conf.all.disable_ipv6=1
     volumes:
       - ../certificates/caerulean:/seaside/caerulean/certificates:ro
 
   echo:
-    image: seaside-echo-smoke
+    image: seaside-echo
     container_name: seaside-echo
     privileged: true
     build:
       dockerfile: Dockerfile.echo
-      target: smoke
+      target: default-routed
+    env_file:
+      - test.conf.env
     environment:
       LOG_LEVEL: DEBUG
-      BUFFER_SIZE: 8192  # Buffer for echo server message storing
-      ECHO_PORT: 5000  # Port for echo server accessing
 
   router:
-    image: seaside-router-smoke
+    image: seaside-router
     privileged: true
     build:
       dockerfile: Dockerfile.router
-      target: smoke
+      target: default

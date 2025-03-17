@@ -50,14 +50,19 @@ func NewSymmetric(key *utils.Buffer) (*Symmetric, error) {
 // Return ciphertext and nil if encrypting was successful, otherwise nil and error.
 func (s *Symmetric) Encrypt(plaintext, additional *utils.Buffer) (*utils.Buffer, error) {
 	// Concatenate signature with random bytes to form nonce
-	nonce, err := utils.NewRandomBuffer(uint(s.aead.NonceSize()))
+	nonce, err := utils.NewRandomBuffer(s.aead.NonceSize())
 	if err != nil {
 		return nil, fmt.Errorf("nonce generation error: %v", err)
 	}
 
+	var additionalSlice []byte
+	if additional != nil {
+		additionalSlice = additional.Slice()
+	}
+
 	// Concatenate signature, rest of the nonce and ciphertext
-	encrypted := s.aead.Seal(plaintext.ResliceEnd(0), nonce.Slice(), plaintext.Slice(), additional.Slice())
-	ciphertext, err := plaintext.BufferSize(encrypted)
+	encrypted := s.aead.Seal(plaintext.ResliceEnd(0), nonce.Slice(), plaintext.Slice(), additionalSlice)
+	ciphertext, err := plaintext.EnsureSameBuffers(encrypted)
 	if err != nil {
 		return nil, fmt.Errorf("unexpected allocation performed during symmetrical encryption: %v", err)
 	}
@@ -77,19 +82,24 @@ func (s *Symmetric) Decrypt(ciphertext, additional *utils.Buffer) (*utils.Buffer
 	cipherLength := ciphertext.Length()
 
 	// Check ciphertext length is at least greater than nonce and overhead size
-	if cipherLength < uint(s.aead.NonceSize()+s.aead.Overhead()) {
+	if cipherLength < s.aead.NonceSize()+s.aead.Overhead() {
 		return nil, fmt.Errorf("ciphertext length %d too short (less than nonce length %d + overhead %d)", cipherLength, s.aead.NonceSize(), s.aead.Overhead())
 	}
 
+	var additionalSlice []byte
+	if additional != nil {
+		additionalSlice = additional.Slice()
+	}
+
 	// Split ciphertext into ciphertext and nonce, decrypt ciphertext
-	encryptedLength := cipherLength - uint(s.aead.NonceSize())
+	encryptedLength := cipherLength - s.aead.NonceSize()
 	ciphertext, nonce := ciphertext.RebufferEnd(encryptedLength), ciphertext.RebufferStart(encryptedLength)
-	decrypted, err := s.aead.Open(ciphertext.ResliceEnd(0), nonce.Slice(), ciphertext.Slice(), additional.Slice())
+	decrypted, err := s.aead.Open(ciphertext.ResliceEnd(0), nonce.Slice(), ciphertext.Slice(), additionalSlice)
 	if err != nil {
 		return nil, fmt.Errorf("symmetrical decrypting error: %v", err)
 	}
 
-	plaintext, err := ciphertext.BufferSize(decrypted)
+	plaintext, err := ciphertext.EnsureSameBuffers(decrypted)
 	if err != nil {
 		return nil, fmt.Errorf("unexpected allocation performed during symmetrical decryption: %v", err)
 	}

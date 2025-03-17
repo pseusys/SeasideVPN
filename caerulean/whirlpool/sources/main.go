@@ -111,22 +111,23 @@ func RunMain() error {
 	}
 	defer metaServer.Stop()
 
+	errorChan := make(chan error)
+	defer close(errorChan)
+
 	// Initialize context and start metaserver
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	ctx = tunnel.NewContext(ctx, tunnelConfig)
 	ctx = users.NewContext(ctx, viridians)
 
-	errorChan := make(chan error)
-	defer close(errorChan)
-
 	go metaServer.Start(ctx, errorChan)
-	defer metaServer.Stop()
+	defer cancel()
 
 	select {
 	case <-ctx.Done():
+		logrus.Info("Stopping whirlpool because of a signal interruption...")
 		return nil
 	case err := <-errorChan:
-		cancel()
+		logrus.Info("Stopping whirlpool because of an error...")
 		return fmt.Errorf("error serving: %v", err)
 	}
 }

@@ -6,7 +6,7 @@ from subprocess import check_output
 from sys import argv
 from typing import List, Union
 
-from colorama import Fore, Style, just_fix_windows_console
+from colorama import Fore, Style
 
 # Root of algae viridian source files.
 ALGAE_ROOT = Path(__file__).parent.parent
@@ -111,7 +111,6 @@ def help() -> None:
     """
     Print poetry commands summary.
     """
-    just_fix_windows_console()
     print(f"{Style.BRIGHT}Available poetry scripts{Style.RESET_ALL}:")
     print(f"\t{Fore.BLUE}poetry poe generate{Fore.RESET}: generate protobuf sources (using betterproto library).")
     print(f"\t{Fore.BLUE}poetry poe lint{Fore.RESET}: run Python code linting locally.")

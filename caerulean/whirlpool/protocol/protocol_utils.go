@@ -7,9 +7,9 @@ import (
 )
 
 const (
-	MAX_PROTOCOL_HEADER        uint = 64
-	MAX_PROTOCOL_BODY          uint = math.MaxUint16 - MAX_PROTOCOL_HEADER - 2*crypto.AymmetricCiphertextOverhead
-	OUTPUT_CHANNEL_POOL_BUFFER uint = 16
+	MAX_PROTOCOL_HEADER        int = 64
+	MAX_PROTOCOL_BODY          int = math.MaxUint16 - MAX_PROTOCOL_HEADER - 2*crypto.AymmetricCiphertextOverhead
+	OUTPUT_CHANNEL_POOL_BUFFER int = 16
 )
 
 var (

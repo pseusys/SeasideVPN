@@ -52,29 +52,43 @@ func NewMetaServer(viridianDict *users.ViridianDict, tunnelConfig *tunnel.Tunnel
 	}, nil
 }
 
-func (server *MetaServer) startTunnelRead(base context.Context, tunnelConfig *tunnel.TunnelConfig, errorChan chan error) {
+func (server *MetaServer) startTunnelRead(ctx context.Context, tunnelConfig *tunnel.TunnelConfig, errorChan chan error) {
 	for {
 		select {
-		case <-base.Done():
+		case <-ctx.Done():
 			return
 		default:
-			buffer := protocol.PacketPool.Get()
+			buffer := protocol.PacketPool.GetFull()
 			s, err := tunnelConfig.Tunnel.Read(buffer.Slice())
 
-			if err != nil || s == 0 {
+			if err != nil {
 				protocol.PacketPool.Put(buffer)
-				errorChan <- err
-				return
+				select {
+				case <-ctx.Done():
+					return
+				default:
+					errorChan <- err
+					return
+				}
+			} else if s == 0 {
+				protocol.PacketPool.Put(buffer)
+				continue
+			} else {
+				logrus.Debugf("Read %d bytes from tunnel", s)
 			}
+			buffer = buffer.RebufferEnd(s)
 
-			_, _, packetDestination, err := utils.ReadIPv4(buffer)
+			packetLength, packetSource, packetDestination, err := utils.ReadIPv4(buffer)
 			if err != nil {
 				protocol.PacketPool.Put(buffer)
 				logrus.Errorf("Error parsing tunnel packet: %v", err)
 				continue
+			} else {
+				logrus.Debugf("Parsed packet from tunnel: length %d, from %v, to %v", packetLength, *packetSource, *packetDestination)
 			}
 
 			viridianID := binary.BigEndian.Uint16([]byte{(*packetDestination)[2], (*packetDestination)[3]})
+			logrus.Debugf("Identified packet from tunnel, it belongs to viridian %d", viridianID)
 
 			packetWritten := false
 			packetWritten = packetWritten || server.portServer.Write(buffer, viridianID)
@@ -87,18 +101,20 @@ func (server *MetaServer) startTunnelRead(base context.Context, tunnelConfig *tu
 	}
 }
 
-func (server *MetaServer) startTunnelWrite(base context.Context, tunnelConfig *tunnel.TunnelConfig, packetChan chan *utils.Buffer) {
-	defer server.wg.Done()
-
+func (server *MetaServer) startTunnelWrite(ctx context.Context, tunnelConfig *tunnel.TunnelConfig, packetChan chan *utils.Buffer) {
 	for {
 		select {
-		case <-base.Done():
+		case <-ctx.Done():
 			return
 		case packet := <-packetChan:
 			s, err := tunnelConfig.Tunnel.Write(packet.Slice())
 			protocol.PacketPool.Put(packet)
-			if err != nil || s == 0 {
+			if err != nil {
 				logrus.Errorf("Error writing to tunnel (%d bytes written): %v", s, err)
+			} else if s == 0 {
+				logrus.Error("Written an empty packet to the tunnel")
+			} else {
+				logrus.Debugf("Written %d bytes to the tunnel", s)
 			}
 		}
 	}
@@ -121,21 +137,20 @@ func (server *MetaServer) Start(base context.Context, errorChan chan error) {
 	localErrorChan := make(chan error)
 	defer close(localErrorChan)
 
-	go server.startTunnelRead(base, tunnelConfig, localErrorChan)
-	go server.startTunnelWrite(base, tunnelConfig, localPacketChan)
+	ctx, cancel := context.WithCancel(base)
+	defer cancel()
+	go server.startTunnelRead(ctx, tunnelConfig, localErrorChan)
+	go server.startTunnelWrite(ctx, tunnelConfig, localPacketChan)
 
 	server.wg.Add(2)
-	go server.apiServer.Start(server.wg, localErrorChan)
-	go server.portServer.Listen(base, server.wg, localPacketChan, localErrorChan)
+	go server.apiServer.Start(ctx, server.wg, localErrorChan)
+	go server.portServer.Listen(ctx, server.wg, localPacketChan, localErrorChan)
 
-	for {
-		select {
-		case <-base.Done():
-			return
-		case err := <-localErrorChan:
-			errorChan <- fmt.Errorf("error serving: %v", err)
-			return
-		}
+	select {
+	case <-ctx.Done():
+		return
+	case err := <-localErrorChan:
+		errorChan <- fmt.Errorf("error serving: %v", err)
 	}
 }
 
@@ -144,7 +159,6 @@ func (server *MetaServer) Stop() error {
 		return errors.New("MetaServer 'close' was called before 'start'")
 	}
 
-	server.portServer.Close()
 	server.apiServer.Stop()
 	server.wg.Wait()
 
