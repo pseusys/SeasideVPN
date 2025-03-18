@@ -34,7 +34,7 @@ def _print_container_logs(docker: DockerClient, container: str, last: int = 100)
         logger.error(f"{Style.BRIGHT}{Fore.RED}No container {container} found!{Style.RESET_ALL}")
 
 
-def _test_set(profile: Profile) -> int:
+def test_set(profile: Profile) -> None:
     """
     Launch specified compose file and launch speceified test set inside of it.
     Print test output and any errors that happened.
@@ -95,48 +95,4 @@ def _test_set(profile: Profile) -> int:
     after_networks = set([net.name for net in docker.network.list()]) - before_networks
     docker.compose.rm(stop=True)
     docker.network.remove(list(after_networks))
-    return exit_code
-
-
-def test_unit() -> None:
-    """
-    Run unit tests: all the algae client functions in particular.
-    """
-    exit(_test_set("unit"))
-
-
-def test_integration() -> None:
-    """
-    Run integration tests: sequence of VPN connection, disconnection and other control requests.
-    """
-    exit(_test_set("integration"))
-
-
-def test_local() -> None:
-    """
-    Run local smoke tests: connection is made to local TCP server in a Doocker container.
-    Also network packet random drop (50%) is enabled ("gaiaadm/pumba" library is used).
-    """
-    exit(_test_set("local"))
-
-
-def test_remote() -> None:
-    """
-    Run remote smoke tests: connection is made to several remote servers.
-    Several different transport and application layer protocols are used.
-    """
-    exit(_test_set("remote"))
-
-
-def test_smoke() -> None:
-    """
-    Run smoke tests: run both "local", "remote" and "domain" smoke tests (specified above).
-    """
-    exit(sum(_test_set(test_set) for test_set in ("local", "remote")))
-
-
-def test_all() -> None:
-    """
-    Run tests: run all tests (specified above).
-    """
-    exit(sum(_test_set(test_set) for test_set in ("unit", "integration", "local", "remote")))
+    exit(exit_code)

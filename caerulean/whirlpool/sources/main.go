@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"io"
 	"log/syslog"
-	"main/tunnel"
+	"main/tunnel" // TODO: optionally depend on nftables instead of iptables
 	"main/users"
 	"main/utils"
 	"os"

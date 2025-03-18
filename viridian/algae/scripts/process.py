@@ -6,8 +6,6 @@ from subprocess import check_output
 from sys import argv
 from typing import List, Union
 
-from colorama import Fore, Style
-
 # Root of algae viridian source files.
 ALGAE_ROOT = Path(__file__).parent.parent
 
@@ -105,33 +103,3 @@ def clean() -> None:
     docker.image.remove(["seaside-echo-smoke", "seaside-router-smoke", "seaside-router-smoke-sleeping", "seaside-echo-default", "seaside-echo"] + algae_images + whirlpool_images, True, True)
     docker_network = [f"docker_{net}" for net in ("sea-client", "sea-router", "sea-server", "sea-cli-int", "sea-rout-int", "sea-rout-ext", "sea-serv-ext")]
     run(docker.docker_cmd + ["network", "remove", "--force"] + docker_network)
-
-
-def help() -> None:
-    """
-    Print poetry commands summary.
-    """
-    print(f"{Style.BRIGHT}Available poetry scripts{Style.RESET_ALL}:")
-    print(f"\t{Fore.BLUE}poetry poe generate{Fore.RESET}: generate protobuf sources (using betterproto library).")
-    print(f"\t{Fore.BLUE}poetry poe lint{Fore.RESET}: run Python code linting locally.")
-    print(f"\t{Fore.BLUE}poetry poe format{Fore.RESET}: run Python code formatting locally.")
-    print(f"\t{Fore.BLUE}poetry poe test-unit{Fore.RESET}: run algae unit tests in a Docker container.")
-    print(f"\t{Fore.BLUE}poetry poe test-integration{Fore.RESET}: run seaside integration tests in a Docker container.")
-    print(f"\t{Fore.BLUE}poetry poe test-smoke{Fore.RESET}: run seaside smoke tests in a Docker container.")
-    print(f"\t{Fore.BLUE}poetry poe test-local{Fore.RESET}: run seaside local smoke tests in a Docker container (without access to internet).")
-    print(f"\t{Fore.BLUE}poetry poe test-remote{Fore.RESET}: run seaside remote smoke tests in a Docker container.")
-    print(f"\t{Fore.BLUE}poetry poe test-domain{Fore.RESET}: run seaside domain smoke tests in a Docker container.")
-    print(f"\t{Fore.BLUE}poetry poe test-all{Fore.RESET}: run all possible tests in a Docker container.")
-    print(f"\t{Fore.BLUE}poetry poe compile{Fore.RESET}: compile algae Python source code to an executable (using pyinstaller library).")
-    print(f"\t{Fore.BLUE}poetry poe execute [ARGS...]{Fore.RESET}: execute algae Python sources locally (ARGS will be passed to the executable).")
-    print(f"\t{Fore.BLUE}poetry poe bundle{Fore.RESET}: bundle caerulean installation script 'install.pyz', required for caerulean installation and certificates generation.")
-    print(f"\t{Fore.BLUE}poetry poe clean{Fore.RESET}: clean all the build files, executables, Docker images, containers and networks.")
-    print(f"\t{Fore.BLUE}poetry poe help{Fore.RESET}: print this message again.")
-    print(f"{Style.BRIGHT}Arguments for algae executable (ARGS){Style.RESET_ALL}:")
-    print(f"\t{Fore.YELLOW}[PAYLOAD]{Fore.RESET}: caerulean payload string (required!).")
-    print(f"\t{Fore.GREEN}-a --address [ADDRESS]{Fore.RESET}: caerulean remote IP address (default: 127.0.0.1).")
-    print(f"\t{Fore.GREEN}-n --ctrlport [CTRLPORT]{Fore.RESET}: caerulean network port number (default: 8587).")
-    print(f"\t{Fore.GREEN}-t --tunnel [TUNNEL]{Fore.RESET}: tunnel interface name (default: seatun).")
-    print(f"\t{Fore.GREEN}-l --link [LINK]{Fore.RESET}: connection link, will be used instead of other arguments if specified.")
-    print(f"{Style.BRIGHT}Connection link format{Style.RESET_ALL}:")
-    print(f"\t{Fore.CYAN}seaside+[NODE_TYPE]://[ADDRESS]:[CTRLPORT]/[PAYLOAD]{Fore.RESET}")

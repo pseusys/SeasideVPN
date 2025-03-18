@@ -17,7 +17,6 @@ from ..interaction.whirlpool import WhirlpoolClient
 from ..protocol import PortClient, SeasideClient, TyphoonClient, TyphoonBaseError
 from ..version import __version__
 from ..utils.asyncos import os_read, os_write
-from ..utils.crypto import Asymmetric
 from ..utils.misc import create_logger, parse_connection_link
 
 # Default tunnel interface IP address.
@@ -46,31 +45,31 @@ logger = create_logger(__name__)
 
 # Command line arguments parser.
 parser = ArgumentParser()
-parser.add_argument("-a", "--address", dest="addr", default=_DEFAULT_ADDRESS, type=str, help=f"Caerulean remote IP address (default: {_DEFAULT_ADDRESS})")
-parser.add_argument("-p", "--port", dest="port", default=_DEFAULT_PORT, type=int, help=f"Caerulean API port number (default: {_DEFAULT_PORT})")
-parser.add_argument("-k", "--key", dest="key", default=None, type=str, help="Caerulean API key (will be used in admin authentication fixture in case token is missing)")
-parser.add_argument("-t", "--token", dest="token", default=None, type=decodebytes, help="Caerulean API token (will be used directly during VPN connection if provided)")
-parser.add_argument("-r", "--public", dest="public", default=None, type=decodebytes, help="Caerulean public key (will be used directly during VPN connection if provided)")
-parser.add_argument("-s", "--protocol", dest="proto", default=None, help=f"Caerulean control protocol, one of the 'port' or 'typhoon' (default: {_DEFAULT_PROTO})")
-parser.add_argument("-l", "--link", dest="link", default=None, help="Connection link, will be used instead of other arguments if specified")
+parser.add_argument("-a", "--address", default=_DEFAULT_ADDRESS, type=str, help=f"Caerulean remote IP address (default: {_DEFAULT_ADDRESS})")
+parser.add_argument("-p", "--port", default=_DEFAULT_PORT, type=int, help=f"Caerulean API port number (default: {_DEFAULT_PORT})")
+parser.add_argument("-k", "--key", default=None, type=str, help="Caerulean API key (will be used in admin authentication fixture in case token is missing)")
+parser.add_argument("-t", "--token", default=None, type=decodebytes, help="Caerulean API token (base64 encoded, will be used directly during VPN connection if provided)")
+parser.add_argument("-r", "--public", default=None, type=decodebytes, help="Caerulean public key (base64 encoded, will be used directly during VPN connection if provided)")
+parser.add_argument("-s", "--protocol", default=None, help=f"Caerulean control protocol, one of the 'port' or 'typhoon' (default: {_DEFAULT_PROTO})")
+parser.add_argument("-l", "--link", default=None, help="Connection link, will be used instead of other arguments if specified")
 parser.add_argument("-v", "--version", action="version", version=f"Seaside Viridian Algae version {__version__}", help="Print algae version number and exit")
-parser.add_argument("-e", "--command", dest="cmd", default=None, help="Command to execute and exit (required!)")
+parser.add_argument("-e", "--command", default=None, help="Command to execute and exit (required!)")
 
 
 class AlgaeClient:
-    def __init__(self, addr: str, port: int, proto: Optional[Union[Literal["typhoon"], Literal["port"]]] = None):
+    def __init__(self, address: str, port: int, protocol: Optional[Union[Literal["typhoon"], Literal["port"]]] = None):
         try:
-            self._address = str(IPv4Address(addr))
+            self._address = str(IPv4Address(address))
         except AddressValueError:
-            self._address = gethostbyname(addr)
+            self._address = gethostbyname(address)
         self._port = port
 
-        if proto is None or proto == "port":
+        if protocol is None or protocol == "port":
             self._proto_type = PortClient
-        elif proto == "typhoon":
+        elif protocol == "typhoon":
             self._proto_type = TyphoonClient
         else:
-            raise ValueError(f"Unknown protocol type: {proto}")
+            raise ValueError(f"Unknown protocol type: {protocol}")
 
         tunnel_name = getenv("SEASIDE_TUNNEL_NAME", _DEFAULT_TUNNEL_NAME)
         tunnel_address = IPv4Address(getenv("SEASIDE_TUNNEL_ADDRESS", _DEFAULT_TUNNEL_ADDRESS))
@@ -126,7 +125,7 @@ class AlgaeClient:
             if connection is not None:
                 await connection.close()
 
-    async def start(self, cmd: str, key: Optional[bytes] = None, token: Optional[bytes] = None, public: Optional[bytes] = None) -> Optional[int]:
+    async def start(self, command: str, key: Optional[str] = None, token: Optional[bytes] = None, public: Optional[bytes] = None) -> Optional[int]:
         if token is None or public is None:
             if key is None:
                 raise RuntimeError("All the connection parameters (key, token, public) are None - there is no known way to connect!")
@@ -140,9 +139,9 @@ class AlgaeClient:
             logger.debug(f"Proceeding with user token: {token}")
             listener_port = self._port
 
-        logger.info(f"Executing command: {cmd}")
+        logger.info(f"Executing command: {command}")
         async with self._tunnel as tunnel_fd, self._start_vpn_loop(token, public, listener_port, tunnel_fd):
-            proc = await create_subprocess_shell(cmd, stdout=PIPE, stderr=PIPE)
+            proc = await create_subprocess_shell(command, stdout=PIPE, stderr=PIPE)
             stdout, stderr = await proc.communicate()
             retcode = proc.returncode
 
@@ -171,7 +170,7 @@ async def main(args: Sequence[str] = argv[1:]) -> Optional[int]:
     if connection_link is not None:
         arguments.update(parse_connection_link(connection_link))
 
-    command = arguments.pop("cmd")
+    command = arguments.pop("command")
     if command is None:
         raise RuntimeError("No command provided - nothing to run!")
     else:

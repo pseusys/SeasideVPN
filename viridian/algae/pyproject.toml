@@ -68,20 +68,19 @@ jupyter = "^1.1.1"
 post_install = "generate"
 
 [tool.poe.tasks]
-generate = { script = "scripts:generate", env = { "PYTHONPATH" = "." } }
-lint.script = "scripts:lint"
-format.script = "scripts:format"
-test-unit.script = "scripts:test_unit"
-test-integration.script = "scripts:test_integration"
-test-smoke.script = "scripts:test_smoke"
-test-local.script = "scripts:test_local"
-test-remote.script = "scripts:test_remote"
-test-all.script = "scripts:test_all"
+generate = { script = "scripts.process:generate", help = "Generate code: produce code from 'protobuf' files to support gRPC API" }
+lint = { script = "scripts.process:lint", help = "Lint all python code: run flake8, black and mypy" }
+format = { script = "scripts.process:format", help = "Format all python code: change code formatting where possible (using black)" }
+test-unit = { script = "scripts.test:test_set('unit')", help = "Run unit tests: all the algae client functions in particular" }
+test-integration = { script = "scripts.test:test_set('integration')", help = "Run integration tests: sequence of VPN connection, disconnection and other control requests" }
+test-local = { script = "scripts.test:test_set('local')", help = "Run local smoke tests: connection is made to local TCP server in a Docker container; network packet random drop (25%) is enabled ('gaiaadm/pumba' library is used)" }
+test-remote = { script = "scripts.test:test_set('remote')", help = "Run remote smoke tests: connection is made to several remote servers; several different transport and application layer protocols are used" }
+test-smoke = { sequence = ["test-local", "test-remote"], help = "Run smoke tests: run both 'local' and 'remote' smoke tests (specified above)" }
+test-all = { sequence = ["test-unit", "test-integration", "test-local", "test-remote"], help = "Run tests: run all tests (specified above)" }
 compile.script = "scripts:compile"
 execute.script = "scripts:execute"
 bundle.script = "scripts:bundle"
 clean.script = "scripts:clean"
-help.script = "scripts:help"
 
 
 
