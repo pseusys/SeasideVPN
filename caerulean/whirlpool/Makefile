@@ -80,9 +80,9 @@ run-docker: build-docker-prod
 build-docker-test:
 	@ # Build testing Docker image (verbose, if CI env var is not defined)
 ifndef CI
-	docker build -f Dockerfile --target builder -t seaside-whirlpool-test ../..
+	docker build -f Dockerfile --target builder --build-arg RUNNING_IN_CI=0 -t seaside-whirlpool-test ../..
 else
-	docker build -f Dockerfile --target builder -t seaside-whirlpool-test -q ../..
+	docker build -f Dockerfile --target builder --build-arg RUNNING_IN_CI=0 -t seaside-whirlpool-test -q ../..
 endif
 .PHONY: build-docker-test
 
@@ -94,9 +94,9 @@ lint: build-docker-test
 test: build-docker-test
 	@ # Run tests inside of the testing docker container
 ifndef CI
-	docker run --privileged --rm -e RUNNING_IN_CI=0 --name seaside-whirlpool-test --env-file example.conf.env --sysctl net.ipv6.conf.all.disable_ipv6=1 --entrypoint go seaside-whirlpool-test test -v ./...
+	docker run --privileged --rm --name seaside-whirlpool-test --env-file example.conf.env --sysctl net.ipv6.conf.all.disable_ipv6=1 --entrypoint go seaside-whirlpool-test test -v ./...
 else
-	docker run --privileged --rm -e RUNNING_IN_CI=1 --name seaside-whirlpool-test --env-file example.conf.env --sysctl net.ipv6.conf.all.disable_ipv6=1 --entrypoint go seaside-whirlpool-test test ./...
+	docker run --privileged --rm --name seaside-whirlpool-test --env-file example.conf.env --sysctl net.ipv6.conf.all.disable_ipv6=1 --entrypoint go seaside-whirlpool-test test ./...
 endif
 .PHONY: test
 

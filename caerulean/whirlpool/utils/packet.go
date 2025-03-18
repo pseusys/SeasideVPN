@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/binary"
 	"fmt"
+	"math"
 	"net"
 )
 
@@ -44,7 +45,7 @@ func ReadIPv4(packet *Buffer) (uint16, *net.IP, *net.IP, error) {
 }
 
 // UpdateIPv4 modifies source and destination IPs and fixes checksum.
-func UpdateIPv4(packet *Buffer, newSrc, newDst *net.IP) error {
+func UpdateIPv4(packet *Buffer, newSrc, newDst net.IP) error {
 	if packet.Length() < 20 {
 		return fmt.Errorf("packet too short for IPv4")
 	}
@@ -98,7 +99,7 @@ func updateICMPChecksum(ihl int, packet *Buffer) error {
 }
 
 // UpdateTransportChecksum recalculates TCP/UDP checksum based on new IPs.
-func updateTransportChecksum(ihl int, packet *Buffer, newSrc, newDst *net.IP) error {
+func updateTransportChecksum(ihl int, packet *Buffer, newSrc, newDst net.IP) error {
 	transportPacket := packet.RebufferStart(ihl)
 
 	if packet.Length() < ihl+8 {
@@ -106,29 +107,41 @@ func updateTransportChecksum(ihl int, packet *Buffer, newSrc, newDst *net.IP) er
 	}
 
 	protocol := packet.Get(9)
+	var chsmS, chsmE int
+	if protocol == 6 {
+		chsmS = 16
+		chsmE = 18
+	} else {
+		chsmS = 6
+		chsmE = 8
+	}
+
 	var source, destination net.IP
 	if newSrc != nil {
-		source = *newSrc
+		source = newSrc
 	} else {
 		source = packet.Reslice(12, 16)
 	}
 	if newDst != nil {
-		destination = *newDst
+		destination = newDst
 	} else {
 		destination = packet.Reslice(16, 20)
 	}
 
 	// Pseudo-header fields
 	pseudoHeader := pseudoHeaderPool.GetFull()
-	copy(pseudoHeader.Reslice(0, 4), source)
-	copy(pseudoHeader.Reslice(4, 8), destination)
+	copy(pseudoHeader.Reslice(0, 4), source.To4())
+	copy(pseudoHeader.Reslice(4, 8), destination.To4())
 	pseudoHeader.Set(8, 0)
 	pseudoHeader.Set(9, protocol)
 	binary.BigEndian.PutUint16(pseudoHeader.Reslice(10, 12), uint16(transportPacket.Length()))
 
-	binary.BigEndian.PutUint16(transportPacket.Reslice(2, 4), 0) // Zero out old checksum before recalculating
+	binary.BigEndian.PutUint16(transportPacket.Reslice(chsmS, chsmE), 0) // Zero out old checksum before recalculating
 	checksum := calculateChecksum(pseudoHeader, transportPacket)
-	binary.BigEndian.PutUint16(transportPacket.Reslice(2, 4), checksum)
+	if protocol == 17 && checksum == 0 {
+		checksum = math.MaxUint16
+	}
+	binary.BigEndian.PutUint16(transportPacket.Reslice(chsmS, chsmE), checksum)
 
 	pseudoHeaderPool.Put(pseudoHeader)
 	return nil

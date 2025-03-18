@@ -13,11 +13,10 @@ services:
       dockerfile: viridian/algae/docker/Dockerfile.algae
       context: ../../..
       target: default-routed
-      args:
-        RUNNING_IN_CI: ${RUNNING_IN_CI:-0}
     env_file:
       - test.conf.env
     environment:
+      RUNNING_IN_CI: ${RUNNING_IN_CI:-0}
       SEASIDE_ROOT_CERTIFICATE_AUTHORITY: /seaside/viridian/ca/rootCA.crt
     sysctls:
       - net.ipv6.conf.all.disable_ipv6=1
@@ -35,6 +34,7 @@ services:
     env_file:
       - test.conf.env
     environment:
+      RUNNING_IN_CI: ${RUNNING_IN_CI:-0}
       SEASIDE_PRIVATE_KEY: jZsc3mZlvbxX+MisHjfQjN6pL+oNtDoE3NSkC823cxazKL6Bl3+P5vSADD3pO80l0RPcv6Z9AB1JtM+K+nAkSQ==
       SEASIDE_SERVER_KEY: c2VjcmV0IGVuY29kZWQgYmFzZTY0IHNlcnZlciBrZXk=
     sysctls:

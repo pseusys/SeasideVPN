@@ -97,7 +97,7 @@ func (p *PortServer) Read(buffer *utils.Buffer, viridianDict *users.ViridianDict
 	logrus.Infof("Received %d bytes from viridian %d (src: %v, dst: %v)", packetLength, p.peerID, packetSource, packetDestination)
 
 	newSrcIP := net.IPv4((*tunIP)[0], (*tunIP)[1], peerBytes[0], peerBytes[1])
-	err = utils.UpdateIPv4(value, &newSrcIP, nil)
+	err = utils.UpdateIPv4(value, newSrcIP, nil)
 	if err != nil {
 		logrus.Errorf("Updating packet source from viridian %d error: %v", p.peerID, err)
 		return nil, nil
@@ -124,7 +124,7 @@ func (p *PortServer) Write(data *utils.Buffer, viridianDict *users.ViridianDict)
 	}
 	logrus.Debugf("Viridian %d found: name '%s', identifier '%s'", p.peerID, viridian.Name, viridian.Identifier)
 
-	err = utils.UpdateIPv4(data, nil, &p.srcAddress)
+	err = utils.UpdateIPv4(data, nil, p.srcAddress)
 	if err != nil {
 		logrus.Errorf("Updating packet destination from viridian %d error: %v", p.peerID, err)
 		return nil
