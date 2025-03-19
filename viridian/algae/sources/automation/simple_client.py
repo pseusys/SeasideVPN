@@ -147,9 +147,9 @@ class AlgaeClient:
 
         print(f"The command exited with: {retcode}")
         if len(stdout) > 0:
-            print(f"STDOUT: {stdout.decode()}")
+            print(f"STDOUT:\n{stdout.decode()}\n")
         if len(stderr) > 0:
-            print(f"STDERR: {stderr.decode()}")
+            print(f"STDERR:\n{stderr.decode()}\n")
         return retcode
 
     async def interrupt(self, terminate: bool = False) -> None:
@@ -186,7 +186,11 @@ async def main(args: Sequence[str] = argv[1:]) -> Optional[int]:
     loop.add_signal_handler(SIGINT, lambda: create_task(client.interrupt(True)))
 
     logger.info(f"Running client for command: {command}")
-    return await client.start(command, key, token, public)
+    retcode = await client.start(command, key, token, public)
+
+    logger.info("Done running command, shutting client down!")
+    await client.interrupt(False)
+    return retcode
 
 
 if __name__ == "__main__":

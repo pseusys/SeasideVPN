@@ -22,9 +22,12 @@ def _async_read_callback(loop: AbstractEventLoop, descriptor: int, reader: Calla
 
     def reader_func(future: Future[bytes]) -> None:
         try:
-            future.set_result(reader())
+            result = reader()
+            if not future.cancelled():
+                future.set_result(result)
         except OSError as e:
-            future.set_exception(e)
+            if not future.cancelled():
+                future.set_exception(e)
         finally:
             loop.remove_reader(descriptor)
 
@@ -46,9 +49,12 @@ def _async_write_callback(loop: AbstractEventLoop, descriptor: int, writer: Call
 
     def writer_func(future: Future[int]) -> None:
         try:
-            future.set_result(writer())
+            result = writer()
+            if not future.cancelled():
+                future.set_result(result)
         except OSError as e:
-            future.set_exception(e)
+            if not future.cancelled():
+                future.set_exception(e)
         finally:
             loop.remove_writer(descriptor)
 

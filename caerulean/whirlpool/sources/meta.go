@@ -95,7 +95,7 @@ func (server *MetaServer) startTunnelRead(ctx context.Context, tunnelConfig *tun
 
 			if !packetWritten {
 				protocol.PacketPool.Put(buffer)
-				logrus.Errorf("Error sending tunnel packet: %v", err)
+				logrus.Errorf("Error sending tunnel packet, viridian %d not found!", viridianID)
 			}
 		}
 	}

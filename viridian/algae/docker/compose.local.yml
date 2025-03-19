@@ -9,6 +9,7 @@ services:
       service: algae
     build:
       args:
+        RUNNING_TEST_FILE: test_local.py
         NETWORK_GATEWAY: 10.65.0.100
     environment:
       SEASIDE_ADDRESS: 10.87.65.87
@@ -37,6 +38,7 @@ services:
         NETWORK_GATEWAY: 10.65.0.100
     environment:
       SEASIDE_ADDRESS: 10.87.65.87
+      TEST_COMMAND: sleep infinity
       SEASIDE_CONNECTION_TIMEOUT: 30.0
     networks:
       - sea-cli-int

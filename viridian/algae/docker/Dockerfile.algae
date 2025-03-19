@@ -45,6 +45,7 @@ COPY viridian/algae/tests/ ./tests/
 ENV SEASIDE_ADDRESS=
 ENV SEASIDE_API_KEY_OWNER=
 ENV SEASIDE_API_PORT=
+ENV SEASIDE_TUNNEL_NAME=seatun
 
 ENV TEST_FILE=$RUNNING_TEST_FILE
 ENV RUNNING_IN_CI=${RUNNING_IN_CI:-0}
@@ -52,7 +53,7 @@ ENV LOGGING_LEVEL=${RUNNING_IN_CI:+ERROR}
 ENV LOGGING_LEVEL=${RUNNING_IN_CI:-DEBUG}
 
 ENV TEST_COMMAND="python3 -m pytest --log-cli-level=$LOGGING_LEVEL tests/$TEST_FILE"
-ENV VPN_COMMAND="python3 -m sources.automation.simple_client -a \$SEASIDE_ADDRESS -k \$SEASIDE_API_KEY_OWNER -p \$SEASIDE_API_PORT -e \"$TEST_COMMAND\""
+ENV VPN_COMMAND="python3 -m sources.automation.simple_client -a \$SEASIDE_ADDRESS -k \$SEASIDE_API_KEY_OWNER -p \$SEASIDE_API_PORT -e \"\$TEST_COMMAND\""
 
 # Just sleep - run nothing.
 ENTRYPOINT ["sh", "-c", "$VPN_COMMAND"]
