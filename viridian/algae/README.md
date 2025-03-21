@@ -109,7 +109,7 @@ flowchart TB
 All required python dependencies can be installed with this command:
 
 ```bash
-poetry install --without devel
+poetry install --all-extras
 ```
 
 Algae can be executed with following command:

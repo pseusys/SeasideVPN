@@ -26,7 +26,7 @@ build:
 .PHONY: build
 
 certificates:
-	poetry -C ../algae run python3 -m setup --just-certs "$$(yq -r '.services.whirlpool.environment.SEASIDE_ADDRESS' docker/compose.yml)"
+	poetry -C ../algae poe setup --just-certs "$$(yq -r '.services.whirlpool.environment.SEASIDE_ADDRESS' docker/compose.yml)"
 	mv ../algae/certificates certificates
 
 run: build certificates

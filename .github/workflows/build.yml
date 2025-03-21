@@ -1,5 +1,4 @@
 name: BUILD
-# TODO: fix "poetry poe -C" commands once the issue is finally resolved: https://github.com/nat-n/poethepoet/issues/270
 # TODO: add ARM64 architecture for Windows build of Reef, once the issue is resolved: https://github.com/basil00/WinDivert/issues/236 
 
 on:
@@ -27,19 +26,17 @@ jobs:
           python-version: "3.10"
 
       - name: Install Dependencies 🔮
-        run: |
-          pip3 install poetry
-          poetry -C viridian/algae install --without devel
+        run: pip3 install poetry && poetry -C viridian/algae install --extras "compile bundle"
 
       - name: Build Algae Executable 🏗️
         env:
           EXEC_NAME: viridian_algae_executable
-        run: cd viridian/algae && poetry poe compile ${{ env.EXEC_NAME }}.run
+        run: poetry poe -C viridian/algae compile ${{ env.EXEC_NAME }}.run
 
       - name: Build Caerulean Installer 📥
         env:
           EXEC_NAME: caerulean_installer
-        run: cd viridian/algae && poetry poe bundle ${{ env.EXEC_NAME }}.pyz
+        run: poetry poe -C viridian/algae bundle ${{ env.EXEC_NAME }}.pyz
 
       - name: Create Artifact Name From Branch Name 🌱
         uses: mad9000/actions-find-and-replace-string@5

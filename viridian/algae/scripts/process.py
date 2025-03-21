@@ -1,5 +1,5 @@
-from asyncio import run
 from glob import glob
+from logging import getLogger
 from pathlib import Path
 from shutil import rmtree
 from subprocess import check_output
@@ -14,6 +14,9 @@ _EXECUTABLE_NAME = "algae.run"
 
 # Default caerulean installer file name.
 _INSTALLER_NAME = "install.pyz"
+
+# Default logger instance.
+logger = getLogger(__name__)
 
 
 def generate() -> None:
@@ -47,40 +50,28 @@ def compile() -> None:
     run(paths + ["-F", "-c", "-y", "-n", executable_name, str(ALGAE_ROOT / "sources" / "main.py")])
 
 
-def execute() -> None:
-    """
-    Import and execute main function of algae module.
-    Pass console arguments to it.
-    """
-    from ..sources.automation.simple_client import main
-
-    exit(run(main(argv[1:])))
-
-
 def bundle() -> None:
     """
     Bundle caerulean installation script.
     """
     from zipapps import create_app
+    from tomllib import loads
 
-    dependencies = check_output(["poetry", "export", "--without-hashes", "--with-credentials", "--only=setup"], text=True)
-    requirements = [dep.split(";")[0].strip() for dep in dependencies.split("\n") if len(dep) > 0]
+    pyproject = Path.cwd() / "pyproject.toml"
+    dependencies = loads(pyproject.read_text()).get("project", dict()).get("optional-dependencies", dict()).get("setup", list())
 
     main_module = "main:main"
     install_cache = "$TEMP/seaside_install_cache"
     installer_name = str(ALGAE_ROOT / (argv[1] if len(argv) > 1 else _INSTALLER_NAME))
     includes = [str(path) for path in (ALGAE_ROOT / "setup").glob("*.py") if path.name != "__init__.py"]
-    create_app(",".join(includes), output=installer_name, main=main_module, compressed=True, lazy_install=True, unzip_path=install_cache, pip_args=requirements)
+    create_app(",".join(includes), output=installer_name, main=main_module, compressed=True, lazy_install=True, unzip_path=install_cache, pip_args=dependencies)
 
 
 def clean() -> None:
     """
     Delete all algae generated source files, build files and executables.
-    Also remove all related Docker conatiners, images and networks.
+    Also remove all related Docker containers, images and networks.
     """
-    from python_on_whales import Container, DockerClient
-    from python_on_whales.components.image.cli_wrapper import ValidImage
-    from python_on_whales.utils import run
 
     for path in glob("**/__pycache__", recursive=True):
         rmtree(path, ignore_errors=True)
@@ -94,12 +85,20 @@ def clean() -> None:
     Path(f"{_EXECUTABLE_NAME}.spec").unlink(missing_ok=True)
     Path("poetry.lock").unlink(missing_ok=True)
 
-    docker = DockerClient()
-    unique_containers: List[Union[str, Container]] = ["seaside-algae", "seaside-whirlpool", "seaside-echo", "seaside-internal-router", "seaside-external-router", "network-disruptor"]
-    copy_containers: List[Union[str, Container]] = [f"docker-algae-copy-{n + 1}" for n in range(3)]
-    docker.container.remove(unique_containers + copy_containers, force=True, volumes=True)
-    algae_images: List[ValidImage] = [f"seaside-algae-{mode}" for mode in ("default", "smoke", "smoke-sleeping", "default-sleeping", "smoke-local", "smoke-remote", "smoke-domain")]
-    whirlpool_images: List[ValidImage] = [f"seaside-whirlpool-{mode}" for mode in ("default", "smoke", "integration", "smoke-local", "smoke-remote")]
-    docker.image.remove(["seaside-echo-smoke", "seaside-router-smoke", "seaside-router-smoke-sleeping", "seaside-echo-default", "seaside-echo"] + algae_images + whirlpool_images, True, True)
-    docker_network = [f"docker_{net}" for net in ("sea-client", "sea-router", "sea-server", "sea-cli-int", "sea-rout-int", "sea-rout-ext", "sea-serv-ext")]
-    run(docker.docker_cmd + ["network", "remove", "--force"] + docker_network)
+    try:
+        from python_on_whales import Container, DockerClient
+        from python_on_whales.components.image.cli_wrapper import ValidImage
+        from python_on_whales.utils import run
+
+        docker = DockerClient()
+        unique_containers: List[Union[str, Container]] = ["seaside-algae", "seaside-whirlpool", "seaside-echo", "seaside-internal-router", "seaside-external-router", "network-disruptor"]
+        copy_containers: List[Union[str, Container]] = [f"docker-algae-copy-{n + 1}" for n in range(3)]
+        docker.container.remove(unique_containers + copy_containers, force=True, volumes=True)
+        algae_images: List[ValidImage] = [f"seaside-algae-{mode}" for mode in ("default", "smoke", "smoke-sleeping", "default-sleeping", "smoke-local", "smoke-remote", "smoke-domain")]
+        whirlpool_images: List[ValidImage] = [f"seaside-whirlpool-{mode}" for mode in ("default", "smoke", "integration", "smoke-local", "smoke-remote")]
+        docker.image.remove(["seaside-echo-smoke", "seaside-router-smoke", "seaside-router-smoke-sleeping", "seaside-echo-default", "seaside-echo"] + algae_images + whirlpool_images, True, True)
+        docker_network = [f"docker_{net}" for net in ("sea-client", "sea-router", "sea-server", "sea-cli-int", "sea-rout-int", "sea-rout-ext", "sea-serv-ext")]
+        run(docker.docker_cmd + ["network", "remove", "--force"] + docker_network)
+
+    except ImportError:
+        logger.info("Skipping clearing Docker artifacts as 'test' extra is not installed!")

@@ -50,7 +50,7 @@ build:
 .PHONY: build
 
 certificates:
-	poetry -C ../../viridian/algae run python3 -m setup --just-certs
+	poetry -C ../../viridian/algae poe setup --just-certs
 	mv ../../viridian/algae/certificates/caerulean certificates
 
 run: build certificates
@@ -58,10 +58,10 @@ run: build certificates
 	sudo build/$(EXEC_NAME)
 .PHONY: run
 
-format: build
-	@ # Format source files
-	go fmt ./sources
-.PHONY: format
+codestyle: build
+	@ # Run lint
+	staticcheck -f stylish ./...
+.PHONY: codestyle
 
 
 
@@ -85,11 +85,6 @@ else
 	docker build -f Dockerfile --target builder --build-arg RUNNING_IN_CI=0 -t seaside-whirlpool-test -q ../..
 endif
 .PHONY: build-docker-test
-
-lint: build-docker-test
-	@ # Run lint inside of the testing docker container
-	docker run --privileged --rm --name seaside-whirlpool-lint --env-file example.conf.env --sysctl net.ipv6.conf.all.disable_ipv6=1 --entrypoint golint seaside-whirlpool-test .
-.PHONY: lint
 
 test: build-docker-test
 	@ # Run tests inside of the testing docker container

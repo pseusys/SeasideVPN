@@ -1,5 +1,5 @@
 name: TEST
-# TODO: fix "poetry poe -C" commands once the issue is finally resolved: https://github.com/nat-n/poethepoet/issues/270
+# TODO: fix 'pip3 install poetry' once windows issue is resolved: https://github.com/python-poetry/poetry/issues/10028
 # TODO: fix "npm --prefix" commands once the windows issue is finally resolved: https://github.com/npm/cli/issues/4511
 
 on:
@@ -24,18 +24,16 @@ jobs:
           python-version: "3.10"
 
       - name: Install Dependencies 🔮
-        run: |
-          pip3 install poetry poethepoet[poetry_plugin]
-          poetry -C viridian/algae install --without client,devel,setup
+        run: pip3 install poetry poethepoet[poetry_plugin] && poetry -C viridian/algae install --extras "test"
 
       - name: Test Viridian Algae (unit) 🧪
-        run: cd viridian/algae && poetry poe test-unit
+        run: poetry -C viridian/algae poe test-unit
 
       - name: Test Viridian Algae (integration) 📇
-        run: cd viridian/algae && poetry poe test-integration
+        run: poetry -C viridian/algae poe test-integration
 
       - name: Test Viridian Algae (smoke) 😶‍🌫️
-        run: cd viridian/algae && poetry poe test-smoke
+        run: poetry -C viridian/algae poe test-smoke
 
   viridian-reef-test:
     name: Test Viridian Reef
@@ -72,7 +70,7 @@ jobs:
       - name: Install Dependencies 🔮
         run: |
           cd .github/scripts && npm install && cd ../.. 
-          pip3 install poetry && poetry -C viridian/algae install --without client
+          pip3 install poetry && poetry -C viridian/algae install --extras "setup"
 
       - name: Test Viridian Reef (unit) 🧪
         run: ${{ env.SUDO }} cargo test --package SeasideVPN-Reef --lib --manifest-path viridian/reef/Cargo.toml -- --nocapture --show-output
@@ -128,7 +126,7 @@ jobs:
           poetry -C viridian/algae install --without client,devel
 
       - name: Compile Installer Script 🏗️
-        run: cd viridian/algae && poetry poe bundle
+        run: poetry poe -C viridian/algae bundle
 
       - name: Run Installer Script 📥
         env:

@@ -1,94 +1,144 @@
-[tool.poetry]
+[project]
 name = "SeasideVPN-Algae"
 version = "0.0.3"
 description = "A testing SeasideVPN client and installation script for Linux"
-license = "MIT"
-package-mode = false
-authors = [
-    "Alexander Sergeev <alexander.sergeev@onmail.com>"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+
+
+license-files = [
+    "../../LICENSE"
 ]
 
-readme = "README.md"
+authors = [
+    { name = "Alexander Sergeev", email = "alexander.sergeev@onmail.com>" }
+]
+
+keywords = [
+    "open-source",
+    "udp",
+    "distributed",
+    "vpn",
+    "client-server",
+    "pptp",
+    "p2p-network"
+]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Unix",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Internet",
+    "Topic :: Security",
+    "Topic :: System :: Networking"
+]
+
+dependencies = [
+    "grpcio-tools~=1.62.0",
+    "betterproto[compiler]~=2.0.0b6"
+]
+
+
+
+
+[project.urls]
 repository = "https://github.com/pseusys/SeasideVPN"
-keywords = ["open-source", "udp", "distributed", "vpn", "client-server", "pptp", "p2p-network"]
+
+
+[project.optional-dependencies]
+client = [
+    "colorama~=0.4.6",
+    "pyroute2~=0.7.9",
+    "python-iptables~=1.0.1",
+    "betterproto~=2.0.0b6",
+    "pymonocypher~=4.0.2.5"
+]
+
+devel = [
+    "pytest~=8.3.2",
+    "pythonping~=1.1.4",
+    "pytest-asyncio~=0.24.0",
+    "pytest-timeout~=2.2.0",
+    "pytest-dependency~=0.6.0"
+]
+
+codestyle = [
+    "mypy~=1.3.0",
+    "flake8~=7.1.0",
+    "black~=24.8.0",
+    "isort~=5.11.0"
+]
+
+compile = [
+    "pyinstaller~=6.9.0"
+]
+
+bundle = [
+    "zipapps~=2024.8.7"
+]
+
+setup = [
+    "cryptography~=44.0.0",
+    "semver~=3.0.2"
+]
+
+test = [
+    "colorama~=0.4.6",
+    "python-on-whales~=0.74.0",
+    "PyYAML~=6.0.2"
+]
+
+protocol = [
+    "jupyter~=1.1.1"
+]
+
+
+
+# Poetry config:
+
+[tool.poetry]
+package-mode = false
+requires-poetry = ">=2.0"
 
 packages = [
     { include = "sources" },
-    { include = "scripts" },
-    { include = "tests" },
+    { include = "setup" }
 ]
-
 
 
 [tool.poetry.requires-plugins]
 poethepoet = "^0.32.1"
-poetry-plugin-export = "^1.9.0"
-
-[tool.poetry.dependencies]
-python = ">=3.10,<3.13"
-pymonocypher = "^4.0.2.5"
-colorama = "^0.4.6"
-
-[tool.poetry.group.client.dependencies]
-pyroute2 = "^0.7.9"
-python-iptables = "^1.0.1"
-betterproto = "^2.0.0b6"
-
-[tool.poetry.group.devel.dependencies]
-pytest = "^8.3.2"
-pythonping = "^1.1.4"
-pytest-asyncio = "^0.24.0"
-pytest-timeout = "^2.2.0"
-pytest-dependency = "^0.6.0"
-
-[tool.poetry.group.script.dependencies]
-mypy = "^1.3.0"
-flake8 = "^7.1.0"
-black = "^24.8.0"
-isort = "^5.11.0"
-pyinstaller = "^6.9.0"
-python-on-whales = "^0.74.0"
-grpcio-tools = "^1.62.0"
-PyYAML = "^6.0.2"
-zipapps = "^2024.8.7"
-cryptography = "^44.0.0"
-semver = "^3.0.2"
-betterproto = { version = "^2.0.0b6", extras = ["compiler"] }
-
-[tool.poetry.group.setup.dependencies]
-cryptography = "^44.0.0"
-semver = "^3.0.2"
-
-[tool.poetry.group.protocol.dependencies]
-jupyter = "^1.1.1"
 
 
 
-[tool.poe.poetry_hooks]
-post_install = "generate"
+# Poe-the-poet config:
+
+[tool.poe]
+default_task_type = "script"
+
 
 [tool.poe.tasks]
-generate = { script = "scripts.process:generate", help = "Generate code: produce code from 'protobuf' files to support gRPC API" }
-lint = { script = "scripts.process:lint", help = "Lint all python code: run flake8, black and mypy" }
-format = { script = "scripts.process:format", help = "Format all python code: change code formatting where possible (using black)" }
+client = { script = "sources.main:main", help = "Import and execute main function of algae simple client, pass console arguments to it" }
+lint = { script = "scripts.codestyle:lint", help = "Lint all python code: run 'flake8', 'black' and 'mypy'" }
+format = { script = "scripts.codestyle:format", help = "Format all python code: change code formatting where possible (using 'black')" }
+generate = { script = "scripts.process:generate", help = "Generate protobuf source files, previous generation results will be removed; libraries 'grpcio-tools' and 'betterproto' is used for generation" }
+compile = { script = "scripts.process:compile", help = "Compile a single algae executable; library 'pyinstaller' is used for generation" }
+bundle = { script = "scripts.process:bundle", help = "Bundle caerulean installation script; library 'zipapps' is used for bundling" }
+clean = { script = "scripts.process:clean", help = "Delete all algae generated source files, build files and executables, also remove all related Docker containers, images and networks" }
 test-unit = { script = "scripts.test:test_set('unit')", help = "Run unit tests: all the algae client functions in particular" }
 test-integration = { script = "scripts.test:test_set('integration')", help = "Run integration tests: sequence of VPN connection, disconnection and other control requests" }
 test-local = { script = "scripts.test:test_set('local')", help = "Run local smoke tests: connection is made to local TCP server in a Docker container; network packet random drop (25%) is enabled ('gaiaadm/pumba' library is used)" }
 test-remote = { script = "scripts.test:test_set('remote')", help = "Run remote smoke tests: connection is made to several remote servers; several different transport and application layer protocols are used" }
 test-smoke = { sequence = ["test-local", "test-remote"], help = "Run smoke tests: run both 'local' and 'remote' smoke tests (specified above)" }
 test-all = { sequence = ["test-unit", "test-integration", "test-local", "test-remote"], help = "Run tests: run all tests (specified above)" }
-compile.script = "scripts:compile"
-execute.script = "scripts:execute"
-bundle.script = "scripts:bundle"
-clean.script = "scripts:clean"
+setup = { cmd = "python -m setup", help = "Run whirlpool setup package, pass console arguments to it" }
 
 
-
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
-
-
-
-[tool.isort]
-profile = "black"
+[tool.poe.poetry_hooks]
+post_install = "generate"

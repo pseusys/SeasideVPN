@@ -63,12 +63,12 @@ bump-version:
 
 install-algae:
 	@ # Install viridian algae requirements for poetry, linting, installing and running Docker
-	poetry -C viridian/algae install --without client,devel
+	poetry -C viridian/algae install --extras "client codestyle compile bundle setup test protocol"
 .PHONY: install-algae
 
 install-algae-all:
 	@ # Install all the viridian algae requirements (insluding the ones for running)
-	poetry -C viridian/algae install
+	poetry -C viridian/algae install --all-extras
 .PHONY: install-algae
 
 
@@ -99,7 +99,7 @@ lint-whirlpool:
 	make -C caerulean/whirlpool -s lint
 .PHONY: lint-whirlpool
 
-lint-algae: install-algae-all
+lint-algae:
 	@ # Lint viridian algae (locally, formatting available)
 	poetry poe -C viridian/algae lint
 .PHONY: lint-algae
