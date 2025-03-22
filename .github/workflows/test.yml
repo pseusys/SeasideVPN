@@ -125,7 +125,7 @@ jobs:
       - name: Install Dependencies 🔮
         run: |
           pip3 install poetry
-          poetry -C viridian/algae install --without client,devel
+          poetry -C viridian/algae install --extras "bundle setup"
 
       - name: Compile Installer Script 🏗️
         run: poetry -C viridian/algae run poe bundle

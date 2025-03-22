@@ -79,7 +79,7 @@ jobs:
           go-version: "^1.22.0"
 
       - name: Install Dependencies 🔮
-        run: go install github.com/pseusys/protogo@latest
+        run: go install github.com/pseusys/protogo@latest github.com/xlab/c-for-go@latest
 
       - name: Build Caerulean Whirlpool 🏗️
         env:

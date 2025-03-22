@@ -58,10 +58,10 @@ run: build certificates
 	sudo build/$(EXEC_NAME)
 .PHONY: run
 
-codestyle: build
+lint: build
 	@ # Run lint
 	staticcheck -f stylish ./...
-.PHONY: codestyle
+.PHONY: lint
 
 
 
