@@ -53,7 +53,7 @@ jobs:
         run: pip3 install poetry && poetry install --extras "codestyle"
 
       - name: Lint Viridian Algae 🧪
-        run: poetry poe -C viridian/algae lint
+        run: poetry -C viridian/algae run poe lint
 
   caerulean-whirlpool-lint:
     name: Lint Caerulean Whirlpool Server

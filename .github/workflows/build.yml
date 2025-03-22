@@ -31,12 +31,12 @@ jobs:
       - name: Build Algae Executable 🏗️
         env:
           EXEC_NAME: viridian_algae_executable
-        run: poetry poe -C viridian/algae compile ${{ env.EXEC_NAME }}.run
+        run: poetry -C viridian/algae run poe compile ${{ env.EXEC_NAME }}.run
 
       - name: Build Caerulean Installer 📥
         env:
           EXEC_NAME: caerulean_installer
-        run: poetry poe -C viridian/algae bundle ${{ env.EXEC_NAME }}.pyz
+        run: poetry -C viridian/algae run poe bundle ${{ env.EXEC_NAME }}.pyz
 
       - name: Create Artifact Name From Branch Name 🌱
         uses: mad9000/actions-find-and-replace-string@5

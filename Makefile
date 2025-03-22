@@ -20,7 +20,7 @@ help-whirlpool:
 
 help-algae:
 	@ # Print help message of viridian algae
-	poetry poe -C viridian/algae help
+	poetry -C viridian/algae run poe help
 .PHONY: help-algae
 
 help-reef:
@@ -80,7 +80,7 @@ test-whirlpool:
 
 test-algae: install-algae
 	@ # Run viridian algae tests (in a docker container)
-	poetry poe -C viridian/algae test-all
+	poetry -C viridian/algae run poe test-all
 .PHONY: test-algae
 
 test-reef:
@@ -101,7 +101,7 @@ lint-whirlpool:
 
 lint-algae:
 	@ # Lint viridian algae (locally, formatting available)
-	poetry poe -C viridian/algae lint
+	poetry -C viridian/algae run poe lint
 .PHONY: lint-algae
 
 lint-scripts:
@@ -128,7 +128,7 @@ clean-whirlpool:
 
 clean-algae: install-algae
 	@ # Clean viridian algae (including build and docker artifacts)
-	poetry poe -C viridian/algae clean
+	poetry -C viridian/algae run poe clean
 .PHONY: clean-algae
 
 clean-reef: install-algae
