@@ -6,7 +6,7 @@ from typing import Optional
 
 from semver import Version
 
-from utils import Logging
+from utils import Logging, run_command
 
 # See "https://github.com/chef/os_release" for different "os_release" formats
 _BASE_DISTROS = {"debian", "alpine"}
@@ -95,7 +95,7 @@ def check_install_package(package: str) -> None:
     logger = Logging.logger_for(__name__)
     if not check_package(package):
         logger.debug(f"Installing package {package}...")
-        check_call(_install_package_command().format(pack=package), stdout=DEVNULL, stderr=DEVNULL, shell=True)
+        run_command(_install_package_command().format(pack=package))
         logger.debug(f"Package {package} installed!")
 
 

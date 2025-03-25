@@ -2,7 +2,6 @@ from glob import glob
 from logging import getLogger
 from pathlib import Path
 from shutil import rmtree
-from subprocess import check_output
 from sys import argv
 from typing import List, Union
 

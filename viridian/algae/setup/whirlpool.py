@@ -2,7 +2,7 @@ from argparse import ArgumentParser, _SubParsersAction
 from os import environ
 from pathlib import Path
 from shutil import copy, move, rmtree
-from subprocess import DEVNULL, CalledProcessError, Popen, SubprocessError, check_call, run
+from subprocess import DEVNULL, Popen, SubprocessError
 from tarfile import open as open_tar
 from typing import Dict, Optional
 from urllib.request import urlretrieve
@@ -13,7 +13,7 @@ from base import Installer
 from certificates import GENERATE_CERTIFICATES_PATH, generate_certificates
 from default import DEFAULT_GENERATED_VALUE, local_ip, logging_level, payload_value, port_number
 from specific import check_install_packages, check_package, get_arch
-from utils import BLUE, BOLD, GREEN, RED, RESET, UNDER, YELLOW
+from utils import BLUE, BOLD, GREEN, RED, RESET, UNDER, YELLOW, run_command
 
 _PARSER_NAME = "whirlpool"
 _VERSION = '"0.0.3"'
@@ -166,18 +166,18 @@ class WhirlpoolInstaller(Installer):
         go_path = _GO_ROOT / "bin"
         with open(_SHELL_LOGIN, "a+") as file:
             file.write(f"export PATH={str(go_path)}:$PATH")
-        check_call(f"chmod +x {str(go_path / 'go')}", stdout=DEVNULL, stderr=DEVNULL, shell=True)
+        run_command(f"chmod +x {str(go_path / 'go')}")
         return go_path
 
     def _install_go_package(self, go_exec: Optional[str], package: str) -> None:
         """Install one GO package with given executable."""
         try:
             self._logger.debug(f"Checking if GO package '{package}' exists...")
-            check_call(f"{go_exec} list {package}", stdout=DEVNULL, stderr=DEVNULL, shell=True)
+            run_command(f"{go_exec} list {package}")
             self._logger.debug(f"GO package '{package}' found!")
         except SubprocessError:
             self._logger.debug(f"GO package '{package}' not found, installing...")
-            check_call(f"{go_exec} install {package}@latest", stdout=DEVNULL, stderr=DEVNULL, shell=True)
+            run_command(f"{go_exec} install {package}@latest")
             self._logger.debug(f"GO package '{package}' installed!")
 
     def _prepare_environment(self) -> Optional[Path]:
@@ -198,7 +198,7 @@ class WhirlpoolInstaller(Installer):
 
     def _mark_binary_as_executable(self, executable: Path) -> None:
         """Mark executable as executable so that it can be run from console."""
-        check_call(f"chmod +x {str(executable)}", stdout=DEVNULL, stderr=DEVNULL, shell=True)
+        run_command(f"chmod +x {str(executable)}")
 
     def _download_and_build_sources(self, go_path: Optional[Path]) -> None:
         """Download source code from GitHub to ./SeasideVPN directory and build the whirlpool executable."""
@@ -209,14 +209,11 @@ class WhirlpoolInstaller(Installer):
         go_env["PATH"] = f"{str(go_path)}:{environ['PATH']}" if go_path is not None else environ["PATH"]
         self._logger.debug(f"PATH prepared for caerulean building: {go_env['PATH']}")
         self._logger.debug("Cloning SeasideVPN repository...")
-        check_call(f"git clone -n --branch {self._args['source_tag']} --depth=1 --filter=tree:0 --recurse-submodules {_SEASIDE_REPO}", stdout=DEVNULL, stderr=DEVNULL, shell=True)
+        run_command(f"git clone -n --branch {self._args['source_tag']} --depth=1 --filter=tree:0 --recurse-submodules {_SEASIDE_REPO}")
         self._logger.debug("Performing a sparse checkout...")
-        check_call("git sparse-checkout set --no-cone caerulean/whirlpool vessels && git checkout", cwd=seapath, stdout=DEVNULL, stderr=DEVNULL, shell=True)
+        run_command("git sparse-checkout set --no-cone caerulean/whirlpool vessels && git checkout", cwd=seapath)
         self._logger.debug("Building whirlpool...")
-        try:
-            run("make build", cwd=seapath / "caerulean" / "whirlpool", env=go_env, shell=True, capture_output=True, check=True, text=True)
-        except CalledProcessError as e:
-            print(f"Command failed with code {e.returncode}:\n\n{e.stdout}\n\n{e.stderr}\n\n")
+        run_command("make build", cwd=seapath / "caerulean" / "whirlpool", env=go_env)
         self._logger.debug("Moving executable...")
         move(seapath / "caerulean" / "whirlpool" / "build" / "whirlpool.run", exepath)
         self._logger.debug("Marking executable as executable...")
@@ -226,7 +223,7 @@ class WhirlpoolInstaller(Installer):
 
     def _pull_docker_image(self) -> None:
         """Pull whirlpool image from GitHub Docker image registry."""
-        check_call(f"docker pull ghcr.io/pseusys/seasidevpn/caerulean-whirlpool:{self._args['docker_label']}", stdout=DEVNULL, stderr=DEVNULL, shell=True)
+        run_command(f"docker pull ghcr.io/pseusys/seasidevpn/caerulean-whirlpool:{self._args['docker_label']}")
 
     def _download_binary(self) -> None:
         arch = "arm64" if get_arch() == "arm" else "amd64"
@@ -280,7 +277,7 @@ class WhirlpoolInstaller(Installer):
     def run(self, foreground: bool) -> None:
         if foreground:
             self._logger.info("Starting command in the foreground...")
-            check_call(self.run_command, shell=True)
+            run_command(self.run_command)
         else:
             self._logger.info("Starting command in the background...")
             Popen(self.run_command, stdout=DEVNULL, stderr=DEVNULL, shell=True)

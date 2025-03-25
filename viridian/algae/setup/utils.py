@@ -1,4 +1,5 @@
 from logging import Logger, StreamHandler, getLogger
+from subprocess import CalledProcessError, run
 from typing import Optional
 
 BOLD = "\033[1m"
@@ -32,3 +33,10 @@ class Logging:
     def logger_for(cls, name: str) -> Logger:
         root = getLogger() if cls._root is None else cls._root
         return root.getChild(name)
+
+
+def run_command(command: str, **kwargs) -> None:
+    try:
+        run(command, shell=True, capture_output=True, check=True, text=True, **kwargs)
+    except CalledProcessError as e:
+        raise RuntimeError(f"Command '{command}' failed with code {e.returncode}:\n\n>>STDOUT:\n{e.stdout}\nSTDERR:\n{e.stderr}\n")
