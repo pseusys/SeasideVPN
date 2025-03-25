@@ -59,8 +59,7 @@ jobs:
     name: Build Caerulean Whirlpool Server Executable
     runs-on: ubuntu-latest
     env:
-      CC: ${{ matrix.arch == 'amd64' && 'x86-64-linux-gnu-gcc' || 'aarch64-linux-gnu-gcc' }}
-      CC_FOR_TARGET: ${{ matrix.arch == 'amd64' && 'x86-64-linux-gnu-gcc' || 'aarch64-linux-gnu-gcc' }}
+      CC: ${{ matrix.arch == 'amd64' && 'x86_64-linux-gnu-gcc' || 'aarch64-linux-gnu-gcc' }}
     strategy:
       fail-fast: false
       matrix:
