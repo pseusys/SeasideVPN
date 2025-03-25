@@ -202,7 +202,7 @@ class WhirlpoolInstaller(Installer):
 
     def _download_and_build_sources(self, go_path: Optional[Path]) -> None:
         """Download source code from GitHub to ./SeasideVPN directory and build the whirlpool executable."""
-        check_install_packages("git", "make", "tar", "wget", "build-base")
+        check_install_packages("git", "make", "tar", "wget", "build-essential")
         exepath = Path("whirlpool.run")
         seapath = Path("SeasideVPN")
         go_env = environ.copy()
