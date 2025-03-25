@@ -58,6 +58,9 @@ jobs:
   caerulean-whirlpool-build:
     name: Build Caerulean Whirlpool Server Executable
     runs-on: ubuntu-latest
+    env:
+      CC: ${{ matrix.arch == 'amd64' && 'gcc-arm-linux-gnueabi' || 'gcc-aarch64-linux-gnu' }}
+      CC_FOR_TARGET: ${{ matrix.arch == 'amd64' && 'gcc-arm-linux-gnueabi' || 'gcc-aarch64-linux-gnu' }}
     strategy:
       fail-fast: false
       matrix:
@@ -68,6 +71,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: true
+
+      - name: Setup GCC 🐃
+        run: apt-get install -y gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
 
       - name: Setup Go 1.22 🦫
         uses: actions/setup-go@v5
