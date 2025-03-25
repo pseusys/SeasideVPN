@@ -84,7 +84,7 @@ jobs:
 
       - name: Build Caerulean Whirlpool 🏗️
         env:
-          LINKING_FLAGS: -s
+          LINKING_FLAGS: -w -s
           GOARCH: ${{ matrix.arch }}
           CC: ${{ matrix.arch == 'amd64' && 'x86_64-linux-gnu-gcc' || 'aarch64-linux-gnu-gcc' }}
           EXEC_NAME: ${{ format('caerulean_whirlpool_executable-{0}', matrix.arch) }}

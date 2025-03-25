@@ -140,6 +140,7 @@ class WhirlpoolInstaller(Installer):
         self._logger.debug("Certificates ready!")
 
     def _configure_server(self) -> None:
+        check_install_packages("iptables")
         if int(_ACCEPT_IPV6_CONF.read_text()) != 0:
             self._logger.info("Disabling IPv6 for the server...")
             _ACCEPT_IPV6_CONF.write_text("0")
@@ -181,6 +182,7 @@ class WhirlpoolInstaller(Installer):
 
     def _prepare_environment(self) -> Optional[Path]:
         """Prepare environment for building whirlpool executable: install GO (and also some GO packages)."""
+
         if not check_package("go", _GO_VERSION, "version"):
             self._logger.info("Installing GO...")
             go_path = self._install_go()
@@ -200,14 +202,14 @@ class WhirlpoolInstaller(Installer):
 
     def _download_and_build_sources(self, go_path: Optional[Path]) -> None:
         """Download source code from GitHub to ./SeasideVPN directory and build the whirlpool executable."""
-        check_install_packages("git", "make")
+        check_install_packages("git", "make", "tar", "wget", "build-base")
         exepath = Path("whirlpool.run")
         seapath = Path("SeasideVPN")
         go_env = environ.copy()
         go_env["PATH"] = f"{str(go_path)}:{environ['PATH']}" if go_path is not None else environ["PATH"]
         self._logger.debug(f"PATH prepared for caerulean building: {go_env['PATH']}")
         self._logger.debug("Cloning SeasideVPN repository...")
-        check_call(f"git clone -n --branch {self._args['source_tag']} --depth=1 --filter=tree:0 {_SEASIDE_REPO}", stdout=DEVNULL, stderr=DEVNULL, shell=True)
+        check_call(f"git clone -n --branch {self._args['source_tag']} --depth=1 --filter=tree:0 --recurse-submodules {_SEASIDE_REPO}", stdout=DEVNULL, stderr=DEVNULL, shell=True)
         self._logger.debug("Performing a sparse checkout...")
         check_call("git sparse-checkout set --no-cone caerulean/whirlpool vessels && git checkout", cwd=seapath, stdout=DEVNULL, stderr=DEVNULL, shell=True)
         self._logger.debug("Building whirlpool...")
