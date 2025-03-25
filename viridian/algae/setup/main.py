@@ -41,7 +41,7 @@ def main(args: Sequence[str] = argv[1:]) -> None:
     :param args: arguments list for argument parser.
     """
     namespace = vars(parser.parse_args(args))
-    logger = Logging.init(namespace["verbose"], __name__)
+    logger = Logging.init(namespace["verbose"])
 
     certs_address = namespace.pop("just_certs", None)
     if certs_address is not None:

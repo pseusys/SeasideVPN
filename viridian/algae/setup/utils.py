@@ -1,4 +1,4 @@
-from logging import Logger, StreamHandler, getLogger
+from logging import Logger, StreamHandler, getLogger, root
 from subprocess import CalledProcessError, run
 from typing import Optional
 
@@ -18,21 +18,21 @@ class Logging:
     If no root logger is initialized, the default root logger will be used.
     """
 
-    _root: Optional[Logger] = None
+    _base: Optional[Logger] = None
 
     @classmethod
     def init(cls, level: int, name: str) -> Logger:
-        cls._root = getLogger(name)
-        cls._root.setLevel(level)
+        cls._base = root
+        cls._base.setLevel(level)
         stream = StreamHandler()
         stream.setLevel(level)
-        cls._root.addHandler(stream)
-        return cls._root
+        cls._base.addHandler(stream)
+        return cls.logger_for(name)
 
     @classmethod
     def logger_for(cls, name: str) -> Logger:
-        root = getLogger() if cls._root is None else cls._root
-        return root.getChild(name)
+        base = root if cls._base is None else cls._base
+        return base.getChild(name)
 
 
 def run_command(command: str, **kwargs) -> None:
