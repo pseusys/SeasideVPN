@@ -70,6 +70,7 @@ jobs:
 
       - name: Install Dependencies 🔮
         run: |
+          go install github.com/xlab/c-for-go@latest
           go install honnef.co/go/tools/cmd/staticcheck@latest
           go install honnef.co/go/tools/cmd/structlayout@latest
 

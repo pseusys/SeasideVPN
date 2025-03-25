@@ -75,10 +75,6 @@ codestyle = [
     "isort~=5.11.0"
 ]
 
-compile = [
-    "pyinstaller~=6.9.0"
-]
-
 bundle = [
     "zipapps~=2024.8.7"
 ]
@@ -128,7 +124,6 @@ client = { script = "sources.main:main", help = "Import and execute main functio
 lint = { script = "scripts.codestyle:lint", help = "Lint all python code: run 'flake8', 'black' and 'mypy'" }
 format = { script = "scripts.codestyle:format", help = "Format all python code: change code formatting where possible (using 'black')" }
 generate = { script = "scripts.process:generate", help = "Generate protobuf source files, previous generation results will be removed; libraries 'grpcio-tools' and 'betterproto' is used for generation" }
-compile = { script = "scripts.process:compile", help = "Compile a single algae executable; library 'pyinstaller' is used for generation" }
 bundle = { script = "scripts.process:bundle", help = "Bundle caerulean installation script; library 'zipapps' is used for bundling" }
 clean = { script = "scripts.process:clean", help = "Delete all algae generated source files, build files and executables, also remove all related Docker containers, images and networks" }
 test-unit = { script = "scripts.test:test_set('unit')", help = "Run unit tests: all the algae client functions in particular" }

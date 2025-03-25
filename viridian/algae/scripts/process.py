@@ -38,18 +38,6 @@ def generate() -> None:
     exit(main(params + vessels))
 
 
-def compile() -> None:
-    """
-    Generate single algae executable.
-    Library `pyinstaller` is used for generation.
-    """
-    from PyInstaller.__main__ import run
-
-    executable_name = argv[1] if len(argv) > 1 else _EXECUTABLE_NAME
-    paths = ["--specpath", str(ALGAE_ROOT), "--distpath", str(ALGAE_ROOT / "dist"), "--workpath", str(ALGAE_ROOT / "build")]
-    run(paths + ["-F", "-c", "-y", "-n", executable_name, str(ALGAE_ROOT / "sources" / "main.py")])
-
-
 def bundle() -> None:
     """
     Bundle caerulean installation script.
