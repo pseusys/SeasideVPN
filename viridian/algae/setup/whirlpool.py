@@ -2,7 +2,7 @@ from argparse import ArgumentParser, _SubParsersAction
 from os import environ
 from pathlib import Path
 from shutil import copy, move, rmtree
-from subprocess import DEVNULL, Popen, SubprocessError
+from subprocess import DEVNULL, Popen, CalledProcessError
 from tarfile import open as open_tar
 from typing import Dict, Optional
 from urllib.request import urlretrieve
@@ -175,7 +175,7 @@ class WhirlpoolInstaller(Installer):
             self._logger.debug(f"Checking if GO package '{package}' exists...")
             run_command(f"{go_exec} list {package}")
             self._logger.debug(f"GO package '{package}' found!")
-        except SubprocessError:
+        except CalledProcessError:
             self._logger.debug(f"GO package '{package}' not found, installing...")
             run_command(f"{go_exec} install {package}@latest")
             self._logger.debug(f"GO package '{package}' installed!")

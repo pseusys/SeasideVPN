@@ -1,7 +1,7 @@
 from asyncio import TimeoutError, open_connection, sleep, wait_for
 from logging import getLogger
 from os import environ, getenv
-from subprocess import check_output
+from subprocess import run
 from typing import AsyncGenerator, Generator, Optional, Tuple
 
 import pytest
@@ -42,7 +42,7 @@ def tail() -> Generator[Tuple[str, str], None, None]:
 @pytest.mark.asyncio(loop_scope="session")
 @pytest.mark.dependency()
 async def test_controller_initialization(coordinator: Coordinator) -> None:
-    routes = check_output(["ip", "link", "show"], text=True)
+    routes = run(["ip", "link", "show"], text=True, capture_output=True, check=True)
     assert coordinator._tunnel._name in routes, "Tunnel wasn't created!"
 
 

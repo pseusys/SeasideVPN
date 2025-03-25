@@ -1,7 +1,7 @@
 from pathlib import Path
 from platform import machine, system
 from re import search
-from subprocess import DEVNULL, SubprocessError, check_call, check_output
+from subprocess import CalledProcessError, run
 from typing import Optional
 
 from semver import Version
@@ -66,11 +66,11 @@ def check_package(package: str, version: Optional[Version] = None, version_comma
     logger = Logging.logger_for(__name__)
     try:
         logger.debug(f"Checking if package {package} exists...")
-        check_call(f"command -v {package}", stdout=DEVNULL, stderr=DEVNULL, shell=True)
+        run(f"command -v {package}", shell=True, check=True)
         logger.debug(f"Package {package} found!")
         if version is not None:
             logger.debug(f"Checking package {package} version...")
-            semver = search(_SEMVER_REGEX, check_output(f"{package} {version_command}", shell=True, text=True))
+            semver = search(_SEMVER_REGEX, run(f"{package} {version_command}", shell=True, text=True, capture_output=True, check=True))
             if semver is not None:
                 package_version = Version.parse(semver.group())
                 versions_match = version.is_compatible(package_version)
@@ -82,7 +82,7 @@ def check_package(package: str, version: Optional[Version] = None, version_comma
         else:
             logger.debug("Proceeding without checking package version...")
             return True
-    except SubprocessError:
+    except CalledProcessError:
         logger.debug(f"Package {package} not found!")
         return False
 

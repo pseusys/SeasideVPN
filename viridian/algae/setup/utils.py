@@ -39,4 +39,4 @@ def run_command(command: str, **kwargs) -> None:
     try:
         run(command, shell=True, capture_output=True, check=True, text=True, **kwargs)
     except CalledProcessError as e:
-        raise RuntimeError(f"Command '{command}' failed with code {e.returncode}:\n\n>>STDOUT:\n{e.stdout}\nSTDERR:\n{e.stderr}\n")
+        raise RuntimeError(f"Command '{command}' failed with code {e.returncode}:\n\n>>> STDOUT:\n{e.stdout}\n>>> STDERR:\n{e.stderr}\n")
