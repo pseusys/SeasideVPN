@@ -2,7 +2,7 @@ from argparse import ArgumentParser, _SubParsersAction
 from os import environ
 from pathlib import Path
 from shutil import copy, move, rmtree
-from subprocess import DEVNULL, Popen, SubprocessError, check_call
+from subprocess import DEVNULL, STDOUT, Popen, SubprocessError, check_call
 from tarfile import open as open_tar
 from typing import Dict, Optional
 from urllib.request import urlretrieve
@@ -213,7 +213,7 @@ class WhirlpoolInstaller(Installer):
         self._logger.debug("Performing a sparse checkout...")
         check_call("git sparse-checkout set --no-cone caerulean/whirlpool vessels && git checkout", cwd=seapath, stdout=DEVNULL, stderr=DEVNULL, shell=True)
         self._logger.debug("Building whirlpool...")
-        check_call("make build", cwd=seapath / "caerulean" / "whirlpool", env=go_env, stdout=DEVNULL, stderr=DEVNULL, shell=True)
+        check_call("make build", cwd=seapath / "caerulean" / "whirlpool", env=go_env, stdout=STDOUT, stderr=STDOUT, shell=True)
         self._logger.debug("Moving executable...")
         move(seapath / "caerulean" / "whirlpool" / "build" / "whirlpool.run", exepath)
         self._logger.debug("Marking executable as executable...")
