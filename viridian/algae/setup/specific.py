@@ -70,7 +70,7 @@ def check_package(package: str, version: Optional[Version] = None, version_comma
         logger.debug(f"Package {package} found!")
         if version is not None:
             logger.debug(f"Checking package {package} version...")
-            semver = search(_SEMVER_REGEX, run(f"{package} {version_command}", shell=True, text=True, capture_output=True, check=True))
+            semver = search(_SEMVER_REGEX, run(f"{package} {version_command}", shell=True, text=True, capture_output=True, check=True).stdout)
             if semver is not None:
                 package_version = Version.parse(semver.group())
                 versions_match = version.is_compatible(package_version)
