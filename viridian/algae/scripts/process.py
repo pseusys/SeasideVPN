@@ -43,7 +43,7 @@ def bundle() -> None:
     Bundle caerulean installation script.
     """
     from zipapps import create_app
-    from tomllib import loads
+    from tomli import loads
 
     pyproject = Path.cwd() / "pyproject.toml"
     dependencies = loads(pyproject.read_text()).get("project", dict()).get("optional-dependencies", dict()).get("setup", list())

@@ -76,6 +76,7 @@ codestyle = [
 ]
 
 bundle = [
+    "tomli~=2.2.1",
     "zipapps~=2024.8.7"
 ]
 

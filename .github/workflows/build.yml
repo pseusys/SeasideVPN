@@ -29,12 +29,7 @@ jobs:
         run: |
           pip3 install poetry
           poetry self add 'poethepoet[poetry_plugin]'
-          poetry -C viridian/algae install --extras "compile bundle"
-
-      - name: Build Algae Executable 🏗️
-        env:
-          EXEC_NAME: viridian_algae_executable
-        run: poetry -C viridian/algae run poe compile ${{ env.EXEC_NAME }}.run
+          poetry -C viridian/algae install --extras "bundle"
 
       - name: Build Caerulean Installer 📥
         env:
@@ -58,9 +53,7 @@ jobs:
           name: algae-executable-${{ steps.branch-name.outputs.value }}
           retention-days: 3
           if-no-files-found: error
-          path: |
-            viridian/algae/dist/*.run
-            viridian/algae/*.pyz
+          path: viridian/algae/*.pyz
 
   caerulean-whirlpool-build:
     name: Build Caerulean Whirlpool Server Executable
@@ -83,8 +76,8 @@ jobs:
 
       - name: Install Dependencies 🔮
         run: |
-          go install github.com/pseusys/protogo@latest
           go install github.com/xlab/c-for-go@latest
+          go install github.com/pseusys/protogo@latest
 
       - name: Build Caerulean Whirlpool 🏗️
         env:

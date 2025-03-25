@@ -12,7 +12,6 @@ ARG RUNNING_IN_CI
 ENV PROTOGO_PROTOC_VERSION=24.4
 RUN apk add --no-cache make tar wget build-base iptables protobuf protobuf-dev \
     && go install github.com/pseusys/protogo@latest \
-    && go install golang.org/x/lint/golint@latest \
     && go install github.com/xlab/c-for-go@latest
 
 ENV RUNNING_IN_CI=${RUNNING_IN_CI:-0}
