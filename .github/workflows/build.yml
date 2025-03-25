@@ -58,8 +58,6 @@ jobs:
   caerulean-whirlpool-build:
     name: Build Caerulean Whirlpool Server Executable
     runs-on: ubuntu-latest
-    env:
-      CC: ${{ matrix.arch == 'amd64' && 'x86_64-linux-gnu-gcc' || 'aarch64-linux-gnu-gcc' }}
     strategy:
       fail-fast: false
       matrix:
@@ -86,8 +84,9 @@ jobs:
 
       - name: Build Caerulean Whirlpool 🏗️
         env:
-          GOARCH: ${{ matrix.arch }}
           LINKING_FLAGS: -s
+          GOARCH: ${{ matrix.arch }}
+          CC: ${{ matrix.arch == 'amd64' && 'x86_64-linux-gnu-gcc' || 'aarch64-linux-gnu-gcc' }}
           EXEC_NAME: ${{ format('caerulean_whirlpool_executable-{0}', matrix.arch) }}
         run: make -C caerulean/whirlpool build EXEC_NAME=${{ env.EXEC_NAME }}.run
 
