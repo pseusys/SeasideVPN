@@ -7,6 +7,7 @@ SHELL=/bin/bash
 
 PROTOGO_PROTOC_VERSION=24.4
 LINKING_FLAGS=""
+CGO_ENABLED=1
 
 BOLD=\033[1m
 BLUE=\033[34m
@@ -61,7 +62,6 @@ run: build certificates
 lint: build
 	@ # Run lint
 	staticcheck -f stylish ./...
-	structlayout ./...
 .PHONY: lint
 
 

@@ -73,7 +73,6 @@ jobs:
           go install github.com/xlab/c-for-go@latest
           go install github.com/pseusys/protogo@latest
           go install honnef.co/go/tools/cmd/staticcheck@latest
-          go install honnef.co/go/tools/cmd/structlayout@latest
 
       - name: Lint Caerulean Whirlpool 🧪
         run: make lint-whirlpool
