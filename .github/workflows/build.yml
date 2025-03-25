@@ -26,7 +26,10 @@ jobs:
           python-version: "3.10"
 
       - name: Install Dependencies 🔮
-        run: pip3 install poetry && poetry -C viridian/algae install --extras "compile bundle"
+        run: |
+          pip3 install poetry
+          poetry self add 'poethepoet[poetry_plugin]'
+          poetry -C viridian/algae install --extras "compile bundle"
 
       - name: Build Algae Executable 🏗️
         env:
@@ -79,7 +82,9 @@ jobs:
           go-version: "^1.22.0"
 
       - name: Install Dependencies 🔮
-        run: go install github.com/pseusys/protogo@latest github.com/xlab/c-for-go@latest
+        run: |
+          go install github.com/pseusys/protogo@latest
+          go install github.com/xlab/c-for-go@latest
 
       - name: Build Caerulean Whirlpool 🏗️
         env:

@@ -15,7 +15,9 @@ Also contains caerulean installation [script](#caerulean-installation-script).
   Installation guide can be found [here](https://www.python.org/downloads/).
 2. `poetry` (build system) version >= 2.0
   Installation guide can be found [here](https://python-poetry.org/docs/#installation).
-3. System packages: `iptables`, `iproute2`.
+3. `poethepoet` (script runner) version >= 0.33
+  Installation guide can be found [here](https://poethepoet.natn.io/installation.html).
+4. System packages: `iptables`, `iproute2`.
 
 ## Implementation details
 

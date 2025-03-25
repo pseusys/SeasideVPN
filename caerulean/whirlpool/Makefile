@@ -61,6 +61,7 @@ run: build certificates
 lint: build
 	@ # Run lint
 	staticcheck -f stylish ./...
+	structlayout ./...
 .PHONY: lint
 
 
