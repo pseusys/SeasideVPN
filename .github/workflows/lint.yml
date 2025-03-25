@@ -17,7 +17,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Dependencies 🔮
-        run: sudo apt-get install shellcheck
+        run: sudo apt-get install -y shellcheck
 
       - name: Lint Scripts 🧪
         run: make lint-scripts

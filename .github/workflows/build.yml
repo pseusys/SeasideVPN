@@ -73,7 +73,7 @@ jobs:
           submodules: true
 
       - name: Setup GCC 🐃
-        run: apt-get install -y gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
+        run: sudo apt-get install -y gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
 
       - name: Setup Go 1.22 🦫
         uses: actions/setup-go@v5
