@@ -87,7 +87,7 @@ jobs:
       - name: Build Caerulean Whirlpool 🏗️
         env:
           GOARCH: ${{ matrix.arch }}
-          COMPILE_FLAGS: -s
+          LINKING_FLAGS: -s
           EXEC_NAME: ${{ format('caerulean_whirlpool_executable-{0}', matrix.arch) }}
         run: make -C caerulean/whirlpool build EXEC_NAME=${{ env.EXEC_NAME }}.run
 
