@@ -66,7 +66,7 @@ def check_package(package: str, version: Optional[Version] = None, version_comma
     logger = Logging.logger_for(__name__)
     try:
         logger.debug(f"Checking if package {package} exists...")
-        run(f"command -v {package}", shell=True, check=True)
+        run(f"command -v {package}", shell=True, capture_output=True, check=True)
         logger.debug(f"Package {package} found!")
         if version is not None:
             logger.debug(f"Checking package {package} version...")

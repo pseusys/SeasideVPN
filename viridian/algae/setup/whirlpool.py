@@ -59,6 +59,7 @@ _SHELL_LOGIN = Path("/etc/profile")
 _GO_ROOT = Path("/usr/local/go")
 
 _PROTOGO_PACKAGE = "github.com/pseusys/protogo"
+_C_FOR_GO_PACKAGE = "github.com/xlab/c-for-go"
 
 _logging_type = logging_level(_DEFAULT_LOG_LEVEL, False)
 
@@ -169,16 +170,17 @@ class WhirlpoolInstaller(Installer):
         run_command(f"chmod +x {str(go_path / 'go')}")
         return go_path
 
-    def _install_go_package(self, go_exec: Optional[str], package: str) -> None:
-        """Install one GO package with given executable."""
-        try:
-            self._logger.debug(f"Checking if GO package '{package}' exists...")
-            run(f"{go_exec} list {package}", shell=True, check=True)
-            self._logger.debug(f"GO package '{package}' found!")
-        except CalledProcessError:
-            self._logger.debug(f"GO package '{package}' not found, installing...")
-            run_command(f"{go_exec} install {package}@latest")
-            self._logger.debug(f"GO package '{package}' installed!")
+    def _install_go_packages(self, go_exec: Optional[str], *packages: str) -> None:
+        """Install several GO packages with given executable."""
+        for package in packages:
+            try:
+                self._logger.debug(f"Checking if GO package '{package}' exists...")
+                run(f"{go_exec} list {package}", shell=True, capture_output=True, check=True)
+                self._logger.debug(f"GO package '{package}' found!")
+            except CalledProcessError:
+                self._logger.debug(f"GO package '{package}' not found, installing...")
+                run_command(f"{go_exec} install {package}@latest")
+                self._logger.debug(f"GO package '{package}' installed!")
 
     def _prepare_environment(self) -> Optional[Path]:
         """Prepare environment for building whirlpool executable: install GO (and also some GO packages)."""
@@ -192,7 +194,7 @@ class WhirlpoolInstaller(Installer):
             go_path = None
         go_exec = "go" if go_path is None else str(go_path / "go")
         self._logger.info(f"Installing GO packages with {go_exec} executable...")
-        self._install_go_package(go_exec, _PROTOGO_PACKAGE)
+        self._install_go_packages(go_exec, _PROTOGO_PACKAGE, _C_FOR_GO_PACKAGE)
         self._logger.info("All the GO packages installed!")
         return go_path
 
