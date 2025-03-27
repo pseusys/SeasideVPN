@@ -24,8 +24,7 @@ def generate() -> None:
     Previous generation results will be removed.
     Library `betterproto` is used for generation.
     """
-    from grpc_tools.protoc import _get_resource_file_name
-    from grpc_tools.protoc import main
+    from grpc_tools.protoc import _get_resource_file_name, main
 
     sources_root = ALGAE_ROOT / "sources" / "interaction"
     rmtree(sources_root / "generated", ignore_errors=True)
@@ -41,8 +40,8 @@ def bundle() -> None:
     """
     Bundle caerulean installation script.
     """
-    from zipapps import create_app
     from tomli import loads
+    from zipapps import create_app
 
     pyproject = Path.cwd() / "pyproject.toml"
     dependencies = loads(pyproject.read_text()).get("project", dict()).get("optional-dependencies", dict()).get("setup", list())

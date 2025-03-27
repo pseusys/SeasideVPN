@@ -131,6 +131,7 @@ def is_admin() -> bool:
     """
     try:
         from os import getuid
+
         return getuid() == 0
     except ImportError:
         return False

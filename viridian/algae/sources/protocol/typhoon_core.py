@@ -38,7 +38,7 @@ class TyphoonCore:
     def rtt(self) -> float:
         if self._srtt is not None:
             rtt = self._srtt
-        else: 
+        else:
             rtt = self._TYPHOON_DEFAULT_RTT
         return min(max(rtt, self._TYPHOON_MIN_RTT), self._TYPHOON_MAX_RTT)
 
@@ -76,12 +76,12 @@ class TyphoonCore:
         return int(random_number(2, max(self.timeout, self._TYPHOON_MIN_NEXT_IN), self._TYPHOON_MAX_NEXT_IN) * multiplier)
 
     def _update_timeout(self, rtt: float):
-        if self._srtt  is None or self._rttvar is None:
-            self._srtt  = rtt
+        if self._srtt is None or self._rttvar is None:
+            self._srtt = rtt
             self._rttvar = rtt / 2
         else:
-            self._rttvar = (1 - self._TYPHOON_BETA) * self._rttvar + self._TYPHOON_BETA * abs(self._srtt  - rtt)
-            self._srtt  = (1 - self._TYPHOON_ALPHA) * self._srtt  + self._TYPHOON_ALPHA * rtt
+            self._rttvar = (1 - self._TYPHOON_BETA) * self._rttvar + self._TYPHOON_BETA * abs(self._srtt - rtt)
+            self._srtt = (1 - self._TYPHOON_ALPHA) * self._srtt + self._TYPHOON_ALPHA * rtt
 
     # Build different messages
 
@@ -147,9 +147,9 @@ class TyphoonCore:
         try:
             data = cipher.decrypt(packet)
             header_length = calcsize(self._SERVER_INIT_HEADER)
-            flags, packet_number, init_status, user_id, self._previous_next_in, _ = unpack(self._SERVER_INIT_HEADER, data[: header_length])
+            flags, packet_number, init_status, user_id, self._previous_next_in, _ = unpack(self._SERVER_INIT_HEADER, data[:header_length])
         except BaseException as e:
-            raise TyphoonParseError(f"Error parsing server INIT message!", e)
+            raise TyphoonParseError("Error parsing server INIT message!", e)
         if packet_number != self._packet_number:
             raise TyphoonParseError(f"Server INIT response packet ID doesn't match: {packet_number} != {self._packet_number}!")
         if flags != TyphoonFlag.INIT:
@@ -162,11 +162,11 @@ class TyphoonCore:
         try:
             key, data = cipher.decrypt(packet)
             header_length = calcsize(self._CLIENT_INIT_HEADER)
-            flags, self._packet_number, client_name, self._previous_next_in, tail_length = unpack(self._CLIENT_INIT_HEADER, data[: header_length])
+            flags, self._packet_number, client_name, self._previous_next_in, tail_length = unpack(self._CLIENT_INIT_HEADER, data[:header_length])
             client_name = client_name.decode()
-            token = data[header_length : -tail_length]
+            token = data[header_length:-tail_length]
         except BaseException as e:
-            raise TyphoonParseError(f"Error parsing client INIT message!", e)
+            raise TyphoonParseError("Error parsing client INIT message!", e)
         if flags != TyphoonFlag.INIT:
             raise TyphoonParseError(f"Client INIT message flags malformed: {flags:b} != {TyphoonFlag.INIT:b}!")
         return client_name, key, token
@@ -188,7 +188,7 @@ class TyphoonCore:
             else:
                 raise TyphoonParseError(f"Server message flags malformed: {flags:b}!")
         except BaseException as e:
-            raise TyphoonParseError(f"Error parsing server message!", e)
+            raise TyphoonParseError("Error parsing server message!", e)
 
     def parse_client_message(self, cipher: Symmetric, packet: bytes) -> Tuple[MessageType, Union[Tuple[int, bytes], int, bytes, NoneType]]:
         try:
@@ -205,17 +205,17 @@ class TyphoonCore:
             else:
                 raise TyphoonParseError(f"Client message flags malformed: {flags:b}!")
         except BaseException as e:
-            raise TyphoonParseError(f"Error parsing client message!", e)
+            raise TyphoonParseError("Error parsing client message!", e)
 
     def _parse_any_hdsk(self, data: bytes) -> Union[Tuple[int, int, bytes], Tuple[int, int]]:
         try:
             header_length = calcsize(self._ANY_HDSK_HEADER)
-            _, packet_number, next_in, tail_length = unpack(self._ANY_HDSK_HEADER, data[: header_length])
+            _, packet_number, next_in, tail_length = unpack(self._ANY_HDSK_HEADER, data[:header_length])
             if self._previous_sent is not None:
                 self._update_timeout((MAX_TWO_BYTES_VALUE + self._get_timestamp() - self._previous_sent - self._previous_next_in) % MAX_TWO_BYTES_VALUE)
-            data = data[header_length : -tail_length]
+            data = data[header_length:-tail_length]
         except BaseException as e:
-            raise TyphoonParseError(f"Error parsing a HANDSHAKE message!", e)
+            raise TyphoonParseError("Error parsing a HANDSHAKE message!", e)
         if len(data) == 0:
             return packet_number, next_in
         else:
@@ -235,8 +235,8 @@ class TyphoonCore:
     def _parse_any_data(self, data: bytes) -> bytes:
         try:
             header_length = calcsize(self._ANY_OTHER_HEADER)
-            _, tail_length = unpack(self._ANY_OTHER_HEADER, data[: header_length])
-            data = data[header_length : -tail_length]
+            _, tail_length = unpack(self._ANY_OTHER_HEADER, data[:header_length])
+            data = data[header_length:-tail_length]
         except BaseException as e:
-            raise TyphoonParseError(f"Error parsing any DATA message!", e)
+            raise TyphoonParseError("Error parsing any DATA message!", e)
         return data

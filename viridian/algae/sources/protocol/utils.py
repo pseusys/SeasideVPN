@@ -39,4 +39,3 @@ class TyphoonParseError(TyphoonBaseError):
 
 class TyphoonTerminationError(TyphoonBaseError):
     pass
-

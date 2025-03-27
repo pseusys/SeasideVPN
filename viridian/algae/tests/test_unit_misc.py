@@ -1,8 +1,8 @@
 from logging import getLogger
 
 from Crypto.Random import get_random_bytes
-
 from viridian.algae.sources.utils.crypto import Cipher
+
 from sources.utils import parse_connection_link
 
 logger = getLogger(__file__)

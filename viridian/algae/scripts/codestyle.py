@@ -14,7 +14,7 @@ ALGAE_ROOT = Path(__file__).parent.parent
 _MAX_LINE_LEN = 500
 
 # All the project files will be checked, except for "__init__.py"s (the default option)
-_FILES = [str(file) for file in ALGAE_ROOT.glob("*/[!_]*.py")]
+_FILES = [str(file) for file in ALGAE_ROOT.glob("*/**/[!_]*.py")]
 
 # Default logger instance.
 logger = getLogger(__name__)
@@ -67,7 +67,7 @@ def format(files: Optional[List[str]] = None, modify: bool = True) -> int:
     for path in ALGAE_ROOT.glob("**/[!_]*.py"):
         mode = Mode(line_length=_MAX_LINE_LEN)
         reformat_one(path, False, write, mode, report)
-        edited = file(path, **args) if modify else check_file(path, True, **args)
+        edited = file(path, **args) if modify else check_file(path, True, **args)  # type: ignore
         result = result and (edited or modify)
 
     return report.return_code + (0 if result else 1)

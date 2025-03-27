@@ -2,7 +2,7 @@ from argparse import ArgumentParser, _SubParsersAction
 from os import environ
 from pathlib import Path
 from shutil import copy, move, rmtree
-from subprocess import DEVNULL, Popen, CalledProcessError, run
+from subprocess import DEVNULL, CalledProcessError, Popen, run
 from tarfile import open as open_tar
 from typing import Dict, Optional
 from urllib.request import urlretrieve
@@ -118,7 +118,7 @@ class WhirlpoolInstaller(Installer):
         environment["SEASIDE_EXTERNAL"] = self._args["external_address"]
         environment["SEASIDE_CTRLPORT"] = self._args["control_port"]
         environment["SEASIDE_CERTIFICATE_PATH"] = self._args["certificates_path"]
-        environment["SEASIDE_LOG_PATH"]= self._args["logs_path"]
+        environment["SEASIDE_LOG_PATH"] = self._args["logs_path"]
         environment["SEASIDE_MAX_VIRIDIANS"] = self._args["max_viridians"]
         environment["SEASIDE_MAX_ADMINS"] = self._args["max_admins"]
         environment["SEASIDE_WAITING_OVERTIME"] = self._args["waiting_overtime"]

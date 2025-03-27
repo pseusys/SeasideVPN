@@ -8,7 +8,7 @@ from typing import AsyncIterator, List, Tuple
 from colorama import Fore
 from iptc import Chain, Rule, Table, Target
 from pyroute2 import IPRoute
-from pyroute2.netlink import NLM_F_REQUEST, NLM_F_REPLACE, NLM_F_ECHO
+from pyroute2.netlink import NLM_F_ECHO, NLM_F_REPLACE, NLM_F_REQUEST
 from pyroute2.netlink.rtnl import RTM_NEWROUTE, RTM_NEWRULE
 from pyroute2.netlink.rtnl.rtmsg import rtmsg
 

@@ -4,7 +4,6 @@ from subprocess import run
 from typing import Generator
 
 import pytest
-
 from viridian.algae.sources.tunnel import Tunnel
 
 TUNNEL_NAME = "test-tun"

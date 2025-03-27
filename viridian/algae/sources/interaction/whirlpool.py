@@ -4,13 +4,11 @@ from socket import gethostname
 from ssl import PROTOCOL_TLS_CLIENT, SSLContext, get_server_certificate
 from typing import Optional, Tuple
 
-from betterproto.grpc.grpclib_client import MetadataLike
 from grpclib.client import Channel
 from grpclib.metadata import Deadline
 
-from .generated import WhirlpoolAuthenticationRequest, WhirlpoolViridianStub
 from ..utils.misc import create_logger, random_number
-
+from .generated import WhirlpoolAuthenticationRequest, WhirlpoolViridianStub
 
 _METADATA_TAIL_MAX = 1024
 _DEFAULT_TIMEOUT = 30

@@ -1,8 +1,8 @@
 from argparse import Action, ArgumentParser, Namespace
 from ipaddress import AddressValueError, IPv4Address
 from logging import NOTSET, _nameToLevel
-from secrets import token_urlsafe
 from random import randint
+from secrets import token_urlsafe
 from socket import gethostbyname, gethostname
 from typing import Any, Callable, List, Optional, Union
 

@@ -14,10 +14,10 @@ from typing import AsyncIterator, Literal, Optional, Sequence, Union
 
 from ..interaction.system import Tunnel
 from ..interaction.whirlpool import WhirlpoolClient
-from ..protocol import PortClient, SeasideClient, TyphoonClient, TyphoonBaseError
-from ..version import __version__
+from ..protocol import PortClient, SeasideClient, TyphoonBaseError, TyphoonClient
 from ..utils.asyncos import os_read, os_write
 from ..utils.misc import create_logger, parse_connection_link
+from ..version import __version__
 
 # Default tunnel interface IP address.
 _DEFAULT_ADDRESS = "127.0.0.1"
@@ -134,9 +134,9 @@ class AlgaeClient:
             logger.info(f"Authenticating user {identifier}...")
             public, token, typhoon_port, port_port = await self._control.authenticate(identifier, key)
             listener_port = typhoon_port if issubclass(self._proto_type, TyphoonClient) else port_port
-            logger.debug(f"User {identifier} token received: {token}")
+            logger.debug(f"User {identifier} token received: {token!r}")
         else:
-            logger.debug(f"Proceeding with user token: {token}")
+            logger.debug(f"Proceeding with user token: {token!r}")
             listener_port = self._port
 
         logger.info(f"Executing command: {command}")
@@ -153,9 +153,9 @@ class AlgaeClient:
         return retcode
 
     async def interrupt(self, terminate: bool = False) -> None:
-        logger.debug(f"Interrupting connection to caerulean...")
+        logger.debug("Interrupting connection to caerulean...")
         self._control.close()
-        logger.debug(f"Deleting tunnel...")
+        logger.debug("Deleting tunnel...")
         self._tunnel.delete()
         logger.warning("Client connection terminated!")
         if terminate:

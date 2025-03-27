@@ -78,7 +78,7 @@ class PortCore:
         try:
             flags, init_status, user_id, tail_length = unpack(self._SERVER_INIT_HEADER, cipher.decrypt(packet))
         except BaseException as e:
-            raise TyphoonParseError(f"Error parsing server INIT message!", e)
+            raise TyphoonParseError("Error parsing server INIT message!", e)
         if flags != TyphoonFlag.INIT:
             raise TyphoonParseError(f"Server INIT message flags malformed: {flags:b} != {TyphoonFlag.INIT:b}!")
         if init_status != TyphoonReturnCode.SUCCESS:
@@ -91,7 +91,7 @@ class PortCore:
             flags, client_name, token_length, tail_length = unpack(self._CLIENT_INIT_HEADER, header)
             client_name = client_name.decode()
         except BaseException as e:
-            raise TyphoonParseError(f"Error parsing client INIT messagen header!", e)
+            raise TyphoonParseError("Error parsing client INIT messagen header!", e)
         if flags != TyphoonFlag.INIT:
             raise TyphoonParseError(f"Client INIT message flags malformed: {flags:b} != {TyphoonFlag.INIT:b}!")
         return client_name, key, token_length, tail_length
@@ -108,7 +108,7 @@ class PortCore:
             else:
                 raise TyphoonParseError(f"Message flags malformed: {flags:b}!")
         except BaseException as e:
-            raise TyphoonParseError(f"Error parsing message!", e)
+            raise TyphoonParseError("Error parsing message!", e)
         return message_type, data_length, tail_length
 
     # Parse any message data:
@@ -117,5 +117,5 @@ class PortCore:
         try:
             token = cipher.decrypt(packet)
         except BaseException as e:
-            raise TyphoonParseError(f"Error parsing data!", e)
+            raise TyphoonParseError("Error parsing data!", e)
         return token

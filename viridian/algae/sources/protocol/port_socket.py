@@ -6,9 +6,9 @@ from typing import Optional
 from ..utils.asyncos import sock_connect, sock_read, sock_write
 from ..utils.crypto import Asymmetric, Symmetric
 from ..utils.misc import create_logger
-from .utils import MessageType, TyphoonParseError, TyphoonReturnCode, TyphoonTerminationError
-from .socket import ConnectionCallback, ReceiveCallback, SeasideClient, SeasideListener, SeasidePeer, ServeCallback
 from .port_core import PortCore
+from .socket import ConnectionCallback, ReceiveCallback, SeasideClient, SeasideListener, SeasidePeer, ServeCallback
+from .utils import MessageType, TyphoonParseError, TyphoonReturnCode, TyphoonTerminationError
 
 
 class _PortPeer:
@@ -150,7 +150,7 @@ class PortListener(SeasideListener):
         token_data = await sock_read(loop, self._socket, token_length)
         self._logger.debug(f"User initialization packet data read: {len(token_data)} bytes")
         token = self._core.parse_any_any_data(cipher, token_data)
-        self._logger.info(f"User initialization token from '{client_name}' received: {token}!")
+        self._logger.info(f"User initialization token from '{client_name}' received: {token!r}!")
         tail = await sock_read(loop, self._socket, tail_length)
         self._logger.debug(f"User initialization packet tail read: {len(tail)} bytes")
 

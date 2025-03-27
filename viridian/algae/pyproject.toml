@@ -72,7 +72,8 @@ codestyle = [
     "mypy~=1.3.0",
     "flake8~=7.1.0",
     "black~=24.8.0",
-    "isort~=5.11.0"
+    "isort~=5.11.0",
+    "types-PyYAML~=6.0.2"
 ]
 
 bundle = [

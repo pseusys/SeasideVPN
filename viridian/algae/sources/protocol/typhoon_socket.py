@@ -6,12 +6,12 @@ from socket import AF_INET, IPPROTO_UDP, SOCK_DGRAM, SOCK_NONBLOCK, socket
 from types import NoneType
 from typing import AsyncIterator, Optional, Tuple, Union
 
-from ..utils.crypto import Asymmetric, Symmetric
 from ..utils.asyncos import sock_connect, sock_read, sock_read_from, sock_write, sock_write_to
-from ..utils.misc import create_logger, select
-from .utils import MessageType, TyphoonParseError, TyphoonReturnCode, TyphoonTerminationError
-from .socket import ConnectionCallback, ReceiveCallback, SeasideClient, SeasideListener, ServeCallback, SeasidePeer
+from ..utils.crypto import Asymmetric, Symmetric
+from ..utils.misc import create_logger
+from .socket import ConnectionCallback, ReceiveCallback, SeasideClient, SeasideListener, SeasidePeer, ServeCallback
 from .typhoon_core import TyphoonCore
+from .utils import MessageType, TyphoonParseError, TyphoonReturnCode, TyphoonTerminationError
 
 
 class _TyphoonPeer(ABC):
@@ -237,7 +237,7 @@ class TyphoonListener(SeasideListener):
             self._logger.debug(f"Initializing user at {client_address}:{client_port}...")
             try:
                 client_name, key, token = self._core.parse_client_init(self._asymmetric, packet)
-                self._logger.info(f"User initialization request from '{client_name}' with token: {token}")
+                self._logger.info(f"User initialization request from '{client_name}' with token: {token!r}")
             except TyphoonParseError as e:
                 self._logger.error(f"Initialization parsing error: {e}")
                 continue
@@ -248,8 +248,8 @@ class TyphoonListener(SeasideListener):
             self._logger.info(f"User {server.user_id} initialized with status: {status}")
             self._servers.append((server, create_task(self._serve_user(server, self._core.next_in, status))))
 
-    async def close(self):
-        for (server, _) in self._servers:
+    async def close(self) -> None:
+        for server, _ in self._servers:
             await server.close()
         self._socket.close()
 

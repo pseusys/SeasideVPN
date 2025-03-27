@@ -10,7 +10,6 @@ from typing import Optional
 from ..interaction.whirlpool import WhirlpoolClient
 from ..utils.misc import create_logger
 
-
 # Default tunnel interface IP address.
 _DEFAULT_ADDRESS = "127.0.0.1"
 
@@ -45,12 +44,12 @@ async def supply_viridian(address: str, port: int, api_key: str, identifier: str
 
     logger.info(f"Authenticating user {identifier} (key {api_key}, name {name})...")
     public, token, typhoon_port, port_port = await client.authenticate(identifier, api_key, name)
-    logger.info(f"Caerulean connection info received: public key {encodebytes(public)}, TYPHOON port {typhoon_port}, PORT port {port_port}")
+    logger.info(f"Caerulean connection info received: public key {encodebytes(public)!r}, TYPHOON port {typhoon_port}, PORT port {port_port}")
 
     if silent:
         print(encodebytes(token))
     else:
-        logger.info(f"User token received: {encodebytes(token)}")
+        logger.info(f"User token received: {encodebytes(token)!r}")
 
     logger.info("Terminating client...")
     client.close()

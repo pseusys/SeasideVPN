@@ -1,6 +1,6 @@
 from logging import Logger, StreamHandler, root
 from subprocess import CalledProcessError, run
-from typing import Optional
+from typing import Any, Optional
 
 
 class Logging:
@@ -27,7 +27,7 @@ class Logging:
         return base.getChild(name)
 
 
-def run_command(command: str, **kwargs) -> None:
+def run_command(command: str, **kwargs: Any) -> None:
     try:
         run(command, shell=True, capture_output=True, check=True, text=True, **kwargs)
     except CalledProcessError as e:

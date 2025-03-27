@@ -1,6 +1,6 @@
 from typing import Any, Optional, Tuple
 
-from monocypher import Blake2b, IncrementalAuthenticatedEncryption, elligator_map, generate_key, generate_key_exchange_key_pair, elligator_key_pair, key_exchange
+from monocypher import Blake2b, IncrementalAuthenticatedEncryption, elligator_key_pair, elligator_map, generate_key, generate_key_exchange_key_pair, key_exchange
 
 from sources.utils.misc import classproperty
 
@@ -31,7 +31,7 @@ class Asymmetric:
         if key is None:
             self._private_key, self._public_key = _ensure_not_none(generate_key_exchange_key_pair())
         elif private:
-            self._private_key, self._public_key = key[:self._PUBLIC_KEY_SIZE], key[self._PUBLIC_KEY_SIZE:]
+            self._private_key, self._public_key = key[: self._PUBLIC_KEY_SIZE], key[self._PUBLIC_KEY_SIZE :]
         else:
             self._private_key, self._public_key = None, key
 

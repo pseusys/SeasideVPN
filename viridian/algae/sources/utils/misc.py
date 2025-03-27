@@ -4,10 +4,8 @@ from logging import Logger, StreamHandler, getLogger
 from os import getenv
 from secrets import token_bytes
 from sys import stdout
-from types import NoneType
-from typing import Literal, Optional, TypeVar, TypedDict, Union
+from typing import Literal, Optional, TypedDict, TypeVar, Union
 from urllib.parse import parse_qs, urlparse
-
 
 _T = TypeVar("_T")
 
@@ -24,6 +22,7 @@ MAX_TWO_BYTES_VALUE = (1 << 16) - 1
 
 # Logging level, read from environment variable or set to DEBUG by default.
 _level = getenv("SEASIDE_LOG_LEVEL", "DEBUG")
+
 
 def create_logger(name: str) -> Logger:
     handler = StreamHandler(stdout)
@@ -45,22 +44,22 @@ def random_number(bytes: int = 4, min: int = 0, max: int = (1 << 32) - 1) -> int
 
 
 class classproperty(object):
-    def __init__(self, f):
+    def __init__(self, f) -> None:
         self.f = f
 
-    def __get__(self, _, owner):
+    def __get__(self, _, owner) -> None:
         return self.f(owner)
 
 
 # ASYNCHRONOUS:
 
 
-async def set_timeout(timeout: float, callback: Optional[Future[_T]] = None) -> _T:
+async def set_timeout(timeout: float, callback: Optional[Future[_T]] = None) -> Optional[_T]:
     await sleep(timeout)
     return None if callback is None else await callback
 
 
-async def select(*tasks: Future[Union[NoneType, _T]], timeout: Optional[float] = None) -> Optional[_T]:
+async def select(*tasks: Future[Union[None, _T]], timeout: Optional[float] = None) -> Optional[_T]:
     result = None
     successful, pending = await wait(set(tasks), return_when=FIRST_COMPLETED, timeout=timeout)
     for coro in successful:
@@ -83,14 +82,17 @@ async def select(*tasks: Future[Union[NoneType, _T]], timeout: Optional[float] =
 # CONNECTION LINK:
 
 
-ConnectionLinkDict = TypedDict("ConnectionLinkDict", {
-    "node_type": Union[Literal["whirlpool"]],
-    "addr": str,
-    "port": int,
-    "key": Optional[str],
-    "proto": Optional[str],
-    "token": Optional[str],
-})
+ConnectionLinkDict = TypedDict(
+    "ConnectionLinkDict",
+    {
+        "node_type": Union[Literal["whirlpool"]],
+        "addr": str,
+        "port": int,
+        "key": Optional[str],
+        "proto": Optional[str],
+        "token": Optional[str],
+    },
+)
 
 
 def parse_connection_link(link: str) -> ConnectionLinkDict:
@@ -117,10 +119,6 @@ def parse_connection_link(link: str) -> ConnectionLinkDict:
         result.update({"addr": str(parsed.hostname), "port": parsed.port})
 
     query_params = parse_qs(parsed.query)
-    result.update({
-        "key": query_params.setdefault("key", [None])[0],
-        "proto": query_params.setdefault("proto", [None])[0],
-        "token": query_params.setdefault("token", [None])[0]
-    })
+    result.update({"key": query_params.setdefault("key", [None])[0], "proto": query_params.setdefault("proto", [None])[0], "token": query_params.setdefault("token", [None])[0]})
 
     return result

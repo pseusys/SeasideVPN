@@ -5,11 +5,11 @@ from pathlib import Path
 from shutil import rmtree
 from typing import List, Union
 
-from cryptography.x509 import random_serial_number, Certificate, CertificateSigningRequest, CertificateSigningRequestBuilder, SubjectAlternativeName, CertificateBuilder, KeyUsage, ExtendedKeyUsage, BasicConstraints, IPAddress, DNSName, Name, NameAttribute
-from cryptography.x509.oid import NameOID, ExtendedKeyUsageOID
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, generate_private_key
 from cryptography.hazmat.primitives.hashes import SHA256
-from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, NoEncryption
-from cryptography.hazmat.primitives.asymmetric.rsa import generate_private_key, RSAPrivateKey
+from cryptography.hazmat.primitives.serialization import Encoding, NoEncryption, PrivateFormat
+from cryptography.x509 import BasicConstraints, Certificate, CertificateBuilder, CertificateSigningRequest, CertificateSigningRequestBuilder, DNSName, ExtendedKeyUsage, IPAddress, KeyUsage, Name, NameAttribute, SubjectAlternativeName, random_serial_number
+from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
 from .utils import Logging
 
