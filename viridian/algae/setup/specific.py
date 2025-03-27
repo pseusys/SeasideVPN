@@ -6,7 +6,7 @@ from typing import Optional
 
 from semver import Version
 
-from utils import Logging, run_command
+from .utils import Logging, run_command
 
 # See "https://github.com/chef/os_release" for different "os_release" formats
 _BASE_DISTROS = {"debian", "alpine"}

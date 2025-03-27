@@ -81,6 +81,7 @@ bundle = [
 ]
 
 setup = [
+    "colorama~=0.4.6",
     "cryptography~=44.0.0",
     "semver~=3.0.2"
 ]

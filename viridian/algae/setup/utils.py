@@ -1,14 +1,6 @@
-from logging import Logger, StreamHandler, getLogger, root
+from logging import Logger, StreamHandler, root
 from subprocess import CalledProcessError, run
 from typing import Optional
-
-BOLD = "\033[1m"
-UNDER = "\033[4m"
-BLUE = "\033[34m"
-GREEN = "\033[32m"
-YELLOW = "\033[33m"
-RED = "\033[31m"
-RESET = "\033[0m"
 
 
 class Logging:

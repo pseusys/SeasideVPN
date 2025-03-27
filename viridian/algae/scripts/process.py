@@ -50,7 +50,7 @@ def bundle() -> None:
     main_module = "main:main"
     install_cache = "$TEMP/seaside_install_cache"
     installer_name = str(ALGAE_ROOT / (argv[1] if len(argv) > 1 else _INSTALLER_NAME))
-    includes = [str(path) for path in (ALGAE_ROOT / "setup").glob("*.py") if path.name != "__init__.py"]
+    includes = [str(path) for path in (ALGAE_ROOT / "setup").glob("*.py")]
     create_app(",".join(includes), output=installer_name, main=main_module, compressed=True, lazy_install=True, unzip_path=install_cache, pip_args=dependencies)
 
 

@@ -9,7 +9,7 @@ from colorama import Fore, Style
 from python_on_whales import DockerClient, DockerException
 from yaml import safe_load
 
-from setup.certificates import generate_certificates
+from ..setup.certificates import generate_certificates
 
 Profile = Union[Literal["local"], Literal["remote"], Literal["integration"], Literal["unit"]]
 

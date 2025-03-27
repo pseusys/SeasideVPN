@@ -11,7 +11,7 @@ from cryptography.hazmat.primitives.hashes import SHA256
 from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, NoEncryption
 from cryptography.hazmat.primitives.asymmetric.rsa import generate_private_key, RSAPrivateKey
 
-from utils import Logging
+from .utils import Logging
 
 _GENERATE_CERTIFICATES_KEY_SIZE = 2048
 _GENERATE_CERTIFICATES_PUBLIC_EXPONENT = 65537

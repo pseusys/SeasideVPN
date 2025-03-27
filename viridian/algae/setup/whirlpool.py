@@ -7,13 +7,15 @@ from tarfile import open as open_tar
 from typing import Dict, Optional
 from urllib.request import urlretrieve
 
+from colorama import Fore, Style
+from colorama.ansi import code_to_chars
 from semver import Version
 
-from base import Installer
-from certificates import GENERATE_CERTIFICATES_PATH, generate_certificates
-from default import DEFAULT_GENERATED_VALUE, local_ip, logging_level, payload_value, port_number
-from specific import check_install_packages, check_package, get_arch
-from utils import BLUE, BOLD, GREEN, RED, RESET, UNDER, YELLOW, run_command
+from .base import Installer
+from .certificates import GENERATE_CERTIFICATES_PATH, generate_certificates
+from .default import DEFAULT_GENERATED_VALUE, local_ip, logging_level, payload_value, port_number
+from .specific import check_install_packages, check_package, get_arch
+from .utils import run_command
 
 _PARSER_NAME = "whirlpool"
 _VERSION = '"0.0.3"'
@@ -262,18 +264,19 @@ class WhirlpoolInstaller(Installer):
 
     def print_info(self, hide: bool) -> None:
         """Print configuration of the node that will be applied upon running."""
+        underscored = code_to_chars(4)
         owner_payload = "***" if hide else self._args["payload_owner"]
         host_name = f"{self._args['internal_address']}:{self._args['control_port']}"
         print("\n\n>> ================================================ >>")
-        print(f"{BOLD}{GREEN}Seaside Whirlpool node version {_VERSION} successfully configured!{RESET}")
-        print(f"The node address is: {GREEN}{host_name}{RESET}")
-        print(f"The administrator payload is: {BLUE}{owner_payload}{RESET}")
-        print(f"\tConnection link: {YELLOW}{UNDER}seaside+whirlpool://{host_name}?payload={owner_payload}{RESET}")
+        print(f"{Style.BRIGHT}{Fore.GREEN}Seaside Whirlpool node version {_VERSION} successfully configured!{Style.RESET_ALL}")
+        print(f"The node address is: {Fore.GREEN}{host_name}{Style.RESET_ALL}")
+        print(f"The administrator payload is: {Fore.BLUE}{owner_payload}{Style.RESET_ALL}")
+        print(f"\tConnection link: {underscored}{Fore.YELLOW}seaside+whirlpool://{host_name}?payload={owner_payload}{Style.RESET_ALL}")
         if len(self._args["payload_viridian"]) > 0:
-            print(f"The viridian payloads are: {BLUE}{self._args['payload_viridian']}{RESET}")
+            print(f"The viridian payloads are: {Fore.BLUE}{self._args['payload_viridian']}{Style.RESET_ALL}")
             for link in self._args["payload_viridian"]:
-                print(f"\tConnection link: {YELLOW}{UNDER}seaside+whirlpool://{host_name}?payload={link}{RESET}")
-        print(f"{BOLD}{RED}NB! In order to replicate the server, store and reuse the ./conf.env file!{RESET}")
+                print(f"\tConnection link: {underscored}{Fore.YELLOW}seaside+whirlpool://{host_name}?payload={link}{Style.RESET_ALL}")
+        print(f"{Style.BRIGHT}{Fore.RED}NB! In order to replicate the server, store and reuse the ./conf.env file!{Style.RESET_ALL}")
         print("<< ================================================ <<\n\n")
 
     def run(self, foreground: bool) -> None:
