@@ -46,11 +46,13 @@ def bundle() -> None:
     pyproject = Path.cwd() / "pyproject.toml"
     dependencies = loads(pyproject.read_text()).get("project", dict()).get("optional-dependencies", dict()).get("setup", list())
 
-    main_module = "main:main"
+    setup = ALGAE_ROOT / "setup"
+    entrypoint = "setup.main:main"
     install_cache = "$TEMP/seaside_install_cache"
     installer_name = str(ALGAE_ROOT / (argv[1] if len(argv) > 1 else _INSTALLER_NAME))
-    includes = [str(path) for path in (ALGAE_ROOT / "setup").glob("*.py")]
-    create_app(",".join(includes), output=installer_name, main=main_module, compressed=True, lazy_install=True, unzip_path=install_cache, pip_args=dependencies)
+
+    rmtree(setup / "__pycache__", ignore_errors=True)
+    create_app(str(setup), output=installer_name, main=entrypoint, compressed=True, lazy_install=True, unzip_path=install_cache, pip_args=dependencies)
 
 
 def clean() -> None:
