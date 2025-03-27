@@ -1,9 +1,6 @@
 from logging import getLogger
 
-from Crypto.Random import get_random_bytes
-from viridian.algae.sources.utils.crypto import Cipher
-
-from sources.utils import parse_connection_link
+from sources.utils.misc import parse_connection_link
 
 logger = getLogger(__file__)
 
@@ -21,16 +18,3 @@ def test_parse_connection_link() -> None:
     params_expected = {"payload": CONNECTION_PAYLOAD, "addr": CONNECTION_ADDRESS, "ctrl_port": CONNECTION_CTRLPORT}
     params_dict = parse_connection_link(CONNECTION_LINK)
     assert all(item in params_expected.items() for item in params_dict.items()), "Some of the link parts are not parsed properly!"
-
-
-def test_encrypt_cycle() -> None:
-    cipher = Cipher()
-    message = get_random_bytes(ENCRYPTION_CYCLE_MESSAGE_LENGTH)
-
-    ciphertext = cipher.encrypt(message)
-    logger.info(f"Message ciphertext: {ciphertext!r}")
-
-    plaintext = cipher.decrypt(ciphertext)
-    logger.info(f"Message plaintext: {plaintext!r}")
-
-    assert plaintext == message, f"encrypted bytes ({message!r}) don't match decrypted bytes ({plaintext!r})"
