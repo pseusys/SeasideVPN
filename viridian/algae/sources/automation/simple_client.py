@@ -77,9 +77,6 @@ class AlgaeClient:
         tunnel_sva = int(getenv("SEASIDE_TUNNEL_SVA", _DEFAULT_TUNNEL_SVA))
         self._tunnel = Tunnel(tunnel_name, tunnel_address, tunnel_netmask, tunnel_sva, IPv4Address(self._address))
 
-        authority = getenv("SEASIDE_ROOT_CERTIFICATE_AUTHORITY", None)
-        self._control = WhirlpoolClient(self._address, self._port, Path(authority))
-
     async def _send_to_caerulean(self, connection: SeasideClient, tunnel: int) -> None:
         loop = get_running_loop()
         while True:
@@ -132,8 +129,12 @@ class AlgaeClient:
 
             identifier = token_urlsafe()
             logger.info(f"Authenticating user {identifier}...")
-            public, token, typhoon_port, port_port = await self._control.authenticate(identifier, key)
-            listener_port = typhoon_port if issubclass(self._proto_type, TyphoonClient) else port_port
+            authority = getenv("SEASIDE_ROOT_CERTIFICATE_AUTHORITY", None)
+
+            async with WhirlpoolClient(self._address, self._port, Path(authority)) as conn:
+                public, token, typhoon_port, port_port = await conn.authenticate(identifier, key)
+                listener_port = typhoon_port if issubclass(self._proto_type, TyphoonClient) else port_port
+
             logger.debug(f"User {identifier} token received: {token!r}")
         else:
             logger.debug(f"Proceeding with user token: {token!r}")
@@ -153,8 +154,6 @@ class AlgaeClient:
         return retcode
 
     async def interrupt(self, terminate: bool = False) -> None:
-        logger.debug("Interrupting connection to caerulean...")
-        self._control.close()
         logger.debug("Deleting tunnel...")
         self._tunnel.delete()
         logger.warning("Client connection terminated!")

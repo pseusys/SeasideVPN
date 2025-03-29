@@ -42,6 +42,10 @@ func EmbedReliableTail(buffer *Buffer, maxLength int) *Buffer {
 }
 
 func EmbedReliableTailLength(buffer *Buffer, tailLength int) *Buffer {
+	if tailLength == 0 {
+		return buffer
+	}
+
 	dataLength := buffer.Length()
 	tailedBuffer, err := buffer.ExpandAfter(tailLength)
 	if err != nil {

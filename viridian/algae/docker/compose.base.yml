@@ -62,6 +62,7 @@ services:
 
   router:
     image: seaside-router
+    container_name: seaside-router
     privileged: true
     init: true
     build:

@@ -55,7 +55,7 @@ while getopts "v:h" flag
 do
     case "${flag}" in
         v) NEW_VERSION=${OPTARG};;
-        h) help && exit 1;;
+        h) help && exit 0;;
         *) echo -e "${RED}Invalid flag found: $flag${RESET}" && exit 1;;
     esac
 done

@@ -3,7 +3,7 @@ from fcntl import ioctl
 from ipaddress import IPv4Address, IPv4Interface, IPv4Network
 from os import O_RDWR, getegid, geteuid, open
 from struct import pack
-from typing import AsyncIterator, List, Tuple
+from typing import List, Optional, Tuple
 
 from colorama import Fore
 from iptc import Chain, Rule, Table, Target
@@ -288,11 +288,11 @@ class Tunnel(AbstractAsyncContextManager):
         else:
             logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} already deleted")
 
-    async def __aenter__(self) -> AsyncIterator[int]:
+    async def __aenter__(self) -> int:
         self.up()
         return self.descriptor
 
-    async def __aexit__(self, _, exc_value, __):
+    async def __aexit__(self, _, exc_value: Optional[BaseException], __) -> None:
         self.down()
         if exc_value is not None:
             raise exc_value

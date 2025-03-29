@@ -27,7 +27,7 @@ class WhirlpoolClient(WhirlpoolViridianStub):
     def _create_grpc_secure_channel(self, host: str, port: int, ca_file: Optional[Path] = None, self_signed: bool = False, timeout: Optional[float] = None) -> Channel:
         """
         Create secure gRPC channel.
-        Retrieve and add certificated to avoid probkems with self-signed connection.
+        Retrieve and add certificate to avoid problems with self-signed connection.
         :param host: caerulean host name.
         :param port: caerulean control port number.
         :return: gRPC secure channel.
@@ -51,3 +51,11 @@ class WhirlpoolClient(WhirlpoolViridianStub):
 
     def close(self) -> None:
         self._channel.close()
+
+    async def __aenter__(self) -> "WhirlpoolClient":
+        return self
+
+    async def __aexit__(self, _, exc_value: Optional[BaseException], __) -> None:
+        self.close()
+        if exc_value is not None:
+            raise exc_value
