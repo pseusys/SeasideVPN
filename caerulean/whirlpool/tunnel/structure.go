@@ -24,7 +24,7 @@ const (
 
 	DEFAULT_API_PORT     = 8587
 	DEFAULT_PORT_PORT    = 29384
-	DEFAULT_TYPHOON_PORT = -1
+	DEFAULT_TYPHOON_PORT = 29384
 )
 
 // Tunnel config object, represents tunnel interface and forwarding setup.

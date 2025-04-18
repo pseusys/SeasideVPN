@@ -8,6 +8,11 @@ However, this approach is no longer relevant in the modern world, where even TLS
 SeasideVPN solves this problem by transferring some authentication to the users via third channels (like email or messengers). 
 TYPHOON protocol is designed to replace traditional protocols in the circumstances where presence of this initial data eliminates need for normal handshaking.
 
+In general, it the protocol is based on UDP and most of its packets are just UDP packets with a minimal header and random tail.
+In addition to that, it ensures connection is healthy (somewhat close to TCP keepalive but with random interval).
+The healthcheck handshake messages are either sent empty or appended to data packets (shadowriding).
+The protocol ensures reliable transportation of these handshake headers, and also defines a TCP-style reliable 3-way handshake.
+
 ## Protocol idea
 
 Three different parties are involved in the protocol:
@@ -184,7 +189,7 @@ stateDiagram
   end note
 ```
 
-TODO: add terminating state to everywhere, change server state machine.
+TODO: add terminating state to everywhere, change server state machine (add cycle to still, it can be interrupted).
 
 ### `Listener` state machine
 

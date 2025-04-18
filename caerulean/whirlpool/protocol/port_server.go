@@ -11,6 +11,7 @@ import (
 	"main/utils"
 	"net"
 
+	"github.com/pseusys/betterbuf"
 	"github.com/sirupsen/logrus"
 )
 
@@ -20,27 +21,23 @@ type PortServer struct {
 	cipher     *crypto.Symmetric
 	srcAddress net.IP
 	peerID     uint16
-	inputChan  chan *utils.Buffer
-	core       *PortCore
+	inputChan  chan *betterbuf.Buffer
 	socket     *net.TCPConn
 }
 
 func NewPortServer(cipher *crypto.Symmetric, peerID uint16, peerIP net.IP, conn *net.TCPConn) *PortServer {
-	inputChan := make(chan *utils.Buffer, PORT_INPUT_CHANNEL_BUFFER)
-
 	return &PortServer{
 		cipher:     cipher,
 		srcAddress: peerIP,
 		peerID:     peerID,
-		inputChan:  inputChan,
-		core:       newPortCore(PORT_DEFAULT_TIMEOUT),
+		inputChan:  make(chan *betterbuf.Buffer, PORT_INPUT_CHANNEL_BUFFER),
 		socket:     conn,
 	}
 }
 
 // Read reads data from the peer.
-func (p *PortServer) Read(buffer *utils.Buffer, viridianDict *users.ViridianDict, peerBytes []byte, tunIP *net.IP) (*utils.Buffer, error) {
-	encryptedHeaderLength := ANY_OTHER_HEADER + crypto.SymmetricCiphertextOverhead
+func (p *PortServer) Read(buffer *betterbuf.Buffer, viridianDict *users.ViridianDict, peerBytes []byte, tunIP *net.IP) (*betterbuf.Buffer, error) {
+	encryptedHeaderLength := PORT_ANY_OTHER_HEADER + crypto.SymmetricCiphertextOverhead
 	header := buffer.RebufferEnd(encryptedHeaderLength)
 	s, err := io.ReadFull(p.socket, header.Slice())
 	if err != nil {
@@ -48,13 +45,13 @@ func (p *PortServer) Read(buffer *utils.Buffer, viridianDict *users.ViridianDict
 	}
 	logrus.Debugf("Read %d bytes from viridian %d", s, p.peerID)
 
-	msgType, dataLength, tailLength, err := p.core.ParseAnyMessageHeader(p.cipher, header)
+	msgType, dataLength, tailLength, err := parsePortAnyMessageHeader(p.cipher, header)
 	if err != nil {
 		return nil, fmt.Errorf("packet header parsing error: %v", err)
 	}
 	logrus.Debugf("Parsed packet header from viridian %d: type %d, data %d, tail %d", p.peerID, msgType, dataLength, tailLength)
 
-	var value *utils.Buffer
+	var value *betterbuf.Buffer
 	if msgType == TYPE_DATA {
 		dataBuffer := buffer.Rebuffer(encryptedHeaderLength, encryptedHeaderLength+int(dataLength))
 		s, err := io.ReadFull(p.socket, dataBuffer.Slice())
@@ -63,7 +60,7 @@ func (p *PortServer) Read(buffer *utils.Buffer, viridianDict *users.ViridianDict
 		}
 		logrus.Debugf("Read packet data from viridian %d: length %d", p.peerID, s)
 
-		value, err = p.core.ParseAnyData(p.cipher, dataBuffer)
+		value, err = parsePortAnyData(p.cipher, dataBuffer)
 		if err != nil {
 			return nil, fmt.Errorf("packet data parsing error: %v", err)
 		}
@@ -108,14 +105,15 @@ func (p *PortServer) Read(buffer *utils.Buffer, viridianDict *users.ViridianDict
 }
 
 // Write sends data to the peer.
-func (p *PortServer) Write(data *utils.Buffer, viridianDict *users.ViridianDict) error {
+func (p *PortServer) Write(data *betterbuf.Buffer, viridianDict *users.ViridianDict) error {
+	defer PacketPool.Put(data)
+
 	packetLength, packetSource, packetDestination, err := utils.ReadIPv4(data)
 	if err != nil {
 		return fmt.Errorf("reading packet information from viridian %d error: %v", p.peerID, err)
 	}
 	logrus.Debugf("Forwarding packet to viridian %d: length %d, from %v, to %v", p.peerID, packetLength, *packetSource, *packetDestination)
 
-	defer PacketPool.Put(data)
 	logrus.Infof("Sending %d bytes to viridian %d (src: %v, dst: %v)", packetLength, p.peerID, packetSource, p.srcAddress)
 
 	viridian, ok := viridianDict.Get(p.peerID, users.PROTOCOL_PORT)
@@ -131,7 +129,7 @@ func (p *PortServer) Write(data *utils.Buffer, viridianDict *users.ViridianDict)
 	}
 	logrus.Debugf("Updated packet to viridian %d, new destination: %v", p.peerID, p.srcAddress)
 
-	encrypted, err := p.core.buildAnyData(p.cipher, data)
+	encrypted, err := buildPortAnyData(p.cipher, data)
 	if err != nil {
 		logrus.Errorf("Building data package for viridian error: %v", err)
 		return nil
@@ -150,11 +148,11 @@ func (p *PortServer) Write(data *utils.Buffer, viridianDict *users.ViridianDict)
 
 // Close closes the peer connection.
 func (p *PortServer) Terminate() error {
-	packet, err := p.core.buildAnyTerm(p.cipher)
-	defer PacketPool.Put(packet)
+	packet, err := buildPortAnyTerm(p.cipher)
 	if err != nil {
 		return fmt.Errorf("error building term packet: %v", err)
 	}
+	defer PacketPool.Put(packet)
 
 	_, err = p.socket.Write(packet.Slice())
 	if err != nil {
@@ -165,9 +163,9 @@ func (p *PortServer) Terminate() error {
 }
 
 // Serve starts the server and handles the callback.
-func (s *PortServer) serveRead(ctx context.Context, packetChan chan *utils.Buffer, errorChan chan error) {
+func (p *PortServer) serveRead(ctx context.Context, packetChan chan *betterbuf.Buffer, errorChan chan error) {
 	bytesID := []byte{0, 0}
-	binary.BigEndian.PutUint16(bytesID, s.peerID)
+	binary.BigEndian.PutUint16(bytesID, p.peerID)
 
 	viridianDict, ok := users.FromContext(ctx)
 	if !ok {
@@ -188,7 +186,7 @@ func (s *PortServer) serveRead(ctx context.Context, packetChan chan *utils.Buffe
 			return
 		default:
 			buffer := PacketPool.GetFull()
-			packet, err := s.Read(buffer, viridianDict, bytesID, &tunnelIP)
+			packet, err := p.Read(buffer, viridianDict, bytesID, &tunnelIP)
 
 			if err != nil {
 				// Return buffer to pool before sending error
@@ -216,7 +214,7 @@ func (s *PortServer) serveRead(ctx context.Context, packetChan chan *utils.Buffe
 	}
 }
 
-func (s *PortServer) serveWrite(base context.Context, errorChan chan error) {
+func (p *PortServer) serveWrite(base context.Context, errorChan chan error) {
 	viridianDict, ok := users.FromContext(base)
 	if !ok {
 		errorChan <- fmt.Errorf("viridian dictionary not found in context: %v", base)
@@ -227,8 +225,8 @@ func (s *PortServer) serveWrite(base context.Context, errorChan chan error) {
 		select {
 		case <-base.Done():
 			return
-		case packet := <-s.inputChan:
-			err := s.Write(packet, viridianDict)
+		case packet := <-p.inputChan:
+			err := p.Write(packet, viridianDict)
 			if err != nil {
 				errorChan <- err
 				return
@@ -237,20 +235,20 @@ func (s *PortServer) serveWrite(base context.Context, errorChan chan error) {
 	}
 }
 
-func (s *PortServer) Serve(base context.Context, packetChan chan *utils.Buffer) {
+func (p *PortServer) Serve(base context.Context, packetChan chan *betterbuf.Buffer) {
 	localErrorChan := make(chan error)
 	defer close(localErrorChan)
 
 	ctx, cancel := context.WithCancel(base)
 	defer cancel()
 
-	go s.serveRead(ctx, packetChan, localErrorChan)
-	go s.serveWrite(ctx, localErrorChan)
+	go p.serveRead(ctx, packetChan, localErrorChan)
+	go p.serveWrite(ctx, localErrorChan)
 
 	select {
 	case <-base.Done():
-		logrus.Infof("Read operation from peer %d canceled due to context cancellation!", s.peerID)
+		logrus.Infof("Read operation from peer %d canceled due to context cancellation!", p.peerID)
 	case err := <-localErrorChan:
-		logrus.Errorf("Interrupting connection with peer %d because of the error: %v", s.peerID, err)
+		logrus.Errorf("Interrupting connection with peer %d because of the error: %v", p.peerID, err)
 	}
 }

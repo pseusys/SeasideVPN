@@ -39,7 +39,7 @@ def _async_read_callback(loop: AbstractEventLoop, descriptor: int, reader: Calla
 def _async_write_callback(loop: AbstractEventLoop, descriptor: int, writer: Callable[[], int]) -> Future[int]:
     """
     Synchronous destination write wrapper.
-    Wraps synchrounous write (to file, socket, pipe, etc.) into asynchronous future.
+    Wraps synchronous write (to file, socket, pipe, etc.) into asynchronous future.
     Handles writing OSErrors (in case source descriptor was closed).
     :param loop: asyncio running event loop.
     :param descriptor: integer source descriptor of the writing destination.
@@ -162,3 +162,9 @@ async def sock_connect(loop: AbstractEventLoop, sock: socket, host: IPv4Address,
     except Exception as e:
         sock.close()
         raise e
+
+
+def sock_close(loop: AbstractEventLoop, sock: socket) -> None:
+    descriptor = sock.fileno()
+    loop.remove_reader(descriptor)
+    loop.remove_writer(descriptor)

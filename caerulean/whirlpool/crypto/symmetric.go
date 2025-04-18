@@ -3,8 +3,8 @@ package crypto
 import (
 	"crypto/cipher"
 	"fmt"
-	"main/utils"
 
+	"github.com/pseusys/betterbuf"
 	"golang.org/x/crypto/chacha20poly1305"
 )
 
@@ -22,12 +22,12 @@ type Symmetric struct {
 // Generate symmetrical cipher.
 // Accept 32 byte key or nil (key will be generated in that case).
 // Return cipher and nil if AEAD is generated successfully, otherwise nil and error.
-func NewSymmetric(key *utils.Buffer) (*Symmetric, error) {
+func NewSymmetric(key *betterbuf.Buffer) (*Symmetric, error) {
 	var err error
 
 	// Generate random bytes for key
 	if key == nil {
-		key, err = utils.NewRandomBuffer(chacha20poly1305.KeySize)
+		key, err = betterbuf.NewRandomBuffer(chacha20poly1305.KeySize)
 		if err != nil {
 			return nil, fmt.Errorf("symmetrical key reading error: %v", err)
 		}
@@ -48,9 +48,9 @@ func NewSymmetric(key *utils.Buffer) (*Symmetric, error) {
 // Concatenate ciphertext: nonce + encrypted data + tag.
 // Accept: plaintext (as bytes), signature (as bytes [0 <= N <= 24] or nil) and cipher AEAD.
 // Return ciphertext and nil if encrypting was successful, otherwise nil and error.
-func (s *Symmetric) Encrypt(plaintext, additional *utils.Buffer) (*utils.Buffer, error) {
+func (s *Symmetric) Encrypt(plaintext, additional *betterbuf.Buffer) (*betterbuf.Buffer, error) {
 	// Concatenate signature with random bytes to form nonce
-	nonce, err := utils.NewRandomBuffer(s.aead.NonceSize())
+	nonce, err := betterbuf.NewRandomBuffer(s.aead.NonceSize())
 	if err != nil {
 		return nil, fmt.Errorf("nonce generation error: %v", err)
 	}
@@ -62,7 +62,7 @@ func (s *Symmetric) Encrypt(plaintext, additional *utils.Buffer) (*utils.Buffer,
 
 	// Concatenate signature, rest of the nonce and ciphertext
 	encrypted := s.aead.Seal(plaintext.ResliceEnd(0), nonce.Slice(), plaintext.Slice(), additionalSlice)
-	ciphertext, err := plaintext.EnsureSameBuffers(encrypted)
+	ciphertext, err := plaintext.EnsureSameSlice(encrypted)
 	if err != nil {
 		return nil, fmt.Errorf("unexpected allocation performed during symmetrical encryption: %v", err)
 	}
@@ -78,7 +78,7 @@ func (s *Symmetric) Encrypt(plaintext, additional *utils.Buffer) (*utils.Buffer,
 // Read nonce (first 24 bytes of ciphertext), then decrypt ciphertext.
 // Accept: ciphertext (as bytes) and cipher AEAD.
 // Return plaintext and nil if decrypting was successful, otherwise nil and error.
-func (s *Symmetric) Decrypt(ciphertext, additional *utils.Buffer) (*utils.Buffer, error) {
+func (s *Symmetric) Decrypt(ciphertext, additional *betterbuf.Buffer) (*betterbuf.Buffer, error) {
 	cipherLength := ciphertext.Length()
 
 	// Check ciphertext length is at least greater than nonce and overhead size
@@ -99,7 +99,7 @@ func (s *Symmetric) Decrypt(ciphertext, additional *utils.Buffer) (*utils.Buffer
 		return nil, fmt.Errorf("symmetrical decrypting error: %v", err)
 	}
 
-	plaintext, err := ciphertext.EnsureSameBuffers(decrypted)
+	plaintext, err := ciphertext.EnsureSameSlice(decrypted)
 	if err != nil {
 		return nil, fmt.Errorf("unexpected allocation performed during symmetrical decryption: %v", err)
 	}

@@ -7,29 +7,29 @@ from typing import Optional, Tuple, Union
 
 from .. import __version__
 from ..utils.crypto import Asymmetric, Symmetric
-from ..utils.misc import MAX_TWO_BYTES_VALUE, random_number
+from ..utils.misc import MAX_FOUR_BYTES_VALUE, random_number
 from .utils import MessageType, TyphoonFlag, TyphoonInitializationError, TyphoonParseError, TyphoonReturnCode
 
 
 class TyphoonCore:
     _CLIENT_NAME = f"algae-{__version__}"
 
-    _SERVER_INIT_HEADER = "!BHBHHH"
-    _CLIENT_INIT_HEADER = "!BH16sHH"
-    _ANY_HDSK_HEADER = "!BHHH"
+    _SERVER_INIT_HEADER = "!BIBHIH"
+    _CLIENT_INIT_HEADER = "!BI32sIH"
+    _ANY_HDSK_HEADER = "!BIIH"
     _ANY_OTHER_HEADER = "!BH"
 
     _TYPHOON_ALPHA = float(getenv("TYPHOON_ALPHA", "0.125"))
     _TYPHOON_BETA = float(getenv("TYPHOON_BETA", "0.25"))
-    _TYPHOON_DEFAULT_RTT = float(getenv("TYPHOON_MIN_RTT", "5.0"))
-    _TYPHOON_MIN_RTT = float(getenv("TYPHOON_MIN_RTT", "1.0"))
-    _TYPHOON_MAX_RTT = float(getenv("TYPHOON_MAX_RTT", "8.0"))
+    _TYPHOON_DEFAULT_RTT = int(float(getenv("TYPHOON_MIN_RTT", "5.0")) * 1000)
+    _TYPHOON_MIN_RTT = int(float(getenv("TYPHOON_MIN_RTT", "1.0")) * 1000)
+    _TYPHOON_MAX_RTT = int(float(getenv("TYPHOON_MAX_RTT", "8.0")) * 1000)
     _TYPHOON_RTT_MULT = float(getenv("TYPHOON_RTT_MULT", "4.0"))
-    _TYPHOON_MIN_TIMEOUT = float(getenv("TYPHOON_MIN_TIMEOUT", "4.0"))
-    _TYPHOON_MAX_TIMEOUT = float(getenv("TYPHOON_MAX_TIMEOUT", "32.0"))
-    _TYPHOON_DEFAULT_TIMEOUT = float(getenv("TYPHOON_DEFAULT_TIMEOUT", "30.0"))
-    _TYPHOON_MIN_NEXT_IN = float(getenv("TYPHOON_MIN_NEXT_IN", "64.0"))
-    _TYPHOON_MAX_NEXT_IN = float(getenv("TYPHOON_MAX_NEXT_IN", "256.0"))
+    _TYPHOON_MIN_TIMEOUT = int(float(getenv("TYPHOON_MIN_TIMEOUT", "4.0")) * 1000)
+    _TYPHOON_MAX_TIMEOUT = int(float(getenv("TYPHOON_MAX_TIMEOUT", "32.0")) * 1000)
+    _TYPHOON_DEFAULT_TIMEOUT = int(float(getenv("TYPHOON_DEFAULT_TIMEOUT", "30.0")) * 1000)
+    _TYPHOON_MIN_NEXT_IN = int(float(getenv("TYPHOON_MIN_NEXT_IN", "64.0")) * 1000)
+    _TYPHOON_MAX_NEXT_IN = int(float(getenv("TYPHOON_MAX_NEXT_IN", "256.0")) * 1000)
     _TYPHOON_INITIAL_NEXT_IN = float(getenv("TYPHOON_INITIAL_NEXT_IN", "0.05"))
     _TYPHOON_MAX_RETRIES = int(getenv("TYPHOON_MAX_RETRIES", "5"))
     _TYPHOON_MAX_TAIL_LENGTH = int(getenv("TYPHOON_MAX_TAIL_LENGTH", "1024"))
@@ -51,8 +51,8 @@ class TyphoonCore:
         return min(max(timeout, self._TYPHOON_MIN_TIMEOUT), self._TYPHOON_MAX_TIMEOUT)
 
     @property
-    def next_in(self) -> int:
-        return self._previous_next_in
+    def next_in(self) -> float:
+        return float(self._previous_next_in)
 
     # Internal functions
 
@@ -66,14 +66,14 @@ class TyphoonCore:
         self._rttvar = None
 
     def _get_timestamp(self) -> int:
-        return int(datetime.now(timezone.utc).timestamp()) % MAX_TWO_BYTES_VALUE
+        return int(datetime.now(timezone.utc).timestamp() * 1000) % MAX_FOUR_BYTES_VALUE
 
     def _get_next_packet_number(self) -> int:
         self._packet_number = self._get_timestamp()
         return self._packet_number
 
     def _get_random_next_in(self, multiplier: float = 1.0) -> int:
-        return int(random_number(2, max(self.timeout, self._TYPHOON_MIN_NEXT_IN), self._TYPHOON_MAX_NEXT_IN) * multiplier)
+        return int(random_number(max(self.timeout, self._TYPHOON_MIN_NEXT_IN), self._TYPHOON_MAX_NEXT_IN) * multiplier)
 
     def _update_timeout(self, rtt: float):
         if self._srtt is None or self._rttvar is None:
@@ -87,7 +87,7 @@ class TyphoonCore:
 
     def build_server_init(self, cipher: Symmetric, user_id: int, status: TyphoonReturnCode) -> bytes:
         self._previous_next_in = self._get_random_next_in(self._TYPHOON_INITIAL_NEXT_IN)
-        tail_length = random_number(2, max=self._TYPHOON_MAX_TAIL_LENGTH)
+        tail_length = random_number(max=self._TYPHOON_MAX_TAIL_LENGTH)
         header = pack(self._SERVER_INIT_HEADER, TyphoonFlag.INIT, self._packet_number, status, user_id, self._previous_next_in, tail_length)
         packet = header + token_bytes(tail_length)
         return cipher.encrypt(packet)
@@ -96,7 +96,7 @@ class TyphoonCore:
         packet_number = self._get_next_packet_number()
         client_name = self._CLIENT_NAME.encode()
         self._previous_next_in = self._get_random_next_in(self._TYPHOON_INITIAL_NEXT_IN)
-        tail_length = random_number(2, max=self._TYPHOON_MAX_TAIL_LENGTH)
+        tail_length = random_number(max=self._TYPHOON_MAX_TAIL_LENGTH)
         header = pack(self._CLIENT_INIT_HEADER, TyphoonFlag.INIT, packet_number, client_name, self._previous_next_in, tail_length)
         packet = header + token + token_bytes(tail_length)
         return cipher.encrypt(packet)
@@ -110,7 +110,7 @@ class TyphoonCore:
     def _build_server_hdsk_with_data(self, cipher: Symmetric, flags: int, data: bytes) -> bytes:
         self._previous_sent = self._get_timestamp()
         self._previous_next_in = self._get_random_next_in()
-        tail_length = random_number(2, max=self._TYPHOON_MAX_TAIL_LENGTH)
+        tail_length = random_number(max=self._TYPHOON_MAX_TAIL_LENGTH)
         header = pack(self._ANY_HDSK_HEADER, flags, self._packet_number, self._previous_next_in, tail_length)
         packet = header + data + token_bytes(tail_length)
         return cipher.encrypt(packet)
@@ -124,19 +124,19 @@ class TyphoonCore:
     def _build_client_hdsk_with_data(self, cipher: Symmetric, flags: int, data: bytes) -> bytes:
         self._previous_sent = self._get_next_packet_number()
         self._previous_next_in = self._get_random_next_in()
-        tail_length = random_number(2, max=self._TYPHOON_MAX_TAIL_LENGTH)
+        tail_length = random_number(max=self._TYPHOON_MAX_TAIL_LENGTH)
         header = pack(self._ANY_HDSK_HEADER, flags, self._previous_sent, self._previous_next_in, tail_length)
         packet = header + data + token_bytes(tail_length)
         return cipher.encrypt(packet)
 
     def build_any_data(self, cipher: Symmetric, data: bytes) -> bytes:
-        tail_length = random_number(2, max=self._TYPHOON_MAX_TAIL_LENGTH)
+        tail_length = random_number(max=self._TYPHOON_MAX_TAIL_LENGTH)
         header = pack(self._ANY_OTHER_HEADER, TyphoonFlag.DATA, tail_length)
         packet = header + data + token_bytes(tail_length)
         return cipher.encrypt(packet)
 
     def build_any_term(self, cipher: Symmetric) -> bytes:
-        tail_length = random_number(2, max=self._TYPHOON_MAX_TAIL_LENGTH)
+        tail_length = random_number(max=self._TYPHOON_MAX_TAIL_LENGTH)
         header = pack(self._ANY_OTHER_HEADER, TyphoonFlag.TERM, tail_length)
         packet = header + token_bytes(tail_length)
         return cipher.encrypt(packet)
@@ -212,7 +212,7 @@ class TyphoonCore:
             header_length = calcsize(self._ANY_HDSK_HEADER)
             _, packet_number, next_in, tail_length = unpack(self._ANY_HDSK_HEADER, data[:header_length])
             if self._previous_sent is not None:
-                self._update_timeout((MAX_TWO_BYTES_VALUE + self._get_timestamp() - self._previous_sent - self._previous_next_in) % MAX_TWO_BYTES_VALUE)
+                self._update_timeout((MAX_FOUR_BYTES_VALUE + self._get_timestamp() - self._previous_sent - self._previous_next_in) % MAX_FOUR_BYTES_VALUE)
             data = data[header_length:-tail_length]
         except BaseException as e:
             raise TyphoonParseError("Error parsing a HANDSHAKE message!", e)

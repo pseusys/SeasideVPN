@@ -6,7 +6,7 @@ from socket import AF_INET, IPPROTO_UDP, SOCK_DGRAM, SOCK_NONBLOCK, socket
 from types import NoneType
 from typing import AsyncIterator, Optional, Tuple, Union
 
-from ..utils.asyncos import sock_connect, sock_read, sock_read_from, sock_write, sock_write_to
+from ..utils.asyncos import sock_connect, sock_read, sock_close, sock_read_from, sock_write, sock_write_to
 from ..utils.crypto import Asymmetric, Symmetric
 from ..utils.misc import create_logger
 from .socket import ConnectionCallback, ReceiveCallback, SeasideClient, SeasideListener, SeasidePeer, ServeCallback
@@ -66,16 +66,18 @@ class _TyphoonPeer(ABC):
         self._logger.info(f"Peer packet sent: {packet_length} bytes")
 
     async def close(self):
+        loop = get_running_loop()
         if self._running_decay is not None:
             self._logger.debug("Cancelling decay cycle...")
             self._running_decay.cancel()
         if self._data_callback is not None:
             self._logger.debug("Cancelling read cycle...")
             self._data_callback.cancel()
-        packet = self._core.build_any_term(self._symmetric)
-        packet_length = await sock_write(get_running_loop(), self._socket, packet)
-        self._logger.info(f"Termination packet sent: {packet_length} bytes")
-        self._socket.close()
+        if self._symmetric is not None:
+            packet = self._core.build_any_term(self._symmetric)
+            packet_length = await sock_write(loop, self._socket, packet)
+            self._logger.info(f"Termination packet sent: {packet_length} bytes")
+        sock_close(loop, self._socket)
 
     @asynccontextmanager
     async def _locked(self) -> AsyncIterator[None]:
@@ -88,7 +90,7 @@ class _TyphoonPeer(ABC):
     async def _decay_cycle(self, next_in: int):
         current_retries = 0
         loop = get_running_loop()
-        next_in_timeout = max(next_in - self._core.rtt, 0)
+        next_in_timeout = max(next_in - self._core.rtt, 0) / 1000
         self._logger.debug(f"Decay started, sleeping for {next_in_timeout} seconds...")
         await sleep(next_in_timeout)
 
@@ -104,7 +106,7 @@ class _TyphoonPeer(ABC):
                 self._logger.debug("Forcing handshake...")
                 packet = self._build_hdsk(self._symmetric)
                 await sock_write(loop, self._socket, packet)
-            sleeping_timeout = max(self._core.next_in + self._core.timeout, 0)
+            sleeping_timeout = max(self._core.next_in + self._core.timeout, 0) / 1000
             self._logger.debug(f"Handshake sent, waiting for response for {sleeping_timeout} seconds")
             await sleep(sleeping_timeout)
             current_retries += 1
@@ -149,7 +151,7 @@ class TyphoonClient(_TyphoonPeer, SeasideClient):
         while current_retries < self._core._max_retries:
             self._logger.debug(f"Trying initialization attempt {current_retries}...")
             await sock_write(loop, self._socket, packet)
-            sleeping_timeout = self._core.next_in + self._core.rtt * 2 + self._core.timeout
+            sleeping_timeout = (self._core.next_in + self._core.rtt * 2 + self._core.timeout) / 1000
             self._logger.debug(f"Waiting for server response for {sleeping_timeout} seconds...")
             response = await wait_for(sock_read(loop, self._socket), sleeping_timeout)
             if response is not None:
@@ -242,6 +244,10 @@ class TyphoonListener(SeasideListener):
                 self._logger.error(f"Initialization parsing error: {e}")
                 continue
 
+            if not TyphoonCore._TYPHOON_MIN_NEXT_IN < self._core.next_in < TyphoonCore._TYPHOON_MAX_NEXT_IN:
+                self._logger.error(f"Incorrect next in value: {TyphoonCore._TYPHOON_MIN_NEXT_IN} < {self._core.next_in} < {TyphoonCore._TYPHOON_MAX_NEXT_IN}")
+                continue
+
             server = TyphoonServer(key, client_address, client_port, self._core._packet_number, self._core._default_timeout, self._core._max_retries)
             await server.serve(data_callback)
             status = await connection_callback(client_name, server, token) if connection_callback is not None else 0
@@ -255,6 +261,7 @@ class TyphoonListener(SeasideListener):
 
     async def _serve_user(self, server: TyphoonServer, next_in: int, status: TyphoonReturnCode):
         current_retries = 0
+        next_in = next_in / 1000
         self._logger.debug(f"Sending user {server.user_id} response in {next_in} seconds...")
         await sleep(next_in)
         loop = get_running_loop()
@@ -264,7 +271,7 @@ class TyphoonListener(SeasideListener):
             self._logger.debug(f"Trying finishing user {server.user_id} initialization attempt {current_retries}...")
             await sock_write_to(loop, self._socket, packet, (server._peer_address, server._peer_port))
 
-            sleeping_timeout = server._core.next_in + server._core.rtt * 2 + server._core.timeout
+            sleeping_timeout = (server._core.next_in + server._core.rtt * 2 + server._core.timeout) / 1000
             self._logger.debug(f"Initialization message sent to user {server.user_id}, waiting for response for {sleeping_timeout} seconds...")
             await sleep(sleeping_timeout)
             if server._started:

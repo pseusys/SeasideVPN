@@ -2,8 +2,8 @@ package crypto
 
 import (
 	"fmt"
-	"main/utils"
 
+	"github.com/pseusys/betterbuf"
 	"github.com/pseusys/monocypher-go"
 )
 
@@ -26,17 +26,17 @@ func computeBlake2Hash(shared_secret, client_key, server_key []byte) ([]byte, er
 }
 
 type Asymmetric struct {
-	privateKey, publicKey *utils.Buffer
+	privateKey, publicKey *betterbuf.Buffer
 }
 
-func NewAsymmetric(key *utils.Buffer, private bool) (*Asymmetric, error) {
-	var priv, pub *utils.Buffer
+func NewAsymmetric(key *betterbuf.Buffer, private bool) (*Asymmetric, error) {
+	var priv, pub *betterbuf.Buffer
 	if key == nil {
 		privBytes, pubBytes, err := monocypher.GenerateKeyExchangeKeyPair()
 		if err != nil {
 			return nil, fmt.Errorf("asymmetrical keypair generating error: %v", err)
 		}
-		priv, pub = utils.NewBufferFromSlice(privBytes), utils.NewBufferFromSlice(pubBytes)
+		priv, pub = betterbuf.NewBufferFromSlice(privBytes), betterbuf.NewBufferFromSlice(pubBytes)
 	} else if private {
 		if key.Length() != PrivateKeySize+PublicKeySize {
 			return nil, fmt.Errorf("invalid private key length: %d != %d", key.Length(), PrivateKeySize+PublicKeySize)
@@ -51,11 +51,11 @@ func NewAsymmetric(key *utils.Buffer, private bool) (*Asymmetric, error) {
 	return &Asymmetric{privateKey: priv, publicKey: pub}, nil
 }
 
-func (a *Asymmetric) PublicKey() *utils.Buffer {
+func (a *Asymmetric) PublicKey() *betterbuf.Buffer {
 	return a.publicKey
 }
 
-func (a *Asymmetric) Encrypt(plaintext *utils.Buffer) (*utils.Buffer, *utils.Buffer, error) {
+func (a *Asymmetric) Encrypt(plaintext *betterbuf.Buffer) (*betterbuf.Buffer, *betterbuf.Buffer, error) {
 	hiddenPub, ephemeralPriv, err := monocypher.ElligatorKeyPair(nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error generating ephemeral key: %v", err)
@@ -66,7 +66,7 @@ func (a *Asymmetric) Encrypt(plaintext *utils.Buffer) (*utils.Buffer, *utils.Buf
 	if err != nil {
 		return nil, nil, fmt.Errorf("error calculating Blake2 hash: %v", err)
 	}
-	symmetricBuffer, hiddenBuffer := utils.NewBufferFromSlice(symmetricKey), utils.NewBufferFromSlice(hiddenPub)
+	symmetricBuffer, hiddenBuffer := betterbuf.NewBufferFromSlice(symmetricKey), betterbuf.NewBufferFromSlice(hiddenPub)
 
 	cipher, err := NewSymmetric(symmetricBuffer)
 	if err != nil {
@@ -86,7 +86,7 @@ func (a *Asymmetric) Encrypt(plaintext *utils.Buffer) (*utils.Buffer, *utils.Buf
 	return symmetricBuffer, message, nil
 }
 
-func (a *Asymmetric) Decrypt(ciphertext *utils.Buffer) (*utils.Buffer, *utils.Buffer, error) {
+func (a *Asymmetric) Decrypt(ciphertext *betterbuf.Buffer) (*betterbuf.Buffer, *betterbuf.Buffer, error) {
 	cipherLength := ciphertext.Length()
 
 	if cipherLength < PublicKeySize {
@@ -105,7 +105,7 @@ func (a *Asymmetric) Decrypt(ciphertext *utils.Buffer) (*utils.Buffer, *utils.Bu
 	if err != nil {
 		return nil, nil, fmt.Errorf("error calculating Blake2 hash: %v", err)
 	}
-	symmetricBuffer := utils.NewBufferFromSlice(symmetricKey)
+	symmetricBuffer := betterbuf.NewBufferFromSlice(symmetricKey)
 
 	cipher, err := NewSymmetric(symmetricBuffer)
 	if err != nil {

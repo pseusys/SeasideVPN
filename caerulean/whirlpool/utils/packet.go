@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"math"
 	"net"
+
+	"github.com/pseusys/betterbuf"
 )
 
-var (
-	pseudoHeaderPool = CreateBufferPool(0, 12)
-)
+var pseudoHeaderPool = betterbuf.CreateBufferPool(0, 12, 0)
 
 // CalculateChecksum computes the Internet checksum (RFC 1071).
-func calculateChecksum(dataPieces ...*Buffer) uint16 {
+func calculateChecksum(dataPieces ...*betterbuf.Buffer) uint16 {
 	var sum uint32
 	for _, data := range dataPieces {
 		for i := 0; i < int(data.Length())-1; i += 2 {
@@ -28,7 +28,7 @@ func calculateChecksum(dataPieces ...*Buffer) uint16 {
 	return ^uint16(sum)
 }
 
-func ReadIPv4(packet *Buffer) (uint16, *net.IP, *net.IP, error) {
+func ReadIPv4(packet *betterbuf.Buffer) (uint16, *net.IP, *net.IP, error) {
 	if packet.Length() < 20 {
 		return 0, nil, nil, fmt.Errorf("packet too short for IPv4")
 	}
@@ -45,7 +45,7 @@ func ReadIPv4(packet *Buffer) (uint16, *net.IP, *net.IP, error) {
 }
 
 // UpdateIPv4 modifies source and destination IPs and fixes checksum.
-func UpdateIPv4(packet *Buffer, newSrc, newDst net.IP) error {
+func UpdateIPv4(packet *betterbuf.Buffer, newSrc, newDst net.IP) error {
 	if packet.Length() < 20 {
 		return fmt.Errorf("packet too short for IPv4")
 	}
@@ -85,7 +85,7 @@ func UpdateIPv4(packet *Buffer, newSrc, newDst net.IP) error {
 }
 
 // UpdateICMPChecksum recalculates the ICMP checksum.
-func updateICMPChecksum(ihl int, packet *Buffer) error {
+func updateICMPChecksum(ihl int, packet *betterbuf.Buffer) error {
 	icmpPacket := packet.RebufferStart(ihl)
 	if icmpPacket.Length() < 4 {
 		return fmt.Errorf("packet too short for ICMP (%d bytes)", icmpPacket.Length())
@@ -99,7 +99,7 @@ func updateICMPChecksum(ihl int, packet *Buffer) error {
 }
 
 // UpdateTransportChecksum recalculates TCP/UDP checksum based on new IPs.
-func updateTransportChecksum(ihl int, packet *Buffer, newSrc, newDst net.IP) error {
+func updateTransportChecksum(ihl int, packet *betterbuf.Buffer, newSrc, newDst net.IP) error {
 	transportPacket := packet.RebufferStart(ihl)
 
 	if packet.Length() < ihl+8 {

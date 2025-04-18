@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"main/utils"
 
+	"github.com/pseusys/betterbuf"
 	"github.com/sirupsen/logrus"
 )
 
@@ -18,7 +19,7 @@ func init() {
 		logrus.Fatalf("Error parsing server key from environment variable: %v", err)
 	}
 
-	SERVER_KEY, err = NewSymmetric(utils.NewBufferFromSlice(serverKeyBytes))
+	SERVER_KEY, err = NewSymmetric(betterbuf.NewBufferFromSlice(serverKeyBytes))
 	if err != nil {
 		logrus.Fatalf("error creating server symmetric cipher: %v", err)
 	}
@@ -28,7 +29,7 @@ func init() {
 		logrus.Fatalf("Error parsing private key from environment variable: %v", err)
 	}
 
-	PRIVATE_KEY, err = NewAsymmetric(utils.NewBufferFromSlice(privateKeyBytes), true)
+	PRIVATE_KEY, err = NewAsymmetric(betterbuf.NewBufferFromSlice(privateKeyBytes), true)
 	if err != nil {
 		logrus.Fatalf("error creating server symmetric cipher: %v", err)
 	}

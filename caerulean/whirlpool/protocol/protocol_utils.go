@@ -2,8 +2,9 @@ package protocol
 
 import (
 	"main/crypto"
-	"main/utils"
 	"math"
+
+	"github.com/pseusys/betterbuf"
 )
 
 const (
@@ -12,9 +13,7 @@ const (
 	OUTPUT_CHANNEL_POOL_BUFFER int = 16
 )
 
-var (
-	PacketPool = utils.CreateBufferPool(MAX_PROTOCOL_HEADER+crypto.AymmetricCiphertextOverhead, math.MaxUint16+crypto.AymmetricCiphertextOverhead)
-)
+var PacketPool = betterbuf.CreateBufferPool(MAX_PROTOCOL_HEADER+crypto.AymmetricCiphertextOverhead, math.MaxUint16, crypto.AymmetricCiphertextOverhead)
 
 // ProtocolFlag represents the flags used in Typhoon message types.
 type ProtocolFlag byte
@@ -45,5 +44,6 @@ const (
 	SUCCESS_CODE       ProtocolReturnCode = 0
 	TOKEN_PARSE_ERROR  ProtocolReturnCode = 1
 	REGISTRATION_ERROR ProtocolReturnCode = 2
-	UNKNOWN_ERROR      ProtocolReturnCode = 3
+	NEXT_IN_ERROR      ProtocolReturnCode = 3
+	UNKNOWN_ERROR      ProtocolReturnCode = 4
 )

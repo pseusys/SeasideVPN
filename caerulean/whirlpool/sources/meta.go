@@ -11,13 +11,15 @@ import (
 	"main/utils"
 	"sync"
 
+	"github.com/pseusys/betterbuf"
 	"github.com/sirupsen/logrus"
 )
 
 type MetaServer struct {
 	apiServer *APIServer
 
-	portServer *protocol.PortListener
+	portServer    *protocol.PortListener
+	typhoonServer *protocol.TyphoonListener
 
 	wg *sync.WaitGroup
 }
@@ -31,24 +33,39 @@ func NewMetaServer(viridianDict *users.ViridianDict, tunnelConfig *tunnel.Tunnel
 	portPort := int32(utils.GetIntEnv("SEASIDE_PORT_PORT", tunnel.DEFAULT_PORT_PORT, 32))
 	typhoonPort := int32(utils.GetIntEnv("SEASIDE_TYPHOON_PORT", tunnel.DEFAULT_TYPHOON_PORT, 32))
 
+	if portPort == -1 && typhoonPort == -1 {
+		return nil, errors.New("both protocols (TYPHOON and PORT) are disabled, whirlpool is just not sure what to do now")
+	}
+
 	apiAddress := fmt.Sprintf("%s:%d", intIP, apiPort)
 	apiServer, err := NewAPIServer(apiAddress, portPort, typhoonPort)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a gRPC API server: %v", err)
 	}
 
-	portAddress := fmt.Sprintf("%s:%d", intIP, portPort)
-	portListener, err := protocol.NewPortListener(portAddress, viridianDict)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create a PORT server: %v", err)
+	var portListener *protocol.PortListener
+	if portPort != -1 {
+		portAddress := fmt.Sprintf("%s:%d", intIP, portPort)
+		portListener, err = protocol.NewPortListener(portAddress, viridianDict)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create a PORT server: %v", err)
+		}
 	}
 
-	// TODO: create TYPHOON server AND option to disable a protocol
+	var typhoonListener *protocol.TyphoonListener
+	if typhoonPort != -1 {
+		typhoonAddress := fmt.Sprintf("%s:%d", intIP, typhoonPort)
+		typhoonListener, err = protocol.NewTyphoonListener(typhoonAddress, viridianDict)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create a TYPHOON server: %v", err)
+		}
+	}
 
 	return &MetaServer{
-		apiServer:  apiServer,
-		portServer: portListener,
-		wg:         nil,
+		apiServer:     apiServer,
+		portServer:    portListener,
+		typhoonServer: typhoonListener,
+		wg:            nil,
 	}, nil
 }
 
@@ -91,17 +108,22 @@ func (server *MetaServer) startTunnelRead(ctx context.Context, tunnelConfig *tun
 			logrus.Debugf("Identified packet from tunnel, it belongs to viridian %d", viridianID)
 
 			packetWritten := false
-			packetWritten = packetWritten || server.portServer.Write(buffer, viridianID)
+			if server.portServer != nil && !packetWritten {
+				packetWritten = packetWritten || server.portServer.Write(buffer, viridianID)
+			}
+			if server.typhoonServer != nil && !packetWritten {
+				packetWritten = packetWritten || server.typhoonServer.Write(buffer, viridianID)
+			}
 
 			if !packetWritten {
-				protocol.PacketPool.Put(buffer)
 				logrus.Errorf("Error sending tunnel packet, viridian %d not found!", viridianID)
+				protocol.PacketPool.Put(buffer)
 			}
 		}
 	}
 }
 
-func (server *MetaServer) startTunnelWrite(ctx context.Context, tunnelConfig *tunnel.TunnelConfig, packetChan chan *utils.Buffer) {
+func (server *MetaServer) startTunnelWrite(ctx context.Context, tunnelConfig *tunnel.TunnelConfig, packetChan chan *betterbuf.Buffer) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -132,7 +154,7 @@ func (server *MetaServer) Start(base context.Context, errorChan chan error) {
 		return
 	}
 
-	localPacketChan := make(chan *utils.Buffer, protocol.OUTPUT_CHANNEL_POOL_BUFFER)
+	localPacketChan := make(chan *betterbuf.Buffer, protocol.OUTPUT_CHANNEL_POOL_BUFFER)
 	defer close(localPacketChan)
 	localErrorChan := make(chan error)
 	defer close(localErrorChan)
@@ -142,9 +164,18 @@ func (server *MetaServer) Start(base context.Context, errorChan chan error) {
 	go server.startTunnelRead(ctx, tunnelConfig, localErrorChan)
 	go server.startTunnelWrite(ctx, tunnelConfig, localPacketChan)
 
-	server.wg.Add(2)
+	server.wg.Add(1)
 	go server.apiServer.Start(ctx, server.wg, localErrorChan)
-	go server.portServer.Listen(ctx, server.wg, localPacketChan, localErrorChan)
+
+	if server.portServer != nil {
+		server.wg.Add(1)
+		go server.portServer.Listen(ctx, server.wg, localPacketChan, localErrorChan)
+	}
+
+	if server.typhoonServer != nil {
+		server.wg.Add(1)
+		go server.typhoonServer.Listen(ctx, server.wg, localPacketChan, localErrorChan)
+	}
 
 	select {
 	case <-ctx.Done():

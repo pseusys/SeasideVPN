@@ -6,7 +6,7 @@ from typing import Optional, Tuple
 
 from .. import __version__
 from ..utils.crypto import Asymmetric, Symmetric
-from ..utils.misc import random_number
+from ..utils.misc import classproperty, random_number
 from .utils import MessageType, TyphoonFlag, TyphoonInitializationError, TyphoonParseError, TyphoonReturnCode
 
 
@@ -24,59 +24,62 @@ class PortCore:
 
     # Message packet lengths
 
-    @property
-    def server_init_header_length(self) -> int:
-        return calcsize(self._SERVER_INIT_HEADER) + Symmetric.ciphertext_overhead
+    @classproperty
+    def server_init_header_length(cls) -> int:
+        return calcsize(cls._SERVER_INIT_HEADER) + Symmetric.ciphertext_overhead
 
-    @property
-    def client_init_header_length(self) -> int:
-        return calcsize(self._CLIENT_INIT_HEADER) + Asymmetric.ciphertext_overhead
+    @classproperty
+    def client_init_header_length(cls) -> int:
+        return calcsize(cls._CLIENT_INIT_HEADER) + Asymmetric.ciphertext_overhead
 
-    @property
-    def any_other_header_length(self) -> int:
-        return calcsize(self._ANY_OTHER_HEADER) + Symmetric.ciphertext_overhead
+    @classproperty
+    def any_other_header_length(cls) -> int:
+        return calcsize(cls._ANY_OTHER_HEADER) + Symmetric.ciphertext_overhead
 
     # Internal functions
 
-    def __init__(self, timeout: Optional[float] = None):
-        self._default_timeout = timeout
-
-    def configure_socket(self, connection: socket) -> socket:
+    @classmethod
+    def configure_socket(cls, connection: socket) -> socket:
         connection.setsockopt(SOL_SOCKET, SO_KEEPALIVE, 1)
-        connection.setsockopt(IPPROTO_TCP, TCP_KEEPIDLE, self._PORT_KEEPIDLE)
-        connection.setsockopt(IPPROTO_TCP, TCP_KEEPINTVL, self._PORT_KEEPINTVL)
-        connection.setsockopt(IPPROTO_TCP, TCP_KEEPCNT, self._PORT_KEEPCNT)
+        connection.setsockopt(IPPROTO_TCP, TCP_KEEPIDLE, cls._PORT_KEEPIDLE)
+        connection.setsockopt(IPPROTO_TCP, TCP_KEEPINTVL, cls._PORT_KEEPINTVL)
+        connection.setsockopt(IPPROTO_TCP, TCP_KEEPCNT, cls._PORT_KEEPCNT)
         return connection
 
     # Build different messages
 
-    def build_server_init(self, cipher: Symmetric, user_id: int, status: TyphoonReturnCode) -> bytes:
-        tail_length = random_number(2, max=self._PORT_TAIL_LENGTH)
-        header = pack(self._SERVER_INIT_HEADER, TyphoonFlag.INIT, status, user_id, tail_length)
+    @classmethod
+    def build_server_init(cls, cipher: Symmetric, user_id: int, status: TyphoonReturnCode) -> bytes:
+        tail_length = random_number(max=cls._PORT_TAIL_LENGTH)
+        header = pack(cls._SERVER_INIT_HEADER, TyphoonFlag.INIT, status, user_id, tail_length)
         return cipher.encrypt(header) + token_bytes(tail_length)
 
-    def build_client_init(self, cipher: Asymmetric, token: bytes) -> Tuple[bytes, bytes]:
-        client_name = self._CLIENT_NAME.encode()
-        tail_length = random_number(2, max=self._PORT_TAIL_LENGTH)
-        header = pack(self._CLIENT_INIT_HEADER, TyphoonFlag.INIT, client_name, len(token) + Symmetric.ciphertext_overhead, tail_length)
+    @classmethod
+    def build_client_init(cls, cipher: Asymmetric, token: bytes) -> Tuple[bytes, bytes]:
+        client_name = cls._CLIENT_NAME.encode()
+        tail_length = random_number(max=cls._PORT_TAIL_LENGTH)
+        header = pack(cls._CLIENT_INIT_HEADER, TyphoonFlag.INIT, client_name, len(token) + Symmetric.ciphertext_overhead, tail_length)
         key, asymmetric_part = cipher.encrypt(header)
         return key, asymmetric_part + Symmetric(key).encrypt(token) + token_bytes(tail_length)
 
-    def build_any_data(self, cipher: Symmetric, data: bytes) -> bytes:
-        tail_length = random_number(2, max=self._PORT_TAIL_LENGTH)
-        header = pack(self._ANY_OTHER_HEADER, TyphoonFlag.DATA, len(data) + Symmetric.ciphertext_overhead, tail_length)
+    @classmethod
+    def build_any_data(cls, cipher: Symmetric, data: bytes) -> bytes:
+        tail_length = random_number(max=cls._PORT_TAIL_LENGTH)
+        header = pack(cls._ANY_OTHER_HEADER, TyphoonFlag.DATA, len(data) + Symmetric.ciphertext_overhead, tail_length)
         return cipher.encrypt(header) + cipher.encrypt(data) + token_bytes(tail_length)
 
-    def build_any_term(self, cipher: Symmetric) -> bytes:
-        tail_length = random_number(2, max=self._PORT_TAIL_LENGTH)
-        header = pack(self._ANY_OTHER_HEADER, TyphoonFlag.TERM, 0, tail_length)
+    @classmethod
+    def build_any_term(cls, cipher: Symmetric) -> bytes:
+        tail_length = random_number(max=cls._PORT_TAIL_LENGTH)
+        header = pack(cls._ANY_OTHER_HEADER, TyphoonFlag.TERM, 0, tail_length)
         return cipher.encrypt(header) + token_bytes(tail_length)
 
     # Parse INIT messages, they are parsed separately and can not be confused with the others:
 
-    def parse_server_init(self, cipher: Symmetric, packet: bytes) -> Tuple[int, int]:
+    @classmethod
+    def parse_server_init(cls, cipher: Symmetric, packet: bytes) -> Tuple[int, int]:
         try:
-            flags, init_status, user_id, tail_length = unpack(self._SERVER_INIT_HEADER, cipher.decrypt(packet))
+            flags, init_status, user_id, tail_length = unpack(cls._SERVER_INIT_HEADER, cipher.decrypt(packet))
         except BaseException as e:
             raise TyphoonParseError("Error parsing server INIT message!", e)
         if flags != TyphoonFlag.INIT:
@@ -85,10 +88,11 @@ class PortCore:
             raise TyphoonInitializationError(f"Initialization failed with status {init_status}")
         return user_id, tail_length
 
-    def parse_client_init_header(self, cipher: Asymmetric, packet: bytes) -> Tuple[str, bytes, int, int]:
+    @classmethod
+    def parse_client_init_header(cls, cipher: Asymmetric, packet: bytes) -> Tuple[str, bytes, int, int]:
         try:
             key, header = cipher.decrypt(packet)
-            flags, client_name, token_length, tail_length = unpack(self._CLIENT_INIT_HEADER, header)
+            flags, client_name, token_length, tail_length = unpack(cls._CLIENT_INIT_HEADER, header)
             client_name = client_name.decode()
         except BaseException as e:
             raise TyphoonParseError("Error parsing client INIT messagen header!", e)
@@ -98,9 +102,10 @@ class PortCore:
 
     # Parse all the other messages, they indeed can be confused with each other:
 
-    def parse_any_message_header(self, cipher: Symmetric, packet: bytes) -> Tuple[MessageType, int, int]:
+    @classmethod
+    def parse_any_message_header(cls, cipher: Symmetric, packet: bytes) -> Tuple[MessageType, int, int]:
         try:
-            flags, data_length, tail_length = unpack(self._ANY_OTHER_HEADER, cipher.decrypt(packet))
+            flags, data_length, tail_length = unpack(cls._ANY_OTHER_HEADER, cipher.decrypt(packet))
             if flags == TyphoonFlag.DATA:
                 message_type = MessageType.DATA
             elif flags == TyphoonFlag.TERM:
@@ -113,7 +118,8 @@ class PortCore:
 
     # Parse any message data:
 
-    def parse_any_any_data(self, cipher: Symmetric, packet: bytes) -> bytes:
+    @classmethod
+    def parse_any_any_data(cls, cipher: Symmetric, packet: bytes) -> bytes:
         try:
             token = cipher.decrypt(packet)
         except BaseException as e:

@@ -1,14 +1,18 @@
-from asyncio import TimeoutError, open_connection, wait_for
+from asyncio import StreamReader, StreamWriter, TimeoutError, open_connection, wait_for
 from base64 import b64decode, b64encode
 from logging import getLogger
 from os import environ
 from pathlib import Path
 from secrets import token_urlsafe
 from subprocess import run
-from typing import AsyncGenerator, Optional
+from typing import AsyncGenerator, List, Optional
 
 import pytest
 import pytest_asyncio
+
+from dns.message import make_query, from_wire
+from dns.rrset import RRset
+from dns.rdatatype import A
 
 from sources.automation.simple_client import AlgaeClient
 from sources.protocol import PortClient, TyphoonClient
@@ -19,13 +23,33 @@ logger = getLogger(__name__)
 
 # Utility functions:
 
-async def is_tcp_available(address: Optional[str] = None, port: int = 443) -> bool:
+async def write_dns_request(writer: StreamWriter, address: str = "example.com") -> None:
+    query = make_query(address, A)
+    wire = query.to_wire()
+    prefixed = len(wire).to_bytes(2, "big") + wire
+    writer.write(prefixed)
+    await writer.drain()
+
+
+async def read_dns_response(reader: StreamReader) -> List[RRset]:
+    length_bytes = await reader.readexactly(2)
+    response_length = int.from_bytes(length_bytes, "big")
+    response_data = await reader.readexactly(response_length)
+    return from_wire(response_data).answer
+
+
+async def is_tcp_available(address: Optional[str] = None, port: int = 853) -> bool:
     address = environ["RESTRICTED_ADDRESS"] if address is None else address
     try:
-        _, writer = await wait_for(open_connection(address, port, ssl=True), timeout=5.0)
+        reader, writer = await wait_for(open_connection(address, port, ssl=True, server_hostname="dns.google"), timeout=5.0)
+        await write_dns_request(writer)
+        response = await read_dns_response(reader)
         writer.close()
+        await writer.wait_closed()
+        logger.debug(f"DNS-over-TCP/TLS connection successful: {response}")
         return True
-    except TimeoutError:
+    except BaseException as e:
+        logger.debug(f"DNS-over-TCP/TLS connection error: {e}")
         return False
 
 
@@ -62,6 +86,7 @@ async def test_receive_token(client: AlgaeClient) -> None:
     logger.info(f"Authenticating user {identifier}...")
     async with WhirlpoolClient(client._address, client._port, Path(environ["SEASIDE_ROOT_CERTIFICATE_AUTHORITY"])) as conn:
         public, token, typhoon_port, port_port = await conn.authenticate(identifier, environ["SEASIDE_API_KEY_OWNER"])
+        logger.info(f"Authenticating info received: public {public}, token {token}, TYPHOON port {typhoon_port}, PORT port {port_port}")
         environ["_SEASIDE_PUBLIC_KEY"] = b64encode(public).decode()
         environ["_SEASIDE_TOKEN"] = b64encode(token).decode()
         environ["_SEASIDE_TYPHOON_PORT"] = str(typhoon_port)
@@ -90,7 +115,7 @@ async def test_port_connection(client: AlgaeClient) -> None:
 
 
 @pytest.mark.asyncio(loop_scope="session")
-@pytest.mark.dependency(depends=["test_port_connection"])
+@pytest.mark.dependency(depends=["test_open_tunnel"])
 async def test_typhoon_connection(client: AlgaeClient) -> None:
     logger.info("Testing reachability with TCP example server with TYPHOON connection")
     client._proto_type = TyphoonClient
@@ -102,7 +127,7 @@ async def test_typhoon_connection(client: AlgaeClient) -> None:
 
 
 @pytest.mark.asyncio(loop_scope="session")
-@pytest.mark.dependency(depends=["test_typhoon_connection"])
+@pytest.mark.dependency(depends=["test_port_connection", "test_typhoon_connection"])
 async def test_no_vpn_rerequest() -> None:
     logger.info("Testing unreachability with TCP echo server again")
     assert not await is_tcp_available(), "External website is still available!"

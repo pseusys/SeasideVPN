@@ -45,3 +45,19 @@ func GetIntEnv(key string, fallback int64, bitSize int) int64 {
 		return fallback
 	}
 }
+
+// Get float value from environment variable.
+// Accept environment variable (string) and number of bits in the resulting number (float).
+// Return environment variable value (converted to float) or terminate program with an error.
+func GetFloatEnv(key string, fallback float64, bitSize int) float64 {
+	if value, ok := os.LookupEnv(key); ok {
+		number, err := strconv.ParseFloat(value, bitSize)
+		if err == nil {
+			return number
+		} else {
+			return fallback
+		}
+	} else {
+		return fallback
+	}
+}

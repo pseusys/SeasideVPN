@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pseusys/betterbuf"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -37,7 +38,7 @@ var (
 	NODE_ADMIN_API_KEYS = strings.Split(utils.GetEnv("SEASIDE_API_KEY_ADMIN", DEFAULT_ADMIN_KEYS), ":")
 
 	ADMIN_TOKEN_TIMEOUT  = utils.GetIntEnv("SEASIDE_ADMIN_TOKEN_TIMEOUT", DEFAULT_ADMIN_TOKEN_TIMEOUT, 32)
-	GRPC_MAX_TAIL_LENGTH = int(utils.GetIntEnv("SEASIDE_GRPC_MAX_TAIL_LENGTH", DEFAULT_GRPC_MAX_TAIL_LENGTH, 32))
+	GRPC_MAX_TAIL_LENGTH = uint(utils.GetIntEnv("SEASIDE_GRPC_MAX_TAIL_LENGTH", DEFAULT_GRPC_MAX_TAIL_LENGTH, 32))
 )
 
 // Metaserver structure.
@@ -164,7 +165,7 @@ func (server *WhirlpoolServer) Authenticate(ctx context.Context, request *genera
 	}
 
 	// Encrypt token
-	tokenBuffer := utils.NewBufferFromSliceWithCapacity(marshToken, 0, crypto.SymmetricCiphertextOverhead)
+	tokenBuffer := betterbuf.NewBufferFromCapacityEnsured(marshToken, 0, crypto.SymmetricCiphertextOverhead)
 	tokenData, err := crypto.SERVER_KEY.Encrypt(tokenBuffer, nil)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error encrypting token: %v", err)

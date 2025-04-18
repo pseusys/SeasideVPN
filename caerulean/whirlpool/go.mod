@@ -3,6 +3,7 @@ module main
 go 1.23
 
 require (
+	github.com/pseusys/betterbuf v0.0.3
 	github.com/pseusys/monocypher-go v0.0.0-00010101000000-000000000000
 	github.com/rifflock/lfshook v0.0.0-20180920164130-b9218ef580f5
 	github.com/sirupsen/logrus v1.9.3

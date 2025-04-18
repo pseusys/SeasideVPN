@@ -2,7 +2,7 @@ from asyncio import FIRST_COMPLETED, CancelledError, Future, sleep, wait
 from contextlib import suppress
 from logging import Logger, StreamHandler, getLogger
 from os import getenv
-from secrets import token_bytes
+from secrets import randbelow
 from sys import stdout
 from typing import Literal, Optional, TypedDict, TypeVar, Union
 from urllib.parse import parse_qs, urlparse
@@ -15,6 +15,7 @@ _T = TypeVar("_T")
 
 # Maximum length of message - transport level packet.
 MAX_TWO_BYTES_VALUE = (1 << 16) - 1
+MAX_FOUR_BYTES_VALUE = (1 << 32) - 1
 
 
 # LOGGING:
@@ -36,8 +37,8 @@ def create_logger(name: str) -> Logger:
 # RANDOM:
 
 
-def random_number(bytes: int = 4, min: int = 0, max: int = (1 << 32) - 1) -> int:
-    return int((int.from_bytes(token_bytes(bytes), "big") + min) % max)
+def random_number(min: int = 0, max: int = (1 << 32) - 1) -> int:
+    return min + randbelow(max - min + 1)
 
 
 # CLASS UTILITIES:
