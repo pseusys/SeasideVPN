@@ -30,6 +30,7 @@ def create_logger(name: str) -> Logger:
     handler.setLevel(_level)
     logger = getLogger(name)
     logger.setLevel(_level)
+    logger.handlers.clear()
     logger.addHandler(handler)
     return logger
 

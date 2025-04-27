@@ -2,9 +2,11 @@ from abc import ABC, abstractmethod
 from asyncio import Future
 from typing import Callable, Optional
 
-ReceiveCallback = Callable[[bytes], Future[None]]
-ServeCallback = Callable[[int, bytes], Future[None]]
-ConnectionCallback = Callable[[str, "SeasidePeer", bytes], Future[None]]
+from .utils import ProtocolReturnCode
+
+ReceiveCallback = Callable[[bytes], Future[Optional[bytes]]]
+ServeCallback = Callable[[int, bytes], Future[Optional[bytes]]]
+ConnectionCallback = Callable[[str, bytes], Future[ProtocolReturnCode]]
 
 
 class SeasidePeer(ABC):

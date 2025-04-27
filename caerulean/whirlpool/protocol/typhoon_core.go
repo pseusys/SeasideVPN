@@ -192,7 +192,7 @@ func parseTyphoonClientInit(cipher *crypto.Asymmetric, packet *betterbuf.Buffer)
 	return &clientName, key, token, &packetNumber, &nextIn, nil
 }
 
-func parseTyphoonClientMessageType(cipher *crypto.Symmetric, packet *betterbuf.Buffer) (*uint32, *uint32, bool, *betterbuf.Buffer, error) {
+func parseTyphoonClientProtocolMessageType(cipher *crypto.Symmetric, packet *betterbuf.Buffer) (*uint32, *uint32, bool, *betterbuf.Buffer, error) {
 	message, err := cipher.Decrypt(packet, nil)
 	if err != nil {
 		return nil, nil, false, nil, fmt.Errorf("error parsing init packet: %v", err)

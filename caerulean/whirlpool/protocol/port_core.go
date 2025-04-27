@@ -137,7 +137,7 @@ func parsePortClientInitHeader(cipher *crypto.Asymmetric, packet *betterbuf.Buff
 	return &clientName, key, tokenLength, tailLength, nil
 }
 
-func parsePortAnyMessageHeader(cipher *crypto.Symmetric, packet *betterbuf.Buffer) (MessageType, uint16, uint16, error) {
+func parsePortAnyMessageHeader(cipher *crypto.Symmetric, packet *betterbuf.Buffer) (ProtocolMessageType, uint16, uint16, error) {
 	decrypted, err := cipher.Decrypt(packet, nil)
 	if err != nil {
 		return 0, 0, 0, fmt.Errorf("error parsing message header: %v", err)
@@ -151,7 +151,7 @@ func parsePortAnyMessageHeader(cipher *crypto.Symmetric, packet *betterbuf.Buffe
 	dataLength := binary.BigEndian.Uint16(decrypted.Reslice(1, 3))
 	tailLength := binary.BigEndian.Uint16(decrypted.Reslice(3, 5))
 
-	var messageType MessageType
+	var messageType ProtocolMessageType
 	switch flags {
 	case FLAG_DATA:
 		messageType = TYPE_DATA

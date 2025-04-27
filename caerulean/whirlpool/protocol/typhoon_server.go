@@ -58,6 +58,8 @@ func NewTyphoonServer(cipher *crypto.Symmetric, peerID uint16, peerIP net.IP, ls
 	}
 }
 
+// Internal server functions:
+
 func (t *TyphoonServer) GetRTT() uint32 {
 	var rtt uint32
 	if t.srtt > 0 {
@@ -103,7 +105,8 @@ func (t *TyphoonServer) regenerateNextIn(multiplier float64, rememberSent bool) 
 	}
 }
 
-// Read reads data from the peer.
+// Basic network IO:
+
 func (t *TyphoonServer) Read(buffer *betterbuf.Buffer, viridianDict *users.ViridianDict, peerBytes []byte, tunIP *net.IP) (*betterbuf.Buffer, *TyphoonConsistencyPart, error) {
 	s, err := t.socket.Read(buffer.Slice())
 	if err != nil {
@@ -111,7 +114,7 @@ func (t *TyphoonServer) Read(buffer *betterbuf.Buffer, viridianDict *users.Virid
 	}
 	logrus.Debugf("Read %d bytes from viridian %d", s, t.peerID)
 
-	packetNumber, nextIn, hdsk, data, err := parseTyphoonClientMessageType(t.cipher, buffer.RebufferEnd(s))
+	packetNumber, nextIn, hdsk, data, err := parseTyphoonClientProtocolMessageType(t.cipher, buffer.RebufferEnd(s))
 	if err != nil {
 		logrus.Errorf("packet parsing error: %v", err)
 		return nil, nil, nil
@@ -155,7 +158,6 @@ func (t *TyphoonServer) Read(buffer *betterbuf.Buffer, viridianDict *users.Virid
 	return data, consistencyPart, nil
 }
 
-// Write sends data to the peer.
 func (t *TyphoonServer) Write(data *betterbuf.Buffer, controlChan chan uint32, viridianDict *users.ViridianDict) error {
 	defer PacketPool.Put(data)
 
@@ -225,7 +227,8 @@ func (t *TyphoonServer) Terminate() error {
 	return nil
 }
 
-// Serve starts the server and handles the callback.
+// Network IO routines:
+
 func (t *TyphoonServer) serveRead(ctx context.Context, packetChan chan *betterbuf.Buffer, decayChan chan *TyphoonConsistencyPart, errorChan chan error) {
 	bytesID := []byte{0, 0}
 	binary.BigEndian.PutUint16(bytesID, t.peerID)
@@ -308,6 +311,8 @@ func (s *TyphoonServer) serveWrite(base context.Context, controlChan chan uint32
 		}
 	}
 }
+
+// Connection routines:
 
 func (t *TyphoonServer) connectInner(cons *TyphoonConsistencyPart, decayChan chan *TyphoonConsistencyPart) (*TyphoonConsistencyPart, error) {
 	logrus.Debugf("Continuing to viridian %d connection in %d milliseconds...", t.peerID, cons.nextIn)
@@ -396,7 +401,7 @@ func (t *TyphoonServer) decayInner(cons *TyphoonConsistencyPart, controlChan cha
 			// continue decay
 		}
 
-		sleepTimeout = max(t.previousNextIn+t.GetTimeout(), 0)
+		sleepTimeout = max(t.previousNextIn+t.GetRTT()+t.GetTimeout(), 0)
 		logrus.Debugf("Waiting for new handshake from viridian %d for %d milliseconds...", t.peerID, sleepTimeout)
 		select {
 		case cons = <-decayChan:
@@ -436,6 +441,8 @@ func (t *TyphoonServer) controlSocket(ctx context.Context, cons *TyphoonConsiste
 		}
 	}
 }
+
+// Serve entrypoint:
 
 func (s *TyphoonServer) Serve(base context.Context, packetChan chan *betterbuf.Buffer, initPacketNumber uint32, initNextIn uint32) {
 	localErrorChan := make(chan error)

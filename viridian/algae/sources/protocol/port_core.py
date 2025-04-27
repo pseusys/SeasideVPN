@@ -7,7 +7,7 @@ from typing import Optional, Tuple
 from .. import __version__
 from ..utils.crypto import Asymmetric, Symmetric
 from ..utils.misc import classproperty, random_number
-from .utils import MessageType, TyphoonFlag, TyphoonInitializationError, TyphoonParseError, TyphoonReturnCode
+from .utils import ProtocolMessageType, ProtocolFlag, ProtocolInitializationError, ProtocolParseError, ProtocolReturnCode
 
 
 class PortCore:
@@ -49,29 +49,29 @@ class PortCore:
     # Build different messages
 
     @classmethod
-    def build_server_init(cls, cipher: Symmetric, user_id: int, status: TyphoonReturnCode) -> bytes:
+    def build_server_init(cls, cipher: Symmetric, user_id: int, status: ProtocolReturnCode) -> bytes:
         tail_length = random_number(max=cls._PORT_TAIL_LENGTH)
-        header = pack(cls._SERVER_INIT_HEADER, TyphoonFlag.INIT, status, user_id, tail_length)
+        header = pack(cls._SERVER_INIT_HEADER, ProtocolFlag.INIT, status, user_id, tail_length)
         return cipher.encrypt(header) + token_bytes(tail_length)
 
     @classmethod
     def build_client_init(cls, cipher: Asymmetric, token: bytes) -> Tuple[bytes, bytes]:
         client_name = cls._CLIENT_NAME.encode()
         tail_length = random_number(max=cls._PORT_TAIL_LENGTH)
-        header = pack(cls._CLIENT_INIT_HEADER, TyphoonFlag.INIT, client_name, len(token) + Symmetric.ciphertext_overhead, tail_length)
+        header = pack(cls._CLIENT_INIT_HEADER, ProtocolFlag.INIT, client_name, len(token) + Symmetric.ciphertext_overhead, tail_length)
         key, asymmetric_part = cipher.encrypt(header)
         return key, asymmetric_part + Symmetric(key).encrypt(token) + token_bytes(tail_length)
 
     @classmethod
     def build_any_data(cls, cipher: Symmetric, data: bytes) -> bytes:
         tail_length = random_number(max=cls._PORT_TAIL_LENGTH)
-        header = pack(cls._ANY_OTHER_HEADER, TyphoonFlag.DATA, len(data) + Symmetric.ciphertext_overhead, tail_length)
+        header = pack(cls._ANY_OTHER_HEADER, ProtocolFlag.DATA, len(data) + Symmetric.ciphertext_overhead, tail_length)
         return cipher.encrypt(header) + cipher.encrypt(data) + token_bytes(tail_length)
 
     @classmethod
     def build_any_term(cls, cipher: Symmetric) -> bytes:
         tail_length = random_number(max=cls._PORT_TAIL_LENGTH)
-        header = pack(cls._ANY_OTHER_HEADER, TyphoonFlag.TERM, 0, tail_length)
+        header = pack(cls._ANY_OTHER_HEADER, ProtocolFlag.TERM, 0, tail_length)
         return cipher.encrypt(header) + token_bytes(tail_length)
 
     # Parse INIT messages, they are parsed separately and can not be confused with the others:
@@ -81,11 +81,11 @@ class PortCore:
         try:
             flags, init_status, user_id, tail_length = unpack(cls._SERVER_INIT_HEADER, cipher.decrypt(packet))
         except BaseException as e:
-            raise TyphoonParseError("Error parsing server INIT message!", e)
-        if flags != TyphoonFlag.INIT:
-            raise TyphoonParseError(f"Server INIT message flags malformed: {flags:b} != {TyphoonFlag.INIT:b}!")
-        if init_status != TyphoonReturnCode.SUCCESS:
-            raise TyphoonInitializationError(f"Initialization failed with status {init_status}")
+            raise ProtocolParseError("Error parsing server INIT message!", e)
+        if flags != ProtocolFlag.INIT:
+            raise ProtocolParseError(f"Server INIT message flags malformed: {flags:b} != {ProtocolFlag.INIT:b}!")
+        if init_status != ProtocolReturnCode.SUCCESS:
+            raise ProtocolInitializationError(f"Initialization failed with status {init_status}")
         return user_id, tail_length
 
     @classmethod
@@ -93,27 +93,27 @@ class PortCore:
         try:
             key, header = cipher.decrypt(packet)
             flags, client_name, token_length, tail_length = unpack(cls._CLIENT_INIT_HEADER, header)
-            client_name = client_name.decode()
+            client_name = client_name.decode().rstrip("\0")
         except BaseException as e:
-            raise TyphoonParseError("Error parsing client INIT messagen header!", e)
-        if flags != TyphoonFlag.INIT:
-            raise TyphoonParseError(f"Client INIT message flags malformed: {flags:b} != {TyphoonFlag.INIT:b}!")
+            raise ProtocolParseError("Error parsing client INIT messagen header!", e)
+        if flags != ProtocolFlag.INIT:
+            raise ProtocolParseError(f"Client INIT message flags malformed: {flags:b} != {ProtocolFlag.INIT:b}!")
         return client_name, key, token_length, tail_length
 
     # Parse all the other messages, they indeed can be confused with each other:
 
     @classmethod
-    def parse_any_message_header(cls, cipher: Symmetric, packet: bytes) -> Tuple[MessageType, int, int]:
+    def parse_any_message_header(cls, cipher: Symmetric, packet: bytes) -> Tuple[ProtocolMessageType, int, int]:
         try:
             flags, data_length, tail_length = unpack(cls._ANY_OTHER_HEADER, cipher.decrypt(packet))
-            if flags == TyphoonFlag.DATA:
-                message_type = MessageType.DATA
-            elif flags == TyphoonFlag.TERM:
-                message_type = MessageType.TERMINATION
+            if flags == ProtocolFlag.DATA:
+                message_type = ProtocolMessageType.DATA
+            elif flags == ProtocolFlag.TERM:
+                message_type = ProtocolMessageType.TERMINATION
             else:
-                raise TyphoonParseError(f"Message flags malformed: {flags:b}!")
+                raise ProtocolParseError(f"Message flags malformed: {flags:b}!")
         except BaseException as e:
-            raise TyphoonParseError("Error parsing message!", e)
+            raise ProtocolParseError("Error parsing message!", e)
         return message_type, data_length, tail_length
 
     # Parse any message data:
@@ -123,5 +123,5 @@ class PortCore:
         try:
             token = cipher.decrypt(packet)
         except BaseException as e:
-            raise TyphoonParseError("Error parsing data!", e)
+            raise ProtocolParseError("Error parsing data!", e)
         return token

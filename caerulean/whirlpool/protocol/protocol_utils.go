@@ -26,15 +26,15 @@ const (
 	FLAG_UNDEF ProtocolFlag = 0
 )
 
-// MessageType represents the different message types.
-type MessageType byte
+// ProtocolMessageType represents the different message types.
+type ProtocolMessageType byte
 
 const (
-	TYPE_HANDSHAKE      MessageType = MessageType(FLAG_HDSK)
-	TYPE_HANDSHAKE_DATA MessageType = MessageType(FLAG_HDSK | FLAG_DATA)
-	TYPE_DATA           MessageType = MessageType(FLAG_DATA)
-	TYPE_TERMINATION    MessageType = MessageType(FLAG_TERM)
-	TYPE_UNDEF          MessageType = MessageType(FLAG_UNDEF)
+	TYPE_HANDSHAKE      ProtocolMessageType = ProtocolMessageType(FLAG_HDSK)
+	TYPE_HANDSHAKE_DATA ProtocolMessageType = ProtocolMessageType(FLAG_HDSK | FLAG_DATA)
+	TYPE_DATA           ProtocolMessageType = ProtocolMessageType(FLAG_DATA)
+	TYPE_TERMINATION    ProtocolMessageType = ProtocolMessageType(FLAG_TERM)
+	TYPE_UNDEF          ProtocolMessageType = ProtocolMessageType(FLAG_UNDEF)
 )
 
 // ProtocolReturnCode represents possible return codes.

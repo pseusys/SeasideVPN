@@ -14,7 +14,7 @@ from typing import AsyncIterator, Literal, Optional, Sequence, Union
 
 from ..interaction.system import Tunnel
 from ..interaction.whirlpool import WhirlpoolClient
-from ..protocol import PortClient, SeasideClient, TyphoonBaseError, TyphoonClient
+from ..protocol import PortClient, SeasideClient, ProtocolBaseError, TyphoonClient
 from ..utils.asyncos import os_read, os_write
 from ..utils.misc import create_logger, parse_connection_link
 from ..version import __version__
@@ -96,12 +96,18 @@ class AlgaeClient:
             task.result()
         except CancelledError:
             logger.debug(f"Task {task.get_name()} was cancelled!")
-        except InvalidStateError:
+        except InvalidStateError as e:
             logger.debug(f"Task {task.get_name()} is still running (impossible)!")
-        except TyphoonBaseError as e:
+            get_running_loop().call_exception_handler(dict(message=f"Invalid state exception in task '{task.get_name()}'!", exception=e, task=task))
+            raise e
+        except ProtocolBaseError as e:
             logger.error(f"Protocol exception happened in VPN loop: {e}")
+            get_running_loop().call_exception_handler(dict(message=f"Protocol exception in task '{task.get_name()}'!", exception=e, task=task))
+            raise e
         except BaseException as e:
             logger.error(f"Unexpected exception happened in VPN loop: {e}")
+            get_running_loop().call_exception_handler(dict(message=f"Unhandled exception in task '{task.get_name()}'!", exception=e, task=task))
+            raise e
 
     @asynccontextmanager
     async def _start_vpn_loop(self, token: bytes, public_key: bytes, port: int, descriptor: int) -> AsyncIterator[None]:

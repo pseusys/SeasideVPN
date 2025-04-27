@@ -1,4 +1,4 @@
-from asyncio import AbstractEventLoop, Future, TimeoutError, wait_for
+from asyncio import AbstractEventLoop, Future, TimeoutError, sleep, wait_for
 from ipaddress import IPv4Address
 from os import read, write
 from socket import socket
@@ -12,8 +12,8 @@ logger = create_logger(__name__)
 def _async_read_callback(loop: AbstractEventLoop, descriptor: int, reader: Callable[[], bytes]) -> Future[bytes]:
     """
     Synchronous source read wrapper.
-    Wraps synchrounous read (from file, socket, pipe, etc.) into asynchronous future.
-    Handles reading OSErrors (in case source descriptor was closed).
+    Wraps synchronous read (from file, socket, pipe, etc.) into asynchronous future.
+    Handles reading OSErrors and BlockingIOErrors (in case source descriptor was closed).
     :param loop: asyncio running event loop.
     :param descriptor: integer source descriptor of the reading source.
     :param reader: callable for reading data from source.
@@ -25,7 +25,7 @@ def _async_read_callback(loop: AbstractEventLoop, descriptor: int, reader: Calla
             result = reader()
             if not future.cancelled():
                 future.set_result(result)
-        except OSError as e:
+        except (OSError, BlockingIOError) as e:
             if not future.cancelled():
                 future.set_exception(e)
         finally:
@@ -40,7 +40,7 @@ def _async_write_callback(loop: AbstractEventLoop, descriptor: int, writer: Call
     """
     Synchronous destination write wrapper.
     Wraps synchronous write (to file, socket, pipe, etc.) into asynchronous future.
-    Handles writing OSErrors (in case source descriptor was closed).
+    Handles writing OSErrors and BlockingIOErrors (in case source descriptor was closed).
     :param loop: asyncio running event loop.
     :param descriptor: integer source descriptor of the writing destination.
     :param writer: callable for writing data to destination.
@@ -52,7 +52,7 @@ def _async_write_callback(loop: AbstractEventLoop, descriptor: int, writer: Call
             result = writer()
             if not future.cancelled():
                 future.set_result(result)
-        except OSError as e:
+        except (OSError, BlockingIOError) as e:
             if not future.cancelled():
                 future.set_exception(e)
         finally:
@@ -168,3 +168,4 @@ def sock_close(loop: AbstractEventLoop, sock: socket) -> None:
     descriptor = sock.fileno()
     loop.remove_reader(descriptor)
     loop.remove_writer(descriptor)
+    sock.close()

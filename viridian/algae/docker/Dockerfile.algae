@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM ubuntu:22.04 AS builder
+FROM ubuntu:24.04 AS builder
 
 WORKDIR /seaside/algae
 
@@ -9,7 +9,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install python dependencies and build system.
-RUN apt-get update && apt-get install -y --no-install-recommends python3-pip && pip install --upgrade --no-cache-dir poetry
+RUN apt-get update && apt-get install -y --no-install-recommends python3-pip && pip install --upgrade --no-cache-dir --break-system-packages poetry && rm -rf /var/lib/apt/lists/*
 
 # Export dependencies to a `requirements.txt` install protobuf compiler.
 COPY viridian/algae/pyproject.toml ./
@@ -21,7 +21,7 @@ COPY vessels ./vessels
 RUN poetry run python -m grpc_tools.protoc -I=vessels --python_betterproto_out=. vessels/*.proto
 
 
-FROM ubuntu:22.04 AS default
+FROM ubuntu:24.04 AS default
 
 ARG RUNNING_IN_CI
 ARG RUNNING_TEST_FILE
@@ -35,7 +35,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Install testing dependencies.
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential iptables iproute2 iputils-ping dnsutils python3-pip && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /seaside/algae/reqs.txt ./
-RUN pip3 install --no-cache-dir -r reqs.txt
+RUN pip3 install --no-cache-dir --break-system-packages -r reqs.txt
 
 # Copy algae and test sources, also copy generated protobuf files.
 COPY viridian/algae/sources/ ./sources/
