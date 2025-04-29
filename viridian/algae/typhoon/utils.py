@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from enum import Enum
 from ipaddress import IPv4Address
 from json import dumps, loads
+from math import floor
 from os import environ, strerror
 from pathlib import Path
 from subprocess import CalledProcessError, Popen, PIPE, run
@@ -18,11 +19,12 @@ from IPython.display import display
 from matplotlib import pyplot as plt
 from matplotlib.patches import Patch
 from scapy.all import AsyncSniffer, PacketList, Packet
-from scapy.layers.inet import UDP, IP
+from scapy.layers.inet import TCP, UDP, IP
 
 from sources.utils.crypto import Asymmetric, Symmetric
 from sources.protocol.utils import ProtocolFlag
 from sources.protocol import SeasideClient
+from sources.protocol.port_core import PortCore
 
 
 # Constants
@@ -57,9 +59,9 @@ class ColorInfo:
 
 
 class ColorGroup(Enum):
-    UNKNOWN_CLIENT = ColorInfo("#BDBDBD", "Unknown packet (apparently from client)")
-    UNKNOWN_ANY = ColorInfo("#757575", "Unknown packet (sender unknown)")
-    UNKNOWN_SERVER = ColorInfo("#424242", "Unknown packet (apparently from server)")
+    UNKNOWN_CLIENT = ColorInfo("#BDBDBD", "Invalid packet (apparently from client)")
+    UNKNOWN_ANY = ColorInfo("#757575", "Invalid packet (sender unknown)")
+    UNKNOWN_SERVER = ColorInfo("#424242", "Invalid packet (apparently from server)")
     TERMINATION_CLIENT = ColorInfo("#FF8A80", "Termination packet (from client)")
     TERMINATION_SERVER = ColorInfo("#C62828", "Termination packet (from server)")
     DATA_CLIENT = ColorInfo("#A5D6A7", "Data packet (from client)")
@@ -88,6 +90,7 @@ class VisualConf:
 class PlotConf(VisualConf):
     expand_time: bool = True
     spread_mult: float = 3.0
+    max_timestamps: int = 30
 
 
 @dataclass
@@ -98,7 +101,7 @@ class GraphConf(VisualConf):
 class SequenceConfig:
     @classmethod
     def base_delay(cls) -> float:
-        return float(environ["TYPHOON_MAX_NEXT_IN"]) + float(environ["TYPHOON_MAX_TIMEOUT"])
+        return float(environ["PROTOCOL_MAX_NEXT_IN"]) + float(environ["PROTOCOL_MAX_TIMEOUT"])
 
     def __init__(self, message: str = "Sequence message!", messages: int = 8, print_every: int = 1, start_from: int = 1, quiet: bool = False, client_sequence: Optional[Callable[[float], float]] = None, server_sequence: Optional[Callable[[int], float]] = None) -> None:
         self._messages_limit = messages
@@ -153,11 +156,11 @@ class SequenceConfig:
 
 # Private functions:
 
-def _get_packet_data(packet: Packet) -> bytes:
-    return bytes(packet[UDP].payload)
+def _get_packet_data(packet: Packet, protocol: str) -> bytes:
+    return bytes(packet[UDP if protocol == "typhoon" else TCP].payload)
 
 
-def _decode_packet(packet: bytes, sender: str, client: str, server: str) -> Tuple[int, ColorInfo]:
+def _decode_packet(packet: bytes, sender: str, client: str, server: str) -> ColorInfo:
     flags = packet[0]
     if flags == ProtocolFlag.INIT:
         if sender == client:
@@ -201,31 +204,91 @@ def _decode_packet(packet: bytes, sender: str, client: str, server: str) -> Tupl
             color = ColorGroup.UNKNOWN_SERVER.value
         else:
             color = ColorGroup.UNKNOWN_ANY.value
-    return len(packet), color
+    return color
 
 
 def _get_packet_times(packets: PacketList, start_time: float) -> List[int]:
     return [int((start_time - p.time) * 1000) for p in packets]
 
 
-def _parse_packets(packets: PacketList, client: str, server: str) -> List[Tuple[int, ColorInfo]]:
+def _resolve_packet_init(packet: Packet, client: str, server: str, protocol: str, offset: Optional[int] = None) -> Tuple[bool, Tuple[int, ColorInfo], Optional[Symmetric]]:
+    try:
+        packet_data = _get_packet_data(packet, protocol)
+        offset = len(packet_data) if offset is None else offset
+        key, data = ASYMMETRIC.decrypt(packet_data[:offset])
+        color = _decode_packet(data, packet[IP].src, client, server)
+        cipher = Symmetric(key)
+        success = True
+    except ValueError:
+        cipher = None
+        if packet[IP].src == client:
+            color = ColorGroup.UNKNOWN_CLIENT.value
+        elif packet[IP].src == server:
+            color = ColorGroup.UNKNOWN_SERVER.value
+        else:
+            color = ColorGroup.UNKNOWN_ANY.value
+        success = False
+    return success, (len(packet), color), cipher
+
+
+def _resolve_packet(packet: Packet, cipher: Symmetric, client: str, server: str, protocol: str, offset: Optional[int] = None) -> Tuple[bool, Tuple[int, ColorInfo]]:
+    try:
+        packet_data = _get_packet_data(packet, protocol)
+        offset = len(packet_data) if offset is None else offset
+        data = cipher.decrypt(packet_data[:offset])
+        color = _decode_packet(data, packet[IP].src, client, server)
+        success = True
+    except ValueError:
+        if packet[IP].src == client:
+            color = ColorGroup.UNKNOWN_CLIENT.value
+        elif packet[IP].src == server:
+            color = ColorGroup.UNKNOWN_SERVER.value
+        else:
+            color = ColorGroup.UNKNOWN_ANY.value
+        success = False
+    return success, (len(packet), color), cipher
+
+
+def _parse_packets_port(packets: PacketList, client: str, server: str) -> List[Tuple[int, ColorInfo]]:
+    protocol = "port"
     packet_lengths = list()
+    current_packet = 0
 
     while True:
-        try:
-            key, data = ASYMMETRIC.decrypt(_get_packet_data(packets[0]))
-            packet_lengths += [_decode_packet(data, packets[0][IP].src, client, server)]
-            symmetric = Symmetric(key)
+        success, plen, symmetric = _resolve_packet_init(packets[current_packet], client, server, protocol, PortCore.client_init_header_length)
+        packet_lengths += [plen]
+        if success:
             break
-        except ValueError:
-            packet_lengths += [(len(packets[0]) - ASYMMETRIC.ciphertext_overhead, ColorGroup.UNKNOWN_CLIENT.value)]
+        current_packet += 1
 
-    for packet in packets[1:]:
-        try:
-            data = symmetric.decrypt(_get_packet_data(packet))
-            packet_lengths += [_decode_packet(data, packet[IP].src, client, server)]
-        except ValueError:
-            packet_lengths += [(len(packet) - symmetric.ciphertext_overhead, ColorGroup.UNKNOWN_ANY.value)]
+    while True:
+        success, plen, symmetric = _resolve_packet(packets[current_packet], symmetric, client, server, protocol, PortCore.server_init_header_length)
+        packet_lengths += [plen]
+        if success:
+            break
+        current_packet += 1
+
+    for packet in packets[current_packet:]:
+        success, plen, symmetric = _resolve_packet(packet, symmetric, client, server, protocol, PortCore.any_other_header_length)
+        packet_lengths += [plen]
+    return packet_lengths
+
+
+def _parse_packets_typhoon(packets: PacketList, client: str, server: str) -> List[Tuple[int, ColorInfo]]:
+    protocol = "typhoon"
+    packet_lengths = list()
+    current_packet = 0
+
+    while True:
+        success, plen, symmetric = _resolve_packet_init(packets[current_packet], client, server, protocol)
+        packet_lengths += [plen]
+        if success:
+            break
+        current_packet += 1
+
+    for packet in packets[current_packet:]:
+        success, plen, symmetric = _resolve_packet(packet, symmetric, client, server, protocol)
+        packet_lengths += [plen]
     return packet_lengths
 
 
@@ -351,12 +414,12 @@ def toggle_network_permissions(grant: bool) -> None:
     display(hidden_text_input, submit_button, cancel_button, output)
 
 
-def show_packet_graph(packets: PacketList, client: str, server: str, start_time: Optional[float] = None, config: PlotConf = PlotConf()) -> None:
+def show_packet_graph(packets: PacketList, client: str, server: str, protocol: str, start_time: Optional[float] = None, config: PlotConf = PlotConf()) -> None:
     start_time = time() if start_time is None else start_time
     packets = list({bytes(p): p for p in packets}.values())
 
     timestamps = _get_packet_times(packets, start_time)
-    length_color_pairs = _parse_packets(packets, client, server)
+    length_color_pairs = _parse_packets_typhoon(packets, client, server) if protocol == "typhoon" else _parse_packets_port(packets, client, server)
     legend_elements = [Patch(facecolor=group.value.color, label=group.value.description) for group in ColorGroup]
     if config.expand_time:
         lengths, colors = _bin_pack_packets(length_color_pairs, timestamps, config.spread_mult)
@@ -366,8 +429,12 @@ def show_packet_graph(packets: PacketList, client: str, server: str, start_time:
     plt.figure(figsize=(12, 6))
     plt.bar(range(len(lengths)), lengths, color=colors)
     if config.expand_time:
-        x_ticks_indexes = [t * (config.spread_mult + 1) for t in range(len(timestamps))]
-        plt.xticks(ticks=x_ticks_indexes, labels=[f"-{t}ms" for t in timestamps], rotation=30)
+        if len(timestamps) > config.max_timestamps:
+            step = len(timestamps) / config.max_timestamps
+            x_ticks_values = [timestamps[floor(i * step)] for i in range(config.max_timestamps)]
+        else:
+            x_ticks_values = timestamps
+        plt.xticks(ticks=[i for i in range(len(x_ticks_values))], labels=[f"-{t}ms" for t in x_ticks_values], rotation=30)
     plt.xlabel("Packet Time" if config.expand_time else "Packet Number")
     plt.ylabel("Payload Size (bytes)")
     plt.title("Packet Payload Sizes Over Time")
@@ -376,17 +443,18 @@ def show_packet_graph(packets: PacketList, client: str, server: str, start_time:
     plt.show()
 
 
-def show_sequence_graph(packets: PacketList, client: str, server: str, start_time: Optional[float] = None, config: GraphConf = GraphConf()) -> None:
+def show_sequence_graph(packets: PacketList, client: str, server: str, protocol: str, start_time: Optional[float] = None, config: GraphConf = GraphConf()) -> None:
     start_time = time() if start_time is None else start_time
     packets = list({bytes(p): p for p in packets}.values())
     timestamps = _get_packet_times(packets, start_time)
-    elements = [f"{c.description}, {l} bytes" for l, c in _parse_packets(packets, client, server)]
+    length_color_pairs = _parse_packets_typhoon(packets, client, server) if protocol == "typhoon" else _parse_packets_port(packets, client, server)
+    elements = [f"{c.description}, {l} bytes" for l, c in length_color_pairs]
 
     y_step = 0.5
     positions = {"Client": 1, "Server": 5}
     y_start = y_step * (len(elements) + 1)
 
-    _, ax = plt.subplots(figsize=(10, 5))
+    _, ax = plt.subplots(figsize=(10, 5 if protocol == "typhoon" else 10))
     ax.set_xlim(0, 6)
     ax.set_ylim(0, y_start)
     ax.axis("off")
@@ -397,9 +465,15 @@ def show_sequence_graph(packets: PacketList, client: str, server: str, start_tim
 
     for i, (msg, temp) in enumerate(zip(elements, timestamps)):
         y = y_start - (i + 1) * y_step
-        x_start, x_end = (1, 5) if "from client" in msg else (5, 1)
-        dx = x_end - x_start
-        ax.arrow(x_start, y, dx, 0, head_width=0.1, head_length=0.15, length_includes_head=True, fc="black", ec="black")
+        if "from" in msg:
+            if "from client" in msg:
+                x_start, x_end = 1, 5
+            elif "from server" in msg:
+                x_start, x_end = 5, 1
+            dx = x_end - x_start
+            ax.arrow(x_start, y, dx, 0, head_width=0.1, head_length=0.15, length_includes_head=True, fc="black", ec="black")
+        else:
+            ax.plot([x_start, x_start + dx], [y, y], color="black")
         ax.text((x_start + x_end) / 2, y + 0.05, msg, ha="center", fontsize=10)
         ax.text((x_start + x_end) / 2, y - 0.15, f"-{temp}ms", ha="center", fontsize=10)
 
@@ -410,7 +484,7 @@ def show_sequence_graph(packets: PacketList, client: str, server: str, start_tim
 # Context managers:
 
 @asynccontextmanager
-async def sniff(visual_conf: Optional[VisualConf] = None, tc_config: Optional[str] = None, template_interface: str = "vethest", template_address: str = "192.168.111", effective_interface: str = "lo") -> AsyncIterator[SnifferWrapper]:
+async def sniff(visual_conf: Optional[VisualConf] = None, tc_config: Optional[str] = None, protocol: str = environ["PROTOCOL_NAME"], template_interface: str = "vethest", template_address: str = "192.168.111", effective_interface: str = "lo") -> AsyncIterator[SnifferWrapper]:
     server_interface, client_interface = f"{template_interface}0", f"{template_interface}1"
     server_address, client_address = f"{template_address}.1", f"{template_address}.2"
 
@@ -421,7 +495,8 @@ async def sniff(visual_conf: Optional[VisualConf] = None, tc_config: Optional[st
             _setup_traffic_control(tc_config, effective_interface, client_address, server_address)
 
         started = Event()
-        filter = f"udp and ((src host {server_address} and dst host {client_address}) or (src host {client_address} and dst host {server_address}))"
+        base_protocol = "udp" if protocol == "typhoon" else "tcp"
+        filter = f"{base_protocol} and ((src host {server_address} and dst host {client_address}) or (src host {client_address} and dst host {server_address}))"
         sniffer = AsyncSniffer(iface=effective_interface, filter=filter, store=True, started_callback=lambda: started.set())
         wrapper = SnifferWrapper(sniffer=sniffer, server_address=IPv4Address(server_address), client_address=IPv4Address(client_address))
 
@@ -433,11 +508,11 @@ async def sniff(visual_conf: Optional[VisualConf] = None, tc_config: Optional[st
             await sleep(0.1)
             packets = sniffer.stop(True)
             if isinstance(visual_conf, PlotConf):
-                show_packet_graph(sniffer.results, client_address, server_address, config=visual_conf)
+                show_packet_graph(sniffer.results, client_address, server_address, protocol, config=visual_conf)
             elif isinstance(visual_conf, GraphConf):
-                show_sequence_graph(sniffer.results, client_address, server_address, config=visual_conf)
+                show_sequence_graph(sniffer.results, client_address, server_address, protocol, config=visual_conf)
             else:
-                print(f"Sniffer captured {len(packets)} TYPHOON packets!")
+                print(f"Sniffer captured {len(packets)} packets!")
 
     finally:
         if tc_config is not None:

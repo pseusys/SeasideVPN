@@ -216,39 +216,81 @@ func (p *PortListener) handleInitMessage(peerID uint16, viridianDict *users.Viri
 	return cipher, nil
 }
 
-func (p *PortListener) handleConnection(base context.Context, wg *sync.WaitGroup, conn *net.TCPConn, packetChan chan *betterbuf.Buffer) {
+func (p *PortListener) handleConnection(base context.Context, wg *sync.WaitGroup, listener *net.TCPConn, packetChan chan *betterbuf.Buffer) {
 	defer wg.Done()
-	defer conn.Close()
 
-	err := configurePortSocket(conn)
+	err := configurePortSocket(listener)
 	if err != nil {
-		logrus.Errorf("Error configuring socket: %v", err)
+		logrus.Errorf("Error initial configuring socket: %v", err)
+		listener.Close()
 		return
 	}
-	logrus.Debugf("Connection socket configured for %v", conn.LocalAddr())
+	logrus.Debugf("Initial socket configured for a new connection at %v", listener.LocalAddr())
 
-	peerIP, peerID, err := utils.GetIPAndPortFromAddress(conn.LocalAddr())
+	addr, err := net.ResolveTCPAddr("tcp4", fmt.Sprintf("%v:%d", p.address.IP, 0))
+	if err != nil {
+		logrus.Errorf("Error resolving connection address: %v", err)
+		listener.Close()
+		return
+	}
+	logrus.Debugf("Connection address resolved: %v", addr)
+
+	conn, err := net.ListenTCP("tcp4", addr)
+	if err != nil {
+		logrus.Errorf("Error listening to %v: %v", p.address, err)
+		listener.Close()
+		return
+	}
+	logrus.Debugf("New socket for peer established: %v", conn.Addr())
+
+	peerIP, peerID, err := utils.GetIPAndPortFromAddress(conn.Addr())
 	if err != nil {
 		logrus.Errorf("Error resolving viridian port number: %v", err)
+		listener.Close()
+		conn.Close()
 		return
 	}
-	logrus.Debugf("Connection peer ID established for %v: %d", conn.LocalAddr(), peerID)
+	logrus.Debugf("Connection peer ID established for %v: %d", conn.Addr(), peerID)
 
 	viridianDict, ok := users.FromContext(base)
 	if !ok {
 		logrus.Errorf("viridian dictionary not found in context: %v", base)
+		listener.Close()
+		conn.Close()
 		return
 	}
 
-	cipher, err := p.handleInitMessage(peerID, viridianDict, conn)
+	cipher, err := p.handleInitMessage(peerID, viridianDict, listener)
 	if err != nil {
 		logrus.Errorf("Error handling viridian init message: %v", err)
+		listener.Close()
+		conn.Close()
 		return
 	}
 	defer viridianDict.Delete(peerID, false)
+
+	socket, err := conn.AcceptTCP()
+	if err != nil {
+		logrus.Errorf("Error accepting connection socket: %v", err)
+		listener.Close()
+		conn.Close()
+		return
+	}
+	defer socket.Close()
+	logrus.Debugf("Initial socket accepted for %v", socket.LocalAddr())
+	listener.Close()
+	conn.Close()
+
+	err = configurePortSocket(socket)
+	if err != nil {
+		logrus.Errorf("Error configuring connection socket: %v", err)
+		return
+	}
+	logrus.Debugf("Initial socket configured for %v", listener.LocalAddr())
+
 	logrus.Debugf("Viridian %d initialized", peerID)
 
-	p.servers[peerID] = NewPortServer(cipher, peerID, peerIP, conn)
+	p.servers[peerID] = NewPortServer(cipher, peerID, peerIP, socket)
 	defer delete(p.servers, peerID)
 	logrus.Debugf("Viridian %d server created", peerID)
 

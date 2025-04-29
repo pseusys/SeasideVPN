@@ -1,8 +1,8 @@
-from asyncio import AbstractEventLoop, Future, TimeoutError, sleep, wait_for
+from asyncio import AbstractEventLoop, Future, TimeoutError, wait_for
 from ipaddress import IPv4Address
 from os import read, write
-from socket import socket
-from typing import Callable, Tuple
+from socket import SHUT_RDWR, socket
+from typing import Callable
 
 from sources.utils.misc import MAX_TWO_BYTES_VALUE, create_logger
 
@@ -74,33 +74,6 @@ def os_read(loop: AbstractEventLoop, fd: int, number: int = MAX_TWO_BYTES_VALUE)
     return _async_read_callback(loop, fd, lambda: read(fd, number))
 
 
-def sock_read(loop: AbstractEventLoop, sock: socket, number: int = MAX_TWO_BYTES_VALUE) -> Future[bytes]:
-    """
-    Synchronous socket read wrapper.
-    :param loop: asyncio running event loop.
-    :param sock: socket to read from.
-    :param number: number of bytes to read from socket.
-    :return: future that will be resolved in successful read.
-    """
-    return _async_read_callback(loop, sock.fileno(), lambda: sock.recv(number))
-
-
-def _sock_read_from_callback(sock: socket, number: int) -> Tuple[IPv4Address, int]:
-    bytes, (address, port) = sock.recvfrom(number)
-    return bytes, (IPv4Address(address), port)
-
-
-def sock_read_from(loop: AbstractEventLoop, sock: socket, number: int = MAX_TWO_BYTES_VALUE) -> Future[Tuple[bytes, Tuple[IPv4Address, int]]]:
-    """
-    Synchronous socket read wrapper.
-    :param loop: asyncio running event loop.
-    :param sock: socket to read from.
-    :param number: number of bytes to read from socket.
-    :return: future that will be resolved in successful read.
-    """
-    return _async_read_callback(loop, sock.fileno(), lambda: _sock_read_from_callback(sock, number))
-
-
 def os_write(loop: AbstractEventLoop, fd: int, data: bytes) -> Future[int]:
     """
     Synchronous file write wrapper.
@@ -110,35 +83,6 @@ def os_write(loop: AbstractEventLoop, fd: int, data: bytes) -> Future[int]:
     :return: future that will be resolved in successful read.
     """
     return _async_write_callback(loop, fd, lambda: write(fd, data))
-
-
-def sock_write(loop: AbstractEventLoop, sock: socket, data: bytes) -> Future[int]:
-    """
-    Synchronous socket write wrapper.
-    :param loop: asyncio running event loop.
-    :param sock: socket to write to.
-    :param data: bytes to write to socket.
-    :param address: address to send data to.
-    :return: future that will be resolved in successful write.
-    """
-    return _async_write_callback(loop, sock.fileno(), lambda: sock.send(data))
-
-
-def _sock_write_to_callback(sock: socket, data: bytes, address: Tuple[IPv4Address, int]) -> Tuple[IPv4Address, int]:
-    address, port = address
-    return sock.sendto(data, (str(address), port))
-
-
-def sock_write_to(loop: AbstractEventLoop, sock: socket, data: bytes, address: Tuple[IPv4Address, int]) -> Future[int]:
-    """
-    Synchronous socket write wrapper.
-    :param loop: asyncio running event loop.
-    :param sock: socket to write to.
-    :param data: bytes to write to socket.
-    :param address: address to send data to.
-    :return: future that will be resolved in successful write.
-    """
-    return _async_write_callback(loop, sock.fileno(), lambda: _sock_write_to_callback(sock, data, address))
 
 
 async def sock_connect(loop: AbstractEventLoop, sock: socket, host: IPv4Address, port: int, timeout: float) -> None:
@@ -165,7 +109,23 @@ async def sock_connect(loop: AbstractEventLoop, sock: socket, host: IPv4Address,
 
 
 def sock_close(loop: AbstractEventLoop, sock: socket) -> None:
-    descriptor = sock.fileno()
-    loop.remove_reader(descriptor)
-    loop.remove_writer(descriptor)
-    sock.close()
+    """Attempts to connect to (host, port) using a non-blocking socket.
+
+    Args:
+        host: The destination hostname or IP.
+        port: The destination port.
+        timeout: Maximum time to wait for connection.
+
+    Raises:
+        TimeoutError: If connection does not complete within the timeout.
+        OSError: If the connection fails.
+    """
+
+    try:
+        loop.remove_reader(sock)
+        loop.remove_writer(sock)
+        sock.shutdown(SHUT_RDWR)
+    except OSError:
+        pass
+    finally:
+        sock.close()

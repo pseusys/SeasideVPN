@@ -98,7 +98,7 @@ class PortCore:
             raise ProtocolParseError("Error parsing client INIT messagen header!", e)
         if flags != ProtocolFlag.INIT:
             raise ProtocolParseError(f"Client INIT message flags malformed: {flags:b} != {ProtocolFlag.INIT:b}!")
-        return client_name, key, token_length, tail_length
+        return client_name, bytes(key), token_length, tail_length
 
     # Parse all the other messages, they indeed can be confused with each other:
 
@@ -124,4 +124,4 @@ class PortCore:
             token = cipher.decrypt(packet)
         except BaseException as e:
             raise ProtocolParseError("Error parsing data!", e)
-        return token
+        return bytes(token)

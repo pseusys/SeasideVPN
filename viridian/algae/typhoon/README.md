@@ -130,11 +130,15 @@ This field is 1 byte long and has the following binary meaning (the other bits a
 | `TERM` | `16` |
 
 If an error happens during handshake (e.g. unexpected packet number), the packet is silently ignored.
-If an error occures during initialization process, it is reflected in the special `Return code` field:
+If an error occurs during initialization process, it is reflected in the special `Return code` field:
 
 | Error code | Field value |
 |---|:---:|
 | `Success` | `0` |
+| `Toking parsing error` | `1` |
+| `Registration error` | `2` |
+| `Error in next in parameter` | `3` |
+| `Unknown error` | `4` |
 
 Finally, if any other outer circumstances require any communication party to stop communication, a `TERM` packet should be sent.
 

@@ -1,5 +1,6 @@
-from asyncio import CancelledError, Future, create_task, get_running_loop
+from asyncio import CancelledError, Future, Task, create_task, get_running_loop
 from enum import IntEnum, unique
+from logging import Formatter
 from typing import Any, Awaitable, TypeVar
 
 
@@ -56,13 +57,14 @@ class TyphoonInterrupted(Exception):
 # UTILS:
 
 _T = TypeVar("_T")
+CTX_FMT = Formatter(fmt="%(name)s: %(asctime)s.%(msecs)03d %(levelname)s - %(message)s", datefmt="%H:%M:%S")
 
 
 async def future_wrapper(future: Future[_T]) -> _T:
     return await future
 
 
-def monitor_task(awaitable: Awaitable, task_name: str = "asynchronous task") -> None:
+def monitor_task(awaitable: Awaitable, task_name: str = "asynchronous task") -> Task:
     async def guard_task(awaitable: Awaitable) -> None:
         task = create_task(awaitable)
         try:

@@ -3,19 +3,18 @@ from asyncio import FIRST_COMPLETED, AbstractEventLoop, CancelledError, Event, F
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from ipaddress import IPv4Address
-from logging import WARNING, Formatter
+from logging import WARNING
 from socket import AF_INET, IPPROTO_UDP, SOCK_DGRAM, SOCK_NONBLOCK, socket
 from typing import Any, AsyncIterator, Coroutine, Optional, Tuple, TypeVar, Union
 
-from ..utils.asyncos import sock_connect, sock_read, sock_close, sock_read_from, sock_write, sock_write_to
+from ..utils.asyncos import sock_connect
 from ..utils.crypto import Asymmetric, Symmetric
-from ..utils.misc import MAX_FOUR_BYTES_VALUE, create_logger, random_number
+from ..utils.misc import MAX_FOUR_BYTES_VALUE, MAX_TWO_BYTES_VALUE, create_logger, random_number
 from .socket import ConnectionCallback, ReceiveCallback, SeasideClient, SeasideListener, SeasidePeer, ServeCallback
 from .typhoon_core import TyphoonCore
-from .utils import ProtocolMessageType, ProtocolParseError, ProtocolReturnCode, ProtocolTerminationError, TyphoonInterrupted, TyphoonShutdown, future_wrapper, monitor_task
+from .utils import CTX_FMT, ProtocolMessageType, ProtocolParseError, ProtocolReturnCode, ProtocolTerminationError, TyphoonInterrupted, TyphoonShutdown, future_wrapper, monitor_task
 
 _T = TypeVar("_T")
-_CTX_FMT = Formatter(fmt="%(name)s: %(asctime)s.%(msecs)03d %(levelname)s - %(message)s", datefmt="%H:%M:%S")
 
 
 class _TyphoonPeer(ABC):
@@ -30,6 +29,7 @@ class _TyphoonPeer(ABC):
         self._logger = create_logger(type(self).__name__)
         self._timeout = TyphoonCore._TYPHOON_DEFAULT_TIMEOUT if timeout is None else timeout
         self._max_retries = TyphoonCore._TYPHOON_MAX_RETRIES if retries is None else retries
+        self._background = None
         self._previous_sent = None
         self._previous_next_in = None
         self._previous_packet_number = None
@@ -111,6 +111,8 @@ class _TyphoonPeer(ABC):
                 self._previous_sent = self._get_timestamp()
 
     async def _update_timeout(self, rtt: Optional[float] = None):
+        if self._previous_sent is None:
+            return
         rtt = self.current_rt if rtt is None else rtt
         async with self._locked():
             if self._srtt is None or self._rttvar is None:
@@ -130,7 +132,7 @@ class _TyphoonPeer(ABC):
         while True:
             packet_number, next_in = None, None
             try:
-                packet = await sock_read(loop, self._socket)
+                packet = await loop.sock_recv(self._socket, MAX_TWO_BYTES_VALUE)
             except (OSError, BlockingIOError) as e:
                 self._logger.error(f"Invalid packet read error: {e}")
                 continue
@@ -166,8 +168,8 @@ class _TyphoonPeer(ABC):
             packet = self._build_data_with_hdsk(self._symmetric, packet_number, self._previous_next_in, data)
         except QueueEmpty:
             packet = TyphoonCore.build_any_data(self._symmetric, data)
-        packet_length = await sock_write(get_running_loop(), self._socket, packet)
-        self._logger.info(f"Peer packet sent (from {sock[0]}:{sock[1]}, to {peer[0]}:{peer[1]}): {packet_length} bytes")
+        await get_running_loop().sock_sendall(self._socket, packet)
+        self._logger.info(f"Peer packet sent (from {sock[0]}:{sock[1]}, to {peer[0]}:{peer[1]}): {len(packet)} bytes")
 
     async def _decay_inner(self, initial_next_in: int, initial_packet_number: int, waiter: Optional[Event] = None) -> None:
         current_retries = 0
@@ -190,8 +192,8 @@ class _TyphoonPeer(ABC):
                 await self._regenerate_next_in()
                 self._logger.debug("Forcing handshake...")
                 packet = self._build_hdsk(self._symmetric, packet_number, self._previous_next_in)
-                packet_length = await sock_write(loop, self._socket, packet)
-                self._logger.info(f"Peer packet sent (from {sock[0]}:{sock[1]}, to {peer[0]}:{peer[1]}): {packet_length} bytes")
+                await loop.sock_sendall(self._socket, packet)
+                self._logger.info(f"Peer packet sent (from {sock[0]}:{sock[1]}, to {peer[0]}:{peer[1]}): {len(packet)} bytes")
             except QueueEmpty:
                 self._logger.debug("Shadowriding handshake was already performed!")
             sleeping_timeout = max(self.next_in + self.rtt + self.timeout, 0)
@@ -204,11 +206,13 @@ class _TyphoonPeer(ABC):
     async def close(self):
         self._sleeper.set()
         loop = get_running_loop()
+        if self._background is not None:
+            self._background.cancel()
         if self._symmetric is not None:
             packet = TyphoonCore.build_any_term(self._symmetric)
-            packet_length = await sock_write(loop, self._socket, packet)
-            self._logger.info(f"Termination packet sent: {packet_length} bytes")
-        sock_close(loop, self._socket)
+            await loop.sock_sendall(self._socket, packet)
+            self._logger.info(f"Termination packet sent: {len(packet)} bytes")
+        self._socket.close()
 
     @abstractmethod
     def _parse_peer_message(self, cipher: Symmetric, packet: bytes, expected_packet_number: Optional[int] = None) -> Tuple[ProtocolMessageType, Union[Tuple[int, int, bytes], Tuple[int, int], bytes, None]]:
@@ -243,12 +247,12 @@ class TyphoonClient(_TyphoonPeer, SeasideClient):
 
         if callback is not None:
             self._logger.info("Installing reading data callback and running synchronously...")
-            monitor_task(self._read_cycle(callback))
+            self._background = monitor_task(self._read_cycle(callback))
             await self._run_inner(next_in, waiter)
         else:
             self._logger.info("Running asynchronously, don't forget to call 'read()' often!")
             waiter = Event() if waiter is None else waiter
-            monitor_task(self._run_inner(next_in, waiter))
+            self._background = monitor_task(self._run_inner(next_in, waiter))
             await waiter.wait()
 
     async def _run_inner(self, next_in: int, waiter: Optional[Event] = None) -> None:
@@ -280,11 +284,11 @@ class TyphoonClient(_TyphoonPeer, SeasideClient):
         key, packet = TyphoonCore.build_client_init(self._asymmetric, self._previous_packet_number, self._previous_next_in, self._token)
         while current_retries < self._max_retries:
             self._logger.debug(f"Trying initialization attempt {current_retries} (with packet of length {len(packet)})...")
-            await sock_write(loop, self._socket, packet)
+            await loop.sock_sendall(self._socket, packet)
             sleeping_timeout = (self._previous_next_in + self.rtt * 2 + self.timeout)
             self._logger.debug(f"Waiting for server response for {sleeping_timeout} milliseconds...")
             try:
-                await self._sleep(sock_read(loop, self._socket), sleeping_timeout)
+                await self._sleep(loop.sock_recv(self._socket, MAX_TWO_BYTES_VALUE), sleeping_timeout)
             except TyphoonInterrupted as e:
                 self._logger.info("Connection successful!")
                 response = e._result
@@ -329,7 +333,7 @@ class TyphoonClient(_TyphoonPeer, SeasideClient):
         if log_level is not None:
             self._logger.setLevel(log_level)
             self._logger.handlers[0].setLevel(log_level)
-        self._logger.handlers[0].setFormatter(_CTX_FMT)
+        self._logger.handlers[0].setFormatter(CTX_FMT)
         try:
             waiter = Event()
             connector = monitor_task(self.connect(callback, waiter))
@@ -344,7 +348,7 @@ class TyphoonClient(_TyphoonPeer, SeasideClient):
                 await self.close()
             else:
                 self._sleeper.set()
-                sock_close(get_running_loop(), self._socket)
+                self._socket.close()
 
 
 class TyphoonServer(_TyphoonPeer, SeasidePeer):
@@ -369,7 +373,7 @@ class TyphoonServer(_TyphoonPeer, SeasidePeer):
         
         if callback is not None:
             self._logger.info("Installing reading data callback...")
-            monitor_task(self._read_cycle(callback))
+            self._background = monitor_task(self._read_cycle(callback))
         packet_number, next_in = await self._connect_inner(init_socket, next_in, packet_number, status)
 
         while True:
@@ -408,10 +412,7 @@ class TyphoonServer(_TyphoonPeer, SeasidePeer):
         packet = TyphoonCore.build_server_init(self._symmetric, packet_number, self.user_id, self._previous_next_in, status)
         while current_retries < self._max_retries:
             self._logger.debug(f"Trying finishing user {self.user_id} initialization attempt {current_retries}...")
-            try:
-                await sock_write_to(loop, init_socket, packet, (self._peer_address, self._peer_port))
-            except (OSError, BlockingIOError) as e:
-                self._logger.debug("Invalid packet writing error!")
+            await loop.sock_sendto(init_socket, packet, (self._peer_address, self._peer_port))
 
             sleeping_timeout = (self.next_in + self.rtt * 2 + self.timeout)
             self._logger.debug(f"Initialization message sent to user {self.user_id}, waiting for response for {sleeping_timeout} milliseconds...")
@@ -468,7 +469,7 @@ class TyphoonListener(SeasideListener):
 
         while True:
             try:
-                packet, (client_address, client_port) = await sock_read_from(loop, self._socket)
+                packet, (client_address, client_port) = await loop.sock_recvfrom(self._socket, MAX_TWO_BYTES_VALUE)
             except (OSError, BlockingIOError) as e:
                 self._logger.error(f"Invalid packet read error: {e}")
                 continue
@@ -505,7 +506,7 @@ class TyphoonListener(SeasideListener):
             while len(self._servers) > 0:
                 _, srv = self._servers.popitem()
                 await srv.close()
-        sock_close(get_running_loop(), self._socket)
+        self._socket.close()
 
     async def _serve_and_close(self, server: TyphoonServer, token: bytes, next_in: int, packet_number: int, status: ProtocolReturnCode, data_callback: Optional[ServeCallback], waiter: Event) -> None:
         try:
@@ -521,7 +522,7 @@ class TyphoonListener(SeasideListener):
         if log_level is not None:
             self._logger.setLevel(log_level)
             self._logger.handlers[0].setLevel(log_level)
-        self._logger.handlers[0].setFormatter(_CTX_FMT)
+        self._logger.handlers[0].setFormatter(CTX_FMT)
         try:
             waiter = Event()
             listener = monitor_task(self.listen(connection_callback, data_callback, waiter))

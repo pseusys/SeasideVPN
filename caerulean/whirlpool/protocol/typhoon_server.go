@@ -132,7 +132,7 @@ func (t *TyphoonServer) Read(buffer *betterbuf.Buffer, viridianDict *users.Virid
 		logrus.Debugf("Data packet of length %d from viridian %d", data.Length(), t.peerID)
 	}
 
-	viridian, ok := viridianDict.Get(t.peerID, users.PROTOCOL_PORT)
+	viridian, ok := viridianDict.Get(t.peerID, users.PROTOCOL_TYPHOON)
 	if !ok {
 		return nil, nil, fmt.Errorf("viridian with ID %d not found", t.peerID)
 	}
@@ -169,7 +169,7 @@ func (t *TyphoonServer) Write(data *betterbuf.Buffer, controlChan chan uint32, v
 
 	logrus.Infof("Sending %d bytes to viridian %d (src: %v, dst: %v)", packetLength, t.peerID, packetSource, t.srcAddress)
 
-	viridian, ok := viridianDict.Get(t.peerID, users.PROTOCOL_PORT)
+	viridian, ok := viridianDict.Get(t.peerID, users.PROTOCOL_TYPHOON)
 	if !ok {
 		return fmt.Errorf("viridian with ID %d not found", t.peerID)
 	}

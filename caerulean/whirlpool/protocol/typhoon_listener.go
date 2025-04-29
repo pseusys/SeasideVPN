@@ -171,7 +171,7 @@ func (t *TyphoonListener) handleInitMessage(peerID uint16, viridianDict *users.V
 	}
 	logrus.Debugf("Viridian %d token parsed: name %s, identifier %s", peerID, token.Name, token.Identifier)
 
-	err = viridianDict.Add(peerID, viridianName, token, users.PROTOCOL_PORT)
+	err = viridianDict.Add(peerID, viridianName, token, users.PROTOCOL_TYPHOON)
 	if err != nil {
 		return cipher, REGISTRATION_ERROR, packetNumber, nextIn, fmt.Errorf("error registering viridian: %v", err)
 	}

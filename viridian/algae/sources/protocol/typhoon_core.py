@@ -122,12 +122,12 @@ class TyphoonCore:
             header_length = calcsize(cls._CLIENT_INIT_HEADER)
             flags, packet_number, client_name, next_in, tail_length = unpack(cls._CLIENT_INIT_HEADER, data[:header_length])
             client_name = client_name.decode("utf8").rstrip("\0")
-            token = bytes(data[header_length:-tail_length])
+            token = data[header_length:-tail_length]
         except BaseException as e:
             raise ProtocolParseError("Error parsing client INIT message!", e)
         if flags != ProtocolFlag.INIT:
             raise ProtocolParseError(f"Client INIT message flags malformed: {flags:b} != {ProtocolFlag.INIT:b}!")
-        return client_name, packet_number, next_in, key, token
+        return client_name, packet_number, next_in, bytes(key), bytes(token)
 
     # Parse all the other messages, they indeed can be confused with each other:
 
@@ -178,7 +178,7 @@ class TyphoonCore:
         if len(data) == 0:
             return packet_number, next_in
         else:
-            return packet_number, next_in, data
+            return packet_number, next_in, bytes(data)
 
     @classmethod
     def _parse_server_hdsk(cls, data: bytes, expected_packet_number: int) -> Union[Tuple[int, bytes], int]:
@@ -195,4 +195,4 @@ class TyphoonCore:
             data = data[header_length:-tail_length]
         except BaseException as e:
             raise ProtocolParseError("Error parsing any DATA message!", e)
-        return data
+        return bytes(data)
