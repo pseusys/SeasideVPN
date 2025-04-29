@@ -257,16 +257,16 @@ def _parse_packets_port(packets: PacketList, client: str, server: str) -> List[T
     while True:
         success, plen, symmetric = _resolve_packet_init(packets[current_packet], client, server, protocol, PortCore.client_init_header_length)
         packet_lengths += [plen]
+        current_packet += 1
         if success:
             break
-        current_packet += 1
 
     while True:
         success, plen, symmetric = _resolve_packet(packets[current_packet], symmetric, client, server, protocol, PortCore.server_init_header_length)
         packet_lengths += [plen]
+        current_packet += 1
         if success:
             break
-        current_packet += 1
 
     for packet in packets[current_packet:]:
         success, plen, symmetric = _resolve_packet(packet, symmetric, client, server, protocol, PortCore.any_other_header_length)
@@ -282,9 +282,9 @@ def _parse_packets_typhoon(packets: PacketList, client: str, server: str) -> Lis
     while True:
         success, plen, symmetric = _resolve_packet_init(packets[current_packet], client, server, protocol)
         packet_lengths += [plen]
+        current_packet += 1
         if success:
             break
-        current_packet += 1
 
     for packet in packets[current_packet:]:
         success, plen, symmetric = _resolve_packet(packet, symmetric, client, server, protocol)
