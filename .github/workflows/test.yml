@@ -26,7 +26,7 @@ jobs:
         working-directory: viridian/algae
         run: |
           pip3 install poetry
-          poetry install --extras "test"
+          poetry install --extras "setup test"
 
       - name: Test Viridian Algae (unit) 🧪
         working-directory: viridian/algae
