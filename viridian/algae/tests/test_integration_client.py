@@ -1,4 +1,4 @@
-from asyncio import StreamReader, StreamWriter, TimeoutError, open_connection, wait_for
+from asyncio import StreamReader, StreamWriter, open_connection, wait_for
 from base64 import b64decode, b64encode
 from logging import getLogger
 from os import environ
@@ -48,7 +48,7 @@ async def is_tcp_available(address: Optional[str] = None, port: int = 853) -> bo
         await writer.wait_closed()
         logger.debug(f"DNS-over-TCP/TLS connection successful: {response}")
         return True
-    except BaseException as e:
+    except Exception as e:
         logger.debug(f"DNS-over-TCP/TLS connection error: {e}")
         return False
 

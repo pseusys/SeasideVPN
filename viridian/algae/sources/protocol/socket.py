@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from asyncio import Future
-from typing import Callable, Optional
+from typing import Callable, Dict, Optional
 
 from .utils import ProtocolReturnCode
 
@@ -11,7 +11,7 @@ ConnectionCallback = Callable[[str, bytes], Future[ProtocolReturnCode]]
 
 class SeasidePeer(ABC):
     @abstractmethod
-    async def read(self) -> bytes:
+    async def read(self) -> Optional[bytes]:
         raise NotImplementedError
 
     @abstractmethod

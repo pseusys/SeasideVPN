@@ -71,33 +71,44 @@ func (dict *ViridianDict) MaxConnected() uint16 {
 // Should be applied for ViridianDict object.
 // Accept context, token, viridian address, gateway and port.
 // Return viridian number and nil if added successfully and nil and error otherwise.
-func (dict *ViridianDict) Add(viridianID uint16, viridianDevice *string, token *generated.UserToken, protocol ProtocolType) error {
+func (dict *ViridianDict) Add(getViridianID func() (any, uint16, error), viridianDevice *string, token *generated.UserToken, protocol ProtocolType) (any, uint16, error) {
 	dict.mutex.Lock()
 	defer dict.mutex.Unlock()
 
-	// Check if there are slots available
-	if !token.IsAdmin && len(dict.entries) >= int(dict.maxViridians) {
-		return fmt.Errorf("can not connect any more viridians, connected: %d", len(dict.entries))
-	} else if len(dict.entries) == int(dict.maxViridians+dict.maxOverhead) {
-		return fmt.Errorf("can not connect any more admins, connected: %d", len(dict.entries))
-	}
-
+	// Check if there are slots available (or if viridian is already connected)
 	viridian, ok := dict.uniques[token.Identifier]
 	if ok {
 		viridian.stop()
 		delete(dict.entries, viridian.peerID)
+	} else if !token.IsAdmin && len(dict.entries) >= int(dict.maxViridians) {
+		return nil, 0, fmt.Errorf("can not connect any more viridians, connected: %d", len(dict.entries))
+	} else if len(dict.entries) == int(dict.maxViridians+dict.maxOverhead) {
+		return nil, 0, fmt.Errorf("can not connect any more admins, connected: %d", len(dict.entries))
 	}
 
-	// If found, setup deletion timer and create viridian object
-	var deletionTimer *time.Timer
+	// If found, resolve deletion timeout
+	var deletionTimeout time.Duration
 	if !token.IsAdmin {
 		now := time.Now()
 		timeout := token.Subscription.AsTime()
 		if timeout.Before(now) {
-			return fmt.Errorf("viridian timeout already expired (%d < %d)", timeout.Unix(), now.Unix())
-		} else {
-			deletionTimer = time.AfterFunc(timeout.Sub(now), func() { dict.Delete(viridianID, true) })
+			return nil, 0, fmt.Errorf("viridian timeout already expired (%d < %d)", timeout.Unix(), now.Unix())
 		}
+		deletionTimeout = timeout.Sub(now)
+	} else {
+		deletionTimeout = time.Duration(0)
+	}
+
+	// If viridian is to be added, allocate socket and find ID
+	viridianHandle, viridianID, err := getViridianID()
+	if err != nil {
+		return nil, 0, fmt.Errorf("viridian handle couldn't be created: %v", err)
+	}
+
+	// Finally set up deletion timer
+	var deletionTimer *time.Timer
+	if !token.IsAdmin {
+		deletionTimer = time.AfterFunc(deletionTimeout, func() { dict.Delete(viridianID, true) })
 	} else {
 		deletionTimer = nil
 	}
@@ -115,7 +126,7 @@ func (dict *ViridianDict) Add(viridianID uint16, viridianDevice *string, token *
 
 	dict.entries[viridianID] = viridian
 	dict.uniques[token.Identifier] = viridian
-	return nil
+	return viridianHandle, viridianID, nil
 }
 
 // Get viridian from the dictionary by ID.

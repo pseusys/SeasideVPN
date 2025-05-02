@@ -43,7 +43,7 @@ type ProtocolReturnCode byte
 const (
 	SUCCESS_CODE       ProtocolReturnCode = 0
 	TOKEN_PARSE_ERROR  ProtocolReturnCode = 1
-	REGISTRATION_ERROR ProtocolReturnCode = 2
-	NEXT_IN_ERROR      ProtocolReturnCode = 3
+	CONNECTION_ERROR   ProtocolReturnCode = 2
+	REGISTRATION_ERROR ProtocolReturnCode = 3
 	UNKNOWN_ERROR      ProtocolReturnCode = 4
 )

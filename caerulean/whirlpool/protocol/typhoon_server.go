@@ -33,7 +33,7 @@ type TyphoonServer struct {
 	listener       *net.UDPConn
 	socket         *net.UDPConn
 	defaultTimeout uint32
-	maxRetries     uint
+	maxRetries     uint32
 	srtt           uint32
 	rttvar         uint32
 	previousSent   uint32
@@ -93,13 +93,11 @@ func (t *TyphoonServer) updateTimeout(rtt uint32) {
 	}
 }
 
-func (t *TyphoonServer) regenerateNextIn(multiplier float64, rememberSent bool) {
+func (t *TyphoonServer) regenerateNextIn(rememberSent bool) {
 	t.coreMutex.Lock()
 	defer t.coreMutex.Unlock()
 
-	maxTimeout := int(max(t.GetTimeout(), TYPHOON_MIN_NEXT_IN))
-	t.previousNextIn = uint32(float64(utils.RandomInteger(maxTimeout, int(TYPHOON_MAX_NEXT_IN))) * multiplier)
-
+	t.previousNextIn = uint32(utils.RandomInteger(int(TYPHOON_MIN_NEXT_IN), int(TYPHOON_MAX_NEXT_IN)))
 	if rememberSent {
 		t.previousSent = getTimestamp()
 	}
@@ -186,7 +184,7 @@ func (t *TyphoonServer) Write(data *betterbuf.Buffer, controlChan chan uint32, v
 	select {
 	case packetNumber, ok := <-controlChan:
 		if ok {
-			t.regenerateNextIn(TYPHOON_NORMAL_NEXT_IN, true)
+			t.regenerateNextIn(true)
 			logrus.Debugf("Shadowriding HDSK viridian %d packet with number: %d", t.peerID, packetNumber)
 			encrypted, err = buildTyphoonServerHDSKData(t.cipher, packetNumber, t.previousNextIn, data)
 		} else {
@@ -318,30 +316,30 @@ func (t *TyphoonServer) connectInner(cons *TyphoonConsistencyPart, decayChan cha
 	logrus.Debugf("Continuing to viridian %d connection in %d milliseconds...", t.peerID, cons.nextIn)
 	time.Sleep(time.Duration(cons.nextIn) * time.Millisecond)
 
-	t.regenerateNextIn(TYPHOON_INITIAL_NEXT_IN, false)
+	t.regenerateNextIn(false)
 	packet, err := buildTyphoonServerInit(t.cipher, t.peerID, cons.packetNumber, t.previousNextIn, SUCCESS_CODE)
 	if err != nil {
 		return nil, fmt.Errorf("error building init packet: %v", err)
 	}
 	defer PacketPool.Put(packet)
 
-	for i := range int(t.maxRetries) {
-		logrus.Debugf("Connection to viridian %d attempt %d...", t.peerID, i)
-		_, err = t.listener.WriteTo(packet.Slice(), t.socket.RemoteAddr())
-		if err != nil {
-			return nil, fmt.Errorf("error writing init packet: %v", err)
-		}
+	logrus.Debugf("Connection to viridian %d...", t.peerID)
+	_, err = t.listener.WriteTo(packet.Slice(), t.socket.RemoteAddr())
+	if err != nil {
+		return nil, fmt.Errorf("error writing init packet: %v", err)
+	}
 
-		select {
-		case cons, ok := <-decayChan:
-			if ok {
-				return cons, nil
-			} else {
-				return nil, errors.New("error receiving from decay channel")
-			}
-		case <-time.After(time.Duration(t.previousNextIn+t.GetRTT()*2+t.GetTimeout()) * time.Millisecond):
-			// continue connect
+	sleepTimeout := (t.previousNextIn + t.GetTimeout()) * t.maxRetries
+	logrus.Debugf("Waiting for connection from viridian %d for %d milliseconds...", t.peerID, sleepTimeout)
+	select {
+	case cons, ok := <-decayChan:
+		if ok {
+			return cons, nil
+		} else {
+			return nil, errors.New("error receiving from decay channel")
 		}
+	case <-time.After(time.Duration(sleepTimeout) * time.Millisecond):
+		// continue connect
 	}
 
 	return nil, fmt.Errorf("error connecting to viridian: %d", t.peerID)
@@ -362,53 +360,51 @@ func (t *TyphoonServer) decayInner(cons *TyphoonConsistencyPart, controlChan cha
 		// continue decay
 	}
 
-	for i := range int(t.maxRetries) {
-		logrus.Debugf("Trying viridian %d handshake attempt %d...", t.peerID, i)
-		controlChan <- cons.packetNumber
+	logrus.Debugf("Trying viridian %d handshake...", t.peerID)
+	controlChan <- cons.packetNumber
 
-		sleepTimeout = t.GetRTT() * 2
-		logrus.Debugf("Shadowriding timeout for viridian %d for %d milliseconds...", t.peerID, sleepTimeout)
-		select {
-		case cons, ok := <-decayChan:
-			if ok {
-				return cons, nil
-			} else {
-				return nil, errors.New("error receiving from decay channel")
-			}
-		case <-time.After(time.Duration(sleepTimeout) * time.Millisecond):
-			// continue decay
-		}
-
-		select {
-		case packetNumber, ok := <-controlChan:
-			if !ok {
-				return nil, errors.New("error receiving from control channel")
-			}
-			logrus.Debugf("Shadowriding for viridian %d was not successful, sending special HDSK message", t.peerID)
-
-			t.regenerateNextIn(TYPHOON_NORMAL_NEXT_IN, true)
-			packet, err := buildTyphoonServerHDSK(t.cipher, packetNumber, t.previousNextIn)
-			if err != nil {
-				return nil, fmt.Errorf("error building HDSK packet: %v", err)
-			}
-
-			_, err = t.socket.Write(packet.Slice())
-			PacketPool.Put(packet)
-			if err != nil {
-				return nil, fmt.Errorf("error writing HDSK packet: %v", err)
-			}
-		default:
-			// continue decay
-		}
-
-		sleepTimeout = max(t.previousNextIn+t.GetRTT()+t.GetTimeout(), 0)
-		logrus.Debugf("Waiting for new handshake from viridian %d for %d milliseconds...", t.peerID, sleepTimeout)
-		select {
-		case cons = <-decayChan:
+	sleepTimeout = t.GetRTT() * 2
+	logrus.Debugf("Shadowriding timeout for viridian %d for %d milliseconds...", t.peerID, sleepTimeout)
+	select {
+	case cons, ok := <-decayChan:
+		if ok {
 			return cons, nil
-		case <-time.After(time.Duration(sleepTimeout) * time.Millisecond):
-			// continue decay
+		} else {
+			return nil, errors.New("error receiving from decay channel")
 		}
+	case <-time.After(time.Duration(sleepTimeout) * time.Millisecond):
+		// continue decay
+	}
+
+	select {
+	case packetNumber, ok := <-controlChan:
+		if !ok {
+			return nil, errors.New("error receiving from control channel")
+		}
+		logrus.Debugf("Shadowriding for viridian %d was not successful, sending special HDSK message", t.peerID)
+
+		t.regenerateNextIn(true)
+		packet, err := buildTyphoonServerHDSK(t.cipher, packetNumber, t.previousNextIn)
+		if err != nil {
+			return nil, fmt.Errorf("error building HDSK packet: %v", err)
+		}
+
+		_, err = t.socket.Write(packet.Slice())
+		PacketPool.Put(packet)
+		if err != nil {
+			return nil, fmt.Errorf("error writing HDSK packet: %v", err)
+		}
+	default:
+		// continue decay
+	}
+
+	sleepTimeout = (t.previousNextIn + t.GetTimeout()) * t.maxRetries
+	logrus.Debugf("Waiting for new handshake from viridian %d for %d milliseconds...", t.peerID, sleepTimeout)
+	select {
+	case cons = <-decayChan:
+		return cons, nil
+	case <-time.After(time.Duration(sleepTimeout) * time.Millisecond):
+		// continue decay
 	}
 
 	return nil, fmt.Errorf("connection to viridian timeout: %d", t.peerID)

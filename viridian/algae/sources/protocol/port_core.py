@@ -121,7 +121,7 @@ class PortCore:
     @classmethod
     def parse_any_any_data(cls, cipher: Symmetric, packet: bytes) -> bytes:
         try:
-            token = cipher.decrypt(packet)
+            data = cipher.decrypt(packet)
         except BaseException as e:
             raise ProtocolParseError("Error parsing data!", e)
-        return bytes(token)
+        return bytes(data)

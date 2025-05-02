@@ -105,7 +105,7 @@ class TyphoonCore:
             data = cipher.decrypt(packet)
             header_length = calcsize(cls._SERVER_INIT_HEADER)
             flags, packet_number, init_status, user_id, next_in, _ = unpack(cls._SERVER_INIT_HEADER, data[:header_length])
-        except BaseException as e:
+        except Exception as e:
             raise ProtocolParseError("Error parsing server INIT message!", e)
         if flags != ProtocolFlag.INIT:
             raise ProtocolParseError(f"Server INIT message flags malformed: {flags:b} != {ProtocolFlag.INIT:b}!")
@@ -113,6 +113,8 @@ class TyphoonCore:
             raise ProtocolInitializationError(f"Initialization failed with status {init_status}")
         if packet_number != expected_packet_number:
             raise ProtocolParseError(f"Server INIT response packet ID doesn't match: {packet_number} != {expected_packet_number}!")
+        if not TyphoonCore._TYPHOON_MIN_NEXT_IN <= next_in <= TyphoonCore._TYPHOON_MAX_NEXT_IN:
+            raise ProtocolParseError(f"Incorrect next in value in server init: {TyphoonCore._TYPHOON_MIN_NEXT_IN} < {next_in} < {TyphoonCore._TYPHOON_MAX_NEXT_IN}")
         return user_id, next_in
 
     @classmethod
@@ -123,10 +125,12 @@ class TyphoonCore:
             flags, packet_number, client_name, next_in, tail_length = unpack(cls._CLIENT_INIT_HEADER, data[:header_length])
             client_name = client_name.decode("utf8").rstrip("\0")
             token = data[header_length:-tail_length]
-        except BaseException as e:
+        except Exception as e:
             raise ProtocolParseError("Error parsing client INIT message!", e)
         if flags != ProtocolFlag.INIT:
             raise ProtocolParseError(f"Client INIT message flags malformed: {flags:b} != {ProtocolFlag.INIT:b}!")
+        if not TyphoonCore._TYPHOON_INITIAL_MIN_NEXT_IN <= next_in <= TyphoonCore._TYPHOON_INITIAL_MAX_NEXT_IN:
+            raise ProtocolParseError(f"Incorrect next in value in user init: {TyphoonCore._TYPHOON_INITIAL_MIN_NEXT_IN} < {next_in} < {TyphoonCore._TYPHOON_INITIAL_MAX_NEXT_IN}")
         return client_name, packet_number, next_in, bytes(key), bytes(token)
 
     # Parse all the other messages, they indeed can be confused with each other:
@@ -146,7 +150,7 @@ class TyphoonCore:
                 return ProtocolMessageType.TERMINATION, None
             else:
                 raise ProtocolParseError(f"Server message flags malformed: {flags:b}!")
-        except BaseException as e:
+        except Exception as e:
             raise ProtocolParseError("Error parsing server message!", e)
 
     @classmethod
@@ -164,7 +168,7 @@ class TyphoonCore:
                 return ProtocolMessageType.TERMINATION, None
             else:
                 raise ProtocolParseError(f"Client message flags malformed: {flags:b}!")
-        except BaseException as e:
+        except Exception as e:
             raise ProtocolParseError("Error parsing client message!", e)
 
     @classmethod
@@ -173,8 +177,10 @@ class TyphoonCore:
             header_length = calcsize(cls._ANY_HDSK_HEADER)
             _, packet_number, next_in, tail_length = unpack(cls._ANY_HDSK_HEADER, data[:header_length])
             data = data[header_length:-tail_length]
-        except BaseException as e:
+        except Exception as e:
             raise ProtocolParseError("Error parsing a HANDSHAKE message!", e)
+        if not TyphoonCore._TYPHOON_MIN_NEXT_IN <= next_in <= TyphoonCore._TYPHOON_MAX_NEXT_IN:
+            raise ProtocolParseError(f"Incorrect next in value: {TyphoonCore._TYPHOON_MIN_NEXT_IN} < {next_in} < {TyphoonCore._TYPHOON_MAX_NEXT_IN}")
         if len(data) == 0:
             return packet_number, next_in
         else:
@@ -193,6 +199,6 @@ class TyphoonCore:
             header_length = calcsize(cls._ANY_OTHER_HEADER)
             _, tail_length = unpack(cls._ANY_OTHER_HEADER, data[:header_length])
             data = data[header_length:-tail_length]
-        except BaseException as e:
+        except Exception as e:
             raise ProtocolParseError("Error parsing any DATA message!", e)
         return bytes(data)

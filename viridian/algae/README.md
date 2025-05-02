@@ -221,11 +221,3 @@ Four test sets are included:
 5. `domain`: Smoke test for DNS website resolving.
 6. `smoke`: All of the `local`, `remote` and `domain` test sets.
 7. `all`: All the tests specified.
-
-
-
-# TODO!!
-1. Add poetry installation requirements to whirlpool and reef
-2. Add group configuration descriptions here
-3. Change setup struct??
-4. Use poetry in scripts (again)?

@@ -120,16 +120,16 @@ func (t *TyphoonListener) Write(packet *betterbuf.Buffer, peerID uint16) bool {
 	return ok
 }
 
-func (t *TyphoonListener) returnWithErrorCode(conn *net.UDPConn, addr *net.UDPAddr, cipher *crypto.Symmetric, peerID uint16, packetNumber uint32, code *ProtocolReturnCode) {
+func (t *TyphoonListener) returnWithErrorCode(conn *net.UDPConn, addr *net.UDPAddr, cipher *crypto.Symmetric, packetNumber uint32, code *ProtocolReturnCode) {
 	var returnCode ProtocolReturnCode
 	if code == nil {
 		returnCode = UNKNOWN_ERROR
 	} else {
 		returnCode = *code
 	}
-	logrus.Debugf("Finishing viridian %d initialization with error code %d", peerID, returnCode)
+	logrus.Debugf("Finishing viridian at %v initialization with error code %d", addr, returnCode)
 
-	packet, err := buildTyphoonServerInit(cipher, peerID, packetNumber, TYPHOON_NEVER_NEXT_IN, returnCode)
+	packet, err := buildTyphoonServerInit(cipher, 0, packetNumber, TYPHOON_NEVER_NEXT_IN, returnCode)
 	defer PacketPool.Put(packet)
 	if err != nil {
 		logrus.Errorf("Error building viridian init response: %v", err)
@@ -143,59 +143,79 @@ func (t *TyphoonListener) returnWithErrorCode(conn *net.UDPConn, addr *net.UDPAd
 	}
 }
 
-func (t *TyphoonListener) handleInitMessage(peerID uint16, viridianDict *users.ViridianDict, buffer *betterbuf.Buffer) (*crypto.Symmetric, ProtocolReturnCode, *uint32, *uint32, error) {
-	logrus.Debugf("Viridian %d packet received: %d bytes", peerID, buffer.Length())
+func createTyphoonViridianHandle(address *net.UDPAddr) (any, uint16, error) {
+	conn, err := net.DialUDP("udp4", nil, address)
+	if err != nil {
+		return nil, 0, fmt.Errorf("error allocating port: %v", err)
+	}
+	logrus.Debugf("Connection peer ID established for %v - %v", conn.LocalAddr(), conn.RemoteAddr())
+
+	_, peerID, err := utils.GetIPAndPortFromAddress(conn.LocalAddr())
+	if err != nil {
+		conn.Close()
+		return nil, 0, fmt.Errorf("error retrieving port information: %v", err)
+	}
+	logrus.Debugf("Connection peer ID determined for %v: %d", conn.LocalAddr(), peerID)
+
+	return conn, peerID, nil
+}
+
+func (t *TyphoonListener) handleInitMessage(viridianDict *users.ViridianDict, address *net.UDPAddr, buffer *betterbuf.Buffer) (*net.UDPConn, *net.IP, *uint16, *crypto.Symmetric, ProtocolReturnCode, *uint32, *uint32, error) {
+	peerIP, peerPort, err := utils.GetIPAndPortFromAddress(address)
+	if err != nil {
+		return nil, nil, nil, nil, UNKNOWN_ERROR, nil, nil, fmt.Errorf("error resolving viridian port number: %v", err)
+	}
+	logrus.Debugf("Viridian %v:%v packet received: %d bytes", peerIP, peerPort, buffer.Length())
 
 	viridianName, key, encryptedToken, packetNumber, nextIn, err := parseTyphoonClientInit(crypto.PRIVATE_KEY, buffer)
 	if err != nil {
-		return nil, UNKNOWN_ERROR, nil, nil, fmt.Errorf("error parsing viridian packet: %v", err)
+		return nil, nil, nil, nil, UNKNOWN_ERROR, nil, nil, fmt.Errorf("error parsing viridian packet: %v", err)
 	}
-	logrus.Debugf("Viridian %d packet received with info: name %s, key %v, packet number %d, next in %d, encrypted token %v", peerID, *viridianName, key, *packetNumber, *nextIn, encryptedToken)
+	logrus.Debugf("Viridian %v:%v packet received with info: name %s, key %v, packet number %d, next in %d, encrypted token %v", peerIP, peerPort, *viridianName, key, *packetNumber, *nextIn, encryptedToken)
 
 	cipher, err := crypto.NewSymmetric(key)
 	if err != nil {
-		return nil, UNKNOWN_ERROR, packetNumber, nextIn, fmt.Errorf("error parsing viridian symmetric key: %v", err)
+		return nil, nil, nil, nil, UNKNOWN_ERROR, packetNumber, nextIn, fmt.Errorf("error parsing viridian symmetric key: %v", err)
 	}
-	logrus.Debugf("Viridian %d cipher created", peerID)
+	logrus.Debugf("Viridian %v:%v cipher created", peerIP, peerPort)
 
 	tokenBytes, err := crypto.SERVER_KEY.Decrypt(encryptedToken, nil)
 	if err != nil {
-		return cipher, TOKEN_PARSE_ERROR, packetNumber, nextIn, fmt.Errorf("error decrypting viridian token: %v", err)
+		return nil, nil, nil, cipher, TOKEN_PARSE_ERROR, packetNumber, nextIn, fmt.Errorf("error decrypting viridian token: %v", err)
 	}
-	logrus.Debugf("Viridian %d token decrypted: %v", peerID, tokenBytes)
+	logrus.Debugf("Viridian %v:%v token decrypted: %v", peerIP, peerPort, tokenBytes)
 
 	token := new(generated.UserToken)
 	err = proto.Unmarshal(tokenBytes.Slice(), token)
 	if err != nil {
-		return cipher, TOKEN_PARSE_ERROR, packetNumber, nextIn, fmt.Errorf("error unmarshaling viridian token: %v", err)
+		return nil, nil, nil, cipher, TOKEN_PARSE_ERROR, packetNumber, nextIn, fmt.Errorf("error unmarshaling viridian token: %v", err)
 	}
-	logrus.Debugf("Viridian %d token parsed: name %s, identifier %s", peerID, token.Name, token.Identifier)
+	logrus.Debugf("Viridian %v:%v token parsed: name %s, identifier %s", peerIP, peerPort, token.Name, token.Identifier)
 
-	err = viridianDict.Add(peerID, viridianName, token, users.PROTOCOL_TYPHOON)
+	handle, peerID, err := viridianDict.Add(func() (any, uint16, error) { return createTyphoonViridianHandle(address) }, viridianName, token, users.PROTOCOL_TYPHOON)
 	if err != nil {
-		return cipher, REGISTRATION_ERROR, packetNumber, nextIn, fmt.Errorf("error registering viridian: %v", err)
+		return nil, nil, nil, cipher, REGISTRATION_ERROR, packetNumber, nextIn, fmt.Errorf("error registering viridian: %v", err)
 	}
 	logrus.Debugf("Viridian %d added to viridian dictionary", peerID)
 
-	return cipher, SUCCESS_CODE, packetNumber, nextIn, nil
+	conn, ok := handle.(*net.UDPConn)
+	if !ok {
+		return nil, nil, nil, cipher, REGISTRATION_ERROR, packetNumber, nextIn, fmt.Errorf("error casting user connection: %v", handle)
+	}
+	logrus.Debugf("Connection peer ID established for %v:%v: %d", peerIP, peerPort, peerID)
+
+	connIP, _, err := utils.GetIPAndPortFromAddress(conn.RemoteAddr())
+	if err != nil {
+		conn.Close()
+		return nil, nil, nil, cipher, REGISTRATION_ERROR, packetNumber, nextIn, fmt.Errorf("error retrieving IP information: %v", err)
+	}
+	logrus.Debugf("Connection peer initial source IP determined for %v: %v", conn.RemoteAddr(), connIP)
+
+	return conn, &connIP, &peerID, cipher, SUCCESS_CODE, packetNumber, nextIn, nil
 }
 
 func (t *TyphoonListener) handleConnection(base context.Context, wg *sync.WaitGroup, listener *net.UDPConn, cwp *UDPConnWithPacket, packetChan chan *betterbuf.Buffer) {
 	defer wg.Done()
-
-	conn, err := net.DialUDP("udp4", nil, cwp.addr)
-	if err != nil {
-		logrus.Errorf("Error listening to %v: %v", cwp.addr, err)
-		return
-	}
-	defer conn.Close()
-
-	peerIP, peerID, err := utils.GetIPAndPortFromAddress(conn.LocalAddr())
-	if err != nil {
-		logrus.Errorf("Error resolving viridian port number: %v", err)
-		return
-	}
-	logrus.Debugf("Connection peer ID established for %v: %d", conn.LocalAddr(), peerID)
 
 	viridianDict, ok := users.FromContext(base)
 	if !ok {
@@ -203,22 +223,23 @@ func (t *TyphoonListener) handleConnection(base context.Context, wg *sync.WaitGr
 		return
 	}
 
-	cipher, code, packetNumber, nextIn, err := t.handleInitMessage(peerID, viridianDict, cwp.buff)
+	conn, peerIP, peerID, cipher, code, packetNumber, nextIn, err := t.handleInitMessage(viridianDict, cwp.addr, cwp.buff)
 	if err != nil {
 		logrus.Errorf("Error handling viridian init message (%v): %v", code, err)
 		if code != UNKNOWN_ERROR {
 			time.Sleep(time.Duration(*nextIn) * time.Millisecond)
-			t.returnWithErrorCode(listener, cwp.addr, cipher, peerID, *packetNumber, &code)
+			t.returnWithErrorCode(listener, cwp.addr, cipher, *packetNumber, &code)
 		}
 		return
 	}
-	defer viridianDict.Delete(peerID, false)
-	logrus.Debugf("Viridian %d initialized", peerID)
+	defer conn.Close()
+	defer viridianDict.Delete(*peerID, false)
+	logrus.Debugf("Viridian %d initialized", *peerID)
 
-	t.servers[peerID] = NewTyphoonServer(cipher, peerID, peerIP, listener, conn)
-	defer delete(t.servers, peerID)
-	logrus.Debugf("Viridian %d server created", peerID)
+	t.servers[*peerID] = NewTyphoonServer(cipher, *peerID, *peerIP, listener, conn)
+	defer delete(t.servers, *peerID)
+	logrus.Debugf("Viridian %d server created", *peerID)
 
-	defer t.servers[peerID].Terminate()
-	t.servers[peerID].Serve(base, packetChan, *packetNumber, *nextIn)
+	defer t.servers[*peerID].Terminate()
+	t.servers[*peerID].Serve(base, packetChan, *packetNumber, *nextIn)
 }

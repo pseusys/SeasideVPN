@@ -101,7 +101,7 @@ class GraphConf(VisualConf):
 class SequenceConfig:
     @classmethod
     def base_delay(cls) -> float:
-        return float(environ["PROTOCOL_MAX_NEXT_IN"]) + float(environ["PROTOCOL_MAX_TIMEOUT"])
+        return float(environ["PROTOCOL_MAX_NEXT_IN"]) * 1.5
 
     def __init__(self, message: str = "Sequence message!", messages: int = 8, print_every: int = 1, start_from: int = 1, quiet: bool = False, client_sequence: Optional[Callable[[float], float]] = None, server_sequence: Optional[Callable[[int], float]] = None) -> None:
         self._messages_limit = messages
@@ -417,6 +417,9 @@ def toggle_network_permissions(grant: bool) -> None:
 def show_packet_graph(packets: PacketList, client: str, server: str, protocol: str, start_time: Optional[float] = None, config: PlotConf = PlotConf()) -> None:
     start_time = time() if start_time is None else start_time
     packets = list({bytes(p): p for p in packets}.values())
+    if len(packets) == 0:
+        print("No packets captured, can't draw packet graph!")
+        return
 
     timestamps = _get_packet_times(packets, start_time)
     length_color_pairs = _parse_packets_typhoon(packets, client, server) if protocol == "typhoon" else _parse_packets_port(packets, client, server)
@@ -430,11 +433,17 @@ def show_packet_graph(packets: PacketList, client: str, server: str, protocol: s
     plt.bar(range(len(lengths)), lengths, color=colors)
     if config.expand_time:
         if len(timestamps) > config.max_timestamps:
-            step = len(timestamps) / config.max_timestamps
-            x_ticks_values = [timestamps[floor(i * step)] for i in range(config.max_timestamps)]
-        else:
+            packet_step = len(lengths) / config.max_timestamps
+            timestamp_step = len(timestamps) / config.max_timestamps
+            x_ticks_pairs = [(floor(i * packet_step), timestamps[floor(i * timestamp_step)]) for i in range(config.max_timestamps)]
+            x_ticks_indexes, x_ticks_values = zip(*x_ticks_pairs)
+        elif len(lengths) > config.max_timestamps:
+            packet_step = len(lengths) / len(timestamps)
+            x_ticks_indexes = [floor(i * packet_step) for i in range(len(timestamps))]
             x_ticks_values = timestamps
-        plt.xticks(ticks=[i for i in range(len(x_ticks_values))], labels=[f"-{t}ms" for t in x_ticks_values], rotation=30)
+        else:
+            x_ticks_indexes, x_ticks_values = list(range(len(timestamps))), timestamps
+        plt.xticks(ticks=x_ticks_indexes, labels=[f"-{t}ms" for t in x_ticks_values], rotation=30)
     plt.xlabel("Packet Time" if config.expand_time else "Packet Number")
     plt.ylabel("Payload Size (bytes)")
     plt.title("Packet Payload Sizes Over Time")
@@ -446,6 +455,10 @@ def show_packet_graph(packets: PacketList, client: str, server: str, protocol: s
 def show_sequence_graph(packets: PacketList, client: str, server: str, protocol: str, start_time: Optional[float] = None, config: GraphConf = GraphConf()) -> None:
     start_time = time() if start_time is None else start_time
     packets = list({bytes(p): p for p in packets}.values())
+    if len(packets) == 0:
+        print("No packets captured, can't draw sequence graph!")
+        return
+
     timestamps = _get_packet_times(packets, start_time)
     length_color_pairs = _parse_packets_typhoon(packets, client, server) if protocol == "typhoon" else _parse_packets_port(packets, client, server)
     elements = [f"{c.description}, {l} bytes" for l, c in length_color_pairs]

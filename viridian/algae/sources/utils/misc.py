@@ -1,6 +1,6 @@
 from asyncio import FIRST_COMPLETED, CancelledError, Future, sleep, wait
 from contextlib import suppress
-from logging import Logger, StreamHandler, getLogger
+from logging import Formatter, Logger, StreamHandler, getLogger
 from os import getenv
 from secrets import randbelow
 from sys import stdout
@@ -23,10 +23,12 @@ MAX_FOUR_BYTES_VALUE = (1 << 32) - 1
 
 # Logging level, read from environment variable or set to DEBUG by default.
 _level = getenv("SEASIDE_LOG_LEVEL", "DEBUG")
+_CTX_FMT = Formatter(fmt="%(name)s: %(asctime)s.%(msecs)03d %(levelname)s - %(message)s", datefmt="%H:%M:%S")
 
 
 def create_logger(name: str) -> Logger:
     handler = StreamHandler(stdout)
+    handler.setFormatter(_CTX_FMT)
     handler.setLevel(_level)
     logger = getLogger(name)
     logger.setLevel(_level)

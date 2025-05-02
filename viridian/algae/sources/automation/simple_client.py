@@ -1,5 +1,5 @@
 from argparse import ArgumentParser
-from asyncio import CancelledError, InvalidStateError, Task, create_subprocess_shell, create_task, get_event_loop, get_running_loop, run
+from asyncio import FIRST_EXCEPTION, CancelledError, Task, create_subprocess_shell, create_task, current_task, get_event_loop, get_running_loop, run, wait
 from base64 import decodebytes
 from contextlib import asynccontextmanager
 from ipaddress import AddressValueError, IPv4Address
@@ -80,51 +80,59 @@ class AlgaeClient:
     async def _send_to_caerulean(self, connection: SeasideClient, tunnel: int) -> None:
         loop = get_running_loop()
         while True:
-            packet = await os_read(loop, tunnel)
+            try:
+                packet = await os_read(loop, tunnel)
+            except (OSError, BlockingIOError) as e:
+                raise RuntimeError(f"Reading packet from tunnel error: {e}")
             logger.debug(f"Sending {len(packet)} bytes to caerulean")
-            await connection.write(packet)
+            try:
+                await connection.write(packet)
+            except ProtocolBaseError as e:
+                raise RuntimeError(f"Sending packet to caerulean error: {e}")
 
     async def _receive_from_caerulean(self, connection: SeasideClient, tunnel: int) -> None:
         loop = get_running_loop()
         while True:
-            packet = await connection.read()
+            try:
+                packet = await connection.read()
+            except ProtocolBaseError as e:
+                raise RuntimeError(f"Receiving packet from caerulean error: {e}")
+            if packet is None:
+                raise RuntimeError("Receiving packet from caerulean error!")
             logger.debug(f"Receiving {len(packet)} bytes from caerulean")
-            await os_write(loop, tunnel, packet)
+            try:
+                await os_write(loop, tunnel, packet)
+            except (OSError, BlockingIOError) as e:
+                raise RuntimeError(f"Sending packet to tunnel error: {e}")
 
-    def _task_done_callback(self, task: Task) -> None:
+    async def _monitor_tasks(self, main_task: Task, sender_task: Task, receiver_task: Task) -> None:
         try:
-            task.result()
+            done, pending = await wait([sender_task, receiver_task], return_when=FIRST_EXCEPTION)
+            for task in pending:
+                task.cancel()
+            for exception in [task.exception() for task in done if task.exception() is not None]:
+                if not isinstance(exception, CancelledError):
+                    await main_task.cancel(exception)
+                break
+            else:
+                await main_task.cancel("Unknown task failed!")
         except CancelledError:
-            logger.debug(f"Task {task.get_name()} was cancelled!")
-        except InvalidStateError as e:
-            logger.debug(f"Task {task.get_name()} is still running (impossible)!")
-            get_running_loop().call_exception_handler(dict(message=f"Invalid state exception in task '{task.get_name()}'!", exception=e, task=task))
-            raise e
-        except ProtocolBaseError as e:
-            logger.error(f"Protocol exception happened in VPN loop: {e}")
-            get_running_loop().call_exception_handler(dict(message=f"Protocol exception in task '{task.get_name()}'!", exception=e, task=task))
-            raise e
-        except BaseException as e:
-            logger.error(f"Unexpected exception happened in VPN loop: {e}")
-            get_running_loop().call_exception_handler(dict(message=f"Unhandled exception in task '{task.get_name()}'!", exception=e, task=task))
-            raise e
+            sender_task.cancel()
+            receiver_task.cancel()
 
     @asynccontextmanager
     async def _start_vpn_loop(self, token: bytes, public_key: bytes, port: int, descriptor: int) -> AsyncIterator[None]:
-        connection, sender, receiver = None, None, None
+        connection, monitor_task = None, None
         try:
             connection = self._proto_type(public_key, token, self._address, port)
             await connection.connect()
             receiver = create_task(self._send_to_caerulean(connection, descriptor), name="sender_task")
-            receiver.add_done_callback(self._task_done_callback)
             sender = create_task(self._receive_from_caerulean(connection, descriptor), name="receiver_task")
-            sender.add_done_callback(self._task_done_callback)
+            monitor_task = create_task(self._monitor_tasks(current_task(), sender, receiver))
             yield
         finally:
-            if sender is not None:
-                sender.cancel()
-            if receiver is not None:
-                receiver.cancel()
+            if monitor_task is not None:
+                monitor_task.cancel()
             if connection is not None:
                 await connection.close()
 

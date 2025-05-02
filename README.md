@@ -260,6 +260,7 @@ Proxy to Surface connection:
 
 - `viridian/reef`: Rust CLI and GUI crate viridian client and router app for Linux.
 - `caerulean/foam`: Proxy for whirlpool.
+- `caerulean/breeze`: User authentication backend.
 - `viridian/...`: Windows GUI client (by [this](https://github.com/microsoft/UwpVpnPluginSample) example).
 - `viridian/...`: Apple (MacOS + iOS) GUI client (by [this](https://kean.blog/post/vpn-configuration-manager) example).
 - `viridian/...`: Android (Kotlin + SDK) GUI client (by [this](https://developer.android.com/reference/android/net/VpnService) example).
@@ -271,6 +272,8 @@ Proxy to Surface connection:
 
 1. Check tests without 0.0.0.0 iptables rule(s).
 2. Rename all "user" and "cleint" to viridian (for consistency).
+3. Publish notebooks (for future publication?).
+4. Revise python protocols, fix random bugs, add error synchronization.
 
 ### Further considerations
 

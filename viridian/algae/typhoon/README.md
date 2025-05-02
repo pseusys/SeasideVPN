@@ -33,6 +33,16 @@ Here's the idea behind the protocol:
   - If the client stays silent for a while, separate handshake messages are sent.
 4. One of the parties can optionally send a termination message to interrupt connection (otherwise it will just timeout once either client or server goes offline).
 
+## Protocol initialization
+
+Two-handshake performed
+TODO: bc: token
+
+Protocol correctness: server can be interrupted by receiving user packet any time, it will restart
+User can not; it checks packet numbers and won't accept out of order
+
+No race condition on client or server is possible (two HDSK packets never processed simultaneously)
+
 ## Encryption and authentication
 
 The initialization message (the one being sent from client to listener) is encrypted using asymmetric [ECIES](https://en.wikipedia.org/wiki/Integrated_Encryption_Scheme)-like algorithm (with ephemeral key being hidden by [Elligator](https://elligator.org/) algorithm and symmetric key derived using [Blake2b](https://www.blake2.net/) hash function).
@@ -295,7 +305,7 @@ Here are some notes on generation of some random values:
   It will reset once per approximately 18 hours, which is perfectly fine, since normally RTT will never be even close to this time.
 - Random tail length: tail length can be any number between `0` and `MAX_TAIL_LENGTH`.
 - Next in: normally it should be greater than timeout value, that's it; can be any number between `MIN_NEXT_IN` and `MAX_NEXT_IN`.
-  The initial next in value should be shorter (otherwise connection would take ages), so the initialial `MIN_NEXT_IN` and `MAX_NEXT_IN` would be multiplied by special `INITIAL_NEXT_IN` multiplier (so that it will be effectively reduced).
+  The initial next in value should be shorter (otherwise connection would take ages), so the initial `MIN_NEXT_IN` and `MAX_NEXT_IN` would be multiplied by special `INITIAL_NEXT_IN` multiplier (so that it will be effectively reduced).
 - Retries: number of retries should not be that large, the default one can be used directly: `MAX_RETRIES`.
 
 ## Side notes

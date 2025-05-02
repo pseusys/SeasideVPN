@@ -108,7 +108,7 @@ async def sock_connect(loop: AbstractEventLoop, sock: socket, host: IPv4Address,
         raise e
 
 
-def sock_close(loop: AbstractEventLoop, sock: socket) -> None:
+def sock_close(sock: socket) -> None:
     """Attempts to connect to (host, port) using a non-blocking socket.
 
     Args:
@@ -122,8 +122,6 @@ def sock_close(loop: AbstractEventLoop, sock: socket) -> None:
     """
 
     try:
-        loop.remove_reader(sock)
-        loop.remove_writer(sock)
         sock.shutdown(SHUT_RDWR)
     except OSError:
         pass
