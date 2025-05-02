@@ -87,12 +87,11 @@ def test_set(profile: Profile) -> None:
         docker.compose.kill()
         exit_code = 1
 
-    if whirlpool_conf is not None:
-        logger.debug("Clearing self-signed testing certificates...")
-        rmtree(certificates_path, ignore_errors=True)
-        logger.debug("Self-signed certificates removed!")
-
     after_networks = set([net.name for net in docker.network.list()]) - before_networks
     docker.compose.rm(stop=True, volumes=True)
     docker.network.remove(list(after_networks))
+
+    logger.debug("Clearing self-signed testing certificates (if any)...")
+    rmtree(certificates_path, ignore_errors=True)
+    logger.debug("Self-signed certificates removed (if any)!")
     exit(exit_code)
