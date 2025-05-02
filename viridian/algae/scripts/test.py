@@ -94,5 +94,6 @@ def test_set(profile: Profile) -> None:
 
     after_networks = set([net.name for net in docker.network.list()]) - before_networks
     docker.compose.rm(stop=True)
+    docker.volume.prune(all=True)
     docker.network.remove(list(after_networks))
     exit(exit_code)
