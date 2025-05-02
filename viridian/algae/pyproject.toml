@@ -117,7 +117,7 @@ packages = [
 
 
 [tool.poetry.requires-plugins]
-poethepoet = "^0.33.1"
+poethepoet = "^0.34.0"
 
 
 
@@ -128,12 +128,12 @@ default_task_type = "script"
 
 
 [tool.poe.tasks]
-client = { script = "sources.main:main", help = "Import and execute main function of algae simple client, pass console arguments to it" }
-lint = { script = "scripts.codestyle:lint", help = "Lint all python code: run 'flake8', 'black' and 'mypy'" }
-format = { script = "scripts.codestyle:format", help = "Format all python code: change code formatting where possible (using 'black')" }
-generate = { script = "scripts.process:generate", help = "Generate protobuf source files, previous generation results will be removed; libraries 'grpcio-tools' and 'betterproto' is used for generation" }
-bundle = { script = "scripts.process:bundle", help = "Bundle caerulean installation script; library 'zipapps' is used for bundling" }
-clean = { script = "scripts.process:clean", help = "Delete all algae generated source files, build files and executables, also remove all related Docker containers, images and networks" }
+client = { script = "sources.main:main()", help = "Import and execute main function of algae simple client, pass console arguments to it" }
+lint = { script = "scripts.codestyle:lint()", help = "Lint all python code: run 'flake8', 'black' and 'mypy'" }
+format = { script = "scripts.codestyle:format()", help = "Format all python code: change code formatting where possible (using 'black')" }
+generate = { script = "scripts.process:generate()", help = "Generate protobuf source files, previous generation results will be removed; libraries 'grpcio-tools' and 'betterproto' is used for generation" }
+bundle = { script = "scripts.process:bundle()", help = "Bundle caerulean installation script; library 'zipapps' is used for bundling" }
+clean = { script = "scripts.process:clean()", help = "Delete all algae generated source files, build files and executables, also remove all related Docker containers, images and networks" }
 test-unit = { script = "scripts.test:test_set('unit')", help = "Run unit tests: all the algae client functions in particular" }
 test-integration = { script = "scripts.test:test_set('integration')", help = "Run integration tests: sequence of VPN connection, disconnection and other control requests" }
 test-local = { script = "scripts.test:test_set('local')", help = "Run local smoke tests: connection is made to local TCP server in a Docker container; network packet random drop (25%) is enabled ('gaiaadm/pumba' library is used)" }
