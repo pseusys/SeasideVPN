@@ -279,7 +279,7 @@ Some of the values mentioned above have special constraints on their calculation
 | `INITIAL_NEXT_IN` | `0.05` |
 | `MIN_NEXT_IN` | `64.0` |
 | `MAX_NEXT_IN` | `256.0` |
-| `MAX_RETRIES` | `5` |
+| `MAX_RETRIES` | `12` |
 
 ### RTTs calculation
 

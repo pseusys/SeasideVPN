@@ -2,9 +2,12 @@ name: seaside-algae-unit
 
 services:
   algae:
-    image: seaside-algae-default-sleeping
-    privileged: true
+    image: seaside-algae-unit
+    container_name: seaside-algae
+    extends:
+      file: compose.base.yml
+      service: algae
     build:
-      dockerfile: viridian/algae/docker/Dockerfile.algae
-      context: ../../..
-      target: default-sleeping
+      target: default
+    environment:
+      VPN_COMMAND: python3 -m pytest --log-cli-level=$$LOGGING_LEVEL tests/test_unit_*.py

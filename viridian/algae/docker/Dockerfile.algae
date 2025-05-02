@@ -55,7 +55,7 @@ ENV TEST_COMMAND="python3 -m pytest --log-cli-level=$LOGGING_LEVEL tests/$TEST_F
 ENV VPN_COMMAND="python3 -m sources.automation.simple_client -a \$SEASIDE_ADDRESS -k \$SEASIDE_API_KEY_OWNER -p \$SEASIDE_API_PORT -e \"\$TEST_COMMAND\""
 
 # Just sleep - run nothing.
-ENTRYPOINT ["sh", "-c", "$VPN_COMMAND"]
+ENTRYPOINT ["sh", "-c", "eval \"$VPN_COMMAND\""]
 
 # Healthcheck checks VPN is running, essentially making the target unhealthy
 HEALTHCHECK --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s CMD ls /sys/class/net | grep $SEASIDE_TUNNEL_NAME

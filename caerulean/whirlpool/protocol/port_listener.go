@@ -167,10 +167,10 @@ func createPortViridianHandle(address *net.TCPAddr) (any, uint16, error) {
 	return listener, peerID, nil
 }
 
-func (p *PortListener) handleInitMessage(viridianDict *users.ViridianDict, conn *net.TCPConn) (*net.TCPListener, *uint16, *crypto.Symmetric, error) {
+func (p *PortListener) handleInitMessage(viridianDict *users.ViridianDict, conn *net.TCPConn) (*net.TCPListener, *net.IP, *uint16, *crypto.Symmetric, error) {
 	listenIP, listenPort, err := utils.GetIPAndPortFromAddress(conn.RemoteAddr())
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("error resolving viridian port number: %v", err)
+		return nil, nil, nil, nil, fmt.Errorf("error resolving viridian port number: %v", err)
 	}
 	logrus.Debugf("Viridian %v:%v packet resolved", listenIP, listenPort)
 
@@ -186,19 +186,19 @@ func (p *PortListener) handleInitMessage(viridianDict *users.ViridianDict, conn 
 	conn.SetReadDeadline(time.Now().Add(defaultTimeout))
 	s, err := io.ReadFull(conn, header.Slice())
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("error reading viridian header: %v", err)
+		return nil, nil, nil, nil, fmt.Errorf("error reading viridian header: %v", err)
 	}
 	logrus.Debugf("Viridian %v:%v header read: %d bytes", listenIP, listenPort, s)
 
 	viridianName, key, tokenLength, tailLength, err := parsePortClientInitHeader(crypto.PRIVATE_KEY, header)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("error parsing viridian header: %v", err)
+		return nil, nil, nil, nil, fmt.Errorf("error parsing viridian header: %v", err)
 	}
 	logrus.Debugf("Viridian %v:%v header received with info: name %s, key %v", listenIP, listenPort, *viridianName, key)
 
 	cipher, err := crypto.NewSymmetric(key)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("error parsing viridian symmetric key: %v", err)
+		return nil, nil, nil, nil, fmt.Errorf("error parsing viridian symmetric key: %v", err)
 	}
 	logrus.Debugf("Viridian %v:%v cipher created", listenIP, listenPort)
 
@@ -210,21 +210,21 @@ func (p *PortListener) handleInitMessage(viridianDict *users.ViridianDict, conn 
 	conn.SetReadDeadline(time.Now().Add(defaultTimeout))
 	_, err = io.ReadFull(conn, encryptedToken.Slice())
 	if err != nil {
-		return nil, nil, cipher, fmt.Errorf("error reading viridian token: %v", err)
+		return nil, nil, nil, cipher, fmt.Errorf("error reading viridian token: %v", err)
 	}
 	logrus.Debugf("Viridian %v:%v token read: %d bytes", listenIP, listenPort, encryptedToken.Length())
 
 	decryptedToken, err := cipher.Decrypt(encryptedToken, nil)
 	if err != nil {
 		registrationCode = TOKEN_PARSE_ERROR
-		return nil, nil, cipher, fmt.Errorf("error decrypting viridian token for the first time: %v", err)
+		return nil, nil, nil, cipher, fmt.Errorf("error decrypting viridian token for the first time: %v", err)
 	}
 	logrus.Debugf("Viridian %v:%v token decrypted once: %v", listenIP, listenPort, decryptedToken)
 
 	tokenBytes, err := crypto.SERVER_KEY.Decrypt(decryptedToken, nil)
 	if err != nil {
 		registrationCode = TOKEN_PARSE_ERROR
-		return nil, nil, cipher, fmt.Errorf("error decrypting viridian token for the second time: %v", err)
+		return nil, nil, nil, cipher, fmt.Errorf("error decrypting viridian token for the second time: %v", err)
 	}
 	logrus.Debugf("Viridian %v:%v token decrypted twice: %v", listenIP, listenPort, tokenBytes)
 
@@ -232,32 +232,32 @@ func (p *PortListener) handleInitMessage(viridianDict *users.ViridianDict, conn 
 	err = proto.Unmarshal(tokenBytes.Slice(), token)
 	if err != nil {
 		registrationCode = TOKEN_PARSE_ERROR
-		return nil, nil, cipher, fmt.Errorf("error unmarshaling viridian token: %v", err)
+		return nil, nil, nil, cipher, fmt.Errorf("error unmarshaling viridian token: %v", err)
 	}
 	logrus.Debugf("Viridian %v:%v token parsed: name %s, identifier %s", listenIP, listenPort, token.Name, token.Identifier)
 
 	n, err := io.CopyN(io.Discard, conn, int64(tailLength))
 	if err != nil {
-		return nil, nil, cipher, fmt.Errorf("error reading viridian tail: %v", err)
+		return nil, nil, nil, cipher, fmt.Errorf("error reading viridian tail: %v", err)
 	}
 	logrus.Debugf("Viridian %v:%v tail read: %d bytes", listenIP, listenPort, n)
 
 	handle, peerID, err := viridianDict.Add(func() (any, uint16, error) { return createPortViridianHandle(p.address) }, viridianName, token, users.PROTOCOL_PORT)
 	if err != nil {
 		registrationCode = REGISTRATION_ERROR
-		return nil, nil, cipher, fmt.Errorf("error registering viridian: %v", err)
+		return nil, nil, nil, cipher, fmt.Errorf("error registering viridian: %v", err)
 	}
 	logrus.Debugf("Viridian %d added to viridian dictionary", peerID)
 
 	listener, ok := handle.(*net.TCPListener)
 	if !ok {
 		registrationCode = REGISTRATION_ERROR
-		return nil, nil, cipher, fmt.Errorf("error casting user connection: %v", handle)
+		return nil, nil, nil, cipher, fmt.Errorf("error casting user connection: %v", handle)
 	}
 	logrus.Debugf("Connection peer ID established for %v:%v: %d", listenIP, listenPort, peerID)
 
 	registrationCode = SUCCESS_CODE
-	return listener, &peerID, cipher, nil
+	return listener, &listenIP, &peerID, cipher, nil
 }
 
 func (p *PortListener) handleConnection(base context.Context, wg *sync.WaitGroup, listener *net.TCPConn, packetChan chan *betterbuf.Buffer) {
@@ -278,7 +278,7 @@ func (p *PortListener) handleConnection(base context.Context, wg *sync.WaitGroup
 		return
 	}
 
-	conn, peerID, cipher, err := p.handleInitMessage(viridianDict, listener)
+	conn, peerIP, peerID, cipher, err := p.handleInitMessage(viridianDict, listener)
 	if err != nil {
 		logrus.Errorf("Error handling viridian init message: %v", err)
 		listener.Close()
@@ -287,16 +287,14 @@ func (p *PortListener) handleConnection(base context.Context, wg *sync.WaitGroup
 	defer viridianDict.Delete(*peerID, false)
 
 	socket, err := conn.AcceptTCP()
+	listener.Close()
+	conn.Close()
 	if err != nil {
 		logrus.Errorf("Error accepting connection socket: %v", err)
-		listener.Close()
-		conn.Close()
 		return
 	}
 	defer socket.Close()
 	logrus.Debugf("Initial socket accepted for %v", socket.LocalAddr())
-	listener.Close()
-	conn.Close()
 
 	err = configurePortSocket(socket)
 	if err != nil {
@@ -305,16 +303,9 @@ func (p *PortListener) handleConnection(base context.Context, wg *sync.WaitGroup
 	}
 	logrus.Debugf("Initial socket configured for %v", listener.LocalAddr())
 
-	socketIP, _, err := utils.GetIPAndPortFromAddress(socket.RemoteAddr())
-	if err != nil {
-		logrus.Errorf("error resolving viridian IP address: %v", err)
-		return
-	}
-	logrus.Debugf("Viridian %d IP address resolved: %v", *peerID, socketIP)
-
 	logrus.Debugf("Viridian %d initialized", *peerID)
 
-	p.servers[*peerID] = NewPortServer(cipher, *peerID, socketIP, socket)
+	p.servers[*peerID] = NewPortServer(cipher, *peerID, *peerIP, socket)
 	defer delete(p.servers, *peerID)
 	logrus.Debugf("Viridian %d server created", *peerID)
 
