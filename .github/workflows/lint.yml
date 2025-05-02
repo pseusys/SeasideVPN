@@ -57,7 +57,7 @@ jobs:
 
       - name: Lint Viridian Algae 🧪
         working-directory: viridian/algae
-        run: poetry run poe lint
+        run: poetry poe lint
 
   caerulean-whirlpool-lint:
     name: Lint Caerulean Whirlpool Server

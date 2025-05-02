@@ -35,7 +35,7 @@ jobs:
         working-directory: viridian/algae
         env:
           EXEC_NAME: caerulean_installer
-        run: poetry run poe bundle ${{ env.EXEC_NAME }}.pyz
+        run: poetry poe bundle ${{ env.EXEC_NAME }}.pyz
 
       - name: Create Artifact Name From Branch Name 🌱
         uses: mad9000/actions-find-and-replace-string@5

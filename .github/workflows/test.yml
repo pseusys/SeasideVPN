@@ -144,7 +144,7 @@ jobs:
 
       - name: Compile Installer Script 🏗️
         working-directory: viridian/algae
-        run: poetry run poe bundle
+        run: poetry poe bundle
 
       - name: Run Installer Script 📥
         working-directory: viridian/algae
