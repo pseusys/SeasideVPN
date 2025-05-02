@@ -117,7 +117,7 @@ packages = [
 
 
 [tool.poetry.requires-plugins]
-poethepoet = "^0.32.1"
+poethepoet = "^0.34.0"
 
 
 
