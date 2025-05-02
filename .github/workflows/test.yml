@@ -34,7 +34,11 @@ jobs:
 
       - name: Test Viridian Algae (integration) 📇
         working-directory: viridian/algae
-        run: poetry poe test-integration
+        run: |
+          echo "printing cert paths"
+          ls viridian/algae
+          ls viridian/algae/certificates
+          poetry poe test-integration
 
       - name: Test Viridian Algae (smoke) 😶‍🌫️
         working-directory: viridian/algae
