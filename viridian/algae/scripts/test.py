@@ -93,7 +93,6 @@ def test_set(profile: Profile) -> None:
         logger.debug("Self-signed certificates removed!")
 
     after_networks = set([net.name for net in docker.network.list()]) - before_networks
-    docker.compose.rm(stop=True)
-    docker.volume.prune(all=True)
+    docker.compose.rm(stop=True, volumes=True)
     docker.network.remove(list(after_networks))
     exit(exit_code)
