@@ -28,7 +28,6 @@ jobs:
       - name: Install Dependencies 🔮
         run: |
           pip3 install poetry
-          poetry self add 'poethepoet[poetry_plugin]'
           poetry -C viridian/algae install --extras "bundle"
 
       - name: Build Caerulean Installer 📥

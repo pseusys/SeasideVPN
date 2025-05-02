@@ -26,7 +26,6 @@ jobs:
       - name: Install Dependencies 🔮
         run: |
           pip3 install poetry
-          poetry self add 'poethepoet[poetry_plugin]'
           poetry -C viridian/algae install --extras "test"
 
       - name: Test Viridian Algae (unit) 🧪
@@ -74,7 +73,6 @@ jobs:
         run: |
           cd .github/scripts && npm install && cd ../.. 
           pip3 install poetry
-          poetry self add 'poethepoet[poetry_plugin]'
           poetry -C viridian/algae install --extras "setup"
 
       - name: Test Viridian Reef (unit) 🧪
@@ -130,7 +128,6 @@ jobs:
       - name: Install Dependencies 🔮
         run: |
           pip3 install poetry
-          poetry self add 'poethepoet[poetry_plugin]'
           poetry -C viridian/algae install --extras "bundle setup"
 
       - name: Compile Installer Script 🏗️
