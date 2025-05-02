@@ -20,6 +20,7 @@ _GENERATE_CERTIFICATES_ISSUER = "SeasideTrustableIssuer"
 _GENERATE_CERTIFICATES_SUBJECT = "SeasideTestEnvironment"
 
 GENERATE_CERTIFICATES_PATH = Path(getcwd()) / "certificates"
+GLOBAL_ACCESSIBLE_MODE = 0o777
 
 
 def check_certificates(cert_path: Path = GENERATE_CERTIFICATES_PATH) -> bool:
@@ -136,8 +137,8 @@ def generate_certificates(address: Union[IPv4Address, str], cert_path: Path = GE
     caerulean_dir = cert_path / "caerulean"
 
     rmtree(cert_path, ignore_errors=True)
-    viridian_dir.mkdir(parents=True, exist_ok=True)
-    caerulean_dir.mkdir(parents=True, exist_ok=True)
+    viridian_dir.mkdir(GLOBAL_ACCESSIBLE_MODE, True, True)
+    caerulean_dir.mkdir(GLOBAL_ACCESSIBLE_MODE, True, True)
 
     logger.debug(f"Certificates for {address} will be created in {cert_path} directory...")
     altnames = IPAddress(address) if isinstance(address, IPv4Address) else DNSName(address)
