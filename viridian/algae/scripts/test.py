@@ -36,7 +36,7 @@ def _print_container_logs(docker: DockerClient, container: str, last: int = 100)
 
 def test_set(profile: Profile) -> None:
     """
-    Launch specified compose file and launch speceified test set inside of it.
+    Launch specified compose file and launch specified test set inside of it.
     Print test output and any errors that happened.
     :param docker_path: path to "algae/docker" directory, containing all dockerfiles and compose files.
     :param profile: name of the testing profile, one of "local", "remote", "domain", "integration", "unit".
@@ -57,6 +57,9 @@ def test_set(profile: Profile) -> None:
         logger.debug("Generating self-signed testing certificates...")
         generate_certificates(IPv4Address(whirlpool_conf["environment"]["SEASIDE_ADDRESS"]), certificates_path, True)
         logger.debug("Self-signed certificates generated!")
+    else:
+        logger.debug("Just creating certificates folders with user permissions...")
+        certificates_path.mkdir(parents=True, exist_ok=True)
 
     try:
         logger.debug("Building containers...")
