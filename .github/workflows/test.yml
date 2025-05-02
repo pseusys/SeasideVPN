@@ -1,6 +1,5 @@
 name: TEST
 # TODO: fix 'poetry self add ...' once windows issue is resolved: https://github.com/python-poetry/poetry/issues/10028
-# TODO: fix "npm --prefix" commands once the windows issue is finally resolved: https://github.com/npm/cli/issues/4511
 
 on:
   push:
@@ -24,18 +23,22 @@ jobs:
           python-version: "3.11"
 
       - name: Install Dependencies 🔮
+        working-directory: viridian/algae
         run: |
           pip3 install poetry
-          poetry -C viridian/algae install --extras "test"
+          poetry install --extras "test"
 
       - name: Test Viridian Algae (unit) 🧪
-        run: poetry -C viridian/algae poe test-unit
+        working-directory: viridian/algae
+        run: poetry poe test-unit
 
       - name: Test Viridian Algae (integration) 📇
-        run: poetry -C viridian/algae poe test-integration
+        working-directory: viridian/algae
+        run: poetry poe test-integration
 
       - name: Test Viridian Algae (smoke) 😶‍🌫️
-        run: poetry -C viridian/algae poe test-smoke
+        working-directory: viridian/algae
+        run: poetry poe test-smoke
 
   viridian-reef-test:
     name: Test Viridian Reef
@@ -56,6 +59,10 @@ jobs:
         with:
           node-version: 22
 
+      - name: Install Node Dependencies 🔮
+        working-directory: .github/scripts
+        run: npm install
+
       - name: Setup Python 3.11 🐍
         uses: actions/setup-python@v5
         with:
@@ -70,16 +77,18 @@ jobs:
           override: true
 
       - name: Install Dependencies 🔮
+        working-directory: viridian/algae
         run: |
-          cd .github/scripts && npm install && cd ../.. 
           pip3 install poetry
-          poetry -C viridian/algae install --extras "setup"
+          poetry install --extras "setup"
 
       - name: Test Viridian Reef (unit) 🧪
-        run: ${{ env.SUDO }} cargo test --package SeasideVPN-Reef --lib --manifest-path viridian/reef/Cargo.toml -- --nocapture --show-output
+        working-directory: viridian/reef
+        run: ${{ env.SUDO }} cargo test --package SeasideVPN-Reef --lib -- --nocapture --show-output
 
       - name: Prepare Host
-        run: cd .github/scripts && npm run configure-viridian-test
+        working-directory: .github/scripts
+        run: npm run configure-viridian-test
 
       - name: Load .ENV File
         uses: aarcangeli/load-dotenv@v1
@@ -88,10 +97,11 @@ jobs:
           filenames: host.env
 
       - name: Test Viridian Reef (integration) 🧪
+        working-directory: viridian/reef
         env:
           SEASIDE_ROOT_CERTIFICATE_AUTHORITY: viridian/reef/certificates/viridian/rootCA.crt
           RUNNER_COMMAND: cargo run --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml
-          TEST_COMMAND: poetry -C viridian/algae run pytest --log-cli-level=INFO tests/test_local.py
+          TEST_COMMAND: cd ../algae && poetry run pytest --log-cli-level=INFO tests/test_local.py
         run: ${{ env.SUDO }} ${{ env.RUNNER_COMMAND }} -- -a "${{ env.SEASIDE_ADDRESS }}" -c "${{ env.SEASIDE_CTRLPORT }}" -p "${{ env.SEASIDE_PAYLOAD_VIRIDIAN }}" -e "${{ env.TEST_COMMAND }}"
 
   caerulean-whirlpool-test:
@@ -105,7 +115,8 @@ jobs:
           submodules: true
 
       - name: Test Caerulean Whirlpool 🧪
-        run: make test-whirlpool
+        working-directory: caerulean/whirlpool
+        run: make -s test
 
   caerulean-installer-script:
     name: Test Caerulean Installer Script
@@ -126,14 +137,17 @@ jobs:
           python-version: "3.11"
 
       - name: Install Dependencies 🔮
+        working-directory: viridian/algae
         run: |
           pip3 install poetry
-          poetry -C viridian/algae install --extras "bundle setup"
+          poetry install --extras "bundle setup"
 
       - name: Compile Installer Script 🏗️
-        run: poetry -C viridian/algae run poe bundle
+        working-directory: viridian/algae
+        run: poetry run poe bundle
 
       - name: Run Installer Script 📥
+        working-directory: viridian/algae
         env:
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
-        run: sudo -E python3 viridian/algae/install.pyz -g -a no ${{ matrix.caerulean }} -r ${{ matrix.dist }} -s ${{ env.BRANCH_NAME }}
+        run: sudo -E python3 install.pyz -g -a no ${{ matrix.caerulean }} -r ${{ matrix.dist }} -s ${{ env.BRANCH_NAME }}

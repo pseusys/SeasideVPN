@@ -50,12 +50,14 @@ jobs:
           python-version: "3.11"
 
       - name: Install Dependencies 🔮
+        working-directory: viridian/algae
         run: |
           pip3 install poetry
           poetry install --extras "codestyle"
 
       - name: Lint Viridian Algae 🧪
-        run: poetry -C viridian/algae run poe lint
+        working-directory: viridian/algae
+        run: poetry run poe lint
 
   caerulean-whirlpool-lint:
     name: Lint Caerulean Whirlpool Server
@@ -68,10 +70,12 @@ jobs:
           submodules: true
 
       - name: Install Dependencies 🔮
+        working-directory: caerulean/whirlpool
         run: |
           go install github.com/xlab/c-for-go@latest
           go install github.com/pseusys/protogo@latest
           go install honnef.co/go/tools/cmd/staticcheck@latest
 
       - name: Lint Caerulean Whirlpool 🧪
-        run: make lint-whirlpool
+        working-directory: caerulean/whirlpool
+        run: make -s lint

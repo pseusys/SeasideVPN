@@ -83,21 +83,26 @@ jobs:
         with:
           node-version: 22
 
+      - name: Install Node Dependencies 🔮
+        working-directory: .github/scripts
+        run: npm install
+      
       - name: Setup Python 3.11 🐍
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install Dependencies 🔮
+      - name: Install Python Dependencies 🔮
+        working-directory: viridian/algae
         run: |
-          npm install --prefix .github/scripts
           pip3 install poetry
-          poetry -C viridian/algae install --extras "bundle"
+          poetry --extras "bundle"
 
       - name: Deploy Caerulean Whirlpool 🚀
+        working-directory: .github/scripts
         env:
           BEGET_API_LOGIN: ${{ secrets.BEGET_API_LOGIN }}
           BEGET_API_PASSWORD: ${{ secrets.BEGET_API_PASSWORD }}
           BEGET_SERVER_KEY: ${{ secrets.BEGET_SERVER_KEY }}
           WHIRLPOOL_PAYLOAD: ${{ secrets.WHIRLPOOL_DEPLOYMENT_PAYLOAD }}
-        run: npm run --prefix .github/scripts deploy-whirlpool-beget -- -v
+        run: npm run deploy-whirlpool-beget -- -v
