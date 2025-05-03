@@ -22,6 +22,9 @@ async def api_client() -> AsyncGenerator[WhirlpoolClient, None]:
     yield WhirlpoolClient(address, api_port, Path(authority))
 
 
+# TODO: time + crypto keys generation
+
+
 # Tests:
 
 @pytest.mark.asyncio(loop_scope="session")

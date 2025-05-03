@@ -40,7 +40,7 @@ services:
       - test.conf.env
     environment:
       RUNNING_IN_CI: ${RUNNING_IN_CI:-0}
-      SEASIDE_PRIVATE_KEY: jZsc3mZlvbxX+MisHjfQjN6pL+oNtDoE3NSkC823cxazKL6Bl3+P5vSADD3pO80l0RPcv6Z9AB1JtM+K+nAkSQ==
+      SEASIDE_PRIVATE_KEY: LLFLPRfCNNCe21xZKIUvZuwB7iaN18/szKNrCAbBAaHGfN32cZlSog==
       SEASIDE_SERVER_KEY: c2VjcmV0IGVuY29kZWQgYmFzZTY0IHNlcnZlciBrZXk=
     sysctls:
       - net.ipv6.conf.all.disable_ipv6=1

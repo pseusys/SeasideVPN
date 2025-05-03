@@ -15,8 +15,6 @@ logger = getLogger(__file__)
 LOCAL_ADDRESS = IPv4Address("127.0.0.1")
 
 ASYMMETRIC = Asymmetric()
-LISTENER_KEY = ASYMMETRIC._private_key + ASYMMETRIC._public_key
-CLIENT_KEY = ASYMMETRIC._public_key
 USER_TOKEN = token_bytes(32)
 
 PARAMETERS = [(PortListener, PortClient), (TyphoonListener, TyphoonClient)]
@@ -48,8 +46,8 @@ async def process(client: SeasideClient, messages_limit: int = 8) -> None:
 @pytest.mark.asyncio(loop_scope="session")
 @pytest.mark.parametrize("listener,client", PARAMETERS)
 async def test_simple_connection(listener: Type[SeasideListener], client: Type[SeasideClient]) -> None:
-    async with listener(LISTENER_KEY, LOCAL_ADDRESS).ctx(data_callback=echo_server_callback) as l:
-        async with client(CLIENT_KEY, USER_TOKEN, LOCAL_ADDRESS, l.port, LOCAL_ADDRESS).ctx() as c:
+    async with listener(ASYMMETRIC.private_key, LOCAL_ADDRESS).ctx(data_callback=echo_server_callback) as l:
+        async with client(ASYMMETRIC.public_key, USER_TOKEN, LOCAL_ADDRESS, l.port, LOCAL_ADDRESS).ctx() as c:
             request = b"Hi server!"
             await c.write(request)
             response = await c.read()
@@ -59,6 +57,6 @@ async def test_simple_connection(listener: Type[SeasideListener], client: Type[S
 @pytest.mark.asyncio(loop_scope="session")
 @pytest.mark.parametrize("listener,client", PARAMETERS)
 async def test_long_connection(listener: Type[SeasideListener], client: Type[SeasideClient]) -> None:
-    async with listener(LISTENER_KEY, LOCAL_ADDRESS).ctx(data_callback=echo_server_callback) as l:
-        async with client(CLIENT_KEY, USER_TOKEN, LOCAL_ADDRESS, l.port, LOCAL_ADDRESS).ctx(echo_client_callback) as c:
+    async with listener(ASYMMETRIC.private_key, LOCAL_ADDRESS).ctx(data_callback=echo_server_callback) as l:
+        async with client(ASYMMETRIC.public_key, USER_TOKEN, LOCAL_ADDRESS, l.port, LOCAL_ADDRESS).ctx(echo_client_callback) as c:
             await process(c)

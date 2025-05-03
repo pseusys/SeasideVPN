@@ -2,120 +2,113 @@ package crypto
 
 import (
 	"fmt"
+	"main/utils"
 
 	"github.com/pseusys/betterbuf"
 	"github.com/pseusys/monocypher-go"
 )
 
 const (
+	NumberN                     = 2
+	SeedKeySize                 = 8
 	PublicKeySize               = 32
 	PrivateKeySize              = 32
 	SymmetricHashSize           = 32
-	AymmetricCiphertextOverhead = SymmetricCiphertextOverhead + PublicKeySize
+	AymmetricCiphertextOverhead = SymmetricCiphertextOverhead + PublicKeySize + NumberN
 )
 
-func computeBlake2Hash(shared_secret, client_key, server_key []byte) ([]byte, error) {
+func computeBlake2Hash(sharedSecret, clientKey, serverKey *betterbuf.Buffer) (*betterbuf.Buffer, error) {
 	hashSize := SymmetricHashSize
 	hash, err := monocypher.NewBlake2bHash(nil, &hashSize)
 	if err != nil {
 		return nil, fmt.Errorf("error generating Blake2 hash: %v", err)
 	}
 
-	hash = hash.Update(shared_secret).Update(client_key).Update(server_key)
-	return hash.Finalize()[:hashSize], nil
+	hash = hash.Update(sharedSecret.Slice()).Update(clientKey.Slice()).Update(serverKey.Slice())
+	return betterbuf.NewBufferFromSlice(hash.Finalize()[:hashSize]), nil
 }
 
 type Asymmetric struct {
-	privateKey, publicKey *betterbuf.Buffer
+	privateKey, publicKey, seedKey *betterbuf.Buffer
 }
 
 func NewAsymmetric(key *betterbuf.Buffer, private bool) (*Asymmetric, error) {
-	var priv, pub *betterbuf.Buffer
+	var priv, pub, seed *betterbuf.Buffer
 	if key == nil {
 		privBytes, pubBytes, err := monocypher.GenerateKeyExchangeKeyPair()
 		if err != nil {
 			return nil, fmt.Errorf("asymmetrical keypair generating error: %v", err)
 		}
 		priv, pub = betterbuf.NewBufferFromSlice(privBytes), betterbuf.NewBufferFromSlice(pubBytes)
+		seed, err = betterbuf.NewRandomBuffer(SeedKeySize)
+		if err != nil {
+			return nil, fmt.Errorf("random seed generating error: %v", err)
+		}
 	} else if private {
-		if key.Length() != PrivateKeySize+PublicKeySize {
-			return nil, fmt.Errorf("invalid private key length: %d != %d", key.Length(), PrivateKeySize+PublicKeySize)
+
+		if key.Length() != PrivateKeySize+SeedKeySize {
+			return nil, fmt.Errorf("invalid private key length: %d != %d", key.Length(), PrivateKeySize+SeedKeySize)
 		}
-		priv, pub = key.RebufferEnd(PrivateKeySize), key.RebufferStart(PrivateKeySize)
+		priv, seed = key.RebufferEnd(PrivateKeySize), key.RebufferStart(PrivateKeySize)
+		pub = betterbuf.NewBufferFromSlice(monocypher.ComputeKeyExchangePublicKey(priv.Slice()))
 	} else {
-		if key.Length() != PublicKeySize {
-			return nil, fmt.Errorf("invalid public key length: %d != %d", key.Length(), PublicKeySize)
+		if key.Length() != PublicKeySize+SeedKeySize {
+			return nil, fmt.Errorf("invalid public key length: %d != %d", key.Length(), PublicKeySize+SeedKeySize)
 		}
-		priv, pub = nil, key
+		pub, seed = key.RebufferEnd(PublicKeySize), key.RebufferStart(PublicKeySize)
+		priv = nil
 	}
-	return &Asymmetric{privateKey: priv, publicKey: pub}, nil
+	return &Asymmetric{privateKey: priv, publicKey: pub, seedKey: seed}, nil
 }
 
 func (a *Asymmetric) PublicKey() *betterbuf.Buffer {
-	return a.publicKey
+	result := betterbuf.NewClearBuffer(0, a.publicKey.Length()+a.seedKey.Length(), 0)
+	copy(result.ResliceEnd(a.publicKey.Length()), a.publicKey.Slice())
+	copy(result.ResliceStart(a.publicKey.Length()), a.seedKey.Slice())
+	return result
 }
 
-func (a *Asymmetric) Encrypt(plaintext *betterbuf.Buffer) (*betterbuf.Buffer, *betterbuf.Buffer, error) {
-	hiddenPub, ephemeralPriv, err := monocypher.ElligatorKeyPair(nil)
+func (a *Asymmetric) revealPublicKey(publicKey *betterbuf.Buffer) (*betterbuf.Buffer, error) {
+	hashSize := SymmetricHashSize
+	hash, err := monocypher.NewBlake2bHash(nil, &hashSize)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error generating ephemeral key: %v", err)
+		return nil, fmt.Errorf("error generating Blake2 hash: %v", err)
 	}
 
-	sharedSecret := monocypher.KeyExchange(ephemeralPriv, a.publicKey.Slice())
-	symmetricKey, err := computeBlake2Hash(sharedSecret, hiddenPub, a.publicKey.Slice())
-	if err != nil {
-		return nil, nil, fmt.Errorf("error calculating Blake2 hash: %v", err)
-	}
-	symmetricBuffer, hiddenBuffer := betterbuf.NewBufferFromSlice(symmetricKey), betterbuf.NewBufferFromSlice(hiddenPub)
-
-	cipher, err := NewSymmetric(symmetricBuffer)
-	if err != nil {
-		return nil, nil, fmt.Errorf("symmetrical cipher creation error: %v", err)
-	}
-
-	ciphertext, err := cipher.Encrypt(plaintext, hiddenBuffer)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error encrypting plaintext with symmetrical cypher: %v", err)
-	}
-
-	message, err := ciphertext.AppendBuffer(hiddenBuffer)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error appending hidden buffer to ciphertext: %v", err)
-	}
-
-	return symmetricBuffer, message, nil
+	hash = hash.Update(publicKey.ResliceEnd(NumberN)).Update(a.seedKey.Slice())
+	hashData := betterbuf.NewBufferFromSlice(hash.Finalize()).ResliceEnd(hashSize)
+	return betterbuf.NewBufferFromSlice(utils.XORSlices(publicKey.ResliceStart(NumberN), hashData)), nil
 }
 
 func (a *Asymmetric) Decrypt(ciphertext *betterbuf.Buffer) (*betterbuf.Buffer, *betterbuf.Buffer, error) {
 	cipherLength := ciphertext.Length()
 
-	if cipherLength < PublicKeySize {
-		return nil, nil, fmt.Errorf("ciphertext too short: %d < %d", cipherLength, PublicKeySize)
+	if cipherLength < PublicKeySize+NumberN {
+		return nil, nil, fmt.Errorf("ciphertext too short: %d < %d", cipherLength, PublicKeySize+NumberN)
 	}
 
-	encryptedLength := cipherLength - PublicKeySize
-	ciphertext, hiddenPub := ciphertext.RebufferEnd(encryptedLength), ciphertext.RebufferStart(encryptedLength)
-	ephemeralPub, err := monocypher.ElligatorMap(hiddenPub.Slice())
+	hiddenPublicKeyLength := PublicKeySize + NumberN
+	hiddenPub, ciphertext := ciphertext.RebufferEnd(hiddenPublicKeyLength), ciphertext.RebufferStart(hiddenPublicKeyLength)
+	ephemeralPub, err := a.revealPublicKey(hiddenPub)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing elligator on public key: %v", err)
+		return nil, nil, fmt.Errorf("error revealing public key: %v", err)
 	}
 
-	sharedSecret := monocypher.KeyExchange(a.privateKey.Slice(), ephemeralPub)
-	symmetricKey, err := computeBlake2Hash(sharedSecret, hiddenPub.Slice(), a.publicKey.Slice())
+	sharedSecret := betterbuf.NewBufferFromSlice(monocypher.KeyExchange(a.privateKey.Slice(), ephemeralPub.Slice()))
+	symmetricKey, err := computeBlake2Hash(sharedSecret, ephemeralPub, a.publicKey)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error calculating Blake2 hash: %v", err)
 	}
-	symmetricBuffer := betterbuf.NewBufferFromSlice(symmetricKey)
 
-	cipher, err := NewSymmetric(symmetricBuffer)
+	cipher, err := NewSymmetric(symmetricKey)
 	if err != nil {
 		return nil, nil, fmt.Errorf("symmetrical cipher creation error: %v", err)
 	}
 
-	plaintext, err := cipher.Decrypt(ciphertext, hiddenPub)
+	plaintext, err := cipher.Decrypt(ciphertext, ephemeralPub)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decrypting plaintext with symmetrical cypher: %v", err)
 	}
 
-	return symmetricBuffer, plaintext, nil
+	return symmetricKey, plaintext, nil
 }

@@ -32,8 +32,6 @@ from sources.protocol.port_core import PortCore
 LIBC = CDLL(None, use_errno=True)
 
 ASYMMETRIC = Asymmetric()
-LISTENER_KEY = ASYMMETRIC._private_key + ASYMMETRIC._public_key
-CLIENT_KEY = ASYMMETRIC._public_key
 USER_TOKEN = b"Random user token!"
 
 PR_CAP_AMBIENT = 47
