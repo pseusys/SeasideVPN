@@ -22,13 +22,14 @@ def caerulean_address() -> Generator[str, None, None]:
 
 
 @pytest.mark.skipif(getenv("RUNNING_IN_CI", "0") == "1", reason="Ping test shouldn't be run in CI environment as most of them don't support PING")
+@pytest.mark.timeout(10.0)
 def test_caerulean_ping(caerulean_address: str) -> None:
     logger.info("Testing with PING porotocol")
     assert ping(caerulean_address, count=1, size=16).success(SuccessOn.All), "PING request was not completely successfull!"
     assert ping("8.8.8.8", count=8, size=64).success(SuccessOn.Most), "PING request was not completely successfull!"
 
 
-@pytest.mark.timeout(5.0)
+@pytest.mark.timeout(10.0)
 def test_dns_resolve() -> None:
     example = "example.com"
     logger.info(f"Resolving IP address of: {example}")
@@ -36,7 +37,7 @@ def test_dns_resolve() -> None:
 
 
 @pytest.mark.xfail(reason="QOTD is a UDP-based protocol, so it is not reliable and can sometimes fail")
-@pytest.mark.timeout(5.0)
+@pytest.mark.timeout(10.0)
 def test_qotd_udp_protocol(random_message: bytes) -> None:
     message_length = 4096
     logger.info(f"Testing with QOTD (UDP) protocol, packets size: {len(random_message)}")
@@ -50,7 +51,7 @@ def test_qotd_udp_protocol(random_message: bytes) -> None:
 
 
 @pytest.mark.xfail(reason="Server 'tcpbin.com' is private, it is not always reliable and sometimes is down")
-@pytest.mark.timeout(5.0)
+@pytest.mark.timeout(10.0)
 def test_tcp_protocol(random_message: bytes) -> None:
     logger.info(f"Testing for TCP protocol, packets size: {len(random_message)}")
     with socket(AF_INET, SOCK_STREAM) as sock:
@@ -62,7 +63,7 @@ def test_tcp_protocol(random_message: bytes) -> None:
         assert random_message == tcp_echo, "Received echo message doesn't match sent!"
 
 
-@pytest.mark.timeout(7.0)
+@pytest.mark.timeout(15.0)
 def test_ftp_protocol() -> None:
     address = "https://picsum.photos/800/600"
     logger.info("Testing with FTP protocol")
@@ -73,7 +74,7 @@ def test_ftp_protocol() -> None:
     logger.info(f"Downloaded image of size {message['Content-Length']}")
 
 
-@pytest.mark.timeout(5.0)
+@pytest.mark.timeout(10.0)
 def test_http_protocol() -> None:
     address = "https://example.com/"
     logger.info("Testing with HTTP protocol")

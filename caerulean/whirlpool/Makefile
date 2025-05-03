@@ -84,7 +84,7 @@ build-docker-test:
 ifndef CI
 	docker build -f Dockerfile --target builder --build-arg RUNNING_IN_CI=0 -t seaside-whirlpool-test ../..
 else
-	docker build -f Dockerfile --target builder --build-arg RUNNING_IN_CI=0 -t seaside-whirlpool-test -q ../..
+	docker build -f Dockerfile --target builder --build-arg RUNNING_IN_CI=1 -t seaside-whirlpool-test -q ../..
 endif
 .PHONY: build-docker-test
 
