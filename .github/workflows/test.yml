@@ -8,6 +8,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
+env:
+  RUNNING_IN_CI: 1
+
 jobs:
   viridian-algae-test:
     name: Test Viridian Algae
