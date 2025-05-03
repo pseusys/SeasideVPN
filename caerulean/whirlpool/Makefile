@@ -47,7 +47,6 @@ help:
 
 build:
 	@ # Generate protobuf files, install dependencies and build executable
-	make -C monocypher-go --no-print-directory generate
 	protogo mod tidy -- -I=${PROJECT_ROOT} --go_out=. --go-grpc_out=. ${PROJECT_ROOT}/vessels/*.proto
 	go build -ldflags ${LINKING_FLAGS} -o build/$(EXEC_NAME) ./sources
 .PHONY: build

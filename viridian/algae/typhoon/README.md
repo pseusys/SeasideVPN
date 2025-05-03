@@ -43,6 +43,8 @@ User can not; it checks packet numbers and won't accept out of order
 
 No race condition on client or server is possible (two HDSK packets never processed simultaneously)
 
+Monocypher -> native solutions (no elligator, as it not widely implemented, not audited and also does not protect if known)
+
 ## Encryption and authentication
 
 The initialization message (the one being sent from client to listener) is encrypted using asymmetric [ECIES](https://en.wikipedia.org/wiki/Integrated_Encryption_Scheme)-like algorithm (with ephemeral key being hidden by [Elligator](https://elligator.org/) algorithm and symmetric key derived using [Blake2b](https://www.blake2.net/) hash function).

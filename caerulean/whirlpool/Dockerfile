@@ -17,9 +17,6 @@ RUN apk add --no-cache make tar wget build-base iptables protobuf protobuf-dev \
 ENV RUNNING_IN_CI=${RUNNING_IN_CI:-0}
 
 # Copy whirlpool go.mod, protobuf files and generate protobuf sources.
-COPY caerulean/whirlpool/monocypher-go ./monocypher-go
-RUN make -C monocypher-go --no-print-directory generate
-
 COPY caerulean/whirlpool/go.mod ./
 RUN go mod download
 
