@@ -2,7 +2,7 @@ from os import getenv
 from secrets import token_bytes
 from socket import IPPROTO_TCP, SO_KEEPALIVE, SOL_SOCKET, TCP_KEEPCNT, TCP_KEEPIDLE, TCP_KEEPINTVL, socket
 from struct import calcsize, pack, unpack
-from typing import Optional, Tuple
+from typing import Tuple
 
 from .. import __version__
 from ..utils.crypto import Asymmetric, Symmetric
@@ -18,6 +18,7 @@ class PortCore:
     _ANY_OTHER_HEADER = "!BHH"
 
     _PORT_TAIL_LENGTH = int(getenv("PORT_TAIL_LENGTH", "512"))
+    _PORT_TIMEOUT = int(getenv("PORT_TIMEOUT", "32"))
     _PORT_KEEPIDLE = int(getenv("PORT_KEEPIDLE", "5"))
     _PORT_KEEPINTVL = int(getenv("PORT_KEEPINTVL", "10"))
     _PORT_KEEPCNT = int(getenv("PORT_KEEPCNT", "5"))

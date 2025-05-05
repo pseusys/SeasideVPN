@@ -18,9 +18,8 @@ import (
 )
 
 type PortListener struct {
-	address        *net.TCPAddr
-	servers        map[uint16]*PortServer
-	defaultTimeout float64
+	address *net.TCPAddr
+	servers map[uint16]*PortServer
 }
 
 func NewPortListener(address string, viridianDict *users.ViridianDict) (*PortListener, error) {
@@ -32,9 +31,8 @@ func NewPortListener(address string, viridianDict *users.ViridianDict) (*PortLis
 	servers := make(map[uint16]*PortServer, viridianDict.MaxConnected())
 
 	return &PortListener{
-		address:        addr,
-		servers:        servers,
-		defaultTimeout: PORT_DEFAULT_TIMEOUT,
+		address: addr,
+		servers: servers,
 	}, nil
 }
 
@@ -174,7 +172,7 @@ func (p *PortListener) handleInitMessage(viridianDict *users.ViridianDict, conn 
 	}
 	logrus.Debugf("Viridian %v:%v packet resolved", listenIP, listenPort)
 
-	defaultTimeout := time.Second * time.Duration(p.defaultTimeout)
+	defaultTimeout := time.Second * time.Duration(PORT_TIMEOUT)
 	defer conn.SetReadDeadline(time.Time{})
 	logrus.Debugf("Viridian %v:%v connection deadline set to %v", listenIP, listenPort, defaultTimeout)
 

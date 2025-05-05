@@ -15,14 +15,13 @@ from .utils import _ProtocolBase, ProtocolBaseError, ProtocolFlag, ProtocolMessa
 
 
 class _TyphoonPeer(_ProtocolBase, ABC):
-    def __init__(self, peer_address: IPv4Address, peer_port: int, retries: Optional[int] = None):
+    def __init__(self, peer_address: IPv4Address, peer_port: int):
         _ProtocolBase.__init__(self)
         self._peer_address, self._peer_port = peer_address, peer_port
         self._socket = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, IPPROTO_UDP)
         self._decay = Queue()
         self._control = Queue()
         self._symmetric = None
-        self._max_retries = TyphoonCore._TYPHOON_MAX_RETRIES if retries is None else retries
         self._previous_sent = None
         self._previous_next_in = None
         self._previous_packet_number = None
@@ -144,19 +143,21 @@ class _TyphoonPeer(_ProtocolBase, ABC):
 
 
 class TyphoonClient(_TyphoonPeer, SeasideClient):
-    def __init__(self, key: bytes, token: bytes, address: IPv4Address, port: int, local: Optional[IPv4Address] = None, retries: Optional[int] = None):
-        _TyphoonPeer.__init__(self, address, port, retries)
+    def __init__(self, key: bytes, token: bytes, address: IPv4Address, port: int, local: Optional[IPv4Address] = None):
+        _TyphoonPeer.__init__(self, address, port)
         self._asymmetric = Asymmetric(key, False)
         self._token = token
         self._user_id = None
-        if local is not None:
-            self._logger.info(f"Binding client to {str(local)}...")
-            self._socket.bind((str(local), 0))
-        self._logger.info(f"Connecting to listener at {str(self._peer_address)}:{self._peer_port}")
-        self._socket.connect((str(self._peer_address), self._peer_port))
+        self._local = local
 
     async def connect(self, callback: Optional[ReceiveCallback] = None):
         loop = get_running_loop()
+        if self._local is not None:
+            self._logger.info(f"Binding client to {str(self._local)}...")
+            self._socket.bind((str(self._local), 0))
+        self._logger.info(f"Connecting to listener at {str(self._peer_address)}:{self._peer_port}")
+        self._socket.connect((str(self._peer_address), self._peer_port))
+
         next_in = await self._run_connect(loop)
         self._logger.info(f"Connected to server at {str(self._peer_address)}:{self._user_id}")
         self._socket.connect((str(self._peer_address), self._user_id))
@@ -177,7 +178,7 @@ class TyphoonClient(_TyphoonPeer, SeasideClient):
         self._logger.debug(f"Decay started, sleeping for {next_in_timeout} milliseconds...")
         await self._sleep(self._decay.get(), next_in_timeout)
 
-        while current_retries < self._max_retries:
+        while current_retries < TyphoonCore._TYPHOON_MAX_RETRIES:
             self._previous_packet_number = self._get_timestamp()
             self._logger.debug(f"Trying handshake shadowride attempt {current_retries}...")
             self._control.put_nowait(self._previous_packet_number)
@@ -237,7 +238,7 @@ class TyphoonClient(_TyphoonPeer, SeasideClient):
         self_address = self._socket.getsockname()
         self._logger.info(f"Current user address: {self_address[0]}:{self_address[1]}")
 
-        while current_retries < self._max_retries:
+        while current_retries < TyphoonCore._TYPHOON_MAX_RETRIES:
             self._previous_packet_number = self._get_timestamp()
             await self._regenerate_next_in(TyphoonCore._TYPHOON_INITIAL_NEXT_IN, False)
             key, packet = TyphoonCore.build_client_init(self._asymmetric, self._previous_packet_number, self._previous_next_in, self._token)
@@ -290,16 +291,18 @@ class TyphoonServer(_TyphoonPeer, SeasidePeer):
     def user_id(self) -> int:
         return self._socket.getsockname()[1]
 
-    def __init__(self, key: bytes, address: IPv4Address, port: int, local: Optional[IPv4Address] = None, retries: Optional[int] = None):
-        _TyphoonPeer.__init__(self, address, port, retries)
+    def __init__(self, key: bytes, address: IPv4Address, port: int, local: Optional[IPv4Address] = None):
+        _TyphoonPeer.__init__(self, address, port)
         self._symmetric = Symmetric(key)
-        if local is not None:
-            self._logger.info(f"Binding server to {str(local)}...")
-            self._socket.bind((str(local), 0))
+        self._local = local
+
+    async def serve(self, init_socket: socket, next_in: int, packet_number: int, status: ProtocolReturnCode, callback: Optional[ServeCallback] = None):
+        if self._local is not None:
+            self._logger.info(f"Binding server to {str(self._local)}...")
+            self._socket.bind((str(self._local), 0))
         self._logger.info(f"Connecting server to {str(self._peer_address)}:{self._peer_port}...")
         self._socket.connect((str(self._peer_address), self._peer_port))
 
-    async def serve(self, init_socket: socket, next_in: int, packet_number: int, status: ProtocolReturnCode, callback: Optional[ServeCallback] = None):
         self._logger.info(f"Serving for {str(self._peer_address)}:{self._peer_port} with assigned user ID {self.user_id}")
         if callback is not None:
             self._background += [create_task(self._read_cycle(callback))]
@@ -331,7 +334,7 @@ class TyphoonServer(_TyphoonPeer, SeasidePeer):
         except QueueEmpty:
             self._logger.debug("Shadowriding handshake was already performed!")
 
-        sleeping_timeout = (self.next_in + self.timeout) * self._max_retries
+        sleeping_timeout = (self.next_in + self.timeout) * TyphoonCore._TYPHOON_MAX_RETRIES
         self._logger.debug(f"Handshake sent, waiting for response for {sleeping_timeout} milliseconds")
         await self._sleep(self._decay.get(), sleeping_timeout)
         raise TimeoutError("Handshake connection timeout!")
@@ -360,7 +363,7 @@ class TyphoonServer(_TyphoonPeer, SeasidePeer):
         self._logger.debug(f"Trying finishing user {self.user_id} initialization...")
         await loop.sock_sendto(init_socket, packet, (self._peer_address, self._peer_port))
 
-        sleeping_timeout = (self.next_in + self.timeout) * self._max_retries
+        sleeping_timeout = (self.next_in + self.timeout) * TyphoonCore._TYPHOON_MAX_RETRIES
         self._logger.debug(f"Initialization message sent to user {self.user_id}, waiting for response for {sleeping_timeout} milliseconds...")
         await self._sleep(self._decay.get(), sleeping_timeout)
         raise TimeoutError(f"Server handshake with user {self.user_id} connection timeout!")
@@ -405,17 +408,16 @@ class TyphoonListener(_ProtocolBase, SeasideListener):
     def port(self) -> int:
         return self._socket.getsockname()[1]
 
-    def __init__(self, key: bytes, address: IPv4Address, port: int = 0, retries: Optional[int] = None):
+    def __init__(self, key: bytes, address: IPv4Address, port: int = 0):
         _ProtocolBase.__init__(self)
-        self._max_retries = retries
-        self._local_address = address
+        self._local_address, self._local_port = address, port
         self._socket = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, IPPROTO_UDP)
         self._asymmetric = Asymmetric(key, True)
         self._servers = dict()
-        self._logger.info(f"Binding listener to {str(address)}...")
-        self._socket.bind((str(address), port))
 
     async def listen(self, connection_callback: Optional[ConnectionCallback] = None, data_callback: Optional[ServeCallback] = None):
+        self._logger.info(f"Binding listener to {str(self._local_address)}...")
+        self._socket.bind((str(self._local_address), self._local_port))
         self._logger.info(f"Listening at {str(self.address)}:{self.port}...")
         self._background += [create_task(self._run_listen(connection_callback, data_callback))]
         self._logger.info("Running listener asynchronously, callback will be triggered upon user connection (if any)!")
@@ -443,7 +445,7 @@ class TyphoonListener(_ProtocolBase, SeasideListener):
             self._servers[token].cancel()
 
         status = await connection_callback(name, token) if connection_callback is not None else ProtocolReturnCode.SUCCESS
-        server = TyphoonServer(key, address, port, self._local_address, self._max_retries)
+        server = TyphoonServer(key, address, port, self._local_address)
         servant = self._serve_and_close(server, next_in, packet_number, status, data_callback)
 
         self._logger.info(f"User at port {server.user_id} initialized with status: {status}")

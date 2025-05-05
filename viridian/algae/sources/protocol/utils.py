@@ -1,7 +1,7 @@
 from asyncio import FIRST_COMPLETED, FIRST_EXCEPTION, CancelledError, Event, Future, Lock, Task, create_task, current_task, timeout, wait
 from contextlib import asynccontextmanager
 from enum import IntEnum, unique
-from typing import Any, AsyncIterator, Coroutine, Optional, TypeVar, Union
+from typing import Any, Coroutine, Optional, TypeVar, Union
 
 from ..utils.misc import create_logger
 

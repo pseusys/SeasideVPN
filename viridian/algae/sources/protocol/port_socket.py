@@ -13,9 +13,8 @@ from .utils import _ProtocolBase, ProtocolBaseError, ProtocolMessageType, Protoc
 
 
 class _PortPeer(_ProtocolBase):
-    def __init__(self, connection: socket, timeout: Optional[float] = None):
+    def __init__(self, connection: socket):
         _ProtocolBase.__init__(self)
-        self._timeout = timeout
         self._socket = PortCore.configure_socket(connection)
         self._logger = create_logger(type(self).__name__)
         self._symmetric = None
@@ -85,8 +84,8 @@ class _PortPeer(_ProtocolBase):
 
 
 class PortClient(_PortPeer, SeasideClient):
-    def __init__(self, key: bytes, token: bytes, address: IPv4Address, port: int, local: Optional[IPv4Address] = None, timeout: Optional[float] = None):
-        _PortPeer.__init__(self, socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP), timeout)
+    def __init__(self, key: bytes, token: bytes, address: IPv4Address, port: int, local: Optional[IPv4Address] = None):
+        _PortPeer.__init__(self, socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP))
         self._peer_address, self._peer_port = address, port
         self._asymmetric = Asymmetric(key, False)
         self._local = local
@@ -96,7 +95,7 @@ class PortClient(_PortPeer, SeasideClient):
     async def _read_server_init(self) -> Optional[int]:
         loop = get_running_loop()
         try:
-            response = await wait_for(loop.sock_recv(self._socket, PortCore.server_init_header_length), self._timeout)
+            response = await wait_for(loop.sock_recv(self._socket, PortCore.server_init_header_length), PortCore._PORT_TIMEOUT)
             self._logger.debug(f"Initialization header from server at {self._peer_address}:{self._peer_port} received...")
         except (OSError, BlockingIOError) as e:
             self._logger.warning(f"Invalid packet header read error: {e}")
@@ -128,7 +127,7 @@ class PortClient(_PortPeer, SeasideClient):
             self._socket.bind((str(self._local), 0))
 
         self._logger.info(f"Connecting to listener at {str(self._peer_address)}:{self._peer_port}")
-        await sock_connect(loop, self._socket, str(self._peer_address), self._peer_port, self._timeout)
+        await sock_connect(loop, self._socket, str(self._peer_address), self._peer_port, PortCore._PORT_TIMEOUT)
 
         self_address = self._socket.getsockname()
         self._logger.info(f"Current user address: {self_address[0]}:{self_address[1]}")
@@ -152,7 +151,7 @@ class PortClient(_PortPeer, SeasideClient):
             self._socket.bind((str(self._local), 0))
 
         self._logger.info(f"Connecting to server at {str(self._peer_address)}:{self._user_id}")
-        await sock_connect(loop, self._socket, str(self._peer_address), self._user_id, self._timeout)
+        await sock_connect(loop, self._socket, str(self._peer_address), self._user_id, PortCore._PORT_TIMEOUT)
 
         if callback is not None:
             self._background += [create_task(self._read_cycle(callback))]
@@ -183,8 +182,8 @@ class PortServer(_PortPeer, SeasidePeer):
     def user_id(self) -> int:
         return self._socket.getsockname()[1]
 
-    def __init__(self, key: bytes, address: IPv4Address, port: int, local: Optional[IPv4Address] = None, timeout: Optional[float] = None):
-        _PortPeer.__init__(self, socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP), timeout)
+    def __init__(self, key: bytes, address: IPv4Address, port: int, local: Optional[IPv4Address] = None):
+        _PortPeer.__init__(self, socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP))
         self._peer_address, self._peer_port = address, port
         self._symmetric = Symmetric(key)
         self._local = local
@@ -233,9 +232,8 @@ class PortListener(_ProtocolBase, SeasideListener):
     def port(self) -> int:
         return self._socket.getsockname()[1]
 
-    def __init__(self, key: bytes, address: IPv4Address, port: int = 0, timeout: Optional[float] = None):
+    def __init__(self, key: bytes, address: IPv4Address, port: int = 0):
         _ProtocolBase.__init__(self)
-        self._timeout = timeout
         self._listener_address, self._listener_port = address, port
         self._socket = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP)
         self._logger = create_logger(type(self).__name__)
@@ -258,7 +256,7 @@ class PortListener(_ProtocolBase, SeasideListener):
         loop = get_running_loop()
         try:
             connection, (client_address, client_port) = await loop.sock_accept(self._socket)
-            response = await wait_for(loop.sock_recv(connection, PortCore.client_init_header_length), self._timeout)
+            response = await wait_for(loop.sock_recv(connection, PortCore.client_init_header_length), PortCore._PORT_TIMEOUT)
         except (OSError, BlockingIOError) as e:
             self._logger.warning(f"Invalid packet header read error: {e}")
             return None
@@ -301,7 +299,7 @@ class PortListener(_ProtocolBase, SeasideListener):
             self._servers[token].cancel()
 
         status = await connection_callback(name, token) if connection_callback is not None else ProtocolReturnCode.SUCCESS
-        server = PortServer(key, address, port, self._listener_address, self._timeout)
+        server = PortServer(key, address, port, self._listener_address)
         servant = self._serve_and_close(conn, server, status, data_callback)
 
         self._logger.info(f"User at port {server.user_id} initialized with status: {status}")

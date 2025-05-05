@@ -73,8 +73,7 @@ class Asymmetric:
         shared_secret = _ensure_not_none(key_exchange(ephemeral_private_key, self._public_key))
         symmetric_key = self._compute_blake2b_hash(shared_secret, ephemeral_public_key, self._public_key)
         hidden_public_key = self._hide_public_key(ephemeral_public_key)
-        ciphertext = Symmetric(symmetric_key).encrypt(plaintext, ephemeral_public_key)
-        return symmetric_key, hidden_public_key + ciphertext
+        return symmetric_key, hidden_public_key + Symmetric(symmetric_key).encrypt(plaintext, ephemeral_public_key)
 
     def decrypt(self, ciphertext: bytes) -> Tuple[bytes, bytes]:
         hidden_public_key_len = self._N_SIZE + self._PUBLIC_KEY_SIZE

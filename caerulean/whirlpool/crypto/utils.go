@@ -29,7 +29,7 @@ func init() {
 		logrus.Fatalf("Error parsing private key from environment variable: %v", err)
 	}
 
-	PRIVATE_KEY, err = NewAsymmetric(betterbuf.NewBufferFromSlice(privateKeyBytes), true)
+	PRIVATE_KEY, err = NewAsymmetric(betterbuf.NewBufferFromSlice(privateKeyBytes))
 	if err != nil {
 		logrus.Fatalf("error creating server symmetric cipher: %v", err)
 	}

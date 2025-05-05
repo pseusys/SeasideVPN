@@ -54,7 +54,7 @@ type Asymmetric struct {
 	privateKey, publicKey, seedKey *betterbuf.Buffer
 }
 
-func NewAsymmetric(key *betterbuf.Buffer, private bool) (*Asymmetric, error) {
+func NewAsymmetric(key *betterbuf.Buffer) (*Asymmetric, error) {
 	var err error
 	var priv, pub, seed *betterbuf.Buffer
 	if key == nil {
@@ -66,7 +66,7 @@ func NewAsymmetric(key *betterbuf.Buffer, private bool) (*Asymmetric, error) {
 		if err != nil {
 			return nil, fmt.Errorf("random seed generating error: %v", err)
 		}
-	} else if private {
+	} else {
 		if key.Length() != PrivateKeySize+SeedKeySize {
 			return nil, fmt.Errorf("invalid private key length: %d != %d", key.Length(), PrivateKeySize+SeedKeySize)
 		}
@@ -75,12 +75,6 @@ func NewAsymmetric(key *betterbuf.Buffer, private bool) (*Asymmetric, error) {
 		if err != nil {
 			return nil, fmt.Errorf("public key generating error: %v", err)
 		}
-	} else {
-		if key.Length() != PublicKeySize+SeedKeySize {
-			return nil, fmt.Errorf("invalid public key length: %d != %d", key.Length(), PublicKeySize+SeedKeySize)
-		}
-		pub, seed = key.RebufferEnd(PublicKeySize), key.RebufferStart(PublicKeySize)
-		priv = nil
 	}
 	return &Asymmetric{privateKey: priv, publicKey: pub, seedKey: seed}, nil
 }
