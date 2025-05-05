@@ -90,7 +90,6 @@ class PortClient(_PortPeer, SeasideClient):
         self._asymmetric = Asymmetric(key, False)
         self._local = local
         self._token = token
-        self._user_id = None
 
     async def _read_server_init(self) -> Optional[int]:
         loop = get_running_loop()
@@ -140,7 +139,7 @@ class PortClient(_PortPeer, SeasideClient):
         result = await self._read_server_init()
         if result is not None:
             self._logger.debug(f"Connection successful, user ID: {result}")
-            self._user_id = result
+            user_id = result
         else:
             raise CancelledError("Listener cancelled!")
 
@@ -150,8 +149,8 @@ class PortClient(_PortPeer, SeasideClient):
             self._logger.info(f"Binding client to {str(self._local)}...")
             self._socket.bind((str(self._local), 0))
 
-        self._logger.info(f"Connecting to server at {str(self._peer_address)}:{self._user_id}")
-        await sock_connect(loop, self._socket, str(self._peer_address), self._user_id, PortCore._PORT_TIMEOUT)
+        self._logger.info(f"Connecting to server at {str(self._peer_address)}:{user_id}")
+        await sock_connect(loop, self._socket, str(self._peer_address), user_id, PortCore._PORT_TIMEOUT)
 
         if callback is not None:
             self._background += [create_task(self._read_cycle(callback))]
