@@ -67,7 +67,7 @@ func (s *Symmetric) Encrypt(plaintext, additional *betterbuf.Buffer) (*betterbuf
 		return nil, fmt.Errorf("unexpected allocation performed during symmetrical encryption: %v", err)
 	}
 
-	message, err := ciphertext.AppendBuffer(nonce)
+	message, err := ciphertext.PrependBuffer(nonce)
 	if err != nil {
 		return nil, fmt.Errorf("appending nonce to ciphertext error: %v", err)
 	}
@@ -92,8 +92,7 @@ func (s *Symmetric) Decrypt(ciphertext, additional *betterbuf.Buffer) (*betterbu
 	}
 
 	// Split ciphertext into ciphertext and nonce, decrypt ciphertext
-	encryptedLength := cipherLength - s.aead.NonceSize()
-	ciphertext, nonce := ciphertext.RebufferEnd(encryptedLength), ciphertext.RebufferStart(encryptedLength)
+	nonce, ciphertext := ciphertext.RebufferEnd(NonceSize), ciphertext.RebufferStart(NonceSize)
 	decrypted, err := s.aead.Open(ciphertext.ResliceEnd(0), nonce.Slice(), ciphertext.Slice(), additionalSlice)
 	if err != nil {
 		return nil, fmt.Errorf("symmetrical decrypting error: %v", err)

@@ -100,10 +100,10 @@ class Symmetric:
         nonce = _ensure_not_none(generate_key(self._CHACHA_NONCE_LENGTH))
         cipher = IncrementalAuthenticatedEncryption(self._key, nonce)
         mac, ciphertext = _ensure_not_none(cipher.lock(plaintext, additional_data))
-        return ciphertext + mac + nonce
+        return nonce + ciphertext + mac
 
     def decrypt(self, ciphertext: bytes, additional_data: Optional[bytes] = None) -> bytes:
-        ciphertext, nonce = ciphertext[: -self._CHACHA_NONCE_LENGTH], ciphertext[-self._CHACHA_NONCE_LENGTH :]
+        nonce, ciphertext = ciphertext[: self._CHACHA_NONCE_LENGTH], ciphertext[self._CHACHA_NONCE_LENGTH :]
         ciphertext, mac = ciphertext[: -self._CHACHA_MAC_LENGTH], ciphertext[-self._CHACHA_MAC_LENGTH :]
         cipher = IncrementalAuthenticatedEncryption(self._key, nonce)
         return _ensure_not_none(cipher.unlock(mac, ciphertext, additional_data))

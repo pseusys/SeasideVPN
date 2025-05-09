@@ -10,12 +10,12 @@ import (
 )
 
 const (
-	NumberN                     = 2
-	SeedKeySize                 = 8
-	PublicKeySize               = 32
-	PrivateKeySize              = 32
-	SymmetricHashSize           = 32
-	AymmetricCiphertextOverhead = SymmetricCiphertextOverhead + PublicKeySize + NumberN
+	NumberN                      = 2
+	SeedKeySize                  = 8
+	PublicKeySize                = 32
+	PrivateKeySize               = 32
+	SymmetricHashSize            = 32
+	AsymmetricCiphertextOverhead = SymmetricCiphertextOverhead + PublicKeySize + NumberN
 )
 
 func multiplyKeyPair(private, public *betterbuf.Buffer) (*betterbuf.Buffer, *betterbuf.Buffer, error) {

@@ -9,11 +9,11 @@ import (
 
 const (
 	MAX_PROTOCOL_HEADER        int = 64
-	MAX_PROTOCOL_BODY          int = math.MaxUint16 - MAX_PROTOCOL_HEADER - 2*crypto.AymmetricCiphertextOverhead
+	MAX_PROTOCOL_BODY          int = math.MaxUint16 - MAX_PROTOCOL_HEADER - 2*crypto.AsymmetricCiphertextOverhead
 	OUTPUT_CHANNEL_POOL_BUFFER int = 16
 )
 
-var PacketPool = betterbuf.CreateBufferPool(MAX_PROTOCOL_HEADER+crypto.AymmetricCiphertextOverhead, math.MaxUint16, crypto.AymmetricCiphertextOverhead)
+var PacketPool = betterbuf.CreateBufferPool(MAX_PROTOCOL_HEADER+crypto.AsymmetricCiphertextOverhead, math.MaxUint16, crypto.AsymmetricCiphertextOverhead)
 
 // ProtocolFlag represents the flags used in Typhoon message types.
 type ProtocolFlag byte

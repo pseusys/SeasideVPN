@@ -178,7 +178,7 @@ func (p *PortListener) handleInitMessage(viridianDict *users.ViridianDict, conn 
 
 	buffer := PacketPool.GetFull()
 	defer PacketPool.Put(buffer)
-	encryptedHeaderLength := PORT_CLIENT_INIT_HEADER + crypto.AymmetricCiphertextOverhead
+	encryptedHeaderLength := PORT_CLIENT_INIT_HEADER + crypto.AsymmetricCiphertextOverhead
 
 	header := buffer.RebufferEnd(encryptedHeaderLength)
 	conn.SetReadDeadline(time.Now().Add(defaultTimeout))
