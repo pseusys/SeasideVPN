@@ -32,8 +32,6 @@ type TyphoonServer struct {
 	inputChan      chan *betterbuf.Buffer
 	listener       *net.UDPConn
 	socket         *net.UDPConn
-	defaultTimeout uint32
-	maxRetries     uint32
 	srtt           uint32
 	rttvar         uint32
 	previousSent   uint32
@@ -49,8 +47,6 @@ func NewTyphoonServer(cipher *crypto.Symmetric, peerID uint16, peerIP net.IP, ls
 		inputChan:      make(chan *betterbuf.Buffer, TYPHOON_INPUT_CHANNEL_BUFFER),
 		listener:       lstnr,
 		socket:         conn,
-		defaultTimeout: TYPHOON_DEFAULT_TIMEOUT,
-		maxRetries:     TYPHOON_MAX_RETRIES,
 		srtt:           0,
 		rttvar:         0,
 		previousSent:   0,
@@ -329,7 +325,7 @@ func (t *TyphoonServer) connectInner(cons *TyphoonConsistencyPart, decayChan cha
 		return nil, fmt.Errorf("error writing init packet: %v", err)
 	}
 
-	sleepTimeout := (t.previousNextIn + t.GetTimeout()) * t.maxRetries
+	sleepTimeout := (t.previousNextIn + t.GetTimeout()) * TYPHOON_MAX_RETRIES
 	logrus.Debugf("Waiting for connection from viridian %d for %d milliseconds...", t.peerID, sleepTimeout)
 	select {
 	case cons, ok := <-decayChan:
@@ -398,7 +394,7 @@ func (t *TyphoonServer) decayInner(cons *TyphoonConsistencyPart, controlChan cha
 		// continue decay
 	}
 
-	sleepTimeout = (t.previousNextIn + t.GetTimeout()) * t.maxRetries
+	sleepTimeout = (t.previousNextIn + t.GetTimeout()) * TYPHOON_MAX_RETRIES
 	logrus.Debugf("Waiting for new handshake from viridian %d for %d milliseconds...", t.peerID, sleepTimeout)
 	select {
 	case cons = <-decayChan:
