@@ -75,7 +75,7 @@ func buildPortAnyData(cipher *crypto.Symmetric, data *betterbuf.Buffer) (*better
 	headerLength := PORT_ANY_OTHER_HEADER + crypto.SymmetricCiphertextOverhead
 	tailLength := utils.ReliableTailLength(PORT_MAX_TAIL_LENGTH)
 
-	message, err := data.Expand(headerLength, crypto.SymmetricCiphertextOverhead)
+	message, err := data.Expand(headerLength+crypto.NonceSize, crypto.MacSize)
 	if err != nil {
 		return nil, fmt.Errorf("error expanding message buffer: %v", err)
 	}
