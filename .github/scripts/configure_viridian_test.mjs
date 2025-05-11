@@ -95,20 +95,19 @@ function parseArguments() {
  * Parse Viridian Reef Docker compose file.
  * Extract Seaside IP and gateway container IP.
  * Also get network addresses of all the networks that should become unreachable.
- * @returns {object} containing keys: `seasideIP`, `gatewayIP`, `dockerNetworks`.
+ * @returns {object} containing keys: `gatewayIP`, `dockerNetworks`.
  */
 function parseDockerComposeFile() {
 	console.log("Reading Docker compose file...");
 	const composeDict = parse(readFileSync(DOCKER_COMPOSE_REEF_PATH).toString());
-	const seasideIP = composeDict["services"]["whirlpool"]["environment"]["SEASIDE_ADDRESS"];
 	const gatewayIP = composeDict["services"][DOCKER_COMPOSE_GATEWAY_CONTAINER]["networks"][DOCKER_COMPOSE_GATEWAY_NETWORK]["ipv4_address"];
 	const gatewayNetwork = composeDict["networks"][DOCKER_COMPOSE_GATEWAY_NETWORK]["ipam"]["config"][0]["subnet"];
-	console.log(`Extracted compose parameters: Seaside IP (${seasideIP}), gateway IP (${gatewayIP})`);
+	console.log(`Extracted compose parameters: gateway IP (${gatewayIP})`);
 	const dockerNetworks = Object.values(composeDict["networks"])
 		.map((v) => v["ipam"]["config"][0]["subnet"])
 		.filter((v) => v !== gatewayNetwork);
 	console.log(`Extracted networks that will be disconnected: ${dockerNetworks}`);
-	return { seasideIP, gatewayIP, dockerNetworks };
+	return { gatewayIP, dockerNetworks };
 }
 
 /**
@@ -132,16 +131,11 @@ function setupRouting(gatewayContainerIP, dockerNetworks) {
 }
 
 /**
- * Generate certificates and launch Docker compose project in the background.
+ * Launch Docker compose project in the background.
  * Wait for some time to check if it started successfully and throw an error if it did.
- * @param {string} seasideIP Seaside Caerulean IP address for client to connect to.
  * @returns {number} Docker compose process PID.
  */
-async function launchDockerCompose(seasideIP) {
-	console.log("Generating certificates...");
-	spawnSync(`poetry -C ${PYTHON_LIB_ALGAE_PATH} poe setup --just-certs ${seasideIP} -v ERROR`, { shell: true });
-	console.log("Moving certificates...");
-	spawnSync(`mv ${join(PYTHON_LIB_ALGAE_PATH, "certificates")} ${join(PYTHON_LIB_REEF_PATH, "certificates")}`, { shell: true });
+async function launchDockerCompose() {
 	console.log("Building 'whirlpool' and 'echo' images...");
 	spawnSync(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} build whirlpool echo`, { shell: true });
 	console.log("Spawning Docker compose process...");
@@ -205,8 +199,8 @@ function resetRouting(defaultRoute) {
 
 const args = parseArguments();
 if (!args.reset) {
-	const { seasideIP, gatewayIP, dockerNetworks } = parseDockerComposeFile();
-	const pid = await launchDockerCompose(seasideIP);
+	const { gatewayIP, dockerNetworks } = parseDockerComposeFile();
+	const pid = await launchDockerCompose();
 	const route = setupRouting(gatewayIP, dockerNetworks);
 	storeCache(args.cacheFile, { route, pid });
 } else {

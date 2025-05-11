@@ -102,7 +102,6 @@ jobs:
       - name: Test Viridian Reef (integration) 🧪
         working-directory: viridian/reef
         env:
-          SEASIDE_ROOT_CERTIFICATE_AUTHORITY: viridian/reef/certificates/viridian/rootCA.crt
           RUNNER_COMMAND: cargo run --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml
           TEST_COMMAND: cd ../algae && poetry run pytest --log-cli-level=INFO tests/test_local.py
         run: ${{ env.SUDO }} ${{ env.RUNNER_COMMAND }} -- -a "${{ env.SEASIDE_ADDRESS }}" -c "${{ env.SEASIDE_CTRLPORT }}" -p "${{ env.SEASIDE_PAYLOAD_VIRIDIAN }}" -e "${{ env.TEST_COMMAND }}"

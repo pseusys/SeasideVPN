@@ -3,11 +3,11 @@ name: seaside-reef
 services:
   int-router:
     container_name: seaside-internal-router
-    privileged: true
-    build:
-      context: ../../..
-      dockerfile: viridian/algae/docker/Dockerfile.router
-      target: smoke
+    extends:
+      file: ../../../viridian/algae/docker/compose.base.yml
+      service: router
+    env_file:
+      - host.env
     networks:
       sea-cli-int:
         ipv4_address: 10.82.0.100
@@ -15,24 +15,19 @@ services:
         ipv4_address: 10.87.82.100
 
   whirlpool:
-    container_name: seaside-whirlpool
-    privileged: true
+    image: seaside-whirlpool-reef
+    extends:
+      file: ../../../viridian/algae/docker/compose.base.yml
+      service: whirlpool
     build:
-      context: ../../..
-      dockerfile: viridian/algae/docker/Dockerfile.whirlpool
       args:
         NETWORK_GATEWAY: 10.87.42.100
+    env_file:
+      - host.env
     environment:
       SEASIDE_PAYLOAD_OWNER: super_secret_owner_payload_data
-      SEASIDE_PAYLOAD_VIRIDIAN: super_secret_user_payload_data
-      SEASIDE_ADDRESS: 10.87.82.87
       SEASIDE_EXTERNAL: 10.87.42.87
-      SEASIDE_CTRLPORT: 8587
       SEASIDE_LOG_LEVEL: DEBUG
-    volumes:
-      - ../certificates/caerulean:/seaside/caerulean/certificates:ro
-    sysctls:
-      - net.ipv6.conf.all.disable_ipv6=1
     networks:
       sea-rout-int:
         ipv4_address: 10.87.82.87
@@ -41,11 +36,11 @@ services:
 
   ext-router:
     container_name: seaside-external-router
-    privileged: true
-    build:
-      context: ../../..
-      dockerfile: viridian/algae/docker/Dockerfile.router
-      target: smoke
+    extends:
+      file: ../../../viridian/algae/docker/compose.base.yml
+      service: router
+    env_file:
+      - host.env
     networks:
       sea-rout-ext:
         ipv4_address: 10.87.42.100
@@ -54,17 +49,14 @@ services:
 
   echo:
     container_name: seaside-echo
-    privileged: true
+    extends:
+      file: ../../../viridian/algae/docker/compose.base.yml
+      service: echo
     build:
-      context: ../../..
-      dockerfile: viridian/algae/docker/Dockerfile.echo
-      target: smoke
       args:
         NETWORK_GATEWAY: 10.42.0.100
-    environment:
-      LOG_LEVEL: DEBUG
-      BUFFER_SIZE: 8192
-      ECHO_PORT: 5000
+    env_file:
+      - host.env
     networks:
       sea-serv-ext:
         ipv4_address: 10.42.0.42

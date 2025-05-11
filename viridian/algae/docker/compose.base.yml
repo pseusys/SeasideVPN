@@ -53,7 +53,8 @@ services:
     privileged: true
     init: true
     build:
-      dockerfile: Dockerfile.echo
+      dockerfile: viridian/algae/docker/Dockerfile.echo
+      context: ../../..
       target: default-routed
     env_file:
       - test.conf.env
@@ -66,5 +67,8 @@ services:
     privileged: true
     init: true
     build:
-      dockerfile: Dockerfile.router
+      dockerfile: viridian/algae/docker/Dockerfile.router
+      context: ../../..
       target: default
+    env_file:
+      - test.conf.env

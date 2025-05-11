@@ -25,11 +25,7 @@ build:
 	cargo build --all-features
 .PHONY: build
 
-certificates:
-	poetry -C ../algae poe setup --just-certs "$$(yq -r '.services.whirlpool.environment.SEASIDE_ADDRESS' docker/compose.yml)"
-	mv ../algae/certificates certificates
-
-run: build certificates
+run: build
 	@ # Run reef locally
 	cargo run --features cli-exec --bin cli
 .PHONY: run
@@ -46,7 +42,7 @@ test:
 
 clean:
 	@ # Clean all reef build artifacts
-	rm -rf target certificates
+	rm -rf target
 	rm -f Cargo.lock
 	docker rm -f seaside-reef seaside-echo seaside-external-router seaside-internal-router seaside-whirlpool
 	docker network rm -f seaside-reef_sea-cli-int seaside-reef_sea-rout-ext seaside-reef_sea-rout-int seaside-reef_sea-serv-ext
