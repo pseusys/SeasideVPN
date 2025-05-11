@@ -165,7 +165,7 @@ func (server *WhirlpoolServer) Authenticate(ctx context.Context, request *genera
 	}
 
 	// Encrypt token
-	tokenBuffer := betterbuf.NewBufferFromCapacityEnsured(marshToken, 0, crypto.SymmetricCiphertextOverhead)
+	tokenBuffer := betterbuf.NewBufferFromCapacityEnsured(marshToken, crypto.NonceSize, crypto.MacSize)
 	tokenData, err := crypto.SERVER_KEY.Encrypt(tokenBuffer, nil)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error encrypting token: %v", err)
