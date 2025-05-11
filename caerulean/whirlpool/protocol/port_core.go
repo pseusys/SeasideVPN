@@ -80,7 +80,7 @@ func buildPortAnyData(cipher *crypto.Symmetric, data *betterbuf.Buffer) (*better
 		return nil, fmt.Errorf("error expanding message buffer: %v", err)
 	}
 
-	header := message.RebufferEnd(PORT_ANY_OTHER_HEADER)
+	header := message.Rebuffer(crypto.NonceSize, crypto.NonceSize+PORT_ANY_OTHER_HEADER)
 	header.Set(0, byte(FLAG_DATA))
 	binary.BigEndian.PutUint16(header.ResliceStart(1), uint16(data.Length())+crypto.SymmetricCiphertextOverhead)
 	binary.BigEndian.PutUint16(header.ResliceStart(3), uint16(tailLength))
@@ -90,7 +90,7 @@ func buildPortAnyData(cipher *crypto.Symmetric, data *betterbuf.Buffer) (*better
 		return nil, fmt.Errorf("error encrypting data header: %v", err)
 	}
 
-	_, err = cipher.Encrypt(message.Rebuffer(headerLength, headerLength+data.Length()), nil)
+	_, err = cipher.Encrypt(data, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error encrypting data payload: %v", err)
 	}

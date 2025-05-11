@@ -104,7 +104,7 @@ func buildTyphoonServerHDSKData(cipher *crypto.Symmetric, packetNumber, nextIn u
 func buildTyphoonServerHDSKWithData(cipher *crypto.Symmetric, flags ProtocolFlag, packetNumber, nextIn uint32, data *betterbuf.Buffer) (*betterbuf.Buffer, error) {
 	tailLength := utils.ReliableTailLength(TYPHOON_MAX_TAIL_LENGTH)
 
-	message, err := data.Expand(TYPHOON_ANY_HDSK_HEADER+crypto.NonceSize, crypto.MacSize)
+	message, err := data.ExpandBefore(TYPHOON_ANY_HDSK_HEADER)
 	if err != nil {
 		return nil, fmt.Errorf("error expanding message buffer: %v", err)
 	}
@@ -127,7 +127,7 @@ func buildTyphoonServerHDSKWithData(cipher *crypto.Symmetric, flags ProtocolFlag
 func buildTyphoonAnyData(cipher *crypto.Symmetric, data *betterbuf.Buffer) (*betterbuf.Buffer, error) {
 	tailLength := utils.ReliableTailLength(TYPHOON_MAX_TAIL_LENGTH)
 
-	message, err := data.Expand(TYPHOON_ANY_OTHER_HEADER+crypto.NonceSize, crypto.MacSize)
+	message, err := data.ExpandBefore(TYPHOON_ANY_OTHER_HEADER)
 	if err != nil {
 		return nil, fmt.Errorf("error expanding message buffer: %v", err)
 	}
