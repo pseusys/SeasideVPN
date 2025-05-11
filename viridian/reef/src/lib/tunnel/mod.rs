@@ -1,8 +1,8 @@
-use std::future::Future;
 use std::net::Ipv4Addr;
 
 use ipnet::Ipv4Net;
 use simple_error::bail;
+use tonic::async_trait;
 use tun::AsyncDevice;
 
 use crate::DynResult;
@@ -10,17 +10,13 @@ use crate::DynResult;
 
 #[cfg(target_os = "linux")]
 mod linux;
-
 #[cfg(target_os = "linux")]
 mod nl_utils;
-
 #[cfg(target_os = "linux")]
 use linux::*;
 
-
 #[cfg(target_os = "windows")]
 mod windows;
-
 #[cfg(target_os = "windows")]
 use windows::*;
 
@@ -29,8 +25,9 @@ mod utils;
 pub use utils::*;
 
 
+#[async_trait]
 pub trait Creatable: Sized {
-    fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_network: Ipv4Net, svr_index: u8) -> impl Future<Output = DynResult<Self>> + Send;
+    async fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_network: Ipv4Net, svr_index: u8) -> DynResult<Self>;
 }
 
 pub struct Tunnel {

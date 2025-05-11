@@ -16,6 +16,7 @@ use windivert::prelude::WinDivertFlags;
 use windows::Win32::Foundation::{ERROR_BUFFER_OVERFLOW, ERROR_SUCCESS, WIN32_ERROR};
 use windows::Win32::NetworkManagement::IpHelper::{GetAdaptersAddresses, GetBestRoute, GAA_FLAG_INCLUDE_PREFIX, MIB_IPFORWARDROW, IP_ADAPTER_ADDRESSES_LH};
 use tun::{create_as_async, AsyncDevice, Configuration};
+use tonic::async_trait;
 use windows::Win32::Networking::WinSock::AF_INET;
 
 use super::{bytes_to_ip_address, Creatable, Tunnel};
@@ -178,6 +179,7 @@ pub struct PlatformInternalConfig {
     routing_stopper: Sender<()>
 }
 
+#[async_trait]
 impl Creatable for Tunnel {
     async fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_network: Ipv4Net, _: u8) -> DynResult<Tunnel> {
         debug!("Checking system default network properties...");

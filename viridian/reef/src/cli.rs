@@ -7,12 +7,8 @@ use gethostname::gethostname;
 use structopt::StructOpt;
 use env_logger::init;
 
-use reeflib::coordinator::Coordinator;
+use reeflib::viridian::Coordinator;
 use reeflib::DynResult;
-
-mod generated {
-    tonic::include_proto!("generated");
-}
 
 
 const DEFAULT_CAERULEAN_ADDRESS: &str = "127.0.0.1";
@@ -22,22 +18,15 @@ const DEFAULT_LOG_LEVEL: &str = "INFO";
 const DEFAULT_MIN_HC_TIME: &str = "1";
 const DEFAULT_MAX_HC_TIME: &str = "5";
 const DEFAULT_CONNECTION_TIMEOUT: &str = "3.0";
-const DEFAULT_TUNNEL_NAME: &str = "seatun";
-const DEFAULT_TUNNEL_ADDRESS: &str = "192.168.0.82";
-const DEFAULT_TUNNEL_NETMASK: &str = "255.255.255.0";
-const DEFAULT_SVR_INDEX: &str = "82";
 
 
 fn parse_address(address: &str) -> DynResult<Ipv4Addr> {
-    match address.parse::<IpAddr>() {
-        Ok(IpAddr::V4(pip)) => Ok(pip),
-        _ => match address.to_socket_addrs()?.next() {
-            Some(rip) => match rip.ip() {
-                IpAddr::V4(ripv4) => Ok(ripv4),
-                IpAddr::V6(ripv6) => bail!("IP addresses v6 {ripv6} are not yet supported!")
-            },
-            None => bail!("IP address {address} can't be resolved!")
-        }
+    match (address, 0).to_socket_addrs()?.next() {
+        Some(socket_addr) => match socket_addr.ip() {
+            IpAddr::V4(ipv4) => Ok(ipv4),
+            IpAddr::V6(ipv6) => bail!("IPv6 address {ipv6} is not supported!"),
+        },
+        None => bail!("Could not resolve address: {address}"),
     }
 }
 
@@ -106,10 +95,6 @@ async fn main() -> DynResult<()> {
         let min_hc = var("SEASIDE_MIN_HC_TIME").unwrap_or(DEFAULT_MIN_HC_TIME.to_string()).parse::<u16>().expect("'SEASIDE_MIN_HC_TIME' should be an integer!");
         let max_hc = var("SEASIDE_MAX_HC_TIME").unwrap_or(DEFAULT_MAX_HC_TIME.to_string()).parse::<u16>().expect("'SEASIDE_MAX_HC_TIME' should be an integer!");
         let timeout = var("SEASIDE_CONNECTION_TIMEOUT").unwrap_or(DEFAULT_CONNECTION_TIMEOUT.to_string()).parse::<f32>().expect("'SEASIDE_CONNECTION_TIMEOUT' should be a float!");
-        let tunnel = var("SEASIDE_TUNNEL_NAME").unwrap_or(DEFAULT_TUNNEL_NAME.to_string());
-        let tunnel_address = var("SEASIDE_TUNNEL_ADDRESS").unwrap_or(DEFAULT_TUNNEL_ADDRESS.to_string()).parse::<Ipv4Addr>().expect("'SEASIDE_TUNNEL_ADDRESS' should be an IP address!");
-        let tunnel_netmask = var("SEASIDE_TUNNEL_NETMASK").unwrap_or(DEFAULT_TUNNEL_NETMASK.to_string()).parse::<Ipv4Addr>().expect("'DEFAULT_TUNNEL_NETMASK' should be an IP netmask!");
-        let svr_index = var("SEASIDE_SVR_INDEX").unwrap_or(DEFAULT_SVR_INDEX.to_string()).parse::<u8>().expect("'DEFAULT_SVR_INDEX' should be an integer!");
         let certs = var("SEASIDE_ROOT_CERTIFICATE_AUTHORITY").ok();
 
         info!("Creating reef coordinator...");

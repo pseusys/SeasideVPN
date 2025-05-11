@@ -17,6 +17,7 @@ use nftables::schema::{Chain, NfListObject, Rule, Table};
 use nftables::stmt::{Accept, Mangle, Match, Operator, Statement};
 use nftables::types::{NfChainType, NfFamily, NfHook};
 use simple_error::{bail, require_with};
+use tonic::async_trait;
 use tun::{create_as_async, AsyncDevice, Configuration};
 
 use super::nl_utils::{copy_rtmsg, create_address_message, create_attr, create_clear_cache_message, create_header, create_interface_message, create_routing_message, create_rtmsg, create_socket, send_netlink_message, send_netlink_stream};
@@ -259,6 +260,7 @@ pub struct PlatformInternalConfig {
     firewall_table: Table
 }
 
+#[async_trait]
 impl Creatable for Tunnel {
     async fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_network: Ipv4Net, svr_index: u8) -> DynResult<Tunnel> {
         debug!("Checking system default network properties...");
