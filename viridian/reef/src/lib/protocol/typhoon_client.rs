@@ -77,6 +77,7 @@ impl TyphoonHandle {
     pub async fn connect_inner(&mut self, stream: &mut UdpSocket) -> DynResult<(u16, u32, Symmetric)> {
         let mut packet_number: u32;
         for i in 0..*TYPHOON_MAX_RETRIES {
+            debug!("Trying connection attempt {i}...");
             packet_number = get_timestamp();
             let next_in = generate_next_in(*TYPHOON_INITIAL_NEXT_IN);
             let (key, packet) = build_client_init(&self.asymmetric, packet_number, next_in, &self.token)?;

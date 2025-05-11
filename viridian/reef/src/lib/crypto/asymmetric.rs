@@ -13,8 +13,6 @@ const SYMMETRIC_HASH_SIZE: usize = 32;
 const PUBLIC_KEY_SIZE: usize = 32;
 const SEED_SIZE: usize = 8;
 const N_SIZE: usize = 2;
-const CHACHA_NONCE_LENGTH: usize = 24;
-const CHACHA_MAC_LENGTH: usize = 16;
 
 
 fn xor_bytes(a: &[u8], b: &[u8]) -> Vec<u8> {
