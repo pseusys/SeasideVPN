@@ -45,8 +45,6 @@ dependencies = [
 ]
 
 
-
-
 [project.urls]
 repository = "https://github.com/pseusys/SeasideVPN"
 
@@ -100,6 +98,14 @@ protocol = [
     "scapy~=2.6.1",
     "nbstripout~=0.8.1"
 ]
+
+
+
+# Standalone config:
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
 
 
 
