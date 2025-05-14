@@ -11,7 +11,7 @@ license-files = [
 ]
 
 authors = [
-    { name = "Alexander Sergeev", email = "alexander.sergeev@onmail.com>" }
+    { name = "Alexander Sergeev", email = "alexander.sergeev@onmail.com" }
 ]
 
 keywords = [

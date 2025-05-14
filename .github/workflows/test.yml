@@ -45,7 +45,7 @@ jobs:
 
   viridian-algae-test-quick:
     name: Test Viridian Algae Quick
-    runs-on: ubuntu-latests
+    runs-on: ubuntu-latest
     env:
       SEASIDE_ADDRESS: 10.87.82.87
       SEASIDE_API_PORT: 8587

@@ -9,15 +9,15 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install python dependencies and build system.
-RUN apt-get update && apt-get install -y --no-install-recommends python3-pip && pip install --upgrade --no-cache-dir --break-system-packages poetry poetry-plugin-export && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends python3-pip && rm -rf /var/lib/apt/lists/*
 
 # Export dependencies to a `requirements.txt` install protobuf compiler.
-COPY viridian/algae/pyproject.toml ./
-RUN poetry install && poetry export -f requirements.txt --extras "client devel" --without-hashes --with-credentials --output requirements.txt && awk -F ';' '{print $1}' requirements.txt > reqs.txt
+COPY viridian/algae/pyproject.toml viridian/algae/README.md ./
+RUN pip3 install --no-cache-dir --break-system-packages .
 
 # Copy protobuf files and generate python code.
 COPY vessels ./vessels
-RUN poetry run python -m grpc_tools.protoc -I=vessels --python_betterproto_out=. vessels/*.proto
+RUN python3 -m grpc_tools.protoc -I=vessels --python_betterproto_out=. vessels/*.proto
 
 
 FROM ubuntu:24.10 AS default
@@ -33,8 +33,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install testing dependencies.
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential iptables iproute2 iputils-ping dnsutils python3-pip && rm -rf /var/lib/apt/lists/*
-COPY --from=builder /seaside/algae/reqs.txt ./
-RUN pip3 install --no-cache-dir --break-system-packages -r reqs.txt
+COPY viridian/algae/pyproject.toml viridian/algae/README.md ./
+RUN pip3 install --no-cache-dir --break-system-packages .[devel,client]
 
 # Copy algae and test sources, also copy generated protobuf files.
 COPY viridian/algae/sources/ ./sources/
