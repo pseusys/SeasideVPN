@@ -76,5 +76,16 @@ FROM default AS default-routed
 ARG NETWORK_GATEWAY
 ENV ARG_NETWORK_GATEWAY=$NETWORK_GATEWAY
 
+ARG SEASIDE_ADDRESS
+ENV SEASIDE_ADDRESS=$SEASIDE_ADDRESS
+
+ENV SEASIDE_CERTIFICATE_PATH=/seaside/caerulean/certificates/caerulean
+
+RUN apk add --no-cache openssl
+RUN mkdir -p /tmp/certificates/caerulean && mkdir -p /tmp/certificates/viridian && cd /tmp/certificates \
+    && openssl req -digest -newkey rsa:2048 -sha256 -nodes -keyout caerulean/cert.key -out caerulean/cert.csr -subj "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPN" -addext "subjectAltName = IP:${SEASIDE_ADDRESS}" -addext keyUsage=critical,digitalSignature,nonRepudiation -addext extendedKeyUsage=serverAuth \
+    && openssl req -digest -new -x509 -sha256 -nodes -keyout viridian/rootCA.key -out viridian/rootCA.crt -days 365250 -newkey rsa:2048 -subj "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPN" -addext keyUsage=critical,digitalSignature,nonRepudiation,keyEncipherment,dataEncipherment,keyAgreement,keyCertSign,cRLSign -addext extendedKeyUsage=serverAuth,clientAuth \
+    && openssl x509 -req -CA viridian/rootCA.crt -CAkey viridian/rootCA.key -in caerulean/cert.csr -out caerulean/cert.crt -days 365250 -CAcreateserial -copy_extensions=copyall
+
 # Setup default route IP and run viridian algae with command.
-ENTRYPOINT ["sh", "-c", "ip route replace default via $ARG_NETWORK_GATEWAY && ./whirlpool.run"]
+ENTRYPOINT ["sh", "-c", "ip route replace default via $ARG_NETWORK_GATEWAY && cp -r /tmp/certificates ./ && ./whirlpool.run"]

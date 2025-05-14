@@ -45,8 +45,8 @@ services:
     build:
       args:
         NETWORK_GATEWAY: 10.87.42.1
+        SEASIDE_ADDRESS: 10.87.65.87
     environment:
-      SEASIDE_ADDRESS: 10.87.65.87
       SEASIDE_EXTERNAL: 10.87.42.87
     networks:
       sea-router:

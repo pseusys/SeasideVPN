@@ -25,7 +25,7 @@ services:
     sysctls:
       - net.ipv6.conf.all.disable_ipv6=1
     volumes:
-      - ../certificates/viridian:/seaside/viridian/ca:ro
+      - ../certificates/viridian:/seaside/viridian/ca:rw
 
   whirlpool:
     image: seaside-whirlpool
@@ -45,7 +45,7 @@ services:
     sysctls:
       - net.ipv6.conf.all.disable_ipv6=1
     volumes:
-      - ../certificates/caerulean:/seaside/caerulean/certificates:ro
+      - ../certificates:/seaside/caerulean/certificates:rw
 
   echo:
     image: seaside-echo
