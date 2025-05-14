@@ -4,7 +4,7 @@ from socket import IPPROTO_TCP, SO_KEEPALIVE, SOL_SOCKET, TCP_KEEPCNT, TCP_KEEPI
 from struct import calcsize, pack, unpack
 from typing import Tuple
 
-from .. import __version__
+from ..version import __version__
 from ..utils.crypto import Asymmetric, Symmetric
 from ..utils.misc import classproperty, random_number
 from .utils import ProtocolMessageType, ProtocolFlag, ProtocolInitializationError, ProtocolParseError, ProtocolReturnCode

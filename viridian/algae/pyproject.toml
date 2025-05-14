@@ -112,12 +112,10 @@ build-backend = "poetry.core.masonry.api"
 # Poetry config:
 
 [tool.poetry]
-package-mode = false
 requires-poetry = ">=2.0"
 
 packages = [
-    { include = "sources" },
-    { include = "setup" }
+    { include = "__init__.py" }
 ]
 
 

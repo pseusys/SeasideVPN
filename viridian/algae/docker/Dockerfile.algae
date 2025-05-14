@@ -12,7 +12,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends python3-pip && rm -rf /var/lib/apt/lists/*
 
 # Export dependencies to a `requirements.txt` install protobuf compiler.
-COPY viridian/algae/pyproject.toml viridian/algae/README.md ./
+COPY viridian/algae/pyproject.toml viridian/algae/README.md viridian/algae/__init__.py ./
 RUN pip3 install --no-cache-dir --break-system-packages .
 
 # Copy protobuf files and generate python code.
@@ -33,7 +33,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install testing dependencies.
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential iptables iproute2 iputils-ping dnsutils python3-pip && rm -rf /var/lib/apt/lists/*
-COPY viridian/algae/pyproject.toml viridian/algae/README.md ./
+COPY viridian/algae/pyproject.toml viridian/algae/README.md viridian/algae/__init__.py ./
 RUN pip3 install --no-cache-dir --break-system-packages .[devel,client]
 
 # Copy algae and test sources, also copy generated protobuf files.

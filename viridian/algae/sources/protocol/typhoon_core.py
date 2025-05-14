@@ -4,7 +4,7 @@ from struct import calcsize, pack, unpack
 from types import NoneType
 from typing import Tuple, Union
 
-from .. import __version__
+from ..version import __version__
 from ..utils.crypto import Asymmetric, Symmetric
 from ..utils.misc import random_number
 from .utils import ProtocolMessageType, ProtocolFlag, ProtocolInitializationError, ProtocolParseError, ProtocolReturnCode
