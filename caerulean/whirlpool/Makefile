@@ -51,15 +51,6 @@ build:
 	go build -ldflags ${LINKING_FLAGS} -o build/$(EXEC_NAME) ./sources
 .PHONY: build
 
-certificates:
-	poetry -C ../../viridian/algae poe setup --just-certs
-	mv ../../viridian/algae/certificates/caerulean certificates
-
-run: build certificates
-	@ # Run executable
-	sudo build/$(EXEC_NAME)
-.PHONY: run
-
 lint: build
 	@ # Run lint
 	staticcheck -f stylish ./...

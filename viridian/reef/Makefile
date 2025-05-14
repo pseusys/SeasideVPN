@@ -34,7 +34,7 @@ run: build
 
 test:
 	@ # Run tests inside of the testing docker container
-	docker build -f docker/Dockerfile --target test -t seaside-reef-test ../..
+	docker build -f Dockerfile --target tester -t seaside-reef-test ../..
 	docker run --privileged --rm --name seaside-reef-test --sysctl net.ipv6.conf.all.disable_ipv6=1 --entrypoint cargo seaside-reef-test test --package SeasideVPN-Reef --lib -- --nocapture --show-output
 .PHONY: test
 
@@ -44,7 +44,5 @@ clean:
 	@ # Clean all reef build artifacts
 	rm -rf target
 	rm -f Cargo.lock
-	docker rm -f seaside-reef seaside-echo seaside-external-router seaside-internal-router seaside-whirlpool
-	docker network rm -f seaside-reef_sea-cli-int seaside-reef_sea-rout-ext seaside-reef_sea-rout-int seaside-reef_sea-serv-ext
-	docker rmi -f seaside-reef-test seaside-reef-reef seaside-reef-echo seaside-reef-ext-router seaside-reef-int-router seaside-reef-whirlpool
+	docker rmi -f seaside-reef-test
 .PHONY: clean

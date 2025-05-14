@@ -12,8 +12,8 @@ env:
   RUNNING_IN_CI: 1
 
 jobs:
-  viridian-algae-test:
-    name: Test Viridian Algae
+  viridian-algae-test-full:
+    name: Test Viridian Algae Full
     runs-on: ubuntu-latest
 
     steps:
@@ -43,11 +43,68 @@ jobs:
         working-directory: viridian/algae
         run: poetry poe test-smoke
 
+  viridian-algae-test-quick:
+    name: Test Viridian Algae Quick
+    runs-on: ubuntu-latests
+    env:
+      SEASIDE_ADDRESS: 10.87.82.87
+      SEASIDE_API_PORT: 8587
+
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v4
+
+      - name: Install NodeJS 🪢
+        uses: actions/setup-node@v4.1.0
+        with:
+          node-version: 22
+
+      - name: Install Node Dependencies 🔮
+        working-directory: .github/scripts
+        run: npm install
+
+      - name: Setup Python 3.11 🐍
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Dependencies 🔮
+        working-directory: viridian/algae
+        run: pip3 install .[devel]
+
+      - name: Prepare Host
+        working-directory: .github/scripts
+        run: npm run configure-viridian-test
+
+      - name: Load .ENV File
+        uses: aarcangeli/load-dotenv@v1
+        with:
+          path: viridian/algae/docker
+          filenames: test.conf.env
+
+      - name: Get Connection Link
+        working-directory: viridian/algae
+        env:
+          SEASIDE_LOG_LEVEL: ERROR
+        run: |
+          LINK=$(poetry poe fixture -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian)
+          echo "WHIRLPOOL_LINK=$LINK" >> $GITHUB_ENV
+
+      - name: Test Viridian Algae (standalone) 🧪
+        working-directory: viridian/algae
+        env:
+          LOCAL_ADDRESS: 127.0.0.1
+          ECHO_ADDRESS: 10.42.0.42
+          TEST_COMMAND: python3 -m pytest --log-cli-level=INFO tests/test_local.py
+        run: sudo -E env "PATH=$PATH" python3 -m sources.automation.simple_client -a ${{ env.SEASIDE_ADDRESS }} -k ${{ env.SEASIDE_API_KEY_OWNER }} -p ${{ env.SEASIDE_API_PORT }} -e \"${{ env.TEST_COMMAND }}\"
+
   viridian-reef-test:
     name: Test Viridian Reef
     runs-on: ${{ format('{0}-latest', matrix.os) }}
     env:
       SUDO: ${{ matrix.os == 'ubuntu' && 'sudo -E env "PATH=$PATH"' || '' }}
+      SEASIDE_ADDRESS: 10.87.82.87
+      SEASIDE_API_PORT: 8587
     strategy:
       fail-fast: false
       matrix:
@@ -81,9 +138,7 @@ jobs:
 
       - name: Install Dependencies 🔮
         working-directory: viridian/algae
-        run: |
-          pip3 install poetry
-          poetry install --extras "setup"
+        run: pip3 install .[devel]
 
       - name: Test Viridian Reef (unit) 🧪
         working-directory: viridian/reef
@@ -96,15 +151,24 @@ jobs:
       - name: Load .ENV File
         uses: aarcangeli/load-dotenv@v1
         with:
-          path: viridian/reef/docker
-          filenames: host.env
+          path: viridian/algae/docker
+          filenames: test.conf.env
+
+      - name: Get Connection Link
+        working-directory: viridian/algae
+        env:
+          SEASIDE_LOG_LEVEL: ERROR
+        run: |
+          LINK=$(poetry poe fixture -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian)
+          echo "WHIRLPOOL_LINK=$LINK" >> $GITHUB_ENV
 
       - name: Test Viridian Reef (integration) 🧪
         working-directory: viridian/reef
         env:
+          SEASIDE_LOG_LEVEL: reeflib=DEBUG,INFO
           RUNNER_COMMAND: cargo run --features cli-exec --bin cli
-          TEST_COMMAND: cd ../algae && poetry run pytest --log-cli-level=INFO tests/test_local.py
-        run: ${{ env.SUDO }} ${{ env.RUNNER_COMMAND }} -- -a "${{ env.SEASIDE_ADDRESS }}" -c "${{ env.SEASIDE_CTRLPORT }}" -p "${{ env.SEASIDE_PAYLOAD_VIRIDIAN }}" -e "${{ env.TEST_COMMAND }}"
+          TEST_COMMAND: python3 -m pytest --log-cli-level=INFO ../algae/tests/test_local.py
+        run: ${{ env.SUDO }} ${{ env.RUNNER_COMMAND }} -- -l "${{ env.WHIRLPOOL_LINK }}" -e "${{ env.TEST_COMMAND }}"
 
   caerulean-whirlpool-test:
     name: Test Caerulean Whirlpool

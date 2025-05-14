@@ -6,12 +6,11 @@ WORKDIR /seaside
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential wget ca-certificates && rm -rf /var/lib/apt/lists/*
-RUN wget -qO- https://sh.rustup.rs | sh -s -- --default-toolchain 1.81.0 -y
+RUN wget -qO- https://sh.rustup.rs | sh -s -- --default-toolchain 1.86.0 -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 COPY vessels vessels
 COPY viridian/reef/Cargo.toml viridian/reef/Cargo.toml
-COPY viridian/reef/build.rs viridian/reef/build.rs
 RUN cargo build --manifest-path viridian/reef/Cargo.toml --all-features --bin cli || true
 
 COPY viridian/reef/src viridian/reef/src
@@ -22,7 +21,7 @@ FROM downloader AS builder
 RUN cargo build --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml
 
 
-FROM downloader AS test
+FROM downloader AS tester
 
 ENV RUST_BACKTRACE=1
 RUN apt-get update && apt-get install -y --no-install-recommends net-tools uml-utilities nftables iproute2 && rm -rf /var/lib/apt/lists/*
@@ -31,7 +30,7 @@ COPY viridian/reef/tests viridian/reef/tests
 WORKDIR /seaside/viridian/reef
 
 
-FROM ubuntu:22.04 AS integration
+FROM ubuntu:22.04 AS default
 
 WORKDIR /seaside/viridian
 
@@ -54,6 +53,7 @@ ENV SEASIDE_ADDRESS=
 ENV SEASIDE_CTRLPORT=
 
 ENV TEST_COMMAND="pytest --log-cli-level=INFO tests/test_local.py"
-ENTRYPOINT ["sh", "-c", "ip route replace default via \"$ARG_NETWORK_GATEWAY\" && ./cli -a \"$SEASIDE_ADDRESS\" -c \"$SEASIDE_CTRLPORT\" -p \"$SEASIDE_PAYLOAD_VIRIDIAN\" -e \"$TEST_COMMAND\""]
+ENV RUN_COMMAND="./cli -a \$SEASIDE_ADDRESS -c \$SEASIDE_CTRLPORT -k ... -t ... -p \$SEASIDE_PAYLOAD_VIRIDIAN -e \"\$TEST_COMMAND\""
+ENTRYPOINT ["sh", "-c", "ip route replace default via \"$ARG_NETWORK_GATEWAY\" && eval \"$RUN_COMMAND\""]
 
 HEALTHCHECK --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s CMD ls /sys/class/net | grep tun0

@@ -4,10 +4,8 @@ services:
   int-router:
     container_name: seaside-internal-router
     extends:
-      file: ../../../viridian/algae/docker/compose.base.yml
+      file: compose.base.yml
       service: router
-    env_file:
-      - host.env
     networks:
       sea-cli-int:
         ipv4_address: 10.82.0.100
@@ -17,16 +15,13 @@ services:
   whirlpool:
     image: seaside-whirlpool-reef
     extends:
-      file: ../../../viridian/algae/docker/compose.base.yml
+      file: compose.base.yml
       service: whirlpool
     build:
       args:
         NETWORK_GATEWAY: 10.87.42.100
-    env_file:
-      - host.env
+        SEASIDE_ADDRESS: 10.87.82.87
     environment:
-      SEASIDE_PAYLOAD_OWNER: super_secret_owner_payload_data
-      SEASIDE_EXTERNAL: 10.87.42.87
       SEASIDE_LOG_LEVEL: DEBUG
     networks:
       sea-rout-int:
@@ -37,10 +32,8 @@ services:
   ext-router:
     container_name: seaside-external-router
     extends:
-      file: ../../../viridian/algae/docker/compose.base.yml
+      file: compose.base.yml
       service: router
-    env_file:
-      - host.env
     networks:
       sea-rout-ext:
         ipv4_address: 10.87.42.100
@@ -50,13 +43,11 @@ services:
   echo:
     container_name: seaside-echo
     extends:
-      file: ../../../viridian/algae/docker/compose.base.yml
+      file: compose.base.yml
       service: echo
     build:
       args:
         NETWORK_GATEWAY: 10.42.0.100
-    env_file:
-      - host.env
     networks:
       sea-serv-ext:
         ipv4_address: 10.42.0.42
