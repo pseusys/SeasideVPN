@@ -12,7 +12,7 @@ const BLUE = "\x1b[34m";
 const GREEN = "\x1b[32m";
 const RESET = "\x1b[0m";
 
-// Metric value that will be used for new default routes (greater than Viridian Reef metric value).
+// Metric value that will be used for new default routes (greater than Viridian Algae metric value).
 const REASONABLY_LOW_METRIC_VALUE = 10;
 // Timeout for Docker compose to initialize (and stop completely in case of an error).
 const DOCKER_COMPOSE_INITIALIZATION_TIMEOUT = 15;
@@ -22,12 +22,8 @@ const DOCKER_COMPOSE_GATEWAY_NETWORK = "sea-cli-int";
 const DOCKER_COMPOSE_GATEWAY_CONTAINER = "int-router";
 // Path to `viridian/algae` directory.
 const PYTHON_LIB_ALGAE_PATH = join(dirname(import.meta.dirname), "..", "viridian", "algae");
-// Path to the default Docker compose configuration file in `viridian/algae` directory.
-const DOCKER_COMPOSE_ALGAE_PATH = join(PYTHON_LIB_ALGAE_PATH, "docker", "compose.default.yml");
-// Path to `viridian/reef` directory.
-const PYTHON_LIB_REEF_PATH = join(dirname(import.meta.dirname), "..", "viridian", "reef");
-// Path to the Docker compose configuration file in `viridian/reef` directory.
-const DOCKER_COMPOSE_REEF_PATH = join(PYTHON_LIB_REEF_PATH, "docker", "compose.yml");
+// Path to the Docker compose configuration file in `viridian/algae` directory.
+const DOCKER_COMPOSE_ALGAE_PATH = join(PYTHON_LIB_ALGAE_PATH, "docker", "compose.standalone.yml");
 // Host configuration cache file name.
 const DOCKER_COMPOSE_CACHE_FILE_NAME = ".setup_test_cache";
 
@@ -92,14 +88,14 @@ function parseArguments() {
 }
 
 /**
- * Parse Viridian Reef Docker compose file.
+ * Parse Viridian Algae Docker compose file.
  * Extract Seaside IP and gateway container IP.
  * Also get network addresses of all the networks that should become unreachable.
  * @returns {object} containing keys: `gatewayIP`, `dockerNetworks`.
  */
 function parseDockerComposeFile() {
 	console.log("Reading Docker compose file...");
-	const composeDict = parse(readFileSync(DOCKER_COMPOSE_REEF_PATH).toString());
+	const composeDict = parse(readFileSync(DOCKER_COMPOSE_ALGAE_PATH).toString());
 	const gatewayIP = composeDict["services"][DOCKER_COMPOSE_GATEWAY_CONTAINER]["networks"][DOCKER_COMPOSE_GATEWAY_NETWORK]["ipv4_address"];
 	const gatewayNetwork = composeDict["networks"][DOCKER_COMPOSE_GATEWAY_NETWORK]["ipam"]["config"][0]["subnet"];
 	console.log(`Extracted compose parameters: gateway IP (${gatewayIP})`);
@@ -136,10 +132,8 @@ function setupRouting(gatewayContainerIP, dockerNetworks) {
  * @returns {number} Docker compose process PID.
  */
 async function launchDockerCompose() {
-	console.log("Building 'whirlpool' and 'echo' images...");
-	spawnSync(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} build whirlpool echo`, { shell: true });
 	console.log("Spawning Docker compose process...");
-	const child = spawn(`docker compose -f ${DOCKER_COMPOSE_REEF_PATH} up --build --abort-on-container-exit --exit-code-from whirlpool`, { detached: true, shell: true, stdio: "ignore" });
+	const child = spawn(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} up --build --abort-on-container-exit --exit-code-from whirlpool`, { detached: true, shell: true, stdio: "ignore" });
 	console.log("Reading Docker compose process PID...");
 	if (child.pid === undefined) throw Error("Docker compose command didn't start successfully!");
 	console.log("Waiting for Docker compose process to initiate...");
