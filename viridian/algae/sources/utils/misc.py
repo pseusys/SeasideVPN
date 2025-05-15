@@ -141,23 +141,23 @@ def parse_connection_link(link: str) -> Union[SurfaceConnectionLinkDict, Whirlpo
 
     if node_type == "surface":
         result["port"] = _extract_and_cast(parsed.port, int, f"Invalid connection link address (port): {parsed.netloc}")
-        result["key"] = _extract_from_query(query_params, "key", urlsafe_b64decode)
+        result["key"] = _extract_from_query(query_params, "key", lambda x: urlsafe_b64decode(x.encode("utf-8")))
     elif node_type == "whirlpool":
-        result["key"] = _extract_from_query(query_params, "key", urlsafe_b64decode)
+        result["key"] = _extract_from_query(query_params, "key", lambda x: urlsafe_b64decode(x.encode("utf-8")))
         result["port"] = _extract_from_query(query_params, "port", int)
         result["typhoon"] = _extract_from_query(query_params, "typhoon", int)
-        result["token"] = _extract_from_query(query_params, "token", urlsafe_b64decode)
+        result["token"] = _extract_from_query(query_params, "token", lambda x: urlsafe_b64decode(x.encode("utf-8")))
     else:
         raise RuntimeError(f"Unknown connection link node type scheme: {node_type}")
     return result
 
 
 def create_connection_link(link: Union[SurfaceConnectionLinkDict, WhirlpoolConnectionLinkDict]) -> str:
-    link_key = str(urlsafe_b64encode(link["key"]))
+    link_key = urlsafe_b64encode(link["key"]).decode("utf-8").strip()
     if set(link.keys()) == SurfaceConnectionLinkDict.__required_keys__:
         return f"seaside+surface://{link['addr']}:{link['port']}?key={link_key}"
     elif set(link.keys()) == WhirlpoolConnectionLinkDict.__required_keys__:
-        link_token = str(urlsafe_b64encode(link["token"]))
+        link_token = urlsafe_b64encode(link["token"]).decode("utf-8").strip()
         return f"seaside+whirlpool://{link['addr']}?port={link['port']}&typhoon={link['typhoon']}&key={link_key}&token={link_token}"
     else:
         raise RuntimeError(f"Unknown link arguments: {link.keys()}")
