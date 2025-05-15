@@ -73,7 +73,7 @@ jobs:
         working-directory: viridian/algae
         run: |
           pip3 install poetry poethepoet[poetry_plugin]
-          poetry install --extras "devel"
+          poetry install --extras "client,devel"
 
       - name: Prepare Host
         working-directory: .github/scripts
