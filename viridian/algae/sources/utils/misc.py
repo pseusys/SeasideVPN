@@ -90,7 +90,7 @@ async def select(*tasks: Future[Union[None, _T]], timeout: Optional[float] = Non
 SurfaceConnectionLinkDict = TypedDict(
     "ConnectionLinkDict",
     {
-        "node_type": Union[Literal["surface"]],
+        "link_type": Union[Literal["admin"]],
         "address": str,
         "port": int,
         "key": Optional[bytes]
@@ -100,12 +100,12 @@ SurfaceConnectionLinkDict = TypedDict(
 WhirlpoolConnectionLinkDict = TypedDict(
     "ConnectionLinkDict",
     {
-        "node_type": Literal["whirlpool"],
+        "link_type": Literal["client"],
         "address": str,
-        "public": Optional[bytes],
+        "public": bytes,
         "port": Optional[int],
         "typhoon": Optional[int],
-        "token": Optional[bytes]
+        "token": bytes
     },
 )
 
@@ -118,15 +118,9 @@ def urlsafe_b64decode_nopad(encoded: str) -> bytes:
     return urlsafe_b64decode(f"{encoded}{'=' * (-len(encoded) % 4)}")
 
 
-def _extract_and_cast(value: Any, type: Callable[[Any], _T], error: str) -> _T:
-    if value is None:
-        raise RuntimeError(error)
-    else:
-        return type(value)
-
-
-def _extract_from_query(query_params: Dict[Any, List[str]], name: str, type: Callable[[Any], _T]) -> _T:
-    return _extract_and_cast(query_params.setdefault(name, [None])[0], type, f"Connection link '{name}' argument missing: {query_params}")
+def _extract_from_query(query_params: Dict[Any, List[str]], name: str, cast: Callable[[Any], _T]) -> _T:
+    value = query_params.setdefault(name, [None])[0]
+    return None if value is None else cast(value)
 
 
 def parse_connection_link(link: str) -> Union[SurfaceConnectionLinkDict, WhirlpoolConnectionLinkDict]:
@@ -140,32 +134,33 @@ def parse_connection_link(link: str) -> Union[SurfaceConnectionLinkDict, Whirlpo
     if parsed.scheme.count("+") != 1 or not parsed.scheme.startswith("seaside"):
         raise RuntimeError(f"Unknown connection link scheme: {parsed.scheme}")
 
-    node_type = parsed.scheme.split("+")[1]
+    link_type = parsed.scheme.split("+")[1]
     query_params = parse_qs(parsed.query, encoding="ascii")
 
     result = dict()
     result["address"] = str(parsed.hostname)
-    result["node_type"] = node_type
+    result["link_type"] = link_type
 
-    if node_type == "surface":
-        result["port"] = _extract_and_cast(parsed.port, int, f"Invalid connection link address (port): {parsed.netloc}")
-        result["public"] = _extract_from_query(query_params, "public", urlsafe_b64decode_nopad)
-    elif node_type == "whirlpool":
+    if link_type == "admin":
+        result["port"] = int(parsed.port)
+        result["key"] = _extract_from_query(query_params, "key", urlsafe_b64decode_nopad)
+    elif link_type == "whirlpool":
         result["public"] = _extract_from_query(query_params, "public", urlsafe_b64decode_nopad)
         result["port"] = _extract_from_query(query_params, "port", int)
         result["typhoon"] = _extract_from_query(query_params, "typhoon", int)
         result["token"] = _extract_from_query(query_params, "token", urlsafe_b64decode_nopad)
     else:
-        raise RuntimeError(f"Unknown connection link node type scheme: {node_type}")
+        raise RuntimeError(f"Unknown connection link node type scheme: {link_type}")
     return result
 
 
 def create_connection_link(link: Union[SurfaceConnectionLinkDict, WhirlpoolConnectionLinkDict]) -> str:
-    link_key = urlsafe_b64encode_nopad(link["public"])
     if set(link.keys()) == SurfaceConnectionLinkDict.__required_keys__:
-        return f"seaside+surface://{link['address']}:{link['port']}?public={link_key}"
+        link_key = urlsafe_b64encode_nopad(link["key"])
+        return f"seaside+admin://{link['address']}:{link['port']}?key={link_key}"
     elif set(link.keys()) == WhirlpoolConnectionLinkDict.__required_keys__:
+        link_public = urlsafe_b64encode_nopad(link["public"])
         link_token = urlsafe_b64encode_nopad(link["token"])
-        return f"seaside+whirlpool://{link['address']}?port={link['port']}&typhoon={link['typhoon']}&public={link_key}&token={link_token}"
+        return f"seaside+client://{link['address']}?port={link['port']}&typhoon={link['typhoon']}&public={link_public}&token={link_token}"
     else:
         raise RuntimeError(f"Unknown link arguments: {link.keys()}")

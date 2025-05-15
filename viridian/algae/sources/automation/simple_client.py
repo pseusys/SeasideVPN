@@ -183,7 +183,7 @@ async def main(args: Sequence[str] = argv[1:]) -> None:
     connection_link = arguments.pop("link")
     if connection_link is not None:
         link_dict = parse_connection_link(connection_link)
-        if link_dict.pop("node_type") == "whirlpool":
+        if link_dict.pop("link_type") == "client":
             if arguments.get("protocol", "port") == "port":
                 link_dict["port"], _ = link_dict.pop("port"), link_dict.pop("typhoon")
             else:
