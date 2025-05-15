@@ -1,4 +1,5 @@
 name: TEST
+# TODO: fix 'install poethepoet[poetry_plugin]' once windows issue is resolved: https://github.com/python-poetry/poetry/issues/10028
 
 on:
   push:
@@ -69,7 +70,9 @@ jobs:
 
       - name: Install Dependencies 🔮
         working-directory: viridian/algae
-        run: pip3 install .[devel]
+        run: |
+          pip3 install poetry poethepoet[poetry_plugin]
+          poetry install --extras "devel"
 
       - name: Prepare Host
         working-directory: .github/scripts
@@ -86,7 +89,7 @@ jobs:
         env:
           SEASIDE_LOG_LEVEL: ERROR
         run: |
-          LINK=$(python3 -m sources.automation.whirlpool_fixtures -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian)
+          LINK=$(poetry poe fixture -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian)
           echo "WHIRLPOOL_LINK=$LINK" >> $GITHUB_ENV
 
       - name: Test Viridian Algae (standalone) 🧪
@@ -94,8 +97,8 @@ jobs:
         env:
           LOCAL_ADDRESS: 127.0.0.1
           ECHO_ADDRESS: 10.42.0.42
-          TEST_COMMAND: python3 -m pytest --log-cli-level=INFO tests/test_local.py
-        run: sudo -E env "PATH=$PATH" python3 -m sources.automation.simple_client -a ${{ env.SEASIDE_ADDRESS }} -k ${{ env.SEASIDE_API_KEY_OWNER }} -p ${{ env.SEASIDE_API_PORT }} -e \"${{ env.TEST_COMMAND }}\"
+          TEST_COMMAND: poetry run pytest --log-cli-level=INFO tests/test_local.py
+        run: sudo -E env "PATH=$PATH" poetry poe client -a ${{ env.SEASIDE_ADDRESS }} -k ${{ env.SEASIDE_API_KEY_OWNER }} -p ${{ env.SEASIDE_API_PORT }} -e \"${{ env.TEST_COMMAND }}\"
 
   viridian-reef-test:
     name: Test Viridian Reef
@@ -137,7 +140,9 @@ jobs:
 
       - name: Install Dependencies 🔮
         working-directory: viridian/algae
-        run: pip3 install .[devel]
+        run: |
+          pip3 install poetry poethepoet[poetry_plugin]
+          poetry install --extras "devel"
 
       - name: Test Viridian Reef (unit) 🧪
         working-directory: viridian/reef
@@ -158,15 +163,15 @@ jobs:
         env:
           SEASIDE_LOG_LEVEL: ERROR
         run: |
-          LINK=$(python3 -m sources.automation.whirlpool_fixtures -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian)
+          LINK=$(poetry poe fixture -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian)
           echo "WHIRLPOOL_LINK=$LINK" >> $GITHUB_ENV
 
       - name: Test Viridian Reef (integration) 🧪
-        working-directory: viridian/reef
+        working-directory: viridian/algae
         env:
           SEASIDE_LOG_LEVEL: reeflib=DEBUG,INFO
-          RUNNER_COMMAND: cargo run --features cli-exec --bin cli
-          TEST_COMMAND: python3 -m pytest --log-cli-level=INFO ../algae/tests/test_local.py
+          RUNNER_COMMAND: cargo run --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml
+          TEST_COMMAND: poetry run pytest --log-cli-level=INFO ../algae/tests/test_local.py
         run: ${{ env.SUDO }} ${{ env.RUNNER_COMMAND }} -- -l "${{ env.WHIRLPOOL_LINK }}" -e "${{ env.TEST_COMMAND }}"
 
   caerulean-whirlpool-test:
