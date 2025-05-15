@@ -49,6 +49,7 @@ jobs:
     env:
       SEASIDE_ADDRESS: 10.87.82.87
       SEASIDE_API_PORT: 8587
+      SEASIDE_ROOT_CERTIFICATE_AUTHORITY: ${{ github.workspace }}/viridian/algae/certificates/viridian/rootCA.crt
 
     steps:
       - name: Checkout 🛎️
@@ -107,6 +108,7 @@ jobs:
       SUDO: ${{ matrix.os == 'ubuntu' && 'sudo -E env "PATH=$PATH"' || '' }}
       SEASIDE_ADDRESS: 10.87.82.87
       SEASIDE_API_PORT: 8587
+      SEASIDE_ROOT_CERTIFICATE_AUTHORITY: ${{ github.workspace }}/viridian/algae/certificates/viridian/rootCA.crt
     strategy:
       fail-fast: false
       matrix:
