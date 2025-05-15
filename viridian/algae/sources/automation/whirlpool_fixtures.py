@@ -5,10 +5,10 @@ from os import getenv
 from pathlib import Path
 from socket import gethostname
 from sys import argv
-from typing import Optional
+from typing import Optional, Sequence
 
 from ..interaction.whirlpool import WhirlpoolClient
-from ..utils.misc import create_logger
+from ..utils.misc import create_logger, create_connection_link
 
 # Default tunnel interface IP address.
 _DEFAULT_ADDRESS = "127.0.0.1"
@@ -47,7 +47,7 @@ async def supply_viridian(address: str, port: int, api_key: str, identifier: str
     logger.info(f"Caerulean connection info received: public key {encodebytes(public)!r}, TYPHOON port {typhoon_port}, PORT port {port_port}")
 
     if silent:
-        print(encodebytes(token))
+        print(create_connection_link(dict(node_type="whirlpool", addr=address, key=encodebytes(public), port=port_port, typhoon=typhoon_port, token=encodebytes(token))))
     else:
         logger.info(f"User token received: {encodebytes(token)!r}")
 
@@ -55,8 +55,8 @@ async def supply_viridian(address: str, port: int, api_key: str, identifier: str
     client.close()
 
 
-if __name__ == "__main__":
-    namespace = vars(parser.parse_args(argv[1:]))
+async def main(args: Sequence[str] = argv[1:]) -> Optional[int]:
+    namespace = vars(parser.parse_args(args))
 
     fixture = namespace.pop("fixture", None)
     if fixture is None:
@@ -68,7 +68,11 @@ if __name__ == "__main__":
         exit(1)
 
     if fixture == "supply-viridian":
-        run(supply_viridian(**namespace))
+        await supply_viridian(**namespace)
     else:
         logger.error(f"Unknown fixture name: {fixture}!")
         exit(1)
+
+
+if __name__ == "__main__":
+    exit(run(main()))
