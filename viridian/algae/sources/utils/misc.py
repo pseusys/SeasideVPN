@@ -1,4 +1,5 @@
 from asyncio import FIRST_COMPLETED, CancelledError, Future, sleep, wait
+from base64 import urlsafe_b64decode, urlsafe_b64encode
 from contextlib import suppress
 from logging import Formatter, Logger, StreamHandler, getLogger
 from os import getenv
@@ -92,7 +93,7 @@ SurfaceConnectionLinkDict = TypedDict(
         "node_type": Union[Literal["surface"]],
         "addr": str,
         "port": int,
-        "key": Optional[str]
+        "key": Optional[bytes]
     },
 )
 
@@ -101,10 +102,10 @@ WhirlpoolConnectionLinkDict = TypedDict(
     {
         "node_type": Literal["whirlpool"],
         "addr": str,
-        "key": Optional[str],
+        "key": Optional[bytes],
         "port": Optional[int],
         "typhoon": Optional[int],
-        "token": Optional[str]
+        "token": Optional[bytes]
     },
 )
 
@@ -140,12 +141,12 @@ def parse_connection_link(link: str) -> Union[SurfaceConnectionLinkDict, Whirlpo
 
     if node_type == "surface":
         result["port"] = _extract_and_cast(parsed.port, int, f"Invalid connection link address (port): {parsed.netloc}")
-        result["key"] = _extract_from_query(query_params, "key", str)
+        result["key"] = _extract_from_query(query_params, "key", urlsafe_b64decode)
     elif node_type == "whirlpool":
-        result["key"] = _extract_from_query(query_params, "key", str)
+        result["key"] = _extract_from_query(query_params, "key", urlsafe_b64decode)
         result["port"] = _extract_from_query(query_params, "port", int)
         result["typhoon"] = _extract_from_query(query_params, "typhoon", int)
-        result["token"] = _extract_from_query(query_params, "token", str)
+        result["token"] = _extract_from_query(query_params, "token", urlsafe_b64decode)
     else:
         raise RuntimeError(f"Unknown connection link node type scheme: {node_type}")
     return result
@@ -153,8 +154,8 @@ def parse_connection_link(link: str) -> Union[SurfaceConnectionLinkDict, Whirlpo
 
 def create_connection_link(link: Union[SurfaceConnectionLinkDict, WhirlpoolConnectionLinkDict]) -> str:
     if set(link.keys()) == SurfaceConnectionLinkDict.__required_keys__:
-        return f"seaside+surface://{link['addr']}:{link['port']}?key={link['key']}"
+        return f"seaside+surface://{link['addr']}:{link['port']}?key={urlsafe_b64encode(link['key'])}"
     elif set(link.keys()) == WhirlpoolConnectionLinkDict.__required_keys__:
-        return f"seaside+whirlpool://{link['addr']}?port={link['port']}&typhoon={link['typhoon']}&key={link['key']}&token={link['token']}"
+        return f"seaside+whirlpool://{link['addr']}?port={link['port']}&typhoon={link['typhoon']}&key={urlsafe_b64encode(link['key'])}&token={urlsafe_b64encode(link['token'])}"
     else:
         raise RuntimeError(f"Unknown link arguments: {link.keys()}")
