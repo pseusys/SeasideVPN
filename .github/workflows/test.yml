@@ -88,9 +88,7 @@ jobs:
           SEASIDE_API_PORT: 8587
           SEASIDE_ROOT_CERTIFICATE_AUTHORITY: ${{ github.workspace }}/viridian/algae/certificates/viridian/rootCA.crt
           SEASIDE_LOG_LEVEL: ERROR
-        run: |
-          LINK=$(poetry poe fixture -a "${{ env.SEASIDE_ADDRESS }}" -p "${{ env.SEASIDE_API_PORT }}" -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian)
-          echo "WHIRLPOOL_LINK=$LINK" >> $GITHUB_ENV
+        run: echo "WHIRLPOOL_LINK=$(poetry poe fixture -a "${{ env.SEASIDE_ADDRESS }}" -p "${{ env.SEASIDE_API_PORT }}" -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian)" >> $GITHUB_ENV
 
       - name: Test Viridian Algae (standalone) 🧪
         working-directory: viridian/algae
@@ -163,9 +161,7 @@ jobs:
           SEASIDE_API_PORT: 8587
           SEASIDE_ROOT_CERTIFICATE_AUTHORITY: ${{ github.workspace }}/viridian/algae/certificates/viridian/rootCA.crt
           SEASIDE_LOG_LEVEL: ERROR
-        run: |
-          LINK=$(poetry poe fixture -a "${{ env.SEASIDE_ADDRESS }}" -p "${{ env.SEASIDE_API_PORT }}" -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian)
-          echo "WHIRLPOOL_LINK=$LINK" >> $GITHUB_ENV
+        run: echo "WHIRLPOOL_LINK=$(poetry poe fixture -a "${{ env.SEASIDE_ADDRESS }}" -p "${{ env.SEASIDE_API_PORT }}" -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian)" >> $GITHUB_ENV
 
       - name: Test Viridian Reef (integration) 🧪
         working-directory: viridian/algae
