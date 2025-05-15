@@ -14,8 +14,10 @@ const RESET = "\x1b[0m";
 
 // Metric value that will be used for new default routes (greater than Viridian Algae metric value).
 const REASONABLY_LOW_METRIC_VALUE = 10;
-// Timeout for Docker compose to initialize (and stop completely in case of an error).
-const DOCKER_COMPOSE_INITIALIZATION_TIMEOUT = 75;
+// Timeout between Docker compose command healthcheck retries.
+const COMMAND_INTERVAL = 10;
+// Number of Docker compose command healthcheck retries.
+const COMMAND_RETRIES = 10;
 // Gateway network for VPN access.
 const DOCKER_COMPOSE_GATEWAY_NETWORK = "sea-cli-int";
 // Gateway router for VPN access.
@@ -52,14 +54,35 @@ function printHelpMessage() {
 function runCommandForSystem(linuxCommand = undefined, windowsCommand = undefined, macosCommand = undefined) {
 	switch (platform) {
 		case "darwin":
-			if (macosCommand !== undefined) return spawnSync(macosCommand, { shell: true }).stdout.toString();
+			if (macosCommand !== undefined) return spawnSync(macosCommand, { shell: true, encoding: "utf-8" }).stdout.toString().trim();
 		case "linux":
-			if (linuxCommand !== undefined) return spawnSync(linuxCommand, { shell: true }).stdout.toString();
+			if (linuxCommand !== undefined) return spawnSync(linuxCommand, { shell: true, encoding: "utf-8" }).stdout.toString().trim();
 		case "win32":
-			if (windowsCommand !== undefined) return spawnSync(windowsCommand, { shell: true }).stdout.toString();
+			if (windowsCommand !== undefined) return spawnSync(windowsCommand, { shell: true, encoding: "utf-8" }).stdout.toString().trim();
 		default:
 			throw Error(`Command for platform ${platform} is not defined!`);
 	}
+}
+
+/**
+ * Wait until command returns desired output on STDOUT.
+ * Sleep for some time between retries, return soon upon a successful check.
+ * @param {string} command command to check.
+ * @param {string} expected expected command result.
+ * @param {number} [retries=COMMAND_RETRIES] number of retries.
+ * @param {number} [interval=COMMAND_INTERVAL] timeout between retries.
+ */
+async function waitForCommand(command, expected, retries = COMMAND_RETRIES, interval = COMMAND_INTERVAL) {
+	let commandMatches = false;
+	for (let index = 0; index < retries; index++) {
+		const status = spawnSync(command, { shell: true, encoding: "utf-8" }).stdout.toString().trim();
+		if (status === expected) {
+			commandMatches = true;
+			break;
+		}
+		await sleep(interval);
+	}
+	return commandMatches;
 }
 
 /**
@@ -137,8 +160,9 @@ async function launchDockerCompose() {
 	console.log("Reading Docker compose process PID...");
 	if (child.pid === undefined) throw Error("Docker compose command didn't start successfully!");
 	console.log("Waiting for Docker compose process to initiate...");
-	await sleep(DOCKER_COMPOSE_INITIALIZATION_TIMEOUT);
+	const serverIsReady = await waitForCommand("docker inspect --format={{.State.Health.Status}} whirlpool", "healthy");
 	if (child.exitCode !== null) throw Error(`Docker compose command failed, with exit code: ${child.exitCode}`);
+	if (!serverIsReady) throw Error("Time passed, but server is still unhealthy!");
 	console.log("Disconnecting from Docker compose process...");
 	child.unref();
 	return child.pid;

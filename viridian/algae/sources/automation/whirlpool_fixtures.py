@@ -55,24 +55,21 @@ async def supply_viridian(address: str, port: int, api_key: str, identifier: str
     client.close()
 
 
-async def main(args: Sequence[str] = argv[1:]) -> Optional[int]:
+async def main(args: Sequence[str] = argv[1:]) -> None:
     namespace = vars(parser.parse_args(args))
 
     fixture = namespace.pop("fixture", None)
     if fixture is None:
-        logger.error("No fixture selected!")
-        exit(1)
+        raise ValueError("No fixture selected!")
 
     if "api_key" not in namespace.keys():
-        logger.error("API key not defined!")
-        exit(1)
+        raise ValueError("API key not defined!")
 
     if fixture == "supply-viridian":
         await supply_viridian(**namespace)
     else:
-        logger.error(f"Unknown fixture name: {fixture}!")
-        exit(1)
+        raise ValueError(f"Unknown fixture name: {fixture}!")
 
 
 if __name__ == "__main__":
-    exit(run(main()))
+    run(main())

@@ -136,7 +136,7 @@ class AlgaeClient:
             if connection is not None:
                 await connection.close()
 
-    async def start(self, command: str, key: Optional[str] = None, token: Optional[bytes] = None, public: Optional[bytes] = None) -> Optional[int]:
+    async def start(self, command: str, key: Optional[str] = None, token: Optional[bytes] = None, public: Optional[bytes] = None) -> None:
         if token is None or public is None:
             if key is None:
                 raise RuntimeError("All the connection parameters (key, token, public) are None - there is no known way to connect!")
@@ -165,7 +165,8 @@ class AlgaeClient:
             print(f"STDOUT:\n{stdout.decode()}\n")
         if len(stderr) > 0:
             print(f"STDERR:\n{stderr.decode()}\n")
-        return retcode
+        if retcode != 0:
+            raise ChildProcessError("Command execution failed, see error above!")
 
     async def interrupt(self, terminate: bool = False) -> None:
         logger.debug("Deleting tunnel...")
@@ -175,7 +176,7 @@ class AlgaeClient:
             exit(1)
 
 
-async def main(args: Sequence[str] = argv[1:]) -> Optional[int]:
+async def main(args: Sequence[str] = argv[1:]) -> None:
     loop = get_event_loop()
     arguments = vars(parser.parse_args(args))
 
@@ -199,12 +200,11 @@ async def main(args: Sequence[str] = argv[1:]) -> Optional[int]:
     loop.add_signal_handler(SIGINT, lambda: create_task(client.interrupt(True)))
 
     logger.info(f"Running client for command: {command}")
-    retcode = await client.start(command, key, token, public)
+    await client.start(command, key, token, public)
 
     logger.info("Done running command, shutting client down!")
     await client.interrupt(False)
-    return retcode
 
 
 if __name__ == "__main__":
-    exit(run(main()))
+    run(main())

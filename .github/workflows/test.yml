@@ -90,11 +90,6 @@ jobs:
         env:
           SEASIDE_LOG_LEVEL: ERROR
         run: |
-          ls ${{ github.workspace }}/viridian/algae || echo "skipped..."
-          ls ${{ github.workspace }}/viridian/algae/certificates || echo "skipped..."
-          ls ${{ github.workspace }}/viridian/algae/certificates/viridian || echo "skipped..."
-          cat ${{ github.workspace }}/viridian/algae/certificates/viridian/rootCA.crt || echo "skipped..."
-          cat ${{ env.SEASIDE_ROOT_CERTIFICATE_AUTHORITY }} || echo "skipped..."
           LINK=$(poetry poe fixture -a "${{ env.SEASIDE_ADDRESS }}" -p "${{ env.SEASIDE_API_PORT }}" -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian)
           echo "WHIRLPOOL_LINK=$LINK" >> $GITHUB_ENV
 

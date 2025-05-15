@@ -131,8 +131,8 @@ default_task_type = "script"
 
 
 [tool.poe.tasks]
-client = { cmd = "sources.automation.simple_client:main", help = "Import and execute main function of algae simple client, pass console arguments to it" }
-fixture = { cmd = "python -m sources.automation.whirlpool_fixtures", help = "Import and execute one of the whirlpool fixtures, pass console arguments to it" }
+client = { script = "sources.automation.simple_client:main", help = "Import and execute main function of algae simple client, pass console arguments to it" }
+fixture = { script = "sources.automation.whirlpool_fixtures:main", help = "Import and execute one of the whirlpool fixtures, pass console arguments to it" }
 lint = { script = "scripts.codestyle:lint", help = "Lint all python code: run 'flake8', 'black' and 'mypy'" }
 format = { script = "scripts.codestyle:format", help = "Format all python code: change code formatting where possible (using 'black')" }
 generate = { script = "scripts.process:generate", help = "Generate protobuf source files, previous generation results will be removed; libraries 'grpcio-tools' and 'betterproto' is used for generation" }
