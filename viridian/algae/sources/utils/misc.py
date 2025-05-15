@@ -86,20 +86,30 @@ async def select(*tasks: Future[Union[None, _T]], timeout: Optional[float] = Non
 # CONNECTION LINK:
 
 
-ConnectionLinkDict = TypedDict(
+SurfaceConnectionLinkDict = TypedDict(
     "ConnectionLinkDict",
     {
-        "node_type": Union[Literal["whirlpool"]],
+        "node_type": Union[Literal["surface"]],
         "addr": str,
         "port": int,
+        "key": Optional[str]
+    },
+)
+
+WhirlpoolConnectionLinkDict = TypedDict(
+    "ConnectionLinkDict",
+    {
+        "node_type": Literal["whirlpool"],
+        "addr": str,
         "key": Optional[str],
-        "proto": Optional[str],
-        "token": Optional[str],
+        "port": Optional[int],
+        "typhoon": Optional[int],
+        "token": Optional[str]
     },
 )
 
 
-def parse_connection_link(link: str) -> ConnectionLinkDict:
+def parse_connection_link(link: str) -> Union[SurfaceConnectionLinkDict, WhirlpoolConnectionLinkDict]:
     """
     Parse connection link and return contained data as dict.
     Connection link has the following format:
@@ -126,3 +136,12 @@ def parse_connection_link(link: str) -> ConnectionLinkDict:
     result.update({"key": query_params.setdefault("key", [None])[0], "proto": query_params.setdefault("proto", [None])[0], "token": query_params.setdefault("token", [None])[0]})
 
     return result
+
+
+def create_connection_link(link: Union[SurfaceConnectionLinkDict, WhirlpoolConnectionLinkDict]) -> str:
+    if link.keys() == SurfaceConnectionLinkDict.keys():
+        return f"seaside+surface://{link['addr']}:{link['port']}?key={link['key']}"
+    elif link.keys() == WhirlpoolConnectionLinkDict.keys():
+        return f"seaside+whirlpool://{link['addr']}?port={link['port']}&typhoon={link['typhoon']}&key={link['key']}&token={link['token']}"
+    else:
+        raise RuntimeError(f"Unknown link arguments: {link.keys()}")
