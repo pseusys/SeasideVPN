@@ -4,7 +4,7 @@ from logging import Formatter, Logger, StreamHandler, getLogger
 from os import getenv
 from secrets import randbelow
 from sys import stdout
-from typing import Literal, Optional, TypedDict, TypeVar, Union
+from typing import Any, Dict, List, Literal, Optional, Type, TypedDict, TypeVar, Union
 from urllib.parse import parse_qs, urlparse
 
 _T = TypeVar("_T")
@@ -109,32 +109,45 @@ WhirlpoolConnectionLinkDict = TypedDict(
 )
 
 
+def _extract_and_cast(value: Any, type: Type[_T], error: str) -> _T:
+    if value is None:
+        raise RuntimeError(error)
+    else:
+        return type(value)
+
+
+def _extract_from_query(query_params: Dict[Any, List[str]], name: str, type: Type[_T]) -> _T:
+    return _extract_and_cast(query_params.setdefault(name, [None])[0], type, f"Connection link '{name}' argument missing: {query_params}")
+
+
 def parse_connection_link(link: str) -> Union[SurfaceConnectionLinkDict, WhirlpoolConnectionLinkDict]:
     """
     Parse connection link and return contained data as dict.
-    Connection link has the following format:
-    seaside+{nodetype}://{address}:{ctrlport}/{payload}
     All the link parts are included into output dictionary.
     :param link: connection link for parsing.
     :return: parameters dictionary, string keys are mapped to values.
     """
-    result = dict()
     parsed = urlparse(link, allow_fragments=False)
-
     if parsed.scheme.count("+") != 1 or not parsed.scheme.startswith("seaside"):
         raise RuntimeError(f"Unknown connection link scheme: {parsed.scheme}")
-    else:
-        # Will be used when 'surface' node connection will be available.
-        node_type = parsed.scheme.split("+")[1]  # noqa: F841
 
-    if parsed.port is None:
-        raise RuntimeError(f"Unknown connection address: {parsed.netloc}")
-    else:
-        result.update({"addr": str(parsed.hostname), "port": parsed.port})
-
+    node_type = parsed.scheme.split("+")[1]
     query_params = parse_qs(parsed.query)
-    result.update({"key": query_params.setdefault("key", [None])[0], "proto": query_params.setdefault("proto", [None])[0], "token": query_params.setdefault("token", [None])[0]})
 
+    result = dict()
+    result["addr"] = str(parsed.hostname)
+    result["node_type"] = node_type
+
+    if node_type == "surface":
+        result["port"] = _extract_and_cast(parsed.port, int, f"Invalid connection link address (port): {parsed.netloc}")
+        result["key"] = _extract_from_query(query_params, "key", str)
+    elif node_type == "whirlpool":
+        result["key"] = _extract_from_query(query_params, "key", str)
+        result["port"] = _extract_from_query(query_params, "port", int)
+        result["typhoon"] = _extract_from_query(query_params, "typhoon", int)
+        result["token"] = _extract_from_query(query_params, "token", str)
+    else:
+        raise RuntimeError(f"Unknown connection link node type scheme: {node_type}")
     return result
 
 
