@@ -82,23 +82,22 @@ jobs:
           filenames: test.conf.env
 
       - name: Get Connection Link
-        uses: gh640/command-result-action@v1.2.2
-        id: connection_link
+        working-directory: viridian/algae
         env:
           SEASIDE_ADDRESS: 10.87.82.87
           SEASIDE_ROOT_CERTIFICATE_AUTHORITY: ${{ github.workspace }}/viridian/algae/certificates/viridian/rootCA.crt
           SEASIDE_LOG_LEVEL: ERROR
-        with:
-          cwd: viridian/algae
-          command: poetry poe -q fixture -a "${{ env.SEASIDE_ADDRESS }}" -p "${{ env.SEASIDE_API_PORT }}" -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian -s
-
+        run: |
+          LINK=$(poetry poe -q fixture -a "${{ env.SEASIDE_ADDRESS }}" -p "${{ env.SEASIDE_API_PORT }}" -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian -s)
+          echo "WHIRLPOOL_LINK=$LINK" >> $GITHUB_ENV
+  
       - name: Test Viridian Algae (standalone) 🧪
         working-directory: viridian/algae
         env:
           LOCAL_ADDRESS: 127.0.0.1
           ECHO_ADDRESS: 10.42.0.42
           TEST_COMMAND: poetry run pytest --log-cli-level=INFO tests/test_local.py
-        run: sudo -E env "PATH=$PATH" poetry poe client -l ${{ steps.connection_link.outputs.stdout }} -e "${{ env.TEST_COMMAND }}"
+        run: sudo -E env "PATH=$PATH" poetry poe client -l "${{ env.WHIRLPOOL_LINK }}" -e "${{ env.TEST_COMMAND }}"
 
   viridian-reef-test:
     name: Test Viridian Reef
@@ -157,15 +156,14 @@ jobs:
           filenames: test.conf.env
 
       - name: Get Connection Link
-        uses: gh640/command-result-action@v1.2.2
-        id: connection_link
+        working-directory: viridian/algae
         env:
           SEASIDE_ADDRESS: 10.87.82.87
           SEASIDE_ROOT_CERTIFICATE_AUTHORITY: ${{ github.workspace }}/viridian/algae/certificates/viridian/rootCA.crt
           SEASIDE_LOG_LEVEL: ERROR
-        with:
-          cwd: viridian/algae
-          command: poetry poe -q fixture -a "${{ env.SEASIDE_ADDRESS }}" -p "${{ env.SEASIDE_API_PORT }}" -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian -s
+        run: |
+          LINK=$(poetry poe -q fixture -a "${{ env.SEASIDE_ADDRESS }}" -p "${{ env.SEASIDE_API_PORT }}" -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian -s)
+          echo "WHIRLPOOL_LINK=$LINK" >> $GITHUB_ENV
 
       - name: Test Viridian Reef (integration) 🧪
         working-directory: viridian/algae
@@ -175,7 +173,7 @@ jobs:
           SEASIDE_LOG_LEVEL: reeflib=DEBUG,INFO
           RUNNER_COMMAND: cargo run --features cli-exec --bin cli --manifest-path ../reef/Cargo.toml
           TEST_COMMAND: poetry run pytest --log-cli-level=INFO tests/test_local.py
-        run: sudo -E env "PATH=$PATH" poetry poe client -l ${{ steps.connection_link.outputs.stdout }} -e "${{ env.TEST_COMMAND }}"
+        run: sudo -E env "PATH=$PATH" poetry poe client -l "${{ env.WHIRLPOOL_LINK }}" -e "${{ env.TEST_COMMAND }}"
 
   caerulean-whirlpool-test:
     name: Test Caerulean Whirlpool
