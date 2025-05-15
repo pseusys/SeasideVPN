@@ -73,7 +73,7 @@ jobs:
         working-directory: viridian/algae
         run: |
           pip3 install poetry poethepoet[poetry_plugin]
-          poetry install --extras "client,devel"
+          poetry install --extras "client devel"
 
       - name: Prepare Host
         working-directory: .github/scripts
@@ -165,12 +165,14 @@ jobs:
         env:
           SEASIDE_LOG_LEVEL: ERROR
         run: |
-          LINK=$(poetry poe fixture -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian)
+          LINK=$(poetry poe fixture -a "${{ env.SEASIDE_ADDRESS }}" -p "${{ env.SEASIDE_API_PORT }}" -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian)
           echo "WHIRLPOOL_LINK=$LINK" >> $GITHUB_ENV
 
       - name: Test Viridian Reef (integration) 🧪
         working-directory: viridian/algae
         env:
+          LOCAL_ADDRESS: 127.0.0.1
+          ECHO_ADDRESS: 10.42.0.42
           SEASIDE_LOG_LEVEL: reeflib=DEBUG,INFO
           RUNNER_COMMAND: cargo run --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml
           TEST_COMMAND: poetry run pytest --log-cli-level=INFO ../algae/tests/test_local.py
