@@ -144,7 +144,7 @@ def parse_connection_link(link: str) -> Union[SurfaceConnectionLinkDict, Whirlpo
     if link_type == "admin":
         result["port"] = int(parsed.port)
         result["key"] = _extract_from_query(query_params, "key", urlsafe_b64decode_nopad)
-    elif link_type == "whirlpool":
+    elif link_type == "client":
         result["public"] = _extract_from_query(query_params, "public", urlsafe_b64decode_nopad)
         result["port"] = _extract_from_query(query_params, "port", int)
         result["typhoon"] = _extract_from_query(query_params, "typhoon", int)

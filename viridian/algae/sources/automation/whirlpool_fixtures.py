@@ -48,7 +48,7 @@ async def supply_viridian(address: str, port: int, key: str, identifier: str, na
     logger.info(f"Caerulean connection info received: public key {encodebytes(public)!r}, TYPHOON port {typhoon_port}, PORT port {port_port}")
 
     if silent:
-        print(create_connection_link(dict(link_type="whirlpool", address=address, public=public, port=port_port, typhoon=typhoon_port, token=token)))
+        print(create_connection_link(dict(link_type="client", address=address, public=public, port=port_port, typhoon=typhoon_port, token=token)))
     else:
         logger.info(f"User token received: {encodebytes(token)!r}")
 
