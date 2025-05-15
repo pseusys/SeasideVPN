@@ -152,9 +152,9 @@ def parse_connection_link(link: str) -> Union[SurfaceConnectionLinkDict, Whirlpo
 
 
 def create_connection_link(link: Union[SurfaceConnectionLinkDict, WhirlpoolConnectionLinkDict]) -> str:
-    if link.keys() == SurfaceConnectionLinkDict.keys():
+    if set(link.keys()) == SurfaceConnectionLinkDict.__required_keys__:
         return f"seaside+surface://{link['addr']}:{link['port']}?key={link['key']}"
-    elif link.keys() == WhirlpoolConnectionLinkDict.keys():
+    elif set(link.keys()) == WhirlpoolConnectionLinkDict.__required_keys__:
         return f"seaside+whirlpool://{link['addr']}?port={link['port']}&typhoon={link['typhoon']}&key={link['key']}&token={link['token']}"
     else:
         raise RuntimeError(f"Unknown link arguments: {link.keys()}")
