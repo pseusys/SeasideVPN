@@ -5,7 +5,7 @@ from logging import Formatter, Logger, StreamHandler, getLogger
 from os import getenv
 from secrets import randbelow
 from sys import stdout
-from typing import Any, Dict, List, Literal, Optional, Type, TypedDict, TypeVar, Union
+from typing import Any, Callable, Dict, List, Literal, Optional, TypedDict, TypeVar, Union
 from urllib.parse import parse_qs, urlparse
 
 _T = TypeVar("_T")
@@ -110,14 +110,14 @@ WhirlpoolConnectionLinkDict = TypedDict(
 )
 
 
-def _extract_and_cast(value: Any, type: Type[_T], error: str) -> _T:
+def _extract_and_cast(value: Any, type: Callable[[Any], _T], error: str) -> _T:
     if value is None:
         raise RuntimeError(error)
     else:
         return type(value)
 
 
-def _extract_from_query(query_params: Dict[Any, List[str]], name: str, type: Type[_T]) -> _T:
+def _extract_from_query(query_params: Dict[Any, List[str]], name: str, type: Callable[[Any], _T]) -> _T:
     return _extract_and_cast(query_params.setdefault(name, [None])[0], type, f"Connection link '{name}' argument missing: {query_params}")
 
 
@@ -153,9 +153,11 @@ def parse_connection_link(link: str) -> Union[SurfaceConnectionLinkDict, Whirlpo
 
 
 def create_connection_link(link: Union[SurfaceConnectionLinkDict, WhirlpoolConnectionLinkDict]) -> str:
+    link_key = str(urlsafe_b64encode(link["key"]))
     if set(link.keys()) == SurfaceConnectionLinkDict.__required_keys__:
-        return f"seaside+surface://{link['addr']}:{link['port']}?key={urlsafe_b64encode(link['key'])}"
+        return f"seaside+surface://{link['addr']}:{link['port']}?key={link_key}"
     elif set(link.keys()) == WhirlpoolConnectionLinkDict.__required_keys__:
-        return f"seaside+whirlpool://{link['addr']}?port={link['port']}&typhoon={link['typhoon']}&key={urlsafe_b64encode(link['key'])}&token={urlsafe_b64encode(link['token'])}"
+        link_token = str(urlsafe_b64encode(link["token"]))
+        return f"seaside+whirlpool://{link['addr']}?port={link['port']}&typhoon={link['typhoon']}&key={link_key}&token={link_token}"
     else:
         raise RuntimeError(f"Unknown link arguments: {link.keys()}")

@@ -90,7 +90,7 @@ jobs:
           SEASIDE_LOG_LEVEL: ERROR
         with:
           cwd: viridian/algae
-          command: poetry poe fixture -a "${{ env.SEASIDE_ADDRESS }}" -p "${{ env.SEASIDE_API_PORT }}" -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian -s
+          command: poetry poe -q fixture -a "${{ env.SEASIDE_ADDRESS }}" -p "${{ env.SEASIDE_API_PORT }}" -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian -s
 
       - name: Test Viridian Algae (standalone) 🧪
         working-directory: viridian/algae
@@ -165,7 +165,7 @@ jobs:
           SEASIDE_LOG_LEVEL: ERROR
         with:
           cwd: viridian/algae
-          command: poetry poe fixture -a "${{ env.SEASIDE_ADDRESS }}" -p "${{ env.SEASIDE_API_PORT }}" -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian -s
+          command: poetry poe -q fixture -a "${{ env.SEASIDE_ADDRESS }}" -p "${{ env.SEASIDE_API_PORT }}" -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian -s
 
       - name: Test Viridian Reef (integration) 🧪
         working-directory: viridian/algae
