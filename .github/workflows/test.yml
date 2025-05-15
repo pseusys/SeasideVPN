@@ -88,9 +88,9 @@ jobs:
       - name: Get Connection Link
         working-directory: viridian/algae
         env:
-          SEASIDE_LOG_LEVEL: ERROR
+          SEASIDE_LOG_LEVEL: DEBUG
         run: |
-          LINK=$(poetry poe fixture -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian)
+          LINK=$(poetry poe fixture -a "${{ env.SEASIDE_ADDRESS }}" -p "${{ env.SEASIDE_API_PORT }}" -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian)
           echo "WHIRLPOOL_LINK=$LINK" >> $GITHUB_ENV
 
       - name: Test Viridian Algae (standalone) 🧪
