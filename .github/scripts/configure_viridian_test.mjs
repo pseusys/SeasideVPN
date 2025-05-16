@@ -65,11 +65,11 @@ function runCommand(command) {
 function runCommandForSystem(linuxCommand = undefined, windowsCommand = undefined, macosCommand = undefined) {
 	switch (platform) {
 		case "darwin":
-			if (macosCommand !== undefined) return runCommand(macosCommand).stdout.toString();
+			if (macosCommand !== undefined) return runCommand(macosCommand).stdout.toString().trim();
 		case "linux":
-			if (linuxCommand !== undefined) return runCommand(linuxCommand).stdout.toString();
+			if (linuxCommand !== undefined) return runCommand(linuxCommand).stdout.toString().trim();
 		case "win32":
-			if (windowsCommand !== undefined) return runCommand(windowsCommand).stdout.toString();
+			if (windowsCommand !== undefined) return runCommand(windowsCommand).stdout.toString().trim();
 		default:
 			throw Error(`Command for platform ${platform} is not defined!`);
 	}
@@ -128,7 +128,7 @@ function parseDockerComposeFile() {
  */
 function setupRouting(gatewayContainerIP, dockerNetworks) {
 	console.log("Looking for the default route...");
-	const defaultRoute = runCommandForSystem("ip route show default", "route print 0.0.0.0").trim();
+	const defaultRoute = runCommandForSystem("ip route show default", "route print 0.0.0.0");
 	console.log("Deleting current default route...");
 	runCommandForSystem(`ip route delete ${defaultRoute}`, `route delete ${defaultRoute}`);
 	console.log("Adding new default route via specified Docker container router...");
@@ -148,7 +148,7 @@ async function launchDockerCompose() {
 	const child = runCommand(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} up --detach --build whirlpool`);
 	console.log("Waiting for Docker compose process to initiate...");
 	await sleep(DOCKER_COMPOSE_INITIALIZATION_TIMEOUT);
-	if (child.exitCode !== null) throw Error(`Docker compose command failed, with exit code: ${child.exitCode}`);
+	if (child.status !== null) throw Error(`Docker compose command failed, with exit code: ${child.status}`);
 	console.log("Disconnecting from Docker compose process...");
 	child.unref();
 }
