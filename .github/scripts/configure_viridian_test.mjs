@@ -141,7 +141,7 @@ function setupRouting(gatewayContainerIP, dockerNetworks) {
  */
 async function launchDockerCompose() {
 	console.log("Spawning Docker compose process...");
-	const child = spawn(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} up --build --abort-on-container-exit --exit-code-from whirlpool`, { detached: true, shell: true, stdio: "ignore" });
+	const child = spawn(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} up --build --abort-on-container-exit --exit-code-from whirlpool`, { detached: true, shell: true, stdio: "inherit" });
 	console.log("Reading Docker compose process PID...");
 	if (child.pid === undefined) throw Error("Docker compose command didn't start successfully!");
 	console.log("Waiting for Docker compose process to initiate...");
