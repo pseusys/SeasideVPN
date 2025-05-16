@@ -1,7 +1,7 @@
 import { parseArgs } from "node:util";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { spawn, spawnSync } from "node:child_process";
+import { spawnSync, ChildProcess } from "node:child_process";
 import { platform } from "process";
 
 import { parse } from "yaml";
@@ -36,13 +36,26 @@ function printHelpMessage() {
 	console.log(`\t${BLUE}-h --help${RESET}: Print this message again and exit.`);
 	console.log(`${BOLD}Optional environment variables${RESET}:`);
 	console.log(`\t${GREEN}DOCKER_COMPOSE_CACHE_FILE_NAME${RESET}: Cache file where changes will be saved (default: ${DOCKER_COMPOSE_CACHE_FILE_NAME}).`);
-	console.log(`\t${GREEN}DOCKER_COMPOSE_SOURCE_ENV_FILE_NAME${RESET}: Environment file where test environment variables will be stored (default: ${DOCKER_COMPOSE_SOURCE_ENV_FILE_NAME}).`);
 	process.exit(0);
+}
+
+/**
+ * Execute a console command.
+ * Throw an error if command failed to start or returned non-zero code.
+ * @param {string} command the command to execute.
+ * @returns {ChildProcess} child process spawned by the command.
+ */
+function runCommand(command) {
+	const child = spawnSync(command, { shell: true, encoding: "utf-8" });
+	if (child.error) throw Error(`Command execution error: ${child.error.message}`);
+	else if (child.status !== 0) throw Error(`Command failed with error code: ${child.status}\n${child.stderr.toString()}`);
+	else return child;
 }
 
 /**
  * Execute different console commands for different operation systems.
  * Throw an error if no command is provided for current OS.
+ * Throw an error if command failed to start or returned non-zero code.
  * The OS supported: Linux, Windows, MacOS.
  * @param {string | undefined} linuxCommand command for Linux OS.
  * @param {string | undefined} windowsCommand command for Windows OS.
@@ -50,24 +63,16 @@ function printHelpMessage() {
  * @returns {string} command STDOUT output as a string.
  */
 function runCommandForSystem(linuxCommand = undefined, windowsCommand = undefined, macosCommand = undefined) {
-	let platformCommand = null;
 	switch (platform) {
 		case "darwin":
-			platformCommand = macosCommand === undefined ? null : macosCommand;
-			break;
+			if (macosCommand !== undefined) return runCommand(macosCommand).stdout.toString();
 		case "linux":
-			platformCommand = linuxCommand === undefined ? null : linuxCommand;
-			break;
+			if (linuxCommand !== undefined) return runCommand(linuxCommand).stdout.toString();
 		case "win32":
-			platformCommand = windowsCommand === undefined ? null : windowsCommand;
-			break;
+			if (windowsCommand !== undefined) return runCommand(windowsCommand).stdout.toString();
 		default:
 			throw Error(`Command for platform ${platform} is not defined!`);
 	}
-	const child = spawnSync(platformCommand, { shell: true, encoding: "utf-8" });
-	if (child.error) throw Error(`Command execution error: ${child.error.message}`);
-	else if (child.status !== 0) throw Error(`Command failed with error code: ${child.status}\n${child.stderr.toString()}`);
-	else return child.stdout.toString();
 }
 
 /**
@@ -137,19 +142,15 @@ function setupRouting(gatewayContainerIP, dockerNetworks) {
 /**
  * Launch Docker compose project in the background.
  * Wait for some time to check if it started successfully and throw an error if it did.
- * @returns {number} Docker compose process PID.
  */
 async function launchDockerCompose() {
 	console.log("Spawning Docker compose process...");
-	const child = spawn(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} up --build --abort-on-container-exit --exit-code-from whirlpool`, { detached: true, shell: true, stdio: "inherit" });
-	console.log("Reading Docker compose process PID...");
-	if (child.pid === undefined) throw Error("Docker compose command didn't start successfully!");
+	const child = runCommand(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} up --detach --build whirlpool`);
 	console.log("Waiting for Docker compose process to initiate...");
 	await sleep(DOCKER_COMPOSE_INITIALIZATION_TIMEOUT);
 	if (child.exitCode !== null) throw Error(`Docker compose command failed, with exit code: ${child.exitCode}`);
 	console.log("Disconnecting from Docker compose process...");
 	child.unref();
-	return child.pid;
 }
 
 /**
@@ -176,12 +177,15 @@ function loadCache(cacheFile) {
 }
 
 /**
- * Kill Docker compose process (by PID) running in the background.
- * @param {number} pid process PID.
+ * Kill Docker compose process (with docker compose) running in the background.
  */
-function killDockerCompose(pid) {
+async function killDockerCompose() {
 	console.log("Killing Docker compose process...");
 	runCommandForSystem(`kill -2 ${pid}`, `taskkill /pid ${pid}`);
+	const child = runCommand(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} down`);
+	console.log("Waiting for Docker compose process to terminate...");
+	await sleep(DOCKER_COMPOSE_INITIALIZATION_TIMEOUT);
+	if (child.exitCode !== null) throw Error(`Docker compose command failed, with exit code: ${child.exitCode}`);
 	console.log("Docker compose process killed!");
 }
 
@@ -202,11 +206,11 @@ function resetRouting(defaultRoute) {
 const args = parseArguments();
 if (!args.reset) {
 	const { gatewayIP, dockerNetworks } = parseDockerComposeFile();
-	const pid = await launchDockerCompose();
+	await launchDockerCompose();
 	const route = setupRouting(gatewayIP, dockerNetworks);
-	storeCache(args.cacheFile, { route, pid });
+	storeCache(args.cacheFile, { route });
 } else {
-	const { route, pid } = loadCache(args.cacheFile);
+	const { route } = loadCache(args.cacheFile);
 	resetRouting(route);
-	killDockerCompose(pid);
+	await killDockerCompose();
 }
