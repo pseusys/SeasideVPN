@@ -50,16 +50,24 @@ function printHelpMessage() {
  * @returns {string} command STDOUT output as a string.
  */
 function runCommandForSystem(linuxCommand = undefined, windowsCommand = undefined, macosCommand = undefined) {
+	let platformCommand = null;
 	switch (platform) {
 		case "darwin":
-			if (macosCommand !== undefined) return spawnSync(macosCommand, { shell: true }).stdout.toString();
+			platformCommand = macosCommand === undefined ? null : macosCommand;
+			break;
 		case "linux":
-			if (linuxCommand !== undefined) return spawnSync(linuxCommand, { shell: true }).stdout.toString();
+			platformCommand = linuxCommand === undefined ? null : linuxCommand;
+			break;
 		case "win32":
-			if (windowsCommand !== undefined) return spawnSync(windowsCommand, { shell: true }).stdout.toString();
+			platformCommand = windowsCommand === undefined ? null : windowsCommand;
+			break;
 		default:
 			throw Error(`Command for platform ${platform} is not defined!`);
 	}
+	const child = spawnSync(macosCommand, { shell: true, encoding: "utf-8" });
+	if (child.error) throw Error(`Command execution error: ${child.error.message}`);
+	else if (child.status !== 0) throw Error(`Command failed with error code: ${child.status}\n${child.stderr.toString()}`);
+	else return child.stdout.toString();
 }
 
 /**
@@ -91,28 +99,37 @@ function parseArguments() {
  * Parse Viridian Algae Docker compose file.
  * Extract Seaside IP and gateway container IP.
  * Also get network addresses of all the networks that should become unreachable.
- * @returns {string} gateway router IP address.
+ * @returns {object} containing keys: `gatewayIP`, `dockerNetworks`.
  */
 function parseDockerComposeFile() {
 	console.log("Reading Docker compose file...");
 	const composeDict = parse(readFileSync(DOCKER_COMPOSE_ALGAE_PATH).toString());
 	const gatewayIP = composeDict["services"][DOCKER_COMPOSE_GATEWAY_CONTAINER]["networks"][DOCKER_COMPOSE_GATEWAY_NETWORK]["ipv4_address"];
+	const gatewayNetwork = composeDict["networks"][DOCKER_COMPOSE_GATEWAY_NETWORK]["ipam"]["config"][0]["subnet"];
 	console.log(`Extracted compose parameters: gateway IP (${gatewayIP})`);
-	return gatewayIP;
+	const dockerNetworks = Object.values(composeDict["networks"])
+		.map((v) => v["ipam"]["config"][0]["subnet"])
+		.filter((v) => v !== gatewayNetwork);
+	console.log(`Extracted networks that will be disconnected: ${dockerNetworks}`);
+	return { gatewayIP, dockerNetworks };
 }
 
 /**
  * Extract and remove system default route and add new default route via Docker gateway container.
+ * After that, remove routes to all the other Docker containers (that should not be directly reachable during testing).
  * @param {string} gatewayContainerIP Docker gateway container IP address.
+ * @param {Array<string>} dockerNetworks Docker networks that should become unreachable.
  * @returns {string} the old system default route that should be saved and restored afterwards.
  */
-function setupRouting(gatewayContainerIP) {
+function setupRouting(gatewayContainerIP, dockerNetworks) {
 	console.log("Looking for the default route...");
 	const defaultRoute = runCommandForSystem("ip route show default", "route print 0.0.0.0").trim();
 	console.log("Deleting current default route...");
 	runCommandForSystem(`ip route delete ${defaultRoute}`, `route delete ${defaultRoute}`);
 	console.log("Adding new default route via specified Docker container router...");
 	runCommandForSystem(`ip route add default via ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}`, `route add 0.0.0.0 ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}`);
+	console.log("Deleting Docker routes to the networks that should become unreachable...");
+	dockerNetworks.forEach((v) => runCommandForSystem(`ip route delete ${v}`, `route delete ${v}`));
 	console.log(`Routing set up, saved default route: ${defaultRoute}`);
 	return defaultRoute;
 }
@@ -184,9 +201,9 @@ function resetRouting(defaultRoute) {
 
 const args = parseArguments();
 if (!args.reset) {
-	const gatewayIP = parseDockerComposeFile();
+	const { gatewayIP, dockerNetworks } = parseDockerComposeFile();
 	const pid = await launchDockerCompose();
-	const route = setupRouting(gatewayIP);
+	const route = setupRouting(gatewayIP, dockerNetworks);
 	storeCache(args.cacheFile, { route, pid });
 } else {
 	const { route, pid } = loadCache(args.cacheFile);

@@ -60,19 +60,16 @@ networks:
         - subnet: 10.82.0.0/24
           gateway: 10.82.0.1
   sea-rout-int:
-    internal: true
     ipam:
       config:
         - subnet: 10.87.82.0/24
           gateway: 10.87.82.1
   sea-rout-ext:
-    internal: true
     ipam:
       config:
         - subnet: 10.87.42.0/24
           gateway: 10.87.42.1
   sea-serv-ext:
-    internal: true
     ipam:
       config:
         - subnet: 10.42.0.0/24
