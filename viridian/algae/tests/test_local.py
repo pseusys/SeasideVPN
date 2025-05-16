@@ -18,7 +18,7 @@ def test_local_echo(random_message: bytes) -> None:
 
     start_time = perf_counter()
     with socket(AF_INET, SOCK_STREAM) as gate:
-        gate.bind(("0.0.0.0", 0))
+        gate.bind((local_address, 0))
         gate.connect((echo_address, int(echo_port)))
         gate.send(random_message)
         tcp_echo = loads(gate.recv(buffer))

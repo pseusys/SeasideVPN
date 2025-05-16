@@ -91,37 +91,28 @@ function parseArguments() {
  * Parse Viridian Algae Docker compose file.
  * Extract Seaside IP and gateway container IP.
  * Also get network addresses of all the networks that should become unreachable.
- * @returns {object} containing keys: `gatewayIP`, `dockerNetworks`.
+ * @returns {string} gateway router IP address.
  */
 function parseDockerComposeFile() {
 	console.log("Reading Docker compose file...");
 	const composeDict = parse(readFileSync(DOCKER_COMPOSE_ALGAE_PATH).toString());
 	const gatewayIP = composeDict["services"][DOCKER_COMPOSE_GATEWAY_CONTAINER]["networks"][DOCKER_COMPOSE_GATEWAY_NETWORK]["ipv4_address"];
-	const gatewayNetwork = composeDict["networks"][DOCKER_COMPOSE_GATEWAY_NETWORK]["ipam"]["config"][0]["subnet"];
 	console.log(`Extracted compose parameters: gateway IP (${gatewayIP})`);
-	const dockerNetworks = Object.values(composeDict["networks"])
-		.map((v) => v["ipam"]["config"][0]["subnet"])
-		.filter((v) => v !== gatewayNetwork);
-	console.log(`Extracted networks that will be disconnected: ${dockerNetworks}`);
-	return { gatewayIP, dockerNetworks };
+	return gatewayIP;
 }
 
 /**
  * Extract and remove system default route and add new default route via Docker gateway container.
- * After that, remove routes to all the other Docker containers (that should not be directly reachable during testing).
  * @param {string} gatewayContainerIP Docker gateway container IP address.
- * @param {Array<string>} dockerNetworks Docker networks that should become unreachable.
  * @returns {string} the old system default route that should be saved and restored afterwards.
  */
-function setupRouting(gatewayContainerIP, dockerNetworks) {
+function setupRouting(gatewayContainerIP) {
 	console.log("Looking for the default route...");
 	const defaultRoute = runCommandForSystem("ip route show default", "route print 0.0.0.0").trim();
 	console.log("Deleting current default route...");
 	runCommandForSystem(`ip route delete ${defaultRoute}`, `route delete ${defaultRoute}`);
 	console.log("Adding new default route via specified Docker container router...");
 	runCommandForSystem(`ip route add default via ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}`, `route add 0.0.0.0 ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}`);
-	console.log("Deleting Docker routes to the networks that should become unreachable...");
-	dockerNetworks.forEach((v) => runCommandForSystem(`ip route delete ${v}`, `route delete ${v}`));
 	console.log(`Routing set up, saved default route: ${defaultRoute}`);
 	return defaultRoute;
 }
@@ -193,9 +184,9 @@ function resetRouting(defaultRoute) {
 
 const args = parseArguments();
 if (!args.reset) {
-	const { gatewayIP, dockerNetworks } = parseDockerComposeFile();
+	const gatewayIP = parseDockerComposeFile();
 	const pid = await launchDockerCompose();
-	const route = setupRouting(gatewayIP, dockerNetworks);
+	const route = setupRouting(gatewayIP);
 	storeCache(args.cacheFile, { route, pid });
 } else {
 	const { route, pid } = loadCache(args.cacheFile);
