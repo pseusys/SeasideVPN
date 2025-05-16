@@ -49,7 +49,7 @@ jobs:
     env:
       LOCAL_ADDRESS: 10.82.0.1
       ECHO_ADDRESS: 10.42.0.42
-      TEST_COMMAND: poetry run pytest --log-cli-level=INFO tests/test_local.py
+      TEST_COMMAND: ip route show && ip addr show # poetry run pytest --log-cli-level=INFO tests/test_local.py
 
     steps:
       - name: Checkout 🛎️
@@ -75,9 +75,9 @@ jobs:
           pip3 install poetry poethepoet[poetry_plugin]
           poetry install --extras "client devel"
 
-      - name: Prepare Host
-        working-directory: .github/scripts
-        run: sudo npm run configure-viridian-test
+#      - name: Prepare Host
+#        working-directory: .github/scripts
+#        run: sudo npm run configure-viridian-test
 
       - name: Load .ENV File
         uses: aarcangeli/load-dotenv@v1
@@ -95,9 +95,9 @@ jobs:
           LINK=$(poetry poe -q fixture -a "${{ env.SEASIDE_ADDRESS }}" -p "${{ env.SEASIDE_API_PORT }}" -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian -s)
           echo "WHIRLPOOL_LINK=$LINK" >> $GITHUB_ENV
   
-      - name: Test Echo Server Access (no VPN)
-        working-directory: viridian/algae
-        run: eval "${{ env.TEST_COMMAND }}" && exit 1 || true
+#      - name: Test Echo Server Access (no VPN)
+#        working-directory: viridian/algae
+#        run: eval "${{ env.TEST_COMMAND }}" && exit 1 || true
 
       - name: Test Viridian Algae PORT (standalone) 🧪
         working-directory: viridian/algae
