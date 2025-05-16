@@ -112,26 +112,26 @@ function parseArguments() {
 function parseDockerComposeFile() {
 	console.log("Reading Docker compose file...");
 	const composeDict = parse(readFileSync(DOCKER_COMPOSE_ALGAE_PATH).toString());
-	const hostIP = composeDict["networks"][DOCKER_COMPOSE_GATEWAY_NETWORK]["ipam"]["config"][0]["gateway"];
+	const gatewayIP = composeDict["services"][DOCKER_COMPOSE_GATEWAY_CONTAINER]["networks"][DOCKER_COMPOSE_GATEWAY_NETWORK]["ipv4_address"];
 	const echoIP = composeDict["services"][DOCKER_COMPOSE_ECHO_CONTAINER]["networks"][DOCKER_COMPOSE_ECHO_NETWORK]["ipv4_address"];
 	const echoNetwork = composeDict["networks"][DOCKER_COMPOSE_ECHO_NETWORK]["ipam"]["config"][0]["subnet"];
 	console.log(`Extracted compose parameters: host gateway IP (${hostIP}), echo IP (${echoIP}), echo network (${echoNetwork})`);
-	return { hostIP, echoIP, echoNetwork };
+	return { gatewayIP, echoIP, echoNetwork };
 }
 
 /**
  * TODO: change.
  * Extract and remove system default route and add new default route via Docker gateway container.
  * After that, remove routes to all the other Docker containers (that should not be directly reachable during testing).
- * @param {string} gatewayHostIP Docker gateway container IP address.
+ * @param {string} gatewayContainerIP Docker gateway container IP address.
  * @param {string} echoContainerIP Docker gateway container IP address.
  * @param {string} echoNetwork Docker gateway container IP address.
  */
-function setupRouting(gatewayHostIP, echoContainerIP, echoNetwork) {
+function setupRouting(gatewayContainerIP, echoContainerIP, echoNetwork) {
 	console.log("Removing a route to the echo container...");
 	runCommandForSystem(`ip route delete ${echoNetwork}`, `route delete ${echoNetwork}`);
 	console.log("Setting a new to the echo container...");
-	runCommandForSystem(`ip route add ${echoNetwork} via ${gatewayHostIP} metric ${REASONABLY_LOW_METRIC_VALUE}`, `route add ${echoNetwork} ${gatewayHostIP} metric ${REASONABLY_LOW_METRIC_VALUE}`);
+	runCommandForSystem(`ip route add ${echoNetwork} via ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}`, `route add ${echoNetwork} ${gatewayHostIP} metric ${REASONABLY_LOW_METRIC_VALUE}`);
 	console.log("Looking for the new route to the echo container...");
 	const route = runCommandForSystem(`ip route get ${echoContainerIP}`, `route print ${echoContainerIP}`);
 	console.log(`Route to the echo container found:\n${route}`);
@@ -166,9 +166,9 @@ async function killDockerCompose() {
 
 const args = parseArguments();
 if (!args.reset) {
-	const { hostIP, echoIP, echoNetwork } = parseDockerComposeFile();
+	const { gatewayIP, echoIP, echoNetwork } = parseDockerComposeFile();
 	await launchDockerCompose();
-	setupRouting(hostIP, echoIP, echoNetwork);
+	setupRouting(gatewayIP, echoIP, echoNetwork);
 } else {
 	await killDockerCompose();
 }
