@@ -107,15 +107,15 @@ function parseArguments() {
  * @returns {object} containing keys: `gatewayIP`, `dockerNetworks`.
  */
 function parseDockerComposeFile() {
-	console.log("Reading Docker compose file...");
+	process.stdout.write("Reading Docker compose file...\n");
 	const composeDict = parse(readFileSync(DOCKER_COMPOSE_ALGAE_PATH).toString());
 	const gatewayIP = composeDict["services"][DOCKER_COMPOSE_GATEWAY_CONTAINER]["networks"][DOCKER_COMPOSE_GATEWAY_NETWORK]["ipv4_address"];
 	const gatewayNetwork = composeDict["networks"][DOCKER_COMPOSE_GATEWAY_NETWORK]["ipam"]["config"][0]["subnet"];
-	console.log(`Extracted compose parameters: gateway IP (${gatewayIP})`);
+	process.stdout.write(`Extracted compose parameters: gateway IP (${gatewayIP})\n`);
 	const dockerNetworks = Object.values(composeDict["networks"])
 		.map((v) => v["ipam"]["config"][0]["subnet"])
 		.filter((v) => v !== gatewayNetwork);
-	console.log(`Extracted networks that will be disconnected: ${dockerNetworks}`);
+		process.stdout.write(`Extracted networks that will be disconnected: ${dockerNetworks}\n`);
 	return { gatewayIP, dockerNetworks };
 }
 
@@ -127,15 +127,15 @@ function parseDockerComposeFile() {
  * @returns {string} the old system default route that should be saved and restored afterwards.
  */
 function setupRouting(gatewayContainerIP, dockerNetworks) {
-	console.log("Looking for the default route...");
+	process.stdout.write("Looking for the default route...\n");
 	const defaultRoute = runCommandForSystem("ip route show default", "route print 0.0.0.0");
-	console.log("Deleting current default route...");
+	process.stdout.write("Deleting current default route...\n");
 	runCommandForSystem(`ip route delete ${defaultRoute}`, `route delete ${defaultRoute}`);
-	console.log("Adding new default route via specified Docker container router...");
+	process.stdout.write("Adding new default route via specified Docker container router...\n");
 	runCommandForSystem(`ip route add default via ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}`, `route add 0.0.0.0 ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}`);
-	console.log("Deleting Docker routes to the networks that should become unreachable...");
+	process.stdout.write("Deleting Docker routes to the networks that should become unreachable...\n");
 	dockerNetworks.forEach((v) => runCommandForSystem(`ip route delete ${v}`, `route delete ${v}`));
-	console.log(`Routing set up, saved default route: ${defaultRoute}`);
+	process.stdout.write(`Routing set up, saved default route: ${defaultRoute}\n`);
 	return defaultRoute;
 }
 
@@ -144,9 +144,9 @@ function setupRouting(gatewayContainerIP, dockerNetworks) {
  * Wait for some time to check if it started successfully and throw an error if it did.
  */
 async function launchDockerCompose() {
-	console.log("Spawning Docker compose process...");
+	process.stdout.write("Spawning Docker compose process...\n");
 	const child = runCommand(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} up --detach --build whirlpool`);
-	console.log("Waiting for Docker compose process to initiate...");
+	process.stdout.write("Waiting for Docker compose process to initiate...\n");
 	await sleep(DOCKER_COMPOSE_INITIALIZATION_TIMEOUT);
 	if (child.status !== 0) throw Error(`Docker compose command failed, with exit code: ${child.status}`);
 }
@@ -157,9 +157,9 @@ async function launchDockerCompose() {
  * @param {object} cacheObject cache object that will be stored (as JSON).
  */
 function storeCache(cacheFile, cacheObject) {
-	console.log("Writing cache file...");
+	process.stdout.write("Writing cache file...\n");
 	writeFileSync(cacheFile, JSON.stringify(cacheObject));
-	console.log(`Cache written: ${JSON.stringify(cacheObject)}`);
+	process.stdout.write(`Cache written: ${JSON.stringify(cacheObject)}\n`);
 }
 
 /**
@@ -168,9 +168,9 @@ function storeCache(cacheFile, cacheObject) {
  * @returns {object} cache object that will be loaded.
  */
 function loadCache(cacheFile) {
-	console.log("Reading cache file...");
+	process.stdout.write("Reading cache file...\n");
 	const cache = JSON.parse(readFileSync(cacheFile).toString());
-	console.log(`Cache read: default route (${cache.route}), PID (${cache.pid})`);
+	process.stdout.write(`Cache read: default route (${cache.route}), PID (${cache.pid})\n`);
 	return cache;
 }
 
@@ -178,13 +178,12 @@ function loadCache(cacheFile) {
  * Kill Docker compose process (with docker compose) running in the background.
  */
 async function killDockerCompose() {
-	console.log("Killing Docker compose process...");
-	runCommandForSystem(`kill -2 ${pid}`, `taskkill /pid ${pid}`);
+	process.stdout.write("Killing Docker compose process...\n");
 	const child = runCommand(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} down`);
-	console.log("Waiting for Docker compose process to terminate...");
+	process.stdout.write("Waiting for Docker compose process to terminate...\n");
 	await sleep(DOCKER_COMPOSE_INITIALIZATION_TIMEOUT);
 	if (child.exitCode !== null) throw Error(`Docker compose command failed, with exit code: ${child.exitCode}`);
-	console.log("Docker compose process killed!");
+	process.stdout.write("Docker compose process killed!\n");
 }
 
 /**
@@ -192,11 +191,11 @@ async function killDockerCompose() {
  * @param {string} defaultRoute previous default route to restore.
  */
 function resetRouting(defaultRoute) {
-	console.log("Deleting current default route...");
+	process.stdout.write("Deleting current default route...\n");
 	runCommandForSystem("ip route delete default", "route delete 0.0.0.0");
-	console.log("Restoring previous default route...");
+	process.stdout.write(`Restoring previous default route (${defaultRoute})...\n`);
 	runCommandForSystem(`ip route add ${defaultRoute}`, `route add ${defaultRoute}`);
-	console.log("Default route reset!");
+	process.stdout.write("Default route reset!\n");
 }
 
 // Script body:
