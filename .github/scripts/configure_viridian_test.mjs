@@ -131,7 +131,7 @@ function setupRouting(gatewayContainerIP, echoContainerIP, echoNetwork) {
 	console.log("Removing a route to the echo container...");
 	runCommandForSystem(`ip route delete ${echoNetwork}`, `route delete ${echoNetwork}`);
 	console.log("Setting a new to the echo container...");
-	runCommandForSystem(`ip route add ${echoNetwork} via ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}`, `route add ${echoNetwork} ${gatewayHostIP} metric ${REASONABLY_LOW_METRIC_VALUE}`);
+	runCommandForSystem(`ip route add ${echoNetwork} via ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}`, `route add ${echoNetwork} ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}`);
 	console.log("Looking for the new route to the echo container...");
 	const route = runCommandForSystem(`ip route get ${echoContainerIP}`, `route print ${echoContainerIP}`);
 	console.log(`Route to the echo container found:\n${route}`);
