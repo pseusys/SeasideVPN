@@ -85,6 +85,7 @@ class AlgaeClient:
             except (OSError, BlockingIOError) as e:
                 raise RuntimeError(f"Reading packet from tunnel error: {e}")
             logger.debug(f"Sending {len(packet)} bytes to caerulean")
+            logger.debug(f"Sending packet: [{', '.join(str(i) for i in packet)}]")
             try:
                 await connection.write(packet)
             except ProtocolBaseError as e:
