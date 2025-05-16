@@ -179,9 +179,7 @@ jobs:
   
       - name: Test Echo Server Access (no VPN)
         working-directory: viridian/algae
-        run: |
-          ip route get ${{ env.ECHO_ADDRESS }}
-          eval "${{ env.TEST_COMMAND }}" && exit 1 || true
+        run: ip route get ${{ env.ECHO_ADDRESS }} && eval "${{ env.TEST_COMMAND }}" && exit 1 || true
 
       - name: Test Viridian Reef PORT (integration) 🧪
         working-directory: viridian/algae
