@@ -148,7 +148,7 @@ async function launchDockerCompose() {
 	const child = runCommand(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} up --detach --build whirlpool`);
 	console.log("Waiting for Docker compose process to initiate...");
 	await sleep(DOCKER_COMPOSE_INITIALIZATION_TIMEOUT);
-	if (child.status !== null) throw Error(`Docker compose command failed, with exit code: ${child.status}`);
+	if (child.status !== 0) throw Error(`Docker compose command failed, with exit code: ${child.status}`);
 	console.log("Disconnecting from Docker compose process...");
 	child.unref();
 }
