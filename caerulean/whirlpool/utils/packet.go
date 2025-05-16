@@ -36,7 +36,7 @@ func ReadIPv4(packet *betterbuf.Buffer) (uint16, *net.IP, *net.IP, error) {
 
 	ihl := int((packet.Get(0) & 0x0F) * 4)
 	if ihl < 20 {
-		logrus.Errorf("packet value: %v", packet)
+		logrus.Errorf("packet value: %v", packet.Slice())
 		return 0, nil, nil, fmt.Errorf("invalid IPv4 header length")
 	}
 
