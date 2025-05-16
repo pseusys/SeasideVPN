@@ -133,8 +133,8 @@ function setupRouting(gatewayHostIP, echoContainerIP, echoNetwork) {
 	console.log("Setting a new to the echo container...");
 	runCommandForSystem(`ip route add ${echoNetwork} via ${gatewayHostIP} metric ${REASONABLY_LOW_METRIC_VALUE}`, `route add ${echoNetwork} ${gatewayHostIP} metric ${REASONABLY_LOW_METRIC_VALUE}`);
 	console.log("Looking for the new route to the echo container...");
-	const route = runCommandForSystem(`ip route get ${echoContainerIP}`, `route print ${echoContainerIP}`).split("\n")[0].trim();
-	console.log(`Route to the echo container found: '${route}'!`);
+	const route = runCommandForSystem(`ip route get ${echoContainerIP}`, `route print ${echoContainerIP}`);
+	console.log(`Route to the echo container found:\n${route}`);
 }
 
 /**
