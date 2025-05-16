@@ -27,6 +27,11 @@ const DOCKER_COMPOSE_ALGAE_PATH = join(PYTHON_LIB_ALGAE_PATH, "docker", "compose
 // Host configuration cache file name.
 const DOCKER_COMPOSE_CACHE_FILE_NAME = ".setup_test_cache";
 
+// Get original user's UID from environment.
+const ouid = parseInt(process.env.SUDO_UID);
+// Get original user's GID from environment.
+const ogid = parseInt(process.env.SUDO_GID);
+
 /**
  * Print usage help message and exit with code 0.
  */
@@ -141,7 +146,7 @@ function setupRouting(gatewayContainerIP, dockerNetworks) {
  */
 async function launchDockerCompose() {
 	console.log("Spawning Docker compose process...");
-	const child = spawn(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} up --build --abort-on-container-exit --exit-code-from whirlpool`, { detached: true, shell: true, stdio: "ignore" });
+	const child = spawn(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} up --build --abort-on-container-exit --exit-code-from whirlpool`, { uid: ouid, gid: ogid, detached: true, shell: true, stdio: "ignore" });
 	console.log("Reading Docker compose process PID...");
 	if (child.pid === undefined) throw Error("Docker compose command didn't start successfully!");
 	console.log("Waiting for Docker compose process to initiate...");
