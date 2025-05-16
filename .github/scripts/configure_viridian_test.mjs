@@ -106,8 +106,8 @@ function parseArguments() {
 
 /**
  * Parse Viridian Algae Docker compose file.
- * Extract host gateway IP, echo container IP and echo container network.
- * @returns {object} containing keys: `hostIP`, `echoIP`, `echoNetwork`.
+ * Extract gateway container IP, echo container IP and echo container network.
+ * @returns {object} containing keys: `gatewayIP`, `echoIP`, `echoNetwork`.
  */
 function parseDockerComposeFile() {
 	console.log("Reading Docker compose file...");
@@ -115,7 +115,7 @@ function parseDockerComposeFile() {
 	const gatewayIP = composeDict["services"][DOCKER_COMPOSE_GATEWAY_CONTAINER]["networks"][DOCKER_COMPOSE_GATEWAY_NETWORK]["ipv4_address"];
 	const echoIP = composeDict["services"][DOCKER_COMPOSE_ECHO_CONTAINER]["networks"][DOCKER_COMPOSE_ECHO_NETWORK]["ipv4_address"];
 	const echoNetwork = composeDict["networks"][DOCKER_COMPOSE_ECHO_NETWORK]["ipam"]["config"][0]["subnet"];
-	console.log(`Extracted compose parameters: host gateway IP (${hostIP}), echo IP (${echoIP}), echo network (${echoNetwork})`);
+	console.log(`Extracted compose parameters: gateway IP (${gatewayIP}), echo IP (${echoIP}), echo network (${echoNetwork})`);
 	return { gatewayIP, echoIP, echoNetwork };
 }
 
