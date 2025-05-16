@@ -19,8 +19,10 @@ const DOCKER_COMPOSE_INITIALIZATION_TIMEOUT = 15;
 // Gateway network for VPN access.
 const DOCKER_COMPOSE_GATEWAY_NETWORK = "sea-cli-int";
 // Gateway router for VPN access.
+const DOCKER_COMPOSE_GATEWAY_CONTAINER = "int-router";
+// Echo server for VPN access.
 const DOCKER_COMPOSE_ECHO_CONTAINER = "echo";
-// Gateway network for VPN access.
+// Echo server network for VPN access.
 const DOCKER_COMPOSE_ECHO_NETWORK = "sea-serv-ext";
 // Path to `viridian/algae` directory.
 const PYTHON_LIB_ALGAE_PATH = join(dirname(import.meta.dirname), "..", "viridian", "algae");
@@ -105,16 +107,17 @@ function parseArguments() {
 /**
  * Parse Viridian Algae Docker compose file.
  * Extract gateway container IP, echo container IP and echo container network.
- * @returns {object} containing keys: `gatewayIP`, `echoIP`, `echoNetwork`.
+ * @returns {object} containing keys: `hostIP`, `gatewayIP`, `echoIP`, `echoNetwork`.
  */
 function parseDockerComposeFile() {
 	console.log("Reading Docker compose file...");
 	const composeDict = parse(readFileSync(DOCKER_COMPOSE_ALGAE_PATH).toString());
-	const gatewayIP = composeDict["networks"][DOCKER_COMPOSE_GATEWAY_NETWORK]["ipam"]["config"][0]["gateway"];
+	const hostIP = composeDict["networks"][DOCKER_COMPOSE_GATEWAY_NETWORK]["ipam"]["config"][0]["gateway"];
+	const gatewayIP = composeDict["services"][DOCKER_COMPOSE_GATEWAY_CONTAINER]["networks"][DOCKER_COMPOSE_ECHO_NETWORK]["ipv4_address"];
 	const echoIP = composeDict["services"][DOCKER_COMPOSE_ECHO_CONTAINER]["networks"][DOCKER_COMPOSE_ECHO_NETWORK]["ipv4_address"];
 	const echoNetwork = composeDict["networks"][DOCKER_COMPOSE_ECHO_NETWORK]["ipam"]["config"][0]["subnet"];
-	console.log(`Extracted compose parameters: gateway IP (${gatewayIP}), echo IP (${echoIP}), echo network (${echoNetwork})`);
-	return { gatewayIP, echoIP, echoNetwork };
+	console.log(`Extracted compose parameters: host IP (${hostIP}), gateway IP (${gatewayIP}), echo IP (${echoIP}), echo network (${echoNetwork})`);
+	return { hostIP, gatewayIP, echoIP, echoNetwork };
 }
 
 /**
@@ -126,9 +129,9 @@ function parseDockerComposeFile() {
  * @param {string} gatewayContainerIP Docker gateway container IP address.
  * @returns {string} the old system default route that should be saved and restored afterwards.
  */
-function setupRouting(gatewayHostIP, echoContainerIP, echoNetwork) {
+function setupRouting(gatewayHostIP, gatewayContainerIP, echoContainerIP, echoNetwork) {
 	console.log("Adding a route to the echo container...");
-	throw Error(runCommandForSystem(`ip addr show`));
+	throw Error(`ERROR: ${runCommandForSystem("ip addr show && ip route show")}`);
 	runCommandForSystem(`ip route add ${echoNetwork} via ${gatewayHostIP} metric ${REASONABLY_LOW_METRIC_VALUE}`, `route add ${echoNetwork} ${gatewayHostIP} metric ${REASONABLY_LOW_METRIC_VALUE}`);
 	throw Error(`ERROR: ip route add ${echoNetwork} via ${gatewayHostIP} metric ${REASONABLY_LOW_METRIC_VALUE}`);
 	console.log("Looking for a route to the echo container...");
@@ -208,9 +211,9 @@ function resetRouting(defaultRoute) {
 
 const args = parseArguments();
 if (!args.reset) {
-	const { gatewayIP, echoIP, echoNetwork } = parseDockerComposeFile();
+	const { hostIP, gatewayIP, echoIP, echoNetwork } = parseDockerComposeFile();
 	await launchDockerCompose();
-	const route = setupRouting(gatewayIP, echoIP, echoNetwork);
+	const route = setupRouting(hostIP, gatewayIP, echoIP, echoNetwork);
 	storeCache(args.cacheFile, { route });
 } else {
 	const { route } = loadCache(args.cacheFile);
