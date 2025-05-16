@@ -47,6 +47,7 @@ jobs:
     name: Test Viridian Algae Quick
     runs-on: ubuntu-latest
     env:
+      TEST_TIMEOUT: 15.0
       LOCAL_ADDRESS: 10.82.0.1
       ECHO_ADDRESS: 10.42.0.42
       TEST_COMMAND: poetry run pytest --log-cli-level=INFO tests/test_local.py
@@ -101,7 +102,7 @@ jobs:
 
       - name: Test Viridian Algae PORT (standalone) 🧪
         working-directory: viridian/algae
-        run: sudo -E env "PATH=$PATH" poetry poe client -s port -l "${{ env.WHIRLPOOL_LINK }}" -e "${{ env.TEST_COMMAND }}" || docker compose -f docker/compose.standalone.yml whirlpool
+        run: sudo -E env "PATH=$PATH" poetry poe client -s port -l "${{ env.WHIRLPOOL_LINK }}" -e "${{ env.TEST_COMMAND }}" || docker compose -f docker/compose.standalone.yml logs whirlpool
 
       - name: Test Viridian Algae TYPHOON (standalone) 🧪
         working-directory: viridian/algae
@@ -112,6 +113,7 @@ jobs:
     runs-on: ${{ format('{0}-latest', matrix.os) }}
     env:
       SUDO: ${{ matrix.os == 'ubuntu' && 'sudo -E env "PATH=$PATH"' || '' }}
+      TEST_TIMEOUT: 15.0
       LOCAL_ADDRESS: 10.82.0.1
       ECHO_ADDRESS: 10.42.0.42
       RUNNER_COMMAND: cargo run --features cli-exec --bin cli --manifest-path ../reef/Cargo.toml
