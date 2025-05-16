@@ -19,8 +19,6 @@ const DOCKER_COMPOSE_INITIALIZATION_TIMEOUT = 15;
 // Gateway network for VPN access.
 const DOCKER_COMPOSE_GATEWAY_NETWORK = "sea-cli-int";
 // Gateway router for VPN access.
-const DOCKER_COMPOSE_GATEWAY_CONTAINER = "int-router";
-// Gateway router for VPN access.
 const DOCKER_COMPOSE_ECHO_CONTAINER = "echo";
 // Gateway network for VPN access.
 const DOCKER_COMPOSE_ECHO_NETWORK = "sea-serv-ext";
@@ -112,7 +110,7 @@ function parseArguments() {
 function parseDockerComposeFile() {
 	console.log("Reading Docker compose file...");
 	const composeDict = parse(readFileSync(DOCKER_COMPOSE_ALGAE_PATH).toString());
-	const gatewayIP = composeDict["services"][DOCKER_COMPOSE_GATEWAY_CONTAINER]["networks"][DOCKER_COMPOSE_GATEWAY_NETWORK]["ipv4_address"];
+	const gatewayIP = composeDict["networks"][DOCKER_COMPOSE_GATEWAY_NETWORK]["ipam"]["config"][0]["gateway"];
 	const echoIP = composeDict["services"][DOCKER_COMPOSE_ECHO_CONTAINER]["networks"][DOCKER_COMPOSE_ECHO_NETWORK]["ipv4_address"];
 	const echoNetwork = composeDict["networks"][DOCKER_COMPOSE_ECHO_NETWORK]["ipam"]["config"][0]["subnet"];
 	console.log(`Extracted compose parameters: gateway IP (${gatewayIP}), echo IP (${echoIP}), echo network (${echoNetwork})`);
@@ -128,10 +126,10 @@ function parseDockerComposeFile() {
  * @param {string} gatewayContainerIP Docker gateway container IP address.
  * @returns {string} the old system default route that should be saved and restored afterwards.
  */
-function setupRouting(gatewayContainerIP, echoContainerIP, echoNetwork) {
+function setupRouting(gatewayHostIP, echoContainerIP, echoNetwork) {
 	console.log("Adding a route to the echo container...");
-	runCommandForSystem(`ip route add ${echoNetwork} via ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}`, `route add ${echoNetwork} ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}`);
-	throw Error(`ERROR: ip route add ${echoNetwork} via ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}`);
+	runCommandForSystem(`ip route add ${echoNetwork} via ${gatewayHostIP} metric ${REASONABLY_LOW_METRIC_VALUE}`, `route add ${echoNetwork} ${gatewayHostIP} metric ${REASONABLY_LOW_METRIC_VALUE}`);
+	throw Error(`ERROR: ip route add ${echoNetwork} via ${gatewayHostIP} metric ${REASONABLY_LOW_METRIC_VALUE}`);
 	console.log("Looking for a route to the echo container...");
 	const route = runCommandForSystem(`ip route get ${echoContainerIP}`, `route print ${echoContainerIP}`).split("\n")[0].trim();
 	throw Error(`ERROR: route created ${route}'`);
