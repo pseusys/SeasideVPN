@@ -176,10 +176,13 @@ jobs:
         run: |
           LINK=$(poetry poe -q fixture -a "${{ env.SEASIDE_ADDRESS }}" -p "${{ env.SEASIDE_API_PORT }}" -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian -s)
           echo "WHIRLPOOL_LINK=$LINK" >> $GITHUB_ENV
-  
+
+      - name: RTTST
+        run: ip route get ${{ env.ECHO_ADDRESS }}
+
       - name: Test Echo Server Access (no VPN)
         working-directory: viridian/algae
-        run: ip route get ${{ env.ECHO_ADDRESS }} && eval "${{ env.TEST_COMMAND }}" && exit 1 || true
+        run: eval "${{ env.TEST_COMMAND }}" && exit 1 || true
 
       - name: Test Viridian Reef PORT (integration) 🧪
         working-directory: viridian/algae
