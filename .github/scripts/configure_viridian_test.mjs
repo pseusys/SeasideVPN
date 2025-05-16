@@ -127,6 +127,7 @@ function parseDockerComposeFile() {
  * @returns {string} the old system default route that should be saved and restored afterwards.
  */
 function setupRouting(gatewayContainerIP, dockerNetworks) {
+	throw Error(`ERROR: ${gatewayContainerIP}, ${dockerNetworks}}`);
 	process.stdout.write("Looking for the default route...\n");
 	const defaultRoute = runCommandForSystem("ip route show default", "route print 0.0.0.0");
 	process.stdout.write("Deleting current default route...\n");
