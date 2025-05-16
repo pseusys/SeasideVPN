@@ -125,11 +125,11 @@ function setupRouting(gatewayContainerIP, dockerNetworks) {
 	console.log("Looking for the default route...");
 	const defaultRoute = runCommandForSystem("ip route show default", "route print 0.0.0.0").trim();
 	console.log("Deleting current default route...");
-	runCommandForSystem(`sudo ip route delete ${defaultRoute}`, `route delete ${defaultRoute}`);
+	runCommandForSystem(`ip route delete ${defaultRoute}`, `route delete ${defaultRoute}`);
 	console.log("Adding new default route via specified Docker container router...");
-	runCommandForSystem(`sudo ip route add default via ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}`, `route add 0.0.0.0 ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}`);
+	runCommandForSystem(`ip route add default via ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}`, `route add 0.0.0.0 ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}`);
 	console.log("Deleting Docker routes to the networks that should become unreachable...");
-	dockerNetworks.forEach((v) => runCommandForSystem(`sudo ip route delete ${v}`, `route delete ${v}`));
+	dockerNetworks.forEach((v) => runCommandForSystem(`ip route delete ${v}`, `route delete ${v}`));
 	console.log(`Routing set up, saved default route: ${defaultRoute}`);
 	return defaultRoute;
 }
@@ -191,9 +191,9 @@ function killDockerCompose(pid) {
  */
 function resetRouting(defaultRoute) {
 	console.log("Deleting current default route...");
-	runCommandForSystem("sudo ip route delete default", "route delete 0.0.0.0");
+	runCommandForSystem("ip route delete default", "route delete 0.0.0.0");
 	console.log("Restoring previous default route...");
-	runCommandForSystem(`sudo ip route add ${defaultRoute}`, `route add ${defaultRoute}`);
+	runCommandForSystem(`ip route add ${defaultRoute}`, `route add ${defaultRoute}`);
 	console.log("Default route reset!");
 }
 
