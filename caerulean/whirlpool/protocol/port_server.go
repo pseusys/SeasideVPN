@@ -200,6 +200,12 @@ func (p *PortServer) serveRead(ctx context.Context, packetChan chan *betterbuf.B
 				}
 			}
 
+			// Packet parsing failed - continue listening
+			if packet == nil {
+				PacketPool.Put(buffer)
+				continue
+			}
+
 			// Send packet and defer buffer return after usage
 			select {
 			case <-ctx.Done():
