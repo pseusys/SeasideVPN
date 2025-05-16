@@ -101,7 +101,7 @@ jobs:
 
       - name: Test Viridian Algae PORT (standalone) 🧪
         working-directory: viridian/algae
-        run: sudo -E env "PATH=$PATH" poetry poe client -s port -l "${{ env.WHIRLPOOL_LINK }}" -e "nc -vz 10.42.0.42 5000"
+        run: sudo -E env "PATH=$PATH" poetry poe client -s port -l "${{ env.WHIRLPOOL_LINK }}" -e "${{ env.TEST_COMMAND }}" || docker compose -f docker/compose.standalone.yml whirlpool
 
       - name: Test Viridian Algae TYPHOON (standalone) 🧪
         working-directory: viridian/algae
