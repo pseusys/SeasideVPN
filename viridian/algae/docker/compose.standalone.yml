@@ -6,6 +6,9 @@ services:
     extends:
       file: compose.base.yml
       service: router
+    build:
+      args:
+        RESTRICTED_ADDRESS: 10.42.0.42
     networks:
       sea-cli-int:
         ipv4_address: 10.82.0.100
