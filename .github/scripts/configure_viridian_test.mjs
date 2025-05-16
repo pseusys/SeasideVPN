@@ -15,7 +15,7 @@ const RESET = "\x1b[0m";
 // Metric value that will be used for new default routes (greater than Viridian Algae metric value).
 const REASONABLY_LOW_METRIC_VALUE = 10;
 // Timeout for Docker compose to initialize (and stop completely in case of an error).
-const DOCKER_COMPOSE_INITIALIZATION_TIMEOUT = 60;
+const DOCKER_COMPOSE_INITIALIZATION_TIMEOUT = 15;
 // Gateway network for VPN access.
 const DOCKER_COMPOSE_GATEWAY_NETWORK = "sea-cli-int";
 // Gateway router for VPN access.
@@ -149,8 +149,6 @@ async function launchDockerCompose() {
 	console.log("Waiting for Docker compose process to initiate...");
 	await sleep(DOCKER_COMPOSE_INITIALIZATION_TIMEOUT);
 	if (child.status !== 0) throw Error(`Docker compose command failed, with exit code: ${child.status}`);
-	console.log("Disconnecting from Docker compose process...");
-	child.unref();
 }
 
 /**
