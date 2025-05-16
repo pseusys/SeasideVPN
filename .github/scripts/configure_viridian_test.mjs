@@ -20,6 +20,10 @@ const DOCKER_COMPOSE_INITIALIZATION_TIMEOUT = 15;
 const DOCKER_COMPOSE_GATEWAY_NETWORK = "sea-cli-int";
 // Gateway router for VPN access.
 const DOCKER_COMPOSE_GATEWAY_CONTAINER = "int-router";
+// Gateway router for VPN access.
+const DOCKER_COMPOSE_ECHO_CONTAINER = "echo";
+// Gateway network for VPN access.
+const DOCKER_COMPOSE_ECHO_NETWORK = "sea-serv-ext";
 // Path to `viridian/algae` directory.
 const PYTHON_LIB_ALGAE_PATH = join(dirname(import.meta.dirname), "..", "viridian", "algae");
 // Path to the Docker compose configuration file in `viridian/algae` directory.
@@ -102,36 +106,34 @@ function parseArguments() {
 
 /**
  * Parse Viridian Algae Docker compose file.
- * Extract Seaside IP and gateway container IP.
- * Also get network addresses of all the networks that should become unreachable.
- * @returns {object} containing keys: `gatewayIP`, `dockerNetworks`.
+ * Extract gateway container IP, echo container IP and echo container network.
+ * @returns {object} containing keys: `gatewayIP`, `echoIP`, `echoNetwork`.
  */
 function parseDockerComposeFile() {
 	console.log("Reading Docker compose file...");
 	const composeDict = parse(readFileSync(DOCKER_COMPOSE_ALGAE_PATH).toString());
 	const gatewayIP = composeDict["services"][DOCKER_COMPOSE_GATEWAY_CONTAINER]["networks"][DOCKER_COMPOSE_GATEWAY_NETWORK]["ipv4_address"];
-	const gatewayNetwork = composeDict["networks"][DOCKER_COMPOSE_GATEWAY_NETWORK]["ipam"]["config"][0]["subnet"];
-	console.log(`Extracted compose parameters: gateway IP (${gatewayIP})n`);
-	const dockerNetworks = Object.values(composeDict["networks"])
-		.map((v) => v["ipam"]["config"][0]["subnet"])
-		.filter((v) => v !== gatewayNetwork);
-		console.log(`Extracted networks that will be disconnected: ${dockerNetworks}`);
-	return { gatewayIP, dockerNetworks };
+	const echoIP = composeDict["services"][DOCKER_COMPOSE_ECHO_CONTAINER]["networks"][DOCKER_COMPOSE_ECHO_NETWORK]["ipv4_address"];
+	const echoNetwork = composeDict["networks"][DOCKER_COMPOSE_ECHO_NETWORK]["ipam"]["config"][0]["subnet"];
+	console.log(`Extracted compose parameters: gateway IP (${gatewayIP}), echo IP (${echoIP}), echo network (${echoNetwork})`);
+	return { gatewayIP, echoIP, echoNetwork };
 }
 
 /**
+ * TODO: change.
  * Extract and remove system default route and add new default route via Docker gateway container.
  * After that, remove routes to all the other Docker containers (that should not be directly reachable during testing).
  * @param {string} gatewayContainerIP Docker gateway container IP address.
- * @param {Array<string>} dockerNetworks Docker networks that should become unreachable.
+ * @param {string} gatewayContainerIP Docker gateway container IP address.
+ * @param {string} gatewayContainerIP Docker gateway container IP address.
  * @returns {string} the old system default route that should be saved and restored afterwards.
  */
-function setupRouting(gatewayContainerIP, dockerNetworks) {
-	console.log("Looking for the default route...");
-	const defaultRoute = runCommandForSystem(`ip route get ${process.env.ECHO_ADDRESS}`, "route print 0.0.0.0").split("\n")[0].trim();
-	console.log("Deleting current default route...");
-	runCommandForSystem(`ip route delete ${defaultRoute}`, `route delete ${defaultRoute}`);
-	throw Error(`ERROR: 'ip route delete ${defaultRoute}'`);
+function setupRouting(gatewayContainerIP, echoContainerIP, echoNetwork) {
+	console.log("Adding a route to the echo container...");
+	runCommandForSystem(`ip route add ${echoNetwork} via ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}`, `route add ${echoNetwork} ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}`);
+	console.log("Looking for a route to the echo container...");
+	const route = runCommandForSystem(`ip route get ${echoContainerIP}`, `route print ${echoRoute}`).split("\n")[0].trim();
+	throw Error(`ERROR: route created ${route}'`);
 	console.log("Adding new default route via specified Docker container router...");
 	runCommandForSystem(`ip route add default via ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}`, `route add 0.0.0.0 ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}`);
 	throw Error(`ERROR: 'ip route add default via ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}'`);
@@ -206,9 +208,9 @@ function resetRouting(defaultRoute) {
 
 const args = parseArguments();
 if (!args.reset) {
-	const { gatewayIP, dockerNetworks } = parseDockerComposeFile();
+	const { gatewayIP, echoIP, echoNetwork } = parseDockerComposeFile();
 	await launchDockerCompose();
-	const route = setupRouting(gatewayIP, dockerNetworks);
+	const route = setupRouting(gatewayIP, echoIP, echoNetwork);
 	storeCache(args.cacheFile, { route });
 } else {
 	const { route } = loadCache(args.cacheFile);
