@@ -128,6 +128,7 @@ function parseDockerComposeFile() {
  */
 function setupRouting(gatewayHostIP, echoContainerIP, echoNetwork) {
 	console.log("Adding a route to the echo container...");
+	throw Error(runCommandForSystem(`ip addr show`));
 	runCommandForSystem(`ip route add ${echoNetwork} via ${gatewayHostIP} metric ${REASONABLY_LOW_METRIC_VALUE}`, `route add ${echoNetwork} ${gatewayHostIP} metric ${REASONABLY_LOW_METRIC_VALUE}`);
 	throw Error(`ERROR: ip route add ${echoNetwork} via ${gatewayHostIP} metric ${REASONABLY_LOW_METRIC_VALUE}`);
 	console.log("Looking for a route to the echo container...");
