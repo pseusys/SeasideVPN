@@ -131,8 +131,8 @@ function parseDockerComposeFile() {
  */
 function setupRouting(gatewayHostIP, gatewayContainerIP, echoContainerIP, echoNetwork) {
 	console.log("Adding a route to the echo container...");
+	runCommandForSystem(`ip route replace ${echoNetwork} via ${gatewayHostIP} metric ${REASONABLY_LOW_METRIC_VALUE}`, `route add ${echoNetwork} ${gatewayHostIP} metric ${REASONABLY_LOW_METRIC_VALUE}`);
 	throw Error(`ERROR: ${runCommandForSystem("ip addr show && ip route show")}`);
-	runCommandForSystem(`ip route add ${echoNetwork} via ${gatewayHostIP} metric ${REASONABLY_LOW_METRIC_VALUE}`, `route add ${echoNetwork} ${gatewayHostIP} metric ${REASONABLY_LOW_METRIC_VALUE}`);
 	throw Error(`ERROR: ip route add ${echoNetwork} via ${gatewayHostIP} metric ${REASONABLY_LOW_METRIC_VALUE}`);
 	console.log("Looking for a route to the echo container...");
 	const route = runCommandForSystem(`ip route get ${echoContainerIP}`, `route print ${echoContainerIP}`).split("\n")[0].trim();
