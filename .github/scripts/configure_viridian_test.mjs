@@ -64,7 +64,7 @@ function runCommandForSystem(linuxCommand = undefined, windowsCommand = undefine
 		default:
 			throw Error(`Command for platform ${platform} is not defined!`);
 	}
-	const child = spawnSync(macosCommand, { shell: true, encoding: "utf-8" });
+	const child = spawnSync(platformCommand, { shell: true, encoding: "utf-8" });
 	if (child.error) throw Error(`Command execution error: ${child.error.message}`);
 	else if (child.status !== 0) throw Error(`Command failed with error code: ${child.status}\n${child.stderr.toString()}`);
 	else return child.stdout.toString();
