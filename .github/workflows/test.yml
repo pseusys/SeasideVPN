@@ -47,6 +47,7 @@ jobs:
     name: Test Viridian Algae Quick
     runs-on: ubuntu-latest
     env:
+      LOCAL_ADDRESS: 10.82.0.1
       ECHO_ADDRESS: 10.42.0.42
       TEST_COMMAND: poetry run pytest --log-cli-level=INFO tests/test_local.py
 
@@ -111,6 +112,7 @@ jobs:
     runs-on: ${{ format('{0}-latest', matrix.os) }}
     env:
       SUDO: ${{ matrix.os == 'ubuntu' && 'sudo -E env "PATH=$PATH"' || '' }}
+      LOCAL_ADDRESS: 10.82.0.1
       ECHO_ADDRESS: 10.42.0.42
       RUNNER_COMMAND: cargo run --features cli-exec --bin cli --manifest-path ../reef/Cargo.toml
       TEST_COMMAND: poetry run pytest --log-cli-level=INFO tests/test_local.py
