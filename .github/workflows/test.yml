@@ -77,7 +77,7 @@ jobs:
 
       - name: Prepare Host
         working-directory: .github/scripts
-        run: sudo npm run configure-viridian-test
+        run: npm run configure-viridian-test
 
       - name: Load .ENV File
         uses: aarcangeli/load-dotenv@v1
@@ -159,7 +159,7 @@ jobs:
 
       - name: Prepare Host
         working-directory: .github/scripts
-        run: ${{ env.SUDO }} npm run configure-viridian-test
+        run: npm run configure-viridian-test
 
       - name: Load .ENV File
         uses: aarcangeli/load-dotenv@v1
