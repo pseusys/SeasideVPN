@@ -149,6 +149,7 @@ async function launchDockerCompose() {
 	process.stdout.write("Waiting for Docker compose process to initiate...\n");
 	await sleep(DOCKER_COMPOSE_INITIALIZATION_TIMEOUT);
 	if (child.status !== 0) throw Error(`Docker compose command failed, with exit code: ${child.status}`);
+	process.stdout.write("Docker compose process started!\n");
 }
 
 /**
@@ -182,7 +183,7 @@ async function killDockerCompose() {
 	const child = runCommand(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} down`);
 	process.stdout.write("Waiting for Docker compose process to terminate...\n");
 	await sleep(DOCKER_COMPOSE_INITIALIZATION_TIMEOUT);
-	if (child.exitCode !== null) throw Error(`Docker compose command failed, with exit code: ${child.exitCode}`);
+	if (child.status !== null) throw Error(`Docker compose command failed, with exit code: ${child.status}`);
 	process.stdout.write("Docker compose process killed!\n");
 }
 
