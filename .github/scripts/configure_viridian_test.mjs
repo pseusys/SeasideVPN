@@ -171,6 +171,9 @@ async function killDockerCompose() {
 
 // Script body:
 
+// NB! Since the default route can not be changed in GitHub Actions, a different approach is taken here:
+// Since, in fact, the only meaningful targets are whirlpool and echo docker containers, routes to them are changed instead of the default one.
+// Viridian client determines the default route as the route to the caerulean address, so the router address is considered to be the default one.
 const args = parseArguments();
 if (!args.reset) {
 	const { gatewayIP, whirlpoolIP, whirlpoolNetwork, echoIP, echoNetwork } = parseDockerComposeFile();
