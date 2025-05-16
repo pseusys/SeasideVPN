@@ -115,7 +115,7 @@ function parseDockerComposeFile() {
 	const hostIP = composeDict["networks"][DOCKER_COMPOSE_GATEWAY_NETWORK]["ipam"]["config"][0]["gateway"];
 	const echoIP = composeDict["services"][DOCKER_COMPOSE_ECHO_CONTAINER]["networks"][DOCKER_COMPOSE_ECHO_NETWORK]["ipv4_address"];
 	const echoNetwork = composeDict["networks"][DOCKER_COMPOSE_ECHO_NETWORK]["ipam"]["config"][0]["subnet"];
-	console.log(`Extracted compose parameters: host IP (${hostIP}), echo IP (${echoIP}), echo network (${echoNetwork})`);
+	console.log(`Extracted compose parameters: host gateway IP (${hostIP}), echo IP (${echoIP}), echo network (${echoNetwork})`);
 	return { hostIP, echoIP, echoNetwork };
 }
 
@@ -128,13 +128,13 @@ function parseDockerComposeFile() {
  * @param {string} echoNetwork Docker gateway container IP address.
  */
 function setupRouting(gatewayHostIP, echoContainerIP, echoNetwork) {
-	console.log("Getting a route to the echo container...");
-	const route = runCommandForSystem(`ip route get ${echoContainerIP}`, `route print ${echoContainerIP}`).split("\n")[0].trim();
-	console.log(`Route to the echo container found: '${route}'!`);
-	runCommandForSystem(`ip route delete ${route}`, `route delete ${route}`);
+	console.log("Removing a route to the echo container...");
+	runCommandForSystem(`ip route delete ${echoNetwork}`, `route delete ${echoNetwork}`);
 	console.log("Setting a new to the echo container...");
 	runCommandForSystem(`ip route add ${echoNetwork} via ${gatewayHostIP} metric ${REASONABLY_LOW_METRIC_VALUE}`, `route add ${echoNetwork} ${gatewayHostIP} metric ${REASONABLY_LOW_METRIC_VALUE}`);
-	console.log("Looking for a route to the echo container...");
+	console.log("Looking for the new route to the echo container...");
+	const route = runCommandForSystem(`ip route get ${echoContainerIP}`, `route print ${echoContainerIP}`).split("\n")[0].trim();
+	console.log(`Route to the echo container found: '${route}'!`);
 }
 
 /**
