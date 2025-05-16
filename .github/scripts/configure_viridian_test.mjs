@@ -129,7 +129,6 @@ function parseDockerComposeFile() {
 function setupRouting(gatewayContainerIP, dockerNetworks) {
 	console.log("Looking for the default route...");
 	const defaultRoute = runCommandForSystem("ip route show default", "route print 0.0.0.0");
-	throw Error(`ERROR: ${defaultRoute}`);
 	console.log("Deleting current default route...");
 	runCommandForSystem(`ip route delete ${defaultRoute}`, `route delete ${defaultRoute}`);
 	throw Error(`ERROR: 'ip route delete ${defaultRoute}'`);
