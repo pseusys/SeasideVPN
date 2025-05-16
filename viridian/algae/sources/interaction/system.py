@@ -2,6 +2,7 @@ from contextlib import AbstractAsyncContextManager
 from fcntl import ioctl
 from ipaddress import IPv4Address, IPv4Interface, IPv4Network
 from os import O_RDWR, getegid, geteuid, open
+from pathlib import Path
 from struct import pack
 from typing import List, Optional, Tuple
 
@@ -57,6 +58,9 @@ class _SystemUtils:
         with IPRoute() as ip:
             tunnels = ip.link_lookup(ifname=name)
             tunnel_dev = tunnels[0] if tunnels is not None else str(tunnels)
+        ipv6_descriptor = Path(f"/proc/sys/net/ipv6/conf/{name}/disable_ipv6")
+        if ipv6_descriptor.exists():
+            ipv6_descriptor.write_text("1")
         return descriptor, tunnel_dev
 
     @classmethod

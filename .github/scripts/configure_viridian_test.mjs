@@ -16,14 +16,18 @@ const RESET = "\x1b[0m";
 const REASONABLY_LOW_METRIC_VALUE = 10;
 // Timeout for Docker compose to initialize (and stop completely in case of an error).
 const DOCKER_COMPOSE_INITIALIZATION_TIMEOUT = 15;
-// Gateway network for VPN access.
-const DOCKER_COMPOSE_GATEWAY_NETWORK = "sea-cli-int";
-// Gateway router for VPN access.
-const DOCKER_COMPOSE_GATEWAY_CONTAINER = "int-router";
-// Echo server for VPN access.
-const DOCKER_COMPOSE_ECHO_CONTAINER = "echo";
 // Echo server network for VPN access.
 const DOCKER_COMPOSE_ECHO_NETWORK = "sea-serv-ext";
+// Gateway network for VPN access.
+const DOCKER_COMPOSE_GATEWAY_NETWORK = "sea-cli-int";
+// Seaside network for VPN access.
+const DOCKER_COMPOSE_WHIRLPOOL_NETWORK = "sea-rout-int";
+// Gateway router for VPN access.
+const DOCKER_COMPOSE_GATEWAY_CONTAINER = "int-router";
+// Seaside container for VPN access.
+const DOCKER_COMPOSE_WHIRLPOOL_CONTAINER = "whirlpool";
+// Echo server for VPN access.
+const DOCKER_COMPOSE_ECHO_CONTAINER = "echo";
 // Path to `viridian/algae` directory.
 const PYTHON_LIB_ALGAE_PATH = join(dirname(import.meta.dirname), "..", "viridian", "algae");
 // Path to the Docker compose configuration file in `viridian/algae` directory.
@@ -106,35 +110,38 @@ function parseArguments() {
 
 /**
  * Parse Viridian Algae Docker compose file.
- * Extract gateway container IP, echo container IP and echo container network.
- * @returns {object} containing keys: `gatewayIP`, `echoIP`, `echoNetwork`.
+ * Extract gateway container IP, whirlpool container IP, whirlpool container network, echo container IP and echo container network.
+ * @returns {object} containing keys: `gatewayIP`, `whirlpoolNetwork`, `whirlpoolIP`, `echoIP`, `echoNetwork`.
  */
 function parseDockerComposeFile() {
 	console.log("Reading Docker compose file...");
 	const composeDict = parse(readFileSync(DOCKER_COMPOSE_ALGAE_PATH).toString());
+	const whirlpoolIP = composeDict["services"][DOCKER_COMPOSE_WHIRLPOOL_CONTAINER]["networks"][DOCKER_COMPOSE_WHIRLPOOL_NETWORK]["ipv4_address"];
 	const gatewayIP = composeDict["services"][DOCKER_COMPOSE_GATEWAY_CONTAINER]["networks"][DOCKER_COMPOSE_GATEWAY_NETWORK]["ipv4_address"];
 	const echoIP = composeDict["services"][DOCKER_COMPOSE_ECHO_CONTAINER]["networks"][DOCKER_COMPOSE_ECHO_NETWORK]["ipv4_address"];
+	const whirlpoolNetwork = composeDict["networks"][DOCKER_COMPOSE_WHIRLPOOL_NETWORK]["ipam"]["config"][0]["subnet"];
 	const echoNetwork = composeDict["networks"][DOCKER_COMPOSE_ECHO_NETWORK]["ipam"]["config"][0]["subnet"];
 	console.log(`Extracted compose parameters: gateway IP (${gatewayIP}), echo IP (${echoIP}), echo network (${echoNetwork})`);
-	return { gatewayIP, echoIP, echoNetwork };
+	return { gatewayIP, whirlpoolIP, whirlpoolNetwork, echoIP, echoNetwork };
 }
 
 /**
- * TODO: change.
- * Extract and remove system default route and add new default route via Docker gateway container.
- * After that, remove routes to all the other Docker containers (that should not be directly reachable during testing).
- * @param {string} gatewayContainerIP Docker gateway container IP address.
- * @param {string} echoContainerIP Docker gateway container IP address.
- * @param {string} echoNetwork Docker gateway container IP address.
+ * Extract and remove system route to the given network and replace it with a route via given gateway.
+ * After that, print the resulting routes.
+ * NB! Since the default route is not changed, this *should* work on GitHub Actions.
+ * @param {string} gatewayContainerIP gateway IP address.
+ * @param {string} unreachableIP IP address that will become unreachable (directly).
+ * @param {string} unreachableNetwork network that will become unreachable (directly).
+ * @param {string | null} name the given name for the unreachable IP and network.
  */
-function setupRouting(gatewayContainerIP, echoContainerIP, echoNetwork) {
-	console.log("Removing a route to the echo container...");
-	runCommandForSystem(`ip route delete ${echoNetwork}`, `route delete ${echoNetwork}`);
-	console.log("Setting a new to the echo container...");
-	runCommandForSystem(`ip route replace default via ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}`, `route add 0.0.0.0 ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}`);
-	console.log("Looking for the new route to the echo container...");
-	const route = runCommandForSystem(`ip route get ${echoContainerIP}`, `route print ${echoContainerIP}`);
-	console.log(`Route to the echo container found:\n${route}`);
+function setupRouting(gatewayContainerIP, unreachableIP, unreachableNetwork, name=null) {
+	console.log(`Removing a route to the ${name} network...`);
+	runCommandForSystem(`ip route delete ${unreachableNetwork}`, `route delete ${unreachableNetwork}`);
+	console.log(`Setting a new route to the ${name} network...`);
+	runCommandForSystem(`ip route add ${unreachableNetwork} via ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}`, `route add ${unreachableNetwork} ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}`);
+	console.log(`Looking for the new route to the ${name} IP...`);
+	const route = runCommandForSystem(`ip route get ${unreachableIP}`, `route print ${unreachableIP}`);
+	console.log(`Route to the ${name} IP found:\n${route}`);
 }
 
 /**
@@ -166,9 +173,10 @@ async function killDockerCompose() {
 
 const args = parseArguments();
 if (!args.reset) {
-	const { gatewayIP, echoIP, echoNetwork } = parseDockerComposeFile();
+	const { gatewayIP, whirlpoolIP, whirlpoolNetwork, echoIP, echoNetwork } = parseDockerComposeFile();
 	await launchDockerCompose();
-	setupRouting(gatewayIP, echoIP, echoNetwork);
+	setupRouting(gatewayIP, echoIP, echoNetwork, "echo");
+	setupRouting(gatewayIP, whirlpoolIP, whirlpoolNetwork, "whirlpool");
 } else {
 	await killDockerCompose();
 }
