@@ -101,7 +101,7 @@ jobs:
 
       - name: Test Viridian Algae PORT (standalone) 🧪
         working-directory: viridian/algae
-        run: sudo -E env "PATH=$PATH" poetry poe client -s port -l "${{ env.WHIRLPOOL_LINK }}" -e "${{ env.TEST_COMMAND }}"
+        run: sudo -E env "PATH=$PATH" poetry poe client -s port -l "${{ env.WHIRLPOOL_LINK }}" -e "nc -vz 10.42.0.42 5000"
 
       - name: Test Viridian Algae TYPHOON (standalone) 🧪
         working-directory: viridian/algae
@@ -176,9 +176,6 @@ jobs:
         run: |
           LINK=$(poetry poe -q fixture -a "${{ env.SEASIDE_ADDRESS }}" -p "${{ env.SEASIDE_API_PORT }}" -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian -s)
           echo "WHIRLPOOL_LINK=$LINK" >> $GITHUB_ENV
-
-      - name: RTTST
-        run: ip route get ${{ env.ECHO_ADDRESS }}
 
       - name: Test Echo Server Access (no VPN)
         working-directory: viridian/algae
