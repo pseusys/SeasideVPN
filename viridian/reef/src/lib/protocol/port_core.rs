@@ -32,6 +32,7 @@ lazy_static! {
 }
 
 
+#[cfg(unix)]
 pub fn configure_socket(stream: TcpSocket) -> DynResult<TcpSocket> {
     let socket = Socket::from(unsafe { OwnedFd::from_raw_fd(stream.as_raw_fd()) });
     let keepalive = TcpKeepalive::new()
@@ -41,6 +42,11 @@ pub fn configure_socket(stream: TcpSocket) -> DynResult<TcpSocket> {
     socket.set_tcp_keepalive(&keepalive)?;
     socket.set_reuse_address(true)?;
     Ok(unsafe { TcpSocket::from_raw_fd(socket.as_raw_fd()) })
+}
+
+#[cfg(windows)]
+pub fn configure_socket(mut stream: TcpSocket) -> DynResult<TcpSocket> {
+    todo!()
 }
 
 pub fn build_client_init(cipher: &Asymmetric, token: &Vec<u8>) -> DynResult<(Vec<u8>, Vec<u8>)> {

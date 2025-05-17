@@ -4,6 +4,7 @@ pub mod crypto;
 pub mod protocol;
 pub mod viridian;
 pub mod tunnel;
+pub mod link;
 pub mod utils;
 
 

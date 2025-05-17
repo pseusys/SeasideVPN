@@ -8,6 +8,7 @@ use simple_error::bail;
 use structopt::StructOpt;
 use env_logger::init;
 
+use reeflib::link::parse_client_link;
 use reeflib::viridian::Viridian;
 use reeflib::DynResult;
 
@@ -36,19 +37,19 @@ struct Opt {
     address: Ipv4Addr,
 
     /// Caerulean port number (default: [`DEFAULT_CAERULEAN_PORT`])
-    #[structopt(short = "c", long, default_value = DEFAULT_CAERULEAN_PORT)]
+    #[structopt(short = "p", long, default_value = DEFAULT_CAERULEAN_PORT)]
     port: u16,
-
-    /// Caerulean public key (required, if not provided by 'link' argument!)
-    #[structopt(short = "k", long)]
-    key: Option<String>,
 
     /// Caerulean token value (required, if not provided by 'link' argument!)
     #[structopt(short = "t", long)]
     token: Option<String>,
 
+    /// Caerulean public key (required, if not provided by 'link' argument!)
+    #[structopt(short = "r", long)]
+    public: Option<String>,
+
     /// Caerulean protocol (required, if not provided by 'link' argument!)
-    #[structopt(short = "p", long)]
+    #[structopt(short = "s", long)]
     protocol: Option<String>,
 
     /// Connection link, will be used instead of other arguments if specified
@@ -77,11 +78,10 @@ fn init_logging() {
 }
 
 
-fn parse_link(link: Option<String>) -> (Option<String>, Option<Ipv4Addr>, Option<u16>, Option<String>, Option<String>, Option<String>) {
-    if link.is_some() {
-        todo!();
-    } else {
-        (None, None, None, None, None, None)
+fn process_link(link: Option<String>) -> DynResult<(Option<String>, Option<Vec<u8>>, Option<u16>, Option<u16>, Option<Vec<u8>>)> {
+    match link {
+        Some(res) => parse_client_link(res)?,
+        None => (None, None, None, None, None, None)
     }
 }
 
@@ -92,16 +92,51 @@ async fn main() -> DynResult<()> {
     if opt.version {
         println!("Seaside Viridian Reef version {}", env!("CARGO_PKG_VERSION"));
     } else {
-        let (_link_node, link_address, link_port, link_token, link_key, link_protocol) = parse_link(opt.link);
-        let address = link_address.unwrap_or(opt.address);
-        let port = link_port.unwrap_or(opt.port);
-        let token = link_token.unwrap_or_else(|| opt.token.expect("Caerulean token was not specified!"));
-        let key = link_key.unwrap_or_else(|| opt.key.expect("Caerulean public key was not specified!"));
-        let protocol = link_protocol.unwrap_or_else(|| opt.protocol.expect("Caerulean protocol was not specified!"));
-        let proto_type = ProtocolType::from_str(&protocol)?;
+        let (link_address, link_public, link_port, link_typhoon, link_token) = process_link(opt.link)?;
+
+        let public = match link_public {
+            Some(res) => res,
+            None => match opt.public {
+                Some(res) => res,
+                None => bail!("Caerulean public key was not specified!")
+            }
+        };
+
+        let token = match link_token {
+            Some(res) => res,
+            None => match opt.token {
+                Some(res) => res,
+                None => bail!("Caerulean token was not specified!")
+            }
+        };
+
+        let protocol = match opt.protocol {
+            Some(res) => ProtocolType::from_str(&res)?,
+            None => bail!("Caerulean protocol was not specified!")
+        };
+
+        let link_port_number = match protocol {
+            ProtocolType::PORT => link_port,
+            ProtocolType::TYPHOON => link_typhoon,
+        };
+        let port = match link_port_number {
+            Some(res) => res,
+            None => match opt.port {
+                Some(res) => res,
+                None => bail!("Caerulean port was not specified!")
+            }
+        };
+
+        let address = match link_address {
+            Some(res) => parse_address(&ip)?,
+            None => match opt.link {
+                Some(res) => res,
+                None => bail!("Caerulean address was not specified!")
+            }
+        };
 
         info!("Creating reef client...");
-        let mut constructor = Viridian::new(address, port, &token, &key, proto_type).await?;
+        let mut constructor = Viridian::new(address, port, token, key, proto_type).await?;
         info!("Starting reef Viridian...");
         constructor.start(opt.command).await?;
     }

@@ -2,8 +2,6 @@ use std::net::Ipv4Addr;
 use std::process::ExitStatus;
 use std::sync::Arc;
 
-use base64::engine::general_purpose;
-use base64::Engine;
 use futures::stream::{FuturesUnordered, StreamExt};
 use ipnet::Ipv4Net;
 use log::{debug, error, info};
@@ -47,16 +45,7 @@ pub struct Viridian {
 
 
 impl Viridian {
-    pub async fn new(address: Ipv4Addr, port: u16, token: &str, key: &str, protocol: ProtocolType) -> DynResult<Viridian> {
-        let parsed_token = match general_purpose::STANDARD.decode(token) {
-            Ok(res) => res,
-            Err(err) => bail!("Failed to decode base64: {}", err)
-        };
-        let parsed_key = match general_purpose::STANDARD.decode(key) {
-            Ok(res) => res,
-            Err(err) => bail!("Failed to decode base64: {}", err)
-        };
-
+    pub async fn new(address: Ipv4Addr, port: u16, token: Vec<u8>, key: Vec<u8>, protocol: ProtocolType) -> DynResult<Viridian> {
         let tunnel_name = parse_str_env("SEASIDE_TUNNEL_NAME", Some(DEFAULT_TUNNEL_NAME));
         let tunnel_address = parse_env("SEASIDE_TUNNEL_ADDRESS", Some(DEFAULT_TUNNEL_ADDRESS));
         let tunnel_netmask = parse_env("SEASIDE_TUNNEL_NETMASK", Some(DEFAULT_TUNNEL_NETMASK));
@@ -71,8 +60,8 @@ impl Viridian {
         let tunnel = Tunnel::new(address, &tunnel_name, tunnel_network, svr_index).await?;
 
         Ok(Viridian {
-            key: parsed_key,
-            token: parsed_token,
+            key,
+            token,
             address,
             port,
             tunnel: Arc::new(tunnel),
