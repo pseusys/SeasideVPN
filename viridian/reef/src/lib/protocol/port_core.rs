@@ -27,16 +27,12 @@ lazy_static! {
     pub static ref PORT_TIMEOUT: u32 = parse_env("PORT_TIMEOUT", Some(32));
     static ref PORT_KEEPIDLE: u64 = parse_env("PORT_KEEPIDLE", Some(5));
     static ref PORT_KEEPINTVL: u64 = parse_env("PORT_KEEPINTVL", Some(10));
-    static ref PORT_KEEPCNT: u32 = parse_env("PORT_KEEPCNT", Some(5));
 }
 
 
 pub fn create_and_configure_socket() -> DynResult<TcpSocket> {
     let socket = Socket::new(Domain::IPV4, Type::STREAM, None)?;
-    let keepalive = TcpKeepalive::new()
-        .with_time(Duration::from_secs(*PORT_KEEPIDLE))
-        .with_interval(Duration::from_secs(*PORT_KEEPINTVL))
-        .with_retries(*PORT_KEEPCNT);
+    let keepalive = TcpKeepalive::new().with_time(Duration::from_secs(*PORT_KEEPIDLE)).with_interval(Duration::from_secs(*PORT_KEEPINTVL));
     socket.set_tcp_keepalive(&keepalive)?;
     socket.set_reuse_address(true)?;
     Ok(TcpSocket::from_std_stream(socket.into()))

@@ -1,6 +1,6 @@
 from os import getenv
 from secrets import token_bytes
-from socket import IPPROTO_TCP, SO_KEEPALIVE, SOL_SOCKET, TCP_KEEPCNT, TCP_KEEPIDLE, TCP_KEEPINTVL, socket
+from socket import IPPROTO_TCP, SO_KEEPALIVE, SOL_SOCKET, TCP_KEEPIDLE, TCP_KEEPINTVL, socket
 from struct import calcsize, pack, unpack
 from typing import Tuple
 
@@ -21,7 +21,6 @@ class PortCore:
     _PORT_TIMEOUT = int(getenv("PORT_TIMEOUT", "32"))
     _PORT_KEEPIDLE = int(getenv("PORT_KEEPIDLE", "5"))
     _PORT_KEEPINTVL = int(getenv("PORT_KEEPINTVL", "10"))
-    _PORT_KEEPCNT = int(getenv("PORT_KEEPCNT", "5"))
 
     # Message packet lengths
 
@@ -44,7 +43,6 @@ class PortCore:
         connection.setsockopt(SOL_SOCKET, SO_KEEPALIVE, 1)
         connection.setsockopt(IPPROTO_TCP, TCP_KEEPIDLE, cls._PORT_KEEPIDLE)
         connection.setsockopt(IPPROTO_TCP, TCP_KEEPINTVL, cls._PORT_KEEPINTVL)
-        connection.setsockopt(IPPROTO_TCP, TCP_KEEPCNT, cls._PORT_KEEPCNT)
         return connection
 
     # Build different messages
