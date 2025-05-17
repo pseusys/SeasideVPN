@@ -123,6 +123,7 @@ impl Viridian {
         let mut handle = self.client_type.create_client(&self.key, &self.token, self.address, self.port, None).await?;
         let client = handle.connect().await?;
 
+        debug!("Spawning reader and writer coroutines...");
         let send_handle = spawn(Self::send_to_caerulean(self.tunnel.clone(), client.clone()));
         let receive_handle = spawn(Self::receive_from_caerulean(self.tunnel.clone(), client.clone()));
 
