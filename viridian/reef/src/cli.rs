@@ -4,7 +4,7 @@ use std::str::FromStr;
 
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::engine::Engine;
-use log::info;
+use log::{debug, info};
 use reeflib::protocol::ProtocolType;
 use simple_error::bail;
 use structopt::StructOpt;
@@ -132,6 +132,7 @@ async fn main() -> DynResult<()> {
     };
 
     info!("Creating reef client...");
+    debug!("Parameters for reef client: address {address}, port {port}, protocol {protocol:?}, token length {}, public key length {}", token.len(), public.len());
     let mut constructor = Viridian::new(address, port, token, public, protocol).await?;
 
     info!("Starting reef Viridian...");

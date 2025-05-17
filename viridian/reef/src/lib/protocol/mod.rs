@@ -31,6 +31,7 @@ pub trait ProtocolClientHandle {
 }
 
 
+#[derive(Debug)]
 pub enum ProtocolType {
     PORT,
     TYPHOON,

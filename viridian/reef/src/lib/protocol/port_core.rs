@@ -25,7 +25,7 @@ const CLIENT_NAME: &str = concat!("reef-tcp-", env!("CARGO_PKG_VERSION"));
 
 lazy_static! {
     static ref PORT_TAIL_LENGTH: usize = parse_env("PORT_TAIL_LENGTH", Some(512));
-    static ref PORT_TIMEOUT: u32 = parse_env("PORT_TIMEOUT", Some(32));
+    pub static ref PORT_TIMEOUT: u32 = parse_env("PORT_TIMEOUT", Some(32));
     static ref PORT_KEEPIDLE: u64 = parse_env("PORT_KEEPIDLE", Some(5));
     static ref PORT_KEEPINTVL: u64 = parse_env("PORT_KEEPINTVL", Some(10));
     static ref PORT_KEEPCNT: u32 = parse_env("PORT_KEEPCNT", Some(5));

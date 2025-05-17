@@ -94,7 +94,7 @@ impl Viridian {
     }
 
     async fn receive_from_caerulean(tunnel: Arc<Tunnel>, client: Arc<dyn ProtocolClient>) -> Result<(), Box<SimpleError>> {
-        info!("Setting up receive-freom-caerulean coroutine...");
+        info!("Setting up receive-from-caerulean coroutine...");
         loop {
             let packet = match client.read_bytes().await {
                 Err(res) => bail!("Error reading from socket: {res}!"),
@@ -119,6 +119,7 @@ impl Viridian {
             });
         }
 
+        debug!("Creating protocol client handle...");
         let mut handle = self.client_type.create_client(&self.key, &self.token, self.address, self.port, None).await?;
         let client = handle.connect().await?;
 

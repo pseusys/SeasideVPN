@@ -1,5 +1,6 @@
 use std::net::{Ipv4Addr, SocketAddr};
 use std::sync::Arc;
+use std::time::Duration;
 
 use async_dropper::AsyncDrop;
 use log::{debug, warn};
@@ -7,6 +8,7 @@ use simple_error::{bail, require_with};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpSocket, TcpStream};
 use tokio::sync::RwLock;
+use tokio::time::timeout;
 use tonic::async_trait;
 
 use crate::crypto::{Asymmetric, Symmetric};
@@ -28,11 +30,13 @@ pub struct PortHandle {
 
 impl PortHandle {
     pub async fn new(key: &Vec<u8>, token: &Vec<u8>, address: Ipv4Addr, port: u16, local: Option<Ipv4Addr>) -> DynResult<PortHandle> {
+        debug!("Creating PORT protocol handle...");
         let peer_address = format!("{address}:{port}").parse()?;
         let local_address = match local {
             Some(ip) => format!("{ip}:0"),
             None => "0.0.0.0:0".to_string(),
         }.parse()?;
+        debug!("Handle set up to connect {local_address} (local) to {peer_address} (caerulean)!");
         let asymmetric_key = match key.clone().try_into() {
             Ok(res) => res,
             Err(_) => bail!("Error converting key to Asymmetric key!"),
@@ -46,16 +50,19 @@ impl PortHandle {
     }
 
     pub async fn read_server_init(&self, cipher: &Symmetric, stream: &mut TcpStream) -> DynResult<u16> {
+        let wait = Duration::from_millis(*PORT_TIMEOUT as u64);
         let mut buffer = get_packet();
 
+        debug!("Reading server initialization message...");
         let header_end = get_type_size::<ServerInitHeader>()?;
         let header_buff = &mut buffer[..header_end];
-        stream.read_exact(header_buff).await?;
-
+        let _ = timeout(wait, stream.read_exact(header_buff)).await?;
         let (user_id, tail_length) = parse_server_init(cipher, header_buff)?;
+
+        debug!("Server initialization message received: user ID {user_id}, tail length {tail_length}");
         let tail_end = header_end + tail_length as usize;
         let tail_buff = &mut buffer[header_end..tail_end];
-        stream.read_exact(tail_buff).await?;
+        let _ = timeout(wait, stream.read_exact(tail_buff)).await?;
 
         Ok(user_id)
     }
@@ -129,6 +136,7 @@ impl ProtocolClient for RwLock<PortClient> {
         let data_buff = &mut buffer[header_end..data_end];
         writer.stream.read_exact(data_buff).await?;
         let data = parse_any_any_data(&writer.symmetric, &data_buff)?;
+        debug!("Reading {} bytes from caerulean...", data.len());
 
         let tail_end = data_end + tail_length as usize;
         let tail_buff = &mut buffer[data_end..tail_end];
@@ -140,6 +148,7 @@ impl ProtocolClient for RwLock<PortClient> {
     async fn write_bytes(&self, bytes: &Vec<u8>) -> DynResult<usize> {
         let mut writer = self.write().await;
         let data = build_any_data(&writer.symmetric, bytes)?;
+        debug!("Writing {} bytes to caerulean...", data.len());
         writer.stream.write_all(&data).await?;
         Ok(data.len())
     }

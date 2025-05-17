@@ -44,11 +44,13 @@ pub struct TyphoonHandle {
 
 impl TyphoonHandle {
     pub async fn new(key: &Vec<u8>, token: &Vec<u8>, address: Ipv4Addr, port: u16, local: Option<Ipv4Addr>) -> DynResult<TyphoonHandle> {
+        debug!("Creating TYPHOON protocol handle...");
         let peer_address = format!("{address}:{port}").parse()?;
         let local_address = match local {
             Some(ip) => format!("{ip}:0"),
             None => "0.0.0.0:0".to_string(),
         }.parse()?;
+        debug!("Handle set up to connect {local_address} (local) to {peer_address} (caerulean)!");
         let asymmetric_key = match key.clone().try_into() {
             Ok(res) => res,
             Err(_) => bail!("Error converting key to Asymmetric key!"),
@@ -63,10 +65,14 @@ impl TyphoonHandle {
 
     async fn read_server_init(&self, stream: &mut UdpSocket, cipher: &Symmetric, packet_number: u32) -> DynResult<(u16, u32)> {
         let mut buffer = get_packet();
+        debug!("Reading server initialization message...");
         loop {
             match stream.recv(buffer.as_mut_slice()).await {
                 Ok(_) => match parse_server_init(cipher, buffer.as_mut_slice(), packet_number) {
-                    Ok(res) => return Ok(res),
+                    Ok((user_id, next_in)) => {
+                        debug!("Server initialization message received: user ID {user_id}, next in {next_in}");
+                        return Ok((user_id, next_in))
+                    },
                     Err(err) => warn!("Peer packet parsing error: {err}")
                 },
                 Err(err) => warn!("Invalid packet read error: {err}")
@@ -80,6 +86,7 @@ impl TyphoonHandle {
             debug!("Trying connection attempt {i}...");
             packet_number = get_timestamp();
             let next_in = generate_next_in(*TYPHOON_INITIAL_NEXT_IN);
+            debug!("Sending initialization packet with: packet number {packet_number} and next in {next_in}...");
             let (key, packet) = build_client_init(&self.asymmetric, packet_number, next_in, &self.token)?;
             let symmetric_key = match key.try_into() {
                 Ok(res) => res,
@@ -88,6 +95,7 @@ impl TyphoonHandle {
             let symmetric = Symmetric::new(&symmetric_key);
             stream.send(&packet).await?;
             let sleep = next_in + (*TYPHOON_DEFAULT_TIMEOUT).clamp(*TYPHOON_MIN_TIMEOUT, *TYPHOON_MAX_TIMEOUT);
+            debug!("Waiting for server response for {sleep} milliseconds...");
             match timeout(Duration::from_millis(sleep as u64), self.read_server_init(stream, &symmetric, packet_number)).await {
                 Ok(Ok((user_id, next_in))) => return Ok((user_id, next_in, symmetric)),
                 Ok(Err(err)) => warn!("Error while parsing server response: {err}"),
@@ -352,7 +360,7 @@ impl ProtocolClient for RwLock<TyphoonClient> {
             Ok(Some(packet_number)) => writer.send_hdsk(packet_number, Some(bytes)).await?,
             Ok(None) => bail!("Control channel was closed!"),
             Err(_) => {
-                debug!("Sending data message...");
+                debug!("Sending data message: {} bytes...", bytes.len());
                 let packet = build_any_data(&writer.symmetric, bytes)?;
                 writer.stream.send(&packet).await?;
                 return Ok(packet.len())
