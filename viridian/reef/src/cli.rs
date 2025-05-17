@@ -2,6 +2,8 @@ use std::env::{set_var, var};
 use std::net::{Ipv4Addr, IpAddr, ToSocketAddrs};
 use std::str::FromStr;
 
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use base64::engine::Engine;
 use log::info;
 use reeflib::protocol::ProtocolType;
 use simple_error::bail;
@@ -28,6 +30,10 @@ fn parse_address(address: &str) -> DynResult<Ipv4Addr> {
     }
 }
 
+fn parse_bytes(string: &str) -> DynResult<Vec<u8>> {
+    Ok(URL_SAFE_NO_PAD.decode(&string)?)
+}
+
 
 #[derive(StructOpt, Debug)]
 #[structopt()]
@@ -41,11 +47,11 @@ struct Opt {
     port: u16,
 
     /// Caerulean token value (required, if not provided by 'link' argument!)
-    #[structopt(short = "t", long)]
+    #[structopt(short = "t", long)]  // TODO: parse here
     token: Option<String>,
 
     /// Caerulean public key (required, if not provided by 'link' argument!)
-    #[structopt(short = "r", long)]
+    #[structopt(short = "r", long)]  // TODO: parse here
     public: Option<String>,
 
     /// Caerulean protocol (required, if not provided by 'link' argument!)
@@ -55,10 +61,6 @@ struct Opt {
     /// Connection link, will be used instead of other arguments if specified
     #[structopt(short = "l", long)]
     link: Option<String>,
-
-    /// Print reef version number and exit
-    #[structopt(short = "v", long)]
-    version: bool,
 
     /// Install VPN connection, run command and exit after command is finished
     #[structopt(short = "e", long)]
@@ -80,8 +82,11 @@ fn init_logging() {
 
 fn process_link(link: Option<String>) -> DynResult<(Option<String>, Option<Vec<u8>>, Option<u16>, Option<u16>, Option<Vec<u8>>)> {
     match link {
-        Some(res) => parse_client_link(res)?,
-        None => (None, None, None, None, None, None)
+        Some(res) => {
+            let (a, p, pp, pt, t) = parse_client_link(res)?;
+            Ok((Some(a), Some(p), pp, pt, Some(t)))
+        },
+        None => Ok((None, None, None, None, None))
     }
 }
 
@@ -89,56 +94,48 @@ fn process_link(link: Option<String>) -> DynResult<(Option<String>, Option<Vec<u
 async fn main() -> DynResult<()> {
     init_logging();
     let opt = Opt::from_args();
-    if opt.version {
-        println!("Seaside Viridian Reef version {}", env!("CARGO_PKG_VERSION"));
-    } else {
-        let (link_address, link_public, link_port, link_typhoon, link_token) = process_link(opt.link)?;
+    let (link_address, link_public, link_port, link_typhoon, link_token) = process_link(opt.link)?;
 
-        let public = match link_public {
-            Some(res) => res,
-            None => match opt.public {
-                Some(res) => res,
-                None => bail!("Caerulean public key was not specified!")
-            }
-        };
+    let public = match link_public {
+        Some(res) => res,
+        None => match opt.public {
+            Some(res) => parse_bytes(&res)?,
+            None => bail!("Caerulean public key was not specified!")
+        }
+    };
 
-        let token = match link_token {
-            Some(res) => res,
-            None => match opt.token {
-                Some(res) => res,
-                None => bail!("Caerulean token was not specified!")
-            }
-        };
+    let token = match link_token {
+        Some(res) => res,
+        None => match opt.token {
+            Some(res) => parse_bytes(&res)?,
+            None => bail!("Caerulean token was not specified!")
+        }
+    };
 
-        let protocol = match opt.protocol {
-            Some(res) => ProtocolType::from_str(&res)?,
-            None => bail!("Caerulean protocol was not specified!")
-        };
+    let protocol = match opt.protocol {
+        Some(res) => ProtocolType::from_str(&res)?,
+        None => bail!("Caerulean protocol was not specified!")
+    };
 
-        let link_port_number = match protocol {
-            ProtocolType::PORT => link_port,
-            ProtocolType::TYPHOON => link_typhoon,
-        };
-        let port = match link_port_number {
-            Some(res) => res,
-            None => match opt.port {
-                Some(res) => res,
-                None => bail!("Caerulean port was not specified!")
-            }
-        };
+    let link_port_number = match protocol {
+        ProtocolType::PORT => link_port,
+        ProtocolType::TYPHOON => link_typhoon,
+    };
+    let port = match link_port_number {
+        Some(res) => res,
+        None => opt.port
+    };
 
-        let address = match link_address {
-            Some(res) => parse_address(&ip)?,
-            None => match opt.link {
-                Some(res) => res,
-                None => bail!("Caerulean address was not specified!")
-            }
-        };
+    let address = match link_address {
+        Some(res) => parse_address(&res)?,
+        None => opt.address
+    };
 
-        info!("Creating reef client...");
-        let mut constructor = Viridian::new(address, port, token, key, proto_type).await?;
-        info!("Starting reef Viridian...");
-        constructor.start(opt.command).await?;
-    }
+    info!("Creating reef client...");
+    let mut constructor = Viridian::new(address, port, token, public, protocol).await?;
+
+    info!("Starting reef Viridian...");
+    constructor.start(opt.command).await?;
+
     Ok(())
 }

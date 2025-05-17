@@ -1,7 +1,8 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 
-use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use base64::engine::Engine;
 use simple_error::{bail, require_with};
 use url::Url;
 
