@@ -1,4 +1,3 @@
-use std::os::fd::{FromRawFd, AsRawFd, OwnedFd};
 use std::time::Duration;
 
 use bincode::{decode_from_slice, encode_to_vec};
@@ -6,7 +5,7 @@ use rand::distributions::Standard;
 use rand::rngs::OsRng;
 use rand::Rng;
 use simple_error::bail;
-use socket2::{Socket, TcpKeepalive};
+use socket2::{Domain, Socket, TcpKeepalive, Type};
 use tokio::net::TcpSocket;
 use lazy_static::lazy_static;
 
@@ -32,21 +31,15 @@ lazy_static! {
 }
 
 
-#[cfg(unix)]
-pub fn configure_socket(stream: TcpSocket) -> DynResult<TcpSocket> {
-    let socket = Socket::from(unsafe { OwnedFd::from_raw_fd(stream.as_raw_fd()) });
+pub fn create_and_configure_socket() -> DynResult<TcpSocket> {
+    let socket = Socket::new(Domain::IPV4, Type::STREAM, None)?;
     let keepalive = TcpKeepalive::new()
         .with_time(Duration::from_secs(*PORT_KEEPIDLE))
         .with_interval(Duration::from_secs(*PORT_KEEPINTVL))
         .with_retries(*PORT_KEEPCNT);
     socket.set_tcp_keepalive(&keepalive)?;
     socket.set_reuse_address(true)?;
-    Ok(unsafe { TcpSocket::from_raw_fd(socket.as_raw_fd()) })
-}
-
-#[cfg(windows)]
-pub fn configure_socket(mut stream: TcpSocket) -> DynResult<TcpSocket> {
-    todo!()
+    Ok(TcpSocket::from_std_stream(socket.into()))
 }
 
 pub fn build_client_init(cipher: &Asymmetric, token: &Vec<u8>) -> DynResult<(Vec<u8>, Vec<u8>)> {

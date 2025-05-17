@@ -6,7 +6,7 @@ use async_dropper::AsyncDrop;
 use log::{debug, warn};
 use simple_error::{bail, require_with};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::{TcpSocket, TcpStream};
+use tokio::net::TcpStream;
 use tokio::sync::RwLock;
 use tokio::time::timeout;
 use tonic::async_trait;
@@ -71,7 +71,7 @@ impl PortHandle {
 #[async_trait]
 impl ProtocolClientHandle for PortHandle {
     async fn connect(&mut self) -> DynResult<Arc<dyn ProtocolClient>> {
-        let connection_socket = configure_socket(TcpSocket::new_v4()?)?;
+        let connection_socket = create_and_configure_socket()?;
         debug!("Binding connection client to {}...", self.local);
         connection_socket.bind(self.local)?;
 
@@ -92,7 +92,7 @@ impl ProtocolClientHandle for PortHandle {
         let user_id = self.read_server_init(&symmetric, &mut connection_stream).await?;
         debug!("Connection successful, user ID: {user_id}!");
 
-        let main_socket = configure_socket(TcpSocket::new_v4()?)?;
+        let main_socket = create_and_configure_socket()?;
         debug!("Binding main client to {}...", self.local);
         main_socket.bind(self.local)?;
 
