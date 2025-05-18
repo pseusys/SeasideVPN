@@ -25,14 +25,12 @@ const CLIENT_NAME: &str = concat!("reef-tcp-", env!("CARGO_PKG_VERSION"));
 lazy_static! {
     static ref PORT_TAIL_LENGTH: usize = parse_env("PORT_TAIL_LENGTH", Some(512));
     pub static ref PORT_TIMEOUT: u32 = parse_env("PORT_TIMEOUT", Some(32));
-    static ref PORT_KEEPIDLE: u64 = parse_env("PORT_KEEPIDLE", Some(5));
-    static ref PORT_KEEPINTVL: u64 = parse_env("PORT_KEEPINTVL", Some(10));
 }
 
 
 pub fn create_and_configure_socket() -> DynResult<TcpSocket> {
     let socket = Socket::new(Domain::IPV4, Type::STREAM, None)?;
-    let keepalive = TcpKeepalive::new().with_time(Duration::from_secs(*PORT_KEEPIDLE)).with_interval(Duration::from_secs(*PORT_KEEPINTVL));
+    let keepalive = TcpKeepalive::new().with_time(Duration::from_secs(7200)).with_interval(Duration::from_secs(75));
     socket.set_tcp_keepalive(&keepalive)?;
     socket.set_reuse_address(true)?;
     Ok(TcpSocket::from_std_stream(socket.into()))

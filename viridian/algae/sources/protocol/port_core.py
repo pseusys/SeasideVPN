@@ -42,9 +42,9 @@ class PortCore:
     @classmethod
     def configure_socket(cls, connection: socket) -> socket:
         connection.setsockopt(SOL_SOCKET, SO_KEEPALIVE, 1)
-        connection.setsockopt(IPPROTO_TCP, TCP_KEEPIDLE, cls._PORT_KEEPIDLE)
-        connection.setsockopt(IPPROTO_TCP, TCP_KEEPINTVL, cls._PORT_KEEPINTVL)
-        connection.setsockopt(IPPROTO_TCP, TCP_KEEPCNT, cls._PORT_KEEPCNT)
+        connection.setsockopt(IPPROTO_TCP, TCP_KEEPIDLE, 7200)
+        connection.setsockopt(IPPROTO_TCP, TCP_KEEPINTVL, 75)
+        connection.setsockopt(IPPROTO_TCP, TCP_KEEPCNT, 9)
         return connection
 
     # Build different messages
