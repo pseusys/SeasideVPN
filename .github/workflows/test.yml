@@ -127,12 +127,6 @@ jobs:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
 
-      - name: Setup WSL
-        if: runner.os == 'Windows'
-        uses: Vampire/setup-wsl@v5.0.1
-        with:
-          wsl-version: 2
-
       - name: Install NodeJS 🪢
         uses: actions/setup-node@v4.1.0
         with:
@@ -166,6 +160,7 @@ jobs:
         run: ${{ env.SUDO }} cargo test --package SeasideVPN-Reef --lib -- --nocapture --show-output
 
       - name: Prepare Host
+        if: runner.os != 'Windows'
         working-directory: .github/scripts
         run: ${{ env.SUDO }} npm run configure-viridian-test
 
