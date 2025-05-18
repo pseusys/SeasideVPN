@@ -101,12 +101,19 @@ jobs:
         run: eval "${{ env.TEST_COMMAND }}" && exit 1 || true
 
       - name: Test Viridian Algae PORT (standalone) 🧪
+        id: test-viridian-algae-port
         working-directory: viridian/algae
         run: sudo -E env "PATH=$PATH" poetry poe client -s port -l "${{ env.WHIRLPOOL_LINK }}" -e "${{ env.TEST_COMMAND }}"
 
       - name: Test Viridian Algae TYPHOON (standalone) 🧪
+        id: test-viridian-algae-typhoon
         working-directory: viridian/algae
         run: sudo -E env "PATH=$PATH" poetry poe client -s typhoon -l "${{ env.WHIRLPOOL_LINK }}" -e "${{ env.TEST_COMMAND }}"
+
+      - name: Print Whirlpool Logs
+        if: runner.os != 'Windows' && failure() && (steps.test-viridian-algae-port.outcome == 'failure' || steps.test-viridian-algae-typhoon.outcome == 'failure')
+        working-directory: viridian/algae
+        run: docker compose -f docker/compose.standalone.yml logs whirlpool
 
   viridian-reef-test:
     name: Test Viridian Reef
@@ -188,18 +195,25 @@ jobs:
         run: eval "${{ env.TEST_COMMAND }}" && exit 1 || true
 
       - name: Test Viridian Reef PORT (integration) 🧪
+        id: test-viridian-reef-port
         if: runner.os != 'Windows'
         working-directory: viridian/algae
         env:
           SEASIDE_LOG_LEVEL: reeflib=DEBUG,INFO
-        run: ${{ env.SUDO }} ${{ env.RUNNER_COMMAND }} -- -s port -l "${{ env.WHIRLPOOL_LINK }}" -e "${{ env.TEST_COMMAND }}" || docker compose -f docker/compose.standalone.yml logs whirlpool
+        run: ${{ env.SUDO }} ${{ env.RUNNER_COMMAND }} -- -s port -l "${{ env.WHIRLPOOL_LINK }}" -e "${{ env.TEST_COMMAND }}"
 
       - name: Test Viridian Reef TYPHOON (integration) 🧪
+        id: test-viridian-reef-typhoon
         if: runner.os != 'Windows'
         working-directory: viridian/algae
         env:
           SEASIDE_LOG_LEVEL: reeflib=DEBUG,INFO
         run: ${{ env.SUDO }} ${{ env.RUNNER_COMMAND }} -- -s typhoon -l "${{ env.WHIRLPOOL_LINK }}" -e "${{ env.TEST_COMMAND }}"
+
+      - name: Print Whirlpool Logs
+        if: runner.os != 'Windows' && failure() && (steps.test-viridian-reef-port.outcome == 'failure' || steps.test-viridian-reef-typhoon.outcome == 'failure')
+        working-directory: viridian/algae
+        run: docker compose -f docker/compose.standalone.yml logs whirlpool
 
   caerulean-whirlpool-test:
     name: Test Caerulean Whirlpool
