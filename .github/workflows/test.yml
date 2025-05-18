@@ -127,6 +127,12 @@ jobs:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
 
+      - name: Setup WSL
+        if: runner.os == 'Windows'
+        uses: Vampire/setup-wsl@v5.0.1
+        with:
+          wsl-version: 2
+
       - name: Install NodeJS 🪢
         uses: actions/setup-node@v4.1.0
         with:
@@ -164,12 +170,14 @@ jobs:
         run: ${{ env.SUDO }} npm run configure-viridian-test
 
       - name: Load .ENV File
+        if: runner.os != 'Windows'
         uses: aarcangeli/load-dotenv@v1
         with:
           path: viridian/algae/docker
           filenames: test.conf.env
 
       - name: Get Connection Link
+        if: runner.os != 'Windows'
         working-directory: viridian/algae
         env:
           SEASIDE_ADDRESS: 10.87.82.87
@@ -180,16 +188,19 @@ jobs:
           echo "WHIRLPOOL_LINK=$LINK" >> $GITHUB_ENV
 
       - name: Test Echo Server Access (no VPN)
+        if: runner.os != 'Windows'
         working-directory: viridian/algae
         run: eval "${{ env.TEST_COMMAND }}" && exit 1 || true
 
       - name: Test Viridian Reef PORT (integration) 🧪
+        if: runner.os != 'Windows'
         working-directory: viridian/algae
         env:
           SEASIDE_LOG_LEVEL: reeflib=DEBUG,INFO
         run: ${{ env.SUDO }} ${{ env.RUNNER_COMMAND }} -- -s port -l "${{ env.WHIRLPOOL_LINK }}" -e "${{ env.TEST_COMMAND }}"
 
       - name: Test Viridian Reef TYPHOON (integration) 🧪
+        if: runner.os != 'Windows'
         working-directory: viridian/algae
         env:
           SEASIDE_LOG_LEVEL: reeflib=DEBUG,INFO
