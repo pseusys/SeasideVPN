@@ -127,7 +127,7 @@ async fn test_create_tunnel() {
     let tun_address = Ipv4Addr::new(192, 168, 2, 2);
     let tun_netmask = Ipv4Addr::new(255, 255, 255, 0);
 
-    let _device = create_tunnel(tun_name, tun_address, tun_netmask, tun_mtu).await.expect("Error creating tunnel!");
+    let _device = create_tunnel(tun_name, tun_address, tun_netmask, tun_mtu).expect("Error creating tunnel!");
 
     let (_, expected_mtu, expected_address, expected_cidr) = show_address_info(tun_name).expect("Error reading default route IP!");
     assert!(expected_mtu.is_some_and(|v| v == i32::from(tun_mtu)), "Default MTU doesn't match!");
