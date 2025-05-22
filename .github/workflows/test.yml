@@ -114,7 +114,11 @@ jobs:
       - name: Print Whirlpool Logs
         if: runner.os != 'Windows' && failure() && (steps.test-viridian-algae-port.outcome == 'failure' || steps.test-viridian-algae-typhoon.outcome == 'failure')
         working-directory: viridian/algae
-        run: docker compose -f docker/compose.standalone.yml logs whirlpool
+        run: |
+          echo -e "Whirlpool container logs:"
+          docker compose -f docker/compose.standalone.yml logs whirlpool
+          echo -e "\nEcho container logs:"
+          docker compose -f docker/compose.standalone.yml logs echo
 
       - name: Terminate Background Server
         if: steps.start-background-server.outcome == 'success'
