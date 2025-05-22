@@ -47,8 +47,9 @@ pub fn build_client_init<'a, 'b>(cipher: &Asymmetric, token: &ByteBuffer<'b>) ->
     let (key, encrypted_header) = cipher.encrypt(&mut buffer)?;
 
     let mut symmetric = Symmetric::new(&key)?;
-    let mut header_with_body = encrypted_header.append_buf(token);
-    let encrypted_message = symmetric.encrypt(&mut header_with_body, None)?;
+    let extended_encrypted_header = encrypted_header.expand_end(NONCE_LEN);
+    let header_with_body = extended_encrypted_header.append_buf(token);
+    let encrypted_message = symmetric.encrypt(&mut header_with_body.rebuffer_both(NONCE_LEN, token.len()), None)?;
 
     let packet = encrypted_message.expand_end(tail_len);
     OsRng.fill_bytes(&mut packet.slice_start_mut(buffer_size + token.len()));
@@ -65,7 +66,7 @@ pub fn build_any_data<'a>(cipher: &mut Symmetric, data: &mut ByteBuffer<'a>) -> 
     let header_size = get_type_size::<AnyOtherHeader>()?;
     let header_with_body = encrypted_data.expand_start(header_size + MAC_LEN);
     encode_into_slice(&header, &mut header_with_body.slice_end_mut(header_size), ENCODE_CONF)?;
-    let encrypted_message = cipher.encrypt(&mut header_with_body.rebuffer_both(NONCE_LEN, header_size), None)?;
+    let encrypted_message = cipher.encrypt(&mut header_with_body.rebuffer_end(header_size), None)?;
 
     let packet = encrypted_message.expand_end(tail_len);
     OsRng.fill_bytes(&mut packet.slice_start_mut(packet.len() - tail_len));
