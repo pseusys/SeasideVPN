@@ -15,7 +15,7 @@ const RESET = "\x1b[0m";
 // Metric value that will be used for new default routes (greater than Viridian Algae metric value).
 const REASONABLY_LOW_METRIC_VALUE = 10;
 // Timeout for Docker compose to initialize (and stop completely in case of an error).
-const DOCKER_COMPOSE_INITIALIZATION_TIMEOUT = 15;
+const DOCKER_COMPOSE_TIMEOUT = 15;
 // Echo server network for VPN access.
 const DOCKER_COMPOSE_ECHO_NETWORK = "sea-serv-ext";
 // Gateway network for VPN access.
@@ -152,7 +152,7 @@ async function launchDockerCompose() {
 	console.log("Spawning Docker compose process...");
 	const child = runCommand(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} up --detach --build whirlpool`);
 	console.log("Waiting for Docker compose process to initiate...");
-	await sleep(DOCKER_COMPOSE_INITIALIZATION_TIMEOUT);
+	await sleep(DOCKER_COMPOSE_TIMEOUT);
 	if (child.status !== 0) throw Error(`Docker compose command failed, with exit code: ${child.status}`);
 	console.log("Docker compose process started!");
 }
@@ -164,8 +164,8 @@ async function killDockerCompose() {
 	console.log("Killing Docker compose process...");
 	const child = runCommand(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} down`);
 	console.log("Waiting for Docker compose process to terminate...");
-	await sleep(DOCKER_COMPOSE_INITIALIZATION_TIMEOUT);
-	if (child.status !== null) throw Error(`Docker compose command failed, with exit code: ${child.status}`);
+	await sleep(DOCKER_COMPOSE_TIMEOUT);
+	if (child.status !== 0) throw Error(`Docker compose command failed, with exit code: ${child.status}`);
 	console.log("Docker compose process killed!");
 }
 
