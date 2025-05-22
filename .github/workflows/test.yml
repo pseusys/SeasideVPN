@@ -114,14 +114,10 @@ jobs:
       - name: Print Whirlpool Logs
         if: runner.os != 'Windows' && failure() && (steps.test-viridian-algae-port.outcome == 'failure' || steps.test-viridian-algae-typhoon.outcome == 'failure')
         working-directory: viridian/algae
-        run: |
-          echo -e "Whirlpool container logs:"
-          docker compose -f docker/compose.standalone.yml logs whirlpool
-          echo -e "\nEcho container logs:"
-          docker compose -f docker/compose.standalone.yml logs echo
+        run: docker compose -f docker/compose.standalone.yml logs whirlpool
 
       - name: Terminate Background Server
-        if: steps.start-background-server.outcome == 'success'
+        if: always() && steps.start-background-server.outcome == 'success'
         working-directory: .github/scripts
         run: sudo npm run configure-viridian-test -- -r
 
@@ -227,7 +223,7 @@ jobs:
         run: docker compose -f docker/compose.standalone.yml logs whirlpool
 
       - name: Terminate Background Server
-        if: steps.start-background-server.outcome == 'success'
+        if: always() && steps.start-background-server.outcome == 'success'
         working-directory: .github/scripts
         run: ${{ env.SUDO }} npm run configure-viridian-test -- -r
 
