@@ -32,8 +32,6 @@ const DOCKER_COMPOSE_ECHO_CONTAINER = "echo";
 const PYTHON_LIB_ALGAE_PATH = join(dirname(import.meta.dirname), "..", "viridian", "algae");
 // Path to the Docker compose configuration file in `viridian/algae` directory.
 const DOCKER_COMPOSE_ALGAE_PATH = join(PYTHON_LIB_ALGAE_PATH, "docker", "compose.standalone.yml");
-// Host configuration cache file name.
-const DOCKER_COMPOSE_CACHE_FILE_NAME = ".setup_test_cache";
 
 /**
  * Print usage help message and exit with code 0.
@@ -41,9 +39,8 @@ const DOCKER_COMPOSE_CACHE_FILE_NAME = ".setup_test_cache";
 function printHelpMessage() {
 	console.log(`${BOLD}Host preparation for testing script usage${RESET}:`);
 	console.log(`\t${BLUE}-r --reset${RESET}: Revert all the changes, stop processes and restore system routes.`);
+	console.log(`\t${BLUE}-p --project${RESET}: Set unique Docker Compose project name to avoid network clashes.`);
 	console.log(`\t${BLUE}-h --help${RESET}: Print this message again and exit.`);
-	console.log(`${BOLD}Optional environment variables${RESET}:`);
-	console.log(`\t${GREEN}DOCKER_COMPOSE_CACHE_FILE_NAME${RESET}: Cache file where changes will be saved (default: ${DOCKER_COMPOSE_CACHE_FILE_NAME}).`);
 	process.exit(0);
 }
 
@@ -94,6 +91,11 @@ function parseArguments() {
 			short: "r",
 			default: false
 		},
+		project: {
+			type: "string",
+			short: "p",
+			default: null
+		},
 		help: {
 			type: "boolean",
 			short: "h",
@@ -102,9 +104,6 @@ function parseArguments() {
 	};
 	const { values } = parseArgs({ options });
 	if (values.help) printHelpMessage();
-	if (process.env.DOCKER_COMPOSE_CACHE_FILE_NAME === undefined) values["cacheFile"] = DOCKER_COMPOSE_CACHE_FILE_NAME;
-	else values["cacheFile"] = process.env.DOCKER_COMPOSE_CACHE_FILE_NAME;
-	values["cacheFile"] = join(dirname(import.meta.filename), values["cacheFile"]);
 	return values;
 }
 
@@ -147,10 +146,11 @@ function setupRouting(gatewayContainerIP, unreachableIP, unreachableNetwork, nam
 /**
  * Launch Docker compose project in the background.
  * Wait for some time to check if it started successfully and throw an error if it did.
+ * @param {string | null} project unique Docker Compose project name.
  */
-async function launchDockerCompose() {
+async function launchDockerCompose(project) {
 	console.log("Spawning Docker compose process...");
-	const child = runCommand(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} up --detach --build whirlpool`);
+	const child = runCommand(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} -p ${project} up --detach --build whirlpool`);
 	console.log("Waiting for Docker compose process to initiate...");
 	await sleep(DOCKER_COMPOSE_TIMEOUT);
 	if (child.status !== 0) throw Error(`Docker compose command failed, with exit code: ${child.status}`);
@@ -159,10 +159,11 @@ async function launchDockerCompose() {
 
 /**
  * Kill Docker compose process (with docker compose) running in the background.
+ * @param {string | null} project unique Docker Compose project name.
  */
-async function killDockerCompose() {
+async function killDockerCompose(project) {
 	console.log("Killing Docker compose process...");
-	const child = runCommand(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} down`);
+	const child = runCommand(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} -p ${project} down`);
 	console.log("Waiting for Docker compose process to terminate...");
 	await sleep(DOCKER_COMPOSE_TIMEOUT);
 	if (child.status !== 0) throw Error(`Docker compose command failed, with exit code: ${child.status}`);
@@ -177,9 +178,9 @@ async function killDockerCompose() {
 const args = parseArguments();
 if (!args.reset) {
 	const { gatewayIP, whirlpoolIP, whirlpoolNetwork, echoIP, echoNetwork } = parseDockerComposeFile();
-	await launchDockerCompose();
+	await launchDockerCompose(args.project);
 	setupRouting(gatewayIP, echoIP, echoNetwork, "echo");
 	setupRouting(gatewayIP, whirlpoolIP, whirlpoolNetwork, "whirlpool");
 } else {
-	await killDockerCompose();
+	await killDockerCompose(args.project);
 }
