@@ -1,130 +1,123 @@
-use std::net::{Ipv4Addr, SocketAddr};
+use std::io::{Read, Write};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 use std::time::Duration;
 
-use async_dropper::AsyncDrop;
 use log::{debug, warn};
 use simple_error::{bail, require_with};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::TcpStream;
-use tokio::sync::RwLock;
-use tokio::time::timeout;
-use tonic::async_trait;
+use socket2::{Socket, SockAddr};
 
 use crate::crypto::{Asymmetric, Symmetric};
 use crate::protocol::port_core::build_client_init;
-use crate::utils::get_packet;
-use crate::DynResult;
+use crate::bytes::{get_buffer, ByteBuffer};
+use crate::protocol::utils::{recv_exact, send_exact};
+use crate::{DynResult, ReaderWriter};
 use super::common::ProtocolMessageType;
 use super::port_core::*;
 use super::utils::get_type_size;
-use super::{ProtocolClient, ProtocolClientHandle};
+use super::ProtocolClientHandle;
 
 
-pub struct PortHandle {
-    peer_address: SocketAddr,
+pub struct PortHandle<'a> {
+    peer_address: SockAddr,
     asymmetric: Asymmetric,
-    local: SocketAddr,
-    token: Vec<u8>
+    local: SockAddr,
+    token: ByteBuffer<'a>
 }
 
-impl PortHandle {
-    pub async fn new(key: &Vec<u8>, token: &Vec<u8>, address: Ipv4Addr, port: u16, local: Option<Ipv4Addr>) -> DynResult<PortHandle> {
-        debug!("Creating PORT protocol handle...");
-        let peer_address = format!("{address}:{port}").parse()?;
-        let local_address = match local {
-            Some(ip) => format!("{ip}:0"),
-            None => "0.0.0.0:0".to_string(),
-        }.parse()?;
-        debug!("Handle set up to connect {local_address} (local) to {peer_address} (caerulean)!");
-        let asymmetric_key = match key.clone().try_into() {
-            Ok(res) => res,
-            Err(_) => bail!("Error converting key to Asymmetric key!"),
-        };
-        Ok(PortHandle {
-            peer_address,
-            asymmetric: Asymmetric::new(&asymmetric_key)?,
-            local: local_address,
-            token: token.clone()
-        })
-    }
-
-    pub async fn read_server_init(&self, cipher: &Symmetric, stream: &mut TcpStream) -> DynResult<u16> {
+impl<'a> PortHandle<'a> {
+    pub fn read_server_init(&self, cipher: &mut Symmetric, socket: &mut Socket) -> DynResult<u16> {
         let wait = Duration::from_millis(*PORT_TIMEOUT as u64);
-        let mut buffer = get_packet();
+        let buffer = get_buffer(None);
+        socket.set_read_timeout(Some(wait))?;
 
         debug!("Reading server initialization message...");
-        let header_end = get_type_size::<ServerInitHeader>()?;
-        let header_buff = &mut buffer[..header_end];
-        let _ = timeout(wait, stream.read_exact(header_buff)).await?;
-        let (user_id, tail_length) = parse_server_init(cipher, header_buff)?;
+        let header_end = get_type_size::<ServerInitHeader>()? + Symmetric::ciphertext_overhead();
+        let mut header_buff = buffer.rebuffer_end(header_end);
+        socket.read_exact(&mut header_buff.slice_mut())?;
+        let (user_id, tail_length) = parse_server_init(cipher, &mut header_buff)?;
 
         debug!("Server initialization message received: user ID {user_id}, tail length {tail_length}");
         let tail_end = header_end + tail_length as usize;
-        let tail_buff = &mut buffer[header_end..tail_end];
-        let _ = timeout(wait, stream.read_exact(tail_buff)).await?;
+        let tail_buff = &mut buffer.slice_both_mut(header_end, tail_end);
+        socket.read_exact(tail_buff)?;
 
         Ok(user_id)
     }
 }
 
-#[async_trait]
-impl ProtocolClientHandle for PortHandle {
-    async fn connect(&mut self) -> DynResult<Arc<dyn ProtocolClient>> {
-        let connection_socket = create_and_configure_socket()?;
-        debug!("Binding connection client to {}...", self.local);
-        connection_socket.bind(self.local)?;
+impl<'a> ProtocolClientHandle<'a> for PortHandle<'a> {
+    #[allow(refining_impl_trait)]
+    fn new(key: ByteBuffer<'_>, token: ByteBuffer<'a>, address: Ipv4Addr, port: u16, local: Option<Ipv4Addr>) -> DynResult<Self> {
+        debug!("Creating PORT protocol handle...");
+        let peer_address = SocketAddr::new(IpAddr::V4(address), port);
+        let local_address = match local {
+            Some(ip) => SocketAddr::new(IpAddr::V4(ip), 0),
+            None => SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 0),
+        };
+        debug!("Handle set up to connect {local_address} (local) to {peer_address} (caerulean)!");
+        Ok(PortHandle {
+            peer_address: SockAddr::from(peer_address),
+            asymmetric: Asymmetric::new(&key)?,
+            local: SockAddr::from(local_address),
+            token
+        })
+    }
 
-        debug!("Connecting to listener at {}", self.peer_address);
-        let mut connection_stream = connection_socket.connect(self.peer_address).await?;
-        debug!("Current user address: {}", connection_stream.local_addr()?);
+    fn connect(&mut self) -> DynResult<impl ReaderWriter> {
+        let mut connection_socket = create_and_configure_socket()?;
+        debug!("Binding connection client to {:?}...", self.local);
+        connection_socket.bind(&self.local)?;
 
-        let (key, packet) = build_client_init(&self.asymmetric, &self.token)?;
-        connection_stream.write_all(&packet).await?;
+        debug!("Connecting to listener at {:?}", self.peer_address);
+        connection_socket.connect(&self.peer_address)?;
+        debug!("Current user address: {:?}", connection_socket.local_addr()?);
+
+        let (mut symmetric, packet) = build_client_init(&self.asymmetric, &self.token)?;
+        connection_socket.write_all(&packet.slice())?;
         debug!("Initialization packet sent: {} bytes", packet.len());
 
-        let symmetric_key = match key.try_into() {
-            Ok(res) => res,
-            Err(_) => bail!("Error converting key to Symmetric key!"),
-        };
-        let symmetric = Symmetric::new(&symmetric_key);
-
-        let user_id = self.read_server_init(&symmetric, &mut connection_stream).await?;
+        let user_id = self.read_server_init(&mut symmetric, &mut connection_socket)?;
         debug!("Connection successful, user ID: {user_id}!");
 
         let main_socket = create_and_configure_socket()?;
-        debug!("Binding main client to {}...", self.local);
-        main_socket.bind(self.local)?;
+        debug!("Binding main client to {:?}...", self.local);
+        main_socket.bind(&self.local)?;
 
-        let mut main_address = self.peer_address.clone();
-        main_address.set_port(user_id);
-        debug!("Connecting to listener at {}", main_address);
-        let main_stream = main_socket.connect(main_address).await?;
+        let mut main_socket_address = require_with!(self.peer_address.as_socket_ipv4(), "Peer socket is not an IPv4 socket!");
+        main_socket_address.set_port(user_id);
+        let main_address = SockAddr::from(main_socket_address);
+        debug!("Connecting to listener at {:?}", main_address);
+        main_socket.connect(&main_address)?;
 
-        Ok(Arc::new(RwLock::new(PortClient {
-            stream: main_stream,
+        Ok(PortClient {
+            socket: Arc::new(main_socket),
             symmetric
-        })))
+        })
     }
 }
 
 
 pub struct PortClient {
-    stream: TcpStream,
+    socket: Arc<Socket>,
     symmetric: Symmetric
 }
 
-#[async_trait]
-impl ProtocolClient for RwLock<PortClient> {
-    async fn read_bytes(&self) -> DynResult<Vec<u8>> {
-        let mut writer = self.write().await;
-        let mut buffer = get_packet();
+impl Clone for PortClient {
+    fn clone(&self) -> Self {
+        Self { socket: self.socket.clone(), symmetric: self.symmetric.clone() }
+    }
+}
 
-        let header_end = get_type_size::<AnyOtherHeader>()?;
-        let header_buff = &mut buffer[..header_end];
-        writer.stream.read_exact(header_buff).await?;
+impl ReaderWriter for PortClient {
+    fn read_bytes(&mut self) -> DynResult<ByteBuffer> {
+        let buffer = get_buffer(None);
 
-        let (msg_type, payload) = parse_any_message_header(&writer.symmetric, header_buff)?;
+        let header_end = get_type_size::<AnyOtherHeader>()? + Symmetric::ciphertext_overhead();
+        let mut packet = buffer.rebuffer_end(header_end);
+        recv_exact(&self.socket, &mut packet.slice_mut())?;
+
+        let (msg_type, payload) = parse_any_message_header(&mut self.symmetric, &mut packet)?;
         if msg_type == ProtocolMessageType::Termination {
             bail!("Termination message received!");
         } else if msg_type != ProtocolMessageType::Data {
@@ -133,32 +126,29 @@ impl ProtocolClient for RwLock<PortClient> {
         let (data_length, tail_length) = require_with!(payload, "Unexpected error while decrypting, server message!");
 
         let data_end = header_end + data_length as usize;
-        let data_buff = &mut buffer[header_end..data_end];
-        writer.stream.read_exact(data_buff).await?;
-        let data = parse_any_any_data(&writer.symmetric, &data_buff)?;
+        let mut data_buff = &mut buffer.rebuffer_both(header_end, data_end);
+        recv_exact(&self.socket, &mut data_buff.slice_mut())?;
+        let data = parse_any_any_data(&mut self.symmetric, &mut data_buff)?;
         debug!("Reading {} bytes from caerulean...", data.len());
 
         let tail_end = data_end + tail_length as usize;
-        let tail_buff = &mut buffer[data_end..tail_end];
-        writer.stream.read_exact(tail_buff).await?;
+        recv_exact(&self.socket, &mut buffer.slice_both_mut(data_end, tail_end))?;
 
         Ok(data)
     }
 
-    async fn write_bytes(&self, bytes: &Vec<u8>) -> DynResult<usize> {
-        let mut writer = self.write().await;
-        let data = build_any_data(&writer.symmetric, bytes)?;
+    fn write_bytes(&mut self, bytes: &mut ByteBuffer) -> DynResult<usize> {
+        let data = build_any_data(&mut self.symmetric, bytes)?;
         debug!("Writing {} bytes to caerulean...", data.len());
-        writer.stream.write_all(&data).await?;
+        send_exact(&self.socket, &data.slice())?;
         Ok(data.len())
     }
 }
 
-#[async_trait]
-impl AsyncDrop for PortClient {
+impl Drop for PortClient {
     #[allow(unused_must_use)]
-    async fn async_drop(&mut self) {
-        let packet = build_any_term(&self.symmetric).expect("Couldn't build termination packet!");
-        self.stream.write_all(&packet).await.inspect_err(|e| warn!("Couldn't send termination packet: {e}"));
+    fn drop(&mut self) {
+        let packet = build_any_term(&mut self.symmetric).expect("Couldn't build termination packet!");
+        send_exact(&self.socket, &packet.slice()).inspect_err(|e| warn!("Couldn't send termination packet: {e}"));
     }
 }

@@ -1,19 +1,18 @@
 use std::time::Duration;
 
-use bincode::{decode_from_slice, encode_to_vec};
-use rand::distributions::Standard;
+use bincode::{decode_from_slice, encode_into_slice};
 use rand::rngs::OsRng;
-use rand::Rng;
+use rand::{Rng, RngCore};
 use simple_error::bail;
-use socket2::{Domain, Socket, TcpKeepalive, Type};
-use tokio::net::TcpSocket;
+use socket2::{Domain, Protocol, Socket, TcpKeepalive, Type};
 use lazy_static::lazy_static;
 
-use crate::crypto::{Asymmetric, Symmetric};
+use crate::bytes::{get_buffer, ByteBuffer};
+use crate::crypto::{Asymmetric, Symmetric, MAC_LEN, NONCE_LEN};
 use crate::DynResult;
 use super::common::{ProtocolFlag, ProtocolMessageType, ProtocolReturnCode};
 use super::super::utils::parse_env;
-use super::utils::{encode_to_32_bytes, ENCODE_CONF};
+use super::utils::{encode_to_32_bytes, get_type_size, ENCODE_CONF};
 
 
 pub type ServerInitHeader = (u8, u8, u16, u16);
@@ -28,48 +27,69 @@ lazy_static! {
 }
 
 
-pub fn create_and_configure_socket() -> DynResult<TcpSocket> {
-    let socket = Socket::new(Domain::IPV4, Type::STREAM, None)?;
+pub fn create_and_configure_socket() -> DynResult<Socket> {
+    let socket = Socket::new(Domain::IPV4, Type::STREAM, Some(Protocol::TCP))?;
     let keepalive = TcpKeepalive::new().with_time(Duration::from_secs(7200)).with_interval(Duration::from_secs(75));
     socket.set_tcp_keepalive(&keepalive)?;
     socket.set_reuse_address(true)?;
-    Ok(TcpSocket::from_std_stream(socket.into()))
+    Ok(socket)
 }
 
-pub fn build_client_init(cipher: &Asymmetric, token: &Vec<u8>) -> DynResult<(Vec<u8>, Vec<u8>)> {
+pub fn build_client_init<'a, 'b>(cipher: &Asymmetric, token: &ByteBuffer<'b>) -> DynResult<(Symmetric, ByteBuffer<'b>)> {
+    let buffer_size = get_type_size::<ClientInitHeader>()?;
+    let mut buffer = get_buffer(Some(buffer_size));
+
     let user_name = encode_to_32_bytes(CLIENT_NAME);
     let data_len = token.len() + Symmetric::ciphertext_overhead();
     let tail_len = OsRng.gen_range(0..=*PORT_TAIL_LENGTH);
     let header: ClientInitHeader = (ProtocolFlag::INIT as u8, user_name, data_len as u16, tail_len as u16);
-    let encoded_header = encode_to_vec(&header, ENCODE_CONF).unwrap();
-    let (key, encrypted_header) = cipher.encrypt(&encoded_header)?;
-    let tail = OsRng.sample_iter(Standard).take(tail_len).collect::<Vec<u8>>();
-    Ok((key, [encrypted_header, tail].concat()))
+    encode_into_slice(&header, &mut buffer.slice_mut(), ENCODE_CONF)?;
+    let (key, encrypted_header) = cipher.encrypt(&mut buffer)?;
+
+    let mut symmetric = Symmetric::new(&key)?;
+    let mut header_with_body = encrypted_header.append_buf(token);
+    let encrypted_message = symmetric.encrypt(&mut header_with_body, None)?;
+
+    let packet = encrypted_message.expand_end(tail_len);
+    OsRng.fill_bytes(&mut packet.slice_start_mut(buffer_size + token.len()));
+    Ok((symmetric, packet))
 }
 
-pub fn build_any_data(cipher: &Symmetric, data: &Vec<u8>) -> DynResult<Vec<u8>> {
+pub fn build_any_data<'a>(cipher: &mut Symmetric, data: &mut ByteBuffer<'a>) -> DynResult<ByteBuffer<'a>> {
+    let encrypted_data = cipher.encrypt(data, None)?;
+
     let data_len = data.len() + Symmetric::ciphertext_overhead();
     let tail_len = OsRng.gen_range(0..=*PORT_TAIL_LENGTH);
     let header: AnyOtherHeader = (ProtocolFlag::DATA as u8, data_len as u16, tail_len as u16);
-    let encoded_header = encode_to_vec(&header, ENCODE_CONF).unwrap();
-    let encrypted_header = cipher.encrypt(&encoded_header, None)?;
-    let encrypted_data = cipher.encrypt(&data, None)?;
-    let tail = OsRng.sample_iter(Standard).take(tail_len).collect::<Vec<u8>>();
-    Ok([encrypted_header, encrypted_data, tail].concat())
+
+    let header_size = get_type_size::<AnyOtherHeader>()?;
+    let header_with_body = encrypted_data.expand_start(header_size + MAC_LEN);
+    encode_into_slice(&header, &mut header_with_body.slice_end_mut(header_size), ENCODE_CONF)?;
+    let encrypted_message = cipher.encrypt(&mut header_with_body.rebuffer_both(NONCE_LEN, header_size), None)?;
+
+    let packet = encrypted_message.expand_end(tail_len);
+    OsRng.fill_bytes(&mut packet.slice_start_mut(packet.len() - tail_len));
+    Ok(packet)
 }
 
-pub fn build_any_term(cipher: &Symmetric) -> DynResult<Vec<u8>> {
+pub fn build_any_term<'a>(cipher: &mut Symmetric) -> DynResult<ByteBuffer<'a>> {
+    let buffer_size = get_type_size::<AnyOtherHeader>()?;
+    let mut buffer = get_buffer(Some(buffer_size));
+
     let tail_len = OsRng.gen_range(0..=*PORT_TAIL_LENGTH);
     let header: AnyOtherHeader = (ProtocolFlag::TERM as u8, 0 as u16, tail_len as u16);
-    let encoded_header = encode_to_vec(&header, ENCODE_CONF).unwrap();
-    let encoded_header = cipher.encrypt(&encoded_header, None)?;
-    let tail = OsRng.sample_iter(Standard).take(tail_len).collect::<Vec<u8>>();
-    Ok([encoded_header, tail].concat())
+
+    encode_into_slice(&header, &mut buffer.slice_mut(), ENCODE_CONF)?;
+    let encrypted_header = cipher.encrypt(&mut buffer, None)?;
+
+    let packet = encrypted_header.expand_end(tail_len);
+    OsRng.fill_bytes(&mut packet.slice_start_mut(buffer_size));
+    Ok(packet)
 }
 
-pub fn parse_server_init(cipher: &Symmetric, packet: &[u8]) -> DynResult<(u16, u16)> {
+pub fn parse_server_init<'a>(cipher: &mut Symmetric, packet: &mut ByteBuffer<'a>) -> DynResult<(u16, u16)> {
     let header = cipher.decrypt(packet, None)?;
-    let ((flags, init_status, user_id, tail_length), _): (ServerInitHeader, usize) = decode_from_slice(&header, ENCODE_CONF)?;
+    let ((flags, init_status, user_id, tail_length), _): (ServerInitHeader, usize) = decode_from_slice(&header.slice(), ENCODE_CONF)?;
     if flags != ProtocolFlag::INIT as u8 {
         bail!("Server INIT message flags malformed: {flags} != {}", ProtocolFlag::INIT as u8)
     } else if init_status != ProtocolReturnCode::Success as u8 {
@@ -79,9 +99,9 @@ pub fn parse_server_init(cipher: &Symmetric, packet: &[u8]) -> DynResult<(u16, u
     }
 }
 
-pub fn parse_any_message_header(cipher: &Symmetric, packet: &[u8]) -> DynResult<(ProtocolMessageType, Option<(u16, u16)>)> {
+pub fn parse_any_message_header<'a>(cipher: &mut Symmetric, packet: &mut ByteBuffer<'a>) -> DynResult<(ProtocolMessageType, Option<(u16, u16)>)> {
     let header = cipher.decrypt(packet, None)?;
-    let ((flags, data_length, tail_length), _): (AnyOtherHeader, usize) = decode_from_slice(&header, ENCODE_CONF)?;
+    let ((flags, data_length, tail_length), _): (AnyOtherHeader, usize) = decode_from_slice(&header.slice(), ENCODE_CONF)?;
     if flags == ProtocolFlag::DATA as u8 {
         Ok((ProtocolMessageType::Data, Some((data_length, tail_length))))
     } else if flags == ProtocolFlag::TERM as u8 {
@@ -91,6 +111,6 @@ pub fn parse_any_message_header(cipher: &Symmetric, packet: &[u8]) -> DynResult<
     }
 }
 
-pub fn parse_any_any_data(cipher: &Symmetric, packet: &[u8]) -> DynResult<Vec<u8>> {
+pub fn parse_any_any_data<'a>(cipher: &mut Symmetric, packet: &mut ByteBuffer<'a>) -> DynResult<ByteBuffer<'a>> {
     Ok(cipher.decrypt(packet, None)?)
 }

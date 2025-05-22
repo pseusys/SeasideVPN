@@ -17,11 +17,10 @@ use nftables::schema::{Chain, NfListObject, Rule, Table};
 use nftables::stmt::{Accept, Mangle, Match, Operator, Statement};
 use nftables::types::{NfChainType, NfFamily, NfHook};
 use simple_error::{bail, require_with};
-use tonic::async_trait;
-use tun::{create_as_async, AsyncDevice, Configuration};
+use tun::{create, Configuration, Device};
 
 use super::nl_utils::{copy_rtmsg, create_address_message, create_attr, create_clear_cache_message, create_header, create_interface_message, create_routing_message, create_rtmsg, create_socket, send_netlink_message, send_netlink_stream};
-use super::{bytes_to_int, bytes_to_ip_address, bytes_to_string, Creatable, Tunnel};
+use super::{bytes_to_int, bytes_to_ip_address, bytes_to_string, TunnelInternal};
 use crate::DynResult;
 
 
@@ -82,11 +81,11 @@ fn get_default_interface(seaside_address: Ipv4Addr) -> DynResult<(Ipv4Addr, u8, 
 }
 
 
-async fn create_tunnel(name: &str, address: Ipv4Addr, netmask: Ipv4Addr, mtu: u16) -> DynResult<AsyncDevice> {
+fn create_tunnel(name: &str, address: Ipv4Addr, netmask: Ipv4Addr, mtu: u16) -> DynResult<Device> {
     let mut config = Configuration::default();
     config.address(address).netmask(netmask).tun_name(name).mtu(mtu).up();
     config.platform_config(|conf| { conf.ensure_root_privileges(true); });
-    match create_as_async(&config) {
+    match create(&config) {
         Ok(device) => Ok(device),
         Err(err) => bail!("Error creating tunnel: {}", err)
     }
@@ -260,15 +259,14 @@ pub struct PlatformInternalConfig {
     firewall_table: Table
 }
 
-#[async_trait]
-impl Creatable for Tunnel {
-    async fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_network: Ipv4Net, svr_index: u8) -> DynResult<Tunnel> {
+impl TunnelInternal {
+    pub fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_network: Ipv4Net, svr_index: u8) -> DynResult<Self> {
         debug!("Checking system default network properties...");
         let (default_address, default_cidr, default_name, default_mtu) = get_default_interface(seaside_address)?;
         debug!("Default network properties received: address {default_address}, CIDR {default_cidr}, name {default_name}, MTU {default_mtu}");
     
         debug!("Creating tunnel device...");
-        let tunnel_device = create_tunnel(tunnel_name, tunnel_network.addr(), tunnel_network.netmask(), default_mtu as u16).await?;
+        let tunnel_device = create_tunnel(tunnel_name, tunnel_network.addr(), tunnel_network.netmask(), default_mtu as u16)?;
         let tunnel_index = get_address_device(tunnel_network)?;
 
         debug!("Clearing seaside-viridian-reef routing table...");
@@ -282,11 +280,11 @@ impl Creatable for Tunnel {
         let firewall_table = enable_firewall(&default_name, &default_network, &seaside_address, svr_index)?;
 
         let internal = PlatformInternalConfig {svr_data, route_message, rule_message, firewall_table};
-        Ok(Tunnel {def_ip: default_address, def_cidr: default_cidr, tun_device: tunnel_device, internal})
+        Ok(Self {def_ip: default_address, def_cidr: default_cidr, tun_device: tunnel_device, internal})
     }
 }
 
-impl Drop for Tunnel {
+impl Drop for TunnelInternal {
     #[allow(unused_must_use)]
     fn drop(&mut self) {
         debug!("Disabling firewall...");

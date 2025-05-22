@@ -2,23 +2,6 @@ use std::any::type_name;
 use std::env::var;
 use std::str::FromStr;
 
-use byte_pool::{Block, BytePool};
-use lazy_static::lazy_static;
-
-use crate::crypto::Asymmetric;
-
-
-pub static HEADER_OVERHEAD: usize = 64;
-
-lazy_static! {
-    static ref PACKET_POOL: BytePool = BytePool::new();
-}
-
-
-pub fn get_packet<'a>() -> Block<'a, Vec<u8>> {
-    PACKET_POOL.alloc(HEADER_OVERHEAD + Asymmetric::ciphertext_overhead() + u16::MAX as usize)
-}
-
 
 pub fn parse_env<T: FromStr>(key: &str, default: Option<T>) -> T {
     match var(key) {

@@ -1,6 +1,5 @@
 use std::net::Ipv4Addr;
 use std::process::ExitStatus;
-use std::sync::Arc;
 
 use futures::stream::{FuturesUnordered, StreamExt};
 use ipnet::Ipv4Net;
@@ -8,12 +7,15 @@ use log::{debug, error, info};
 use simple_error::{bail, require_with, SimpleError};
 use tokio::net::lookup_host;
 use tokio::process::Command;
-use tokio::{select, spawn};
+use tokio::select;
+use tokio::task::spawn_blocking;
 
-use crate::utils::get_packet;
-use crate::DynResult;
-use super::tunnel::{Creatable, Tunnel};
-use super::protocol::{ProtocolClient, ProtocolType};
+use crate::bytes::ByteBuffer;
+use crate::protocol::ProtocolClientHandle;
+use crate::{DynResult, ReaderWriter};
+use crate::protocol::{PortHandle, TyphoonHandle};
+use super::tunnel::Tunnel;
+use super::protocol::ProtocolType;
 use super::utils::{parse_env, parse_str_env};
 
 
@@ -34,18 +36,18 @@ const DEFAULT_TUNNEL_NETMASK: Ipv4Addr = Ipv4Addr::new(255, 255, 255, 0);
 const DEFAULT_SVR_INDEX: u8 = 82;
 
 
-pub struct Viridian {
-    key: Vec<u8>,
-    token: Vec<u8>,
+pub struct Viridian<'a> {
+    key: ByteBuffer<'a>,
+    token: ByteBuffer<'a>,
     address: Ipv4Addr,
     port: u16,
-    tunnel: Arc<Tunnel>,
+    tunnel: Tunnel,
     client_type: ProtocolType
 }
 
 
-impl Viridian {
-    pub async fn new(address: Ipv4Addr, port: u16, token: Vec<u8>, key: Vec<u8>, protocol: ProtocolType) -> DynResult<Viridian> {
+impl<'a> Viridian<'a> {
+    pub async fn new(address: Ipv4Addr, port: u16, token: ByteBuffer<'a>, key: ByteBuffer<'a>, protocol: ProtocolType) -> DynResult<Viridian<'a>> {
         let tunnel_name = parse_str_env("SEASIDE_TUNNEL_NAME", Some(DEFAULT_TUNNEL_NAME));
         let tunnel_address = parse_env("SEASIDE_TUNNEL_ADDRESS", Some(DEFAULT_TUNNEL_ADDRESS));
         let tunnel_netmask = parse_env("SEASIDE_TUNNEL_NETMASK", Some(DEFAULT_TUNNEL_NETMASK));
@@ -57,14 +59,14 @@ impl Viridian {
         }
 
         debug!("Creating tunnel with seaside address {address}, tunnel name {tunnel_name}, tunnel network {tunnel_address}/{tunnel_netmask}, SVR index {svr_index}...");
-        let tunnel = Tunnel::new(address, &tunnel_name, tunnel_network, svr_index).await?;
+        let tunnel = Tunnel::new(address, &tunnel_name, tunnel_network, svr_index)?;
 
         Ok(Viridian {
             key,
             token,
             address,
             port,
-            tunnel: Arc::new(tunnel),
+            tunnel: tunnel,
             client_type: protocol
         })
     }
@@ -77,33 +79,17 @@ impl Viridian {
         Ok(status)
     }
 
-    async fn send_to_caerulean(tunnel: Arc<Tunnel>, client: Arc<dyn ProtocolClient>) -> Result<(), Box<SimpleError>> {
-        info!("Setting up send-to-caerulean coroutine...");
-        let mut buffer = get_packet();
+    fn worker_task(mut reader: impl ReaderWriter, mut writer: impl ReaderWriter, message: &str) -> Result<(), Box<SimpleError>> {
+        info!("Setting up worker task {}...", message);
         loop {
-            let length = match tunnel.read_bytes(&mut buffer).await {
+            let mut packet = match reader.read_bytes() {
                 Err(res) => bail!("Error reading from tunnel: {res}!"),
                 Ok(res) => res
             };
-            debug!("Captured {length} bytes from tunnel");
-            match client.write_bytes(&buffer).await {
+            debug!("Captured {} bytes {}!", packet.len(), message);
+            match writer.write_bytes(&mut packet) {
                 Err(res) => bail!("Error writing to socket: {res}!"),
                 Ok(res) => debug!("Sent {res} bytes to caerulean")
-            };
-        }
-    }
-
-    async fn receive_from_caerulean(tunnel: Arc<Tunnel>, client: Arc<dyn ProtocolClient>) -> Result<(), Box<SimpleError>> {
-        info!("Setting up receive-from-caerulean coroutine...");
-        loop {
-            let packet = match client.read_bytes().await {
-                Err(res) => bail!("Error reading from socket: {res}!"),
-                Ok(res) => res
-            };
-            debug!("Received {} bytes from caerulean", packet.len());
-            match tunnel.write_bytes(&packet).await {
-                Err(res) => bail!("Error writing to tunnel: {res}!"),
-                Ok(res) => debug!("Injected {res} bytes into tunnel")
             };
         }
     }
@@ -120,12 +106,28 @@ impl Viridian {
         }
 
         debug!("Creating protocol client handle...");
-        let mut handle = self.client_type.create_client(&self.key, &self.token, self.address, self.port, None).await?;
-        let client = handle.connect().await?;
-
-        debug!("Spawning reader and writer coroutines...");
-        let send_handle = spawn(Self::send_to_caerulean(self.tunnel.clone(), client.clone()));
-        let receive_handle = spawn(Self::receive_from_caerulean(self.tunnel.clone(), client.clone()));
+        let (send_handle_tunnel, receive_handle_tunnel) = (self.tunnel.clone(), self.tunnel.clone());
+        let (send_handle, receive_handle) = match self.client_type {
+            ProtocolType::PORT => {
+                let mut handle = PortHandle::new(self.key.clone(), self.token.clone(), self.address, self.port, None)?;
+                let client = handle.connect()?;
+                debug!("Spawning PORT reader and writer coroutines...");
+                let (send_handle_client, receive_handle_client) = (client.clone(), client.clone());
+                let send_handle = spawn_blocking(move || { Self::worker_task(send_handle_tunnel, send_handle_client, "viridian -> caerulean") });
+                let receive_handle = spawn_blocking(move || { Self::worker_task(receive_handle_client, receive_handle_tunnel, "caerulean -> viridian") });
+                (send_handle, receive_handle)
+            },
+            ProtocolType::TYPHOON => {
+                let mut handle = TyphoonHandle::new(self.key.clone(), self.token.clone(), self.address, self.port, None)?;
+                let client = handle.connect()?;
+                debug!("Spawning TYPHOON reader and writer coroutines...");
+                let (send_handle_client, receive_handle_client) = (client.clone(), client.clone());
+                let send_handle = spawn_blocking(move || { Self::worker_task(send_handle_tunnel, send_handle_client, "viridian -> caerulean") });
+                let receive_handle = spawn_blocking(move || { Self::worker_task(receive_handle_client, receive_handle_tunnel, "caerulean -> viridian") });
+                (send_handle, receive_handle)
+            }
+        };
+        
 
         debug!("Running DNS probe to check for globally available DNS servers...");
         if lookup_host("example.com").await.is_err() {

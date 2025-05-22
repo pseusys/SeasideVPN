@@ -10,6 +10,7 @@ use simple_error::bail;
 use structopt::StructOpt;
 use env_logger::init;
 
+use reeflib::bytes::ByteBuffer;
 use reeflib::link::parse_client_link;
 use reeflib::viridian::Viridian;
 use reeflib::DynResult;
@@ -30,8 +31,8 @@ fn parse_address(address: &str) -> DynResult<Ipv4Addr> {
     }
 }
 
-fn parse_bytes(string: &str) -> DynResult<Vec<u8>> {
-    Ok(URL_SAFE_NO_PAD.decode(&string)?)
+fn parse_bytes<'a>(string: String) -> DynResult<ByteBuffer<'a>> {
+    Ok(ByteBuffer::from(URL_SAFE_NO_PAD.decode(&string)?))
 }
 
 
@@ -47,11 +48,11 @@ struct Opt {
     port: u16,
 
     /// Caerulean token value (required, if not provided by 'link' argument!)
-    #[structopt(short = "t", long)]  // TODO: parse here
+    #[structopt(short = "t", long)]
     token: Option<String>,
 
     /// Caerulean public key (required, if not provided by 'link' argument!)
-    #[structopt(short = "r", long)]  // TODO: parse here
+    #[structopt(short = "r", long)]
     public: Option<String>,
 
     /// Caerulean protocol (required, if not provided by 'link' argument!)
@@ -80,7 +81,7 @@ fn init_logging() {
 }
 
 
-fn process_link(link: Option<String>) -> DynResult<(Option<String>, Option<Vec<u8>>, Option<u16>, Option<u16>, Option<Vec<u8>>)> {
+fn process_link<'a>(link: Option<String>) -> DynResult<(Option<String>, Option<ByteBuffer<'a>>, Option<u16>, Option<u16>, Option<ByteBuffer<'a>>)> {
     match link {
         Some(res) => {
             let (a, p, pp, pt, t) = parse_client_link(res)?;
@@ -90,7 +91,7 @@ fn process_link(link: Option<String>) -> DynResult<(Option<String>, Option<Vec<u
     }
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> DynResult<()> {
     init_logging();
     let opt = Opt::from_args();
@@ -99,7 +100,7 @@ async fn main() -> DynResult<()> {
     let public = match link_public {
         Some(res) => res,
         None => match opt.public {
-            Some(res) => parse_bytes(&res)?,
+            Some(res) => parse_bytes(res)?,
             None => bail!("Caerulean public key was not specified!")
         }
     };
@@ -107,7 +108,7 @@ async fn main() -> DynResult<()> {
     let token = match link_token {
         Some(res) => res,
         None => match opt.token {
-            Some(res) => parse_bytes(&res)?,
+            Some(res) => parse_bytes(res)?,
             None => bail!("Caerulean token was not specified!")
         }
     };

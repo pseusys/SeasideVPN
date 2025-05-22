@@ -1,55 +1,66 @@
-use chacha20poly1305::aead::{Aead, Payload};
+use chacha20poly1305::aead::AeadMutInPlace;
 use chacha20poly1305::{AeadCore, Key, KeyInit, XNonce, XChaCha20Poly1305};
 use rand::rngs::OsRng;
 
 use simple_error::bail;
 
+use crate::bytes::ByteBuffer;
 use crate::DynResult;
 
 
-const NONCE_LEN: usize = 24;
-const MAC_LEN: usize = 16;
+// TODO: move it!
+pub const KEY_LEN: usize = 32;
+pub const NONCE_LEN: usize = 24;
+pub const MAC_LEN: usize = 16;
 
 
 pub struct Symmetric {
     cipher: XChaCha20Poly1305,
 }
 
-// TODO: use inplace
 impl Symmetric {
-    pub fn new(key: &[u8; 32]) -> Symmetric {
-        let symmetric_key = Key::from_slice(key);
-        let cipher = XChaCha20Poly1305::new(symmetric_key);
-        Symmetric { 
+    pub fn new(key: &ByteBuffer) -> DynResult<Symmetric> {
+        let private_bytes = <[u8; KEY_LEN]>::try_from(&key.slice()[..])?;
+        let cipher = XChaCha20Poly1305::new(Key::from_slice(&private_bytes));
+        Ok(Symmetric { 
             cipher
-        }
+        })
     }
 
+    #[inline]
     pub fn ciphertext_overhead() -> usize {
         NONCE_LEN + MAC_LEN
     }
 
-    pub fn encrypt(&self, plaintext: &[u8], additional_data: Option<&[u8]>) -> DynResult<Vec<u8>> {
+    pub fn encrypt<'a>(&mut self, plaintext: &mut ByteBuffer<'a>, additional_data: Option<&ByteBuffer>) -> DynResult<ByteBuffer<'a>> {
         let nonce = XChaCha20Poly1305::generate_nonce(&mut OsRng);
-        let payload = Payload {
-            msg: plaintext,
-            aad: additional_data.unwrap_or(&[]),
+        let result = match additional_data {
+            Some(res) => self.cipher.encrypt_in_place(&nonce, &res.slice(), plaintext),
+            None => self.cipher.encrypt_in_place(&nonce, &[], plaintext),
         };
-        Ok(match self.cipher.encrypt(&nonce, payload) {
-            Ok(res) => [nonce.to_vec(), res].concat(),
+        match result {
+            Ok(_) => Ok(plaintext.prepend(&nonce)),
             Err(err) => bail!("Error encrypting plaintext: {err}")
-        })
+        }
     }
 
-    pub fn decrypt(&self, ciphertext_with_nonce: &[u8], additional_data: Option<&[u8]>) -> DynResult<Vec<u8>> {
-        let nonce = XNonce::from_slice(&ciphertext_with_nonce[NONCE_LEN..]);
-        let payload = Payload {
-            msg: &ciphertext_with_nonce[..NONCE_LEN],
-            aad: additional_data.unwrap_or(&[]),
+    pub fn decrypt<'a>(&mut self, ciphertext_with_nonce: &mut ByteBuffer<'a>, additional_data: Option<&ByteBuffer>) -> DynResult<ByteBuffer<'a>> {
+        let (mut ciphertext, nonce_bytes) = ciphertext_with_nonce.split_buf(NONCE_LEN);
+        let nonce_slice = nonce_bytes.slice();
+        let nonce = XNonce::from_slice(&nonce_slice);
+        let result = match additional_data {
+            Some(res) => self.cipher.decrypt_in_place(&nonce, &res.slice(), &mut ciphertext),
+            None => self.cipher.decrypt_in_place(&nonce, &[], &mut ciphertext),
         };
-        Ok(match self.cipher.decrypt(nonce, payload) {
-            Ok(res) => res,
-            Err(err) => bail!("Error decrypting ciphertext: {err}!")
-        })
+        match result {
+            Ok(_) => Ok(ciphertext),
+            Err(err) => bail!("Error encrypting plaintext: {err}")
+        }
+    }
+}
+
+impl Clone for Symmetric {
+    fn clone(&self) -> Self {
+        Self { cipher: self.cipher.clone() }
     }
 }

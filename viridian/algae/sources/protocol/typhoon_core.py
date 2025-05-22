@@ -1,5 +1,4 @@
 from os import getenv
-from secrets import token_bytes
 from struct import calcsize, pack, unpack
 from types import NoneType
 from typing import Tuple, Union
@@ -42,7 +41,7 @@ class TyphoonCore:
     def build_server_init(cls, cipher: Symmetric, packet_number: int, user_id: int, next_in: int, status: ProtocolReturnCode) -> bytes:
         tail_length = random_number(max=cls._TYPHOON_MAX_TAIL_LENGTH)
         header = pack(cls._SERVER_INIT_HEADER, ProtocolFlag.INIT, packet_number, status, user_id, next_in, tail_length)
-        packet = header + token_bytes(tail_length)
+        packet = header + bytes(tail_length)
         return cipher.encrypt(packet)
 
     @classmethod
@@ -50,7 +49,7 @@ class TyphoonCore:
         client_name = cls._CLIENT_NAME.encode()
         tail_length = random_number(max=cls._TYPHOON_MAX_TAIL_LENGTH)
         header = pack(cls._CLIENT_INIT_HEADER, ProtocolFlag.INIT, packet_number, client_name, next_in, tail_length)
-        packet = header + token + token_bytes(tail_length)
+        packet = header + token + bytes(tail_length)
         return cipher.encrypt(packet)
 
     @classmethod
@@ -65,7 +64,7 @@ class TyphoonCore:
     def _build_server_hdsk_with_data(cls, cipher: Symmetric, flags: int, packet_number: int, next_in: int, data: bytes) -> bytes:
         tail_length = random_number(max=cls._TYPHOON_MAX_TAIL_LENGTH)
         header = pack(cls._ANY_HDSK_HEADER, flags, packet_number, next_in, tail_length)
-        packet = header + data + token_bytes(tail_length)
+        packet = header + data + bytes(tail_length)
         return cipher.encrypt(packet)
 
     @classmethod
@@ -80,21 +79,21 @@ class TyphoonCore:
     def _build_client_hdsk_with_data(cls, cipher: Symmetric, flags: int, packet_number: int, next_in: int, data: bytes) -> bytes:
         tail_length = random_number(max=cls._TYPHOON_MAX_TAIL_LENGTH)
         header = pack(cls._ANY_HDSK_HEADER, flags, packet_number, next_in, tail_length)
-        packet = header + data + token_bytes(tail_length)
+        packet = header + data + bytes(tail_length)
         return cipher.encrypt(packet)
 
     @classmethod
     def build_any_data(cls, cipher: Symmetric, data: bytes) -> bytes:
         tail_length = random_number(max=cls._TYPHOON_MAX_TAIL_LENGTH)
         header = pack(cls._ANY_OTHER_HEADER, ProtocolFlag.DATA, tail_length)
-        packet = header + data + token_bytes(tail_length)
+        packet = header + data + bytes(tail_length)
         return cipher.encrypt(packet)
 
     @classmethod
     def build_any_term(cls, cipher: Symmetric) -> bytes:
         tail_length = random_number(max=cls._TYPHOON_MAX_TAIL_LENGTH)
         header = pack(cls._ANY_OTHER_HEADER, ProtocolFlag.TERM, tail_length)
-        packet = header + token_bytes(tail_length)
+        packet = header + bytes(tail_length)
         return cipher.encrypt(packet)
 
     # Parse INIT messages, they are parsed separately and can not be confused with the others:

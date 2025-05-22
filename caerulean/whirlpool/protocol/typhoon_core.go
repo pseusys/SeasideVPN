@@ -78,7 +78,11 @@ func buildTyphoonServerInit(cipher *crypto.Symmetric, peerID uint16, packetNumbe
 	binary.BigEndian.PutUint32(header.ResliceStart(8), nextIn)
 	binary.BigEndian.PutUint16(header.ResliceStart(12), uint16(tailLength))
 
-	packet := utils.EmbedReliableTailLength(header, tailLength)
+	packet, err := header.ExpandAfter(tailLength)
+	if err != nil {
+		PacketPool.Put(header)
+		return nil, fmt.Errorf("insufficient buffer capacity: %v", err)
+	}
 	encrypted, err := cipher.Encrypt(packet, nil)
 	if err != nil {
 		PacketPool.Put(header)
@@ -115,7 +119,10 @@ func buildTyphoonServerHDSKWithData(cipher *crypto.Symmetric, flags ProtocolFlag
 	binary.BigEndian.PutUint32(header.ResliceStart(5), nextIn)
 	binary.BigEndian.PutUint16(header.ResliceStart(9), uint16(tailLength))
 
-	packet := utils.EmbedReliableTailLength(message, tailLength)
+	packet, err := message.ExpandAfter(tailLength)
+	if err != nil {
+		return nil, fmt.Errorf("insufficient buffer capacity: %v", err)
+	}
 	encrypted, err := cipher.Encrypt(packet, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error encrypting HDSK packet: %v", err)
@@ -136,7 +143,10 @@ func buildTyphoonAnyData(cipher *crypto.Symmetric, data *betterbuf.Buffer) (*bet
 	header.Set(0, byte(FLAG_DATA))
 	binary.BigEndian.PutUint16(header.ResliceStart(1), uint16(tailLength))
 
-	packet := utils.EmbedReliableTailLength(message, tailLength)
+	packet, err := message.ExpandAfter(tailLength)
+	if err != nil {
+		return nil, fmt.Errorf("insufficient buffer capacity: %v", err)
+	}
 	encrypted, err := cipher.Encrypt(packet, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error encrypting data packet: %v", err)
@@ -152,7 +162,11 @@ func buildTyphoonAnyTerm(cipher *crypto.Symmetric) (*betterbuf.Buffer, error) {
 	header.Set(0, byte(FLAG_TERM))
 	binary.BigEndian.PutUint16(header.ResliceStart(1), uint16(tailLength))
 
-	packet := utils.EmbedReliableTailLength(header, tailLength)
+	packet, err := header.ExpandAfter(tailLength)
+	if err != nil {
+		PacketPool.Put(header)
+		return nil, fmt.Errorf("insufficient buffer capacity: %v", err)
+	}
 	encrypted, err := cipher.Encrypt(packet, nil)
 	if err != nil {
 		PacketPool.Put(packet)

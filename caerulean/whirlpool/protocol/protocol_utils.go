@@ -13,7 +13,7 @@ const (
 	OUTPUT_CHANNEL_POOL_BUFFER int = 16
 )
 
-var PacketPool = betterbuf.CreateBufferPool(MAX_PROTOCOL_HEADER+crypto.AsymmetricCiphertextOverhead, math.MaxUint16, crypto.AsymmetricCiphertextOverhead)
+var PacketPool = betterbuf.CreateBufferPool(MAX_PROTOCOL_HEADER+crypto.AsymmetricCiphertextOverhead, math.MaxUint16, 0)
 
 // ProtocolFlag represents the flags used in Typhoon message types.
 type ProtocolFlag byte

@@ -1,13 +1,13 @@
-use bincode::{decode_from_slice, encode_to_vec};
+use bincode::{decode_from_slice, encode_into_slice};
 use lazy_static::lazy_static;
-use rand::distributions::Standard;
 use rand::rngs::OsRng;
 use rand::Rng;
-use simple_error::{bail, require_with};
+use simple_error::bail;
 
+use crate::bytes::{get_buffer, ByteBuffer};
 use crate::crypto::{Asymmetric, Symmetric};
 use crate::protocol::utils::ENCODE_CONF;
-use crate::utils::{get_packet, parse_env};
+use crate::utils::parse_env;
 use crate::DynResult;
 use super::common::{ProtocolFlag, ProtocolMessageType, ProtocolReturnCode};
 use super::utils::{encode_to_32_bytes, get_type_size};
@@ -38,57 +38,71 @@ lazy_static! {
 }
 
 
-pub fn build_client_init(cipher: &Asymmetric, packet_number: u32, next_in: u32, token: &Vec<u8>) -> DynResult<(Vec<u8>, Vec<u8>)> {
+pub fn build_client_init<'a, 'b>(cipher: &Asymmetric, packet_number: u32, next_in: u32, token: &ByteBuffer<'b>) -> DynResult<(Symmetric, ByteBuffer<'b>)> {
+    let buffer_size = get_type_size::<ClientInitHeader>()?;
+    let buffer = get_buffer(Some(buffer_size));
+
     let user_name = encode_to_32_bytes(CLIENT_NAME);
     let tail_len = OsRng.gen_range(0..=*TYPHOON_MAX_TAIL_LENGTH);
     let header: ClientInitHeader = (ProtocolFlag::INIT as u8, packet_number, user_name, next_in, tail_len as u16);
-    let encoded_header = encode_to_vec(&header, ENCODE_CONF).unwrap();
-    let tail = OsRng.sample_iter(Standard).take(tail_len).collect::<Vec<u8>>();
-    let packet = [encoded_header, token.to_vec(), tail].concat();
-    let (key, encrypted_packet) = cipher.encrypt(&packet)?;
-    Ok((key, encrypted_packet))
+    encode_into_slice(header, &mut buffer.slice_mut(), ENCODE_CONF)?;
+
+    let header_with_body = buffer.append_buf(token);
+    let mut message = header_with_body.expand_end(tail_len);
+    let (key, packet) = cipher.encrypt(&mut message)?;
+    Ok((Symmetric::new(&key)?, packet))
 }
 
-pub fn build_client_hdsk(cipher: &Symmetric, packet_number: u32, next_in: u32) -> DynResult<Vec<u8>> {
-    let buffer = get_packet();
+#[inline]
+pub fn build_client_hdsk<'a>(cipher: &mut Symmetric, packet_number: u32, next_in: u32) -> DynResult<ByteBuffer<'a>> {
+    let buffer = get_buffer(None);
     build_client_hdsk_with_data(cipher, ProtocolFlag::HDSK as u8, packet_number, next_in, &buffer)
 }
 
-pub fn build_client_hdsk_data(cipher: &Symmetric, packet_number: u32, next_in: u32, data: &Vec<u8>) -> DynResult<Vec<u8>> {
+#[inline]
+pub fn build_client_hdsk_data<'a>(cipher: &mut Symmetric, packet_number: u32, next_in: u32, data: &ByteBuffer<'a>) -> DynResult<ByteBuffer<'a>> {
     build_client_hdsk_with_data(cipher, ProtocolFlag::HDSK | ProtocolFlag::DATA, packet_number, next_in, data)
 }
 
-fn build_client_hdsk_with_data(cipher: &Symmetric, flags: u8, packet_number: u32, next_in: u32, data: &Vec<u8>) -> DynResult<Vec<u8>> {
+fn build_client_hdsk_with_data<'a>(cipher: &mut Symmetric, flags: u8, packet_number: u32, next_in: u32, data: &ByteBuffer<'a>) -> DynResult<ByteBuffer<'a>> {
     let tail_len = OsRng.gen_range(0..=*TYPHOON_MAX_TAIL_LENGTH);
     let header: AnyHandshakeHeader = (flags, packet_number, next_in, tail_len as u16);
-    let encoded_header = encode_to_vec(&header, ENCODE_CONF).unwrap();
-    let tail = OsRng.sample_iter(Standard).take(tail_len).collect::<Vec<u8>>();
-    let packet = [encoded_header, data.to_vec(), tail].concat();
-    Ok(cipher.encrypt(&packet, None)?)
+
+    let header_size = get_type_size::<AnyHandshakeHeader>()?;
+    let header_with_body = data.expand_start(header_size);
+    encode_into_slice(header, &mut header_with_body.slice_end_mut(header_size), ENCODE_CONF)?;
+
+    let mut message = header_with_body.expand_end(tail_len);
+    Ok(cipher.encrypt(&mut message, None)?)
 }
 
-pub fn build_any_data(cipher: &Symmetric, data: &Vec<u8>) -> DynResult<Vec<u8>> {
+pub fn build_any_data<'a>(cipher: &mut Symmetric, data: &ByteBuffer<'a>) -> DynResult<ByteBuffer<'a>> {
     let tail_len = OsRng.gen_range(0..=*TYPHOON_MAX_TAIL_LENGTH);
     let header: AnyOtherHeader = (ProtocolFlag::DATA as u8, tail_len as u16);
-    let encoded_header = encode_to_vec(&header, ENCODE_CONF).unwrap();
-    let tail = OsRng.sample_iter(Standard).take(tail_len).collect::<Vec<u8>>();
-    let packet = [encoded_header, data.to_vec(), tail].concat();
-    Ok(cipher.encrypt(&packet, None)?)
+
+    let header_size = get_type_size::<AnyOtherHeader>()?;
+    let header_with_body = data.expand_start(header_size);
+    encode_into_slice(header, &mut header_with_body.slice_end_mut(header_size), ENCODE_CONF)?;
+
+    let mut message = header_with_body.expand_end(tail_len);
+    Ok(cipher.encrypt(&mut message, None)?)
 }
 
-pub fn build_any_term(cipher: &Symmetric) -> DynResult<Vec<u8>> {
+pub fn build_any_term<'a>(cipher: &mut Symmetric) -> DynResult<ByteBuffer<'a>> {
+    let buffer_size = get_type_size::<AnyOtherHeader>()?;
+    let mut buffer = get_buffer(Some(buffer_size));
+
     let tail_len = OsRng.gen_range(0..=*TYPHOON_MAX_TAIL_LENGTH);
     let header: AnyOtherHeader = (ProtocolFlag::TERM as u8, tail_len as u16);
-    let encoded_header = encode_to_vec(&header, ENCODE_CONF).unwrap();
-    let tail = OsRng.sample_iter(Standard).take(tail_len).collect::<Vec<u8>>();
-    let packet = [encoded_header, tail].concat();
-    Ok(cipher.encrypt(&packet, None)?)
+    encode_into_slice(header, &mut buffer.slice_mut(), ENCODE_CONF)?;
+
+    Ok(cipher.encrypt(&mut buffer, None)?)
 }
 
-pub fn parse_server_init(cipher: &Symmetric, packet: &[u8], expected_packet_number: u32) -> DynResult<(u16, u32)> {
+pub fn parse_server_init(cipher: &mut Symmetric, packet: &mut ByteBuffer, expected_packet_number: u32) -> DynResult<(u16, u32)> {
     let header_size = get_type_size::<ServerInitHeader>()?;
     let data = cipher.decrypt(packet, None)?;
-    let ((flags, packet_number, init_status, user_id, next_in, _), _): (ServerInitHeader, usize) = decode_from_slice(&data[..header_size], ENCODE_CONF)?;
+    let ((flags, packet_number, init_status, user_id, next_in, _), _): (ServerInitHeader, usize) = decode_from_slice(&data.slice_end(header_size), ENCODE_CONF)?;
     if flags != ProtocolFlag::INIT as u8 {
         bail!("Server INIT message flags malformed: {flags} != {}", ProtocolFlag::INIT)
     } else if init_status != ProtocolReturnCode::Success as u8 {
@@ -102,11 +116,11 @@ pub fn parse_server_init(cipher: &Symmetric, packet: &[u8], expected_packet_numb
     }
 }
 
-fn parse_any_hdsk(data: &[u8], expected_packet_number: Option<u32>) -> DynResult<(u32, u32, Option<Vec<u8>>)> {
+fn parse_any_hdsk<'a>(data: &ByteBuffer<'a>, expected_packet_number: Option<u32>) -> DynResult<(u32, u32, Option<ByteBuffer<'a>>)> {
     let header_size = get_type_size::<AnyHandshakeHeader>()?;
-    let ((_, packet_number, next_in, tail_length), _): (AnyHandshakeHeader, usize) = decode_from_slice(&data[..header_size], ENCODE_CONF)?;
+    let ((_, packet_number, next_in, tail_length), _): (AnyHandshakeHeader, usize) = decode_from_slice(&data.slice_end(header_size), ENCODE_CONF)?;
     let tail_offset = data.len() - tail_length as usize;
-    let payload  = Vec::from(&data[header_size..tail_offset]);
+    let payload  = data.rebuffer_both(header_size, tail_offset);
     if *TYPHOON_MIN_NEXT_IN > next_in || next_in > *TYPHOON_MAX_NEXT_IN {
         bail!("Incorrect next in value in server init: {} < {next_in} < {}", *TYPHOON_MIN_NEXT_IN, *TYPHOON_MAX_NEXT_IN)
     } else if let None = expected_packet_number {
@@ -120,16 +134,16 @@ fn parse_any_hdsk(data: &[u8], expected_packet_number: Option<u32>) -> DynResult
     }
 }
 
-fn parse_any_data(data: &[u8]) -> DynResult<Vec<u8>> {
+fn parse_any_data<'a>(data: &ByteBuffer<'a>) -> DynResult<ByteBuffer<'a>> {
     let header_size = get_type_size::<AnyOtherHeader>()?;
-    let ((_, tail_length), _): (AnyOtherHeader, usize) = decode_from_slice(&data[..header_size], ENCODE_CONF)?;
+    let ((_, tail_length), _): (AnyOtherHeader, usize) = decode_from_slice(&data.slice_end(header_size), ENCODE_CONF)?;
     let tail_offset = data.len() - tail_length as usize;
-    Ok(Vec::from(&data[header_size..tail_offset]))
+    Ok(data.rebuffer_both(header_size, tail_offset))
 }
 
-pub fn parse_server_message(cipher: &Symmetric, packet: &[u8], expected_packet_number: Option<u32>) -> DynResult<(ProtocolMessageType, Option<(u32, u32)>, Option<Vec<u8>>)> {
+pub fn parse_server_message<'a>(cipher: &mut Symmetric, packet: &mut ByteBuffer<'a>, expected_packet_number: Option<u32>) -> DynResult<(ProtocolMessageType, Option<(u32, u32)>, Option<ByteBuffer<'a>>)> {
     let data = cipher.decrypt(packet, None)?;
-    let flags = require_with!(data.get(0), "Received message length was 0!");
+    let flags = data.get(0);
     if *flags == ProtocolFlag::HDSK | ProtocolFlag::DATA {
         let (packet_number, next_in, payload) = parse_any_hdsk(&data, expected_packet_number)?;
         Ok((ProtocolMessageType::HandshakeData, Some((packet_number, next_in)), payload))
