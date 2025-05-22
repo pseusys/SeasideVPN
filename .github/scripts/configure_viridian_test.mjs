@@ -39,7 +39,6 @@ const DOCKER_COMPOSE_ALGAE_PATH = join(PYTHON_LIB_ALGAE_PATH, "docker", "compose
 function printHelpMessage() {
 	console.log(`${BOLD}Host preparation for testing script usage${RESET}:`);
 	console.log(`\t${BLUE}-r --reset${RESET}: Revert all the changes, stop processes and restore system routes.`);
-	console.log(`\t${BLUE}-p --project${RESET}: Set unique Docker Compose project name to avoid network clashes.`);
 	console.log(`\t${BLUE}-h --help${RESET}: Print this message again and exit.`);
 	process.exit(0);
 }
@@ -91,11 +90,6 @@ function parseArguments() {
 			short: "r",
 			default: false
 		},
-		project: {
-			type: "string",
-			short: "p",
-			default: "undefined"
-		},
 		help: {
 			type: "boolean",
 			short: "h",
@@ -146,11 +140,10 @@ function setupRouting(gatewayContainerIP, unreachableIP, unreachableNetwork, nam
 /**
  * Launch Docker compose project in the background.
  * Wait for some time to check if it started successfully and throw an error if it did.
- * @param {string | null} project unique Docker Compose project name.
  */
-async function launchDockerCompose(project) {
+async function launchDockerCompose() {
 	console.log("Spawning Docker compose process...");
-	const child = runCommand(`docker compose -f "${DOCKER_COMPOSE_ALGAE_PATH}" -p "${project}" up --detach --build whirlpool`);
+	const child = runCommand(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} up --detach --build whirlpool`);
 	console.log("Waiting for Docker compose process to initiate...");
 	await sleep(DOCKER_COMPOSE_TIMEOUT);
 	if (child.status !== 0) throw Error(`Docker compose command failed, with exit code: ${child.status}`);
@@ -159,11 +152,10 @@ async function launchDockerCompose(project) {
 
 /**
  * Kill Docker compose process (with docker compose) running in the background.
- * @param {string | null} project unique Docker Compose project name.
  */
-async function killDockerCompose(project) {
+async function killDockerCompose() {
 	console.log("Killing Docker compose process...");
-	const child = runCommand(`docker compose -f "${DOCKER_COMPOSE_ALGAE_PATH}" -p "${project}" down`);
+	const child = runCommand(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} down`);
 	console.log("Waiting for Docker compose process to terminate...");
 	await sleep(DOCKER_COMPOSE_TIMEOUT);
 	if (child.status !== 0) throw Error(`Docker compose command failed, with exit code: ${child.status}`);
@@ -178,9 +170,9 @@ async function killDockerCompose(project) {
 const args = parseArguments();
 if (!args.reset) {
 	const { gatewayIP, whirlpoolIP, whirlpoolNetwork, echoIP, echoNetwork } = parseDockerComposeFile();
-	await launchDockerCompose(args.project);
+	await launchDockerCompose();
 	setupRouting(gatewayIP, echoIP, echoNetwork, "echo");
 	setupRouting(gatewayIP, whirlpoolIP, whirlpoolNetwork, "whirlpool");
 } else {
-	await killDockerCompose(args.project);
+	await killDockerCompose();
 }

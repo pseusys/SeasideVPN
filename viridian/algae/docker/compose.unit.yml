@@ -1,9 +1,5 @@
-name: seaside-algae-unit
-
 services:
   algae:
-    image: seaside-algae-unit
-    container_name: seaside-algae
     extends:
       file: compose.base.yml
       service: algae

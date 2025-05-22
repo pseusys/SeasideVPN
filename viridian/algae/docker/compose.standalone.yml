@@ -1,8 +1,5 @@
-name: seaside-algae-standalone
-
 services:
   int-router:
-    container_name: seaside-router-standalone-internal
     extends:
       file: compose.base.yml
       service: router
@@ -16,7 +13,6 @@ services:
         ipv4_address: 10.87.82.100
 
   whirlpool:
-    image: seaside-whirlpool-standalone
     extends:
       file: compose.base.yml
       service: whirlpool
@@ -41,7 +37,6 @@ services:
         condition: service_healthy
 
   ext-router:
-    container_name: seaside-router-standalone-external
     extends:
       file: compose.base.yml
       service: router
@@ -52,7 +47,6 @@ services:
         ipv4_address: 10.42.0.100
 
   echo:
-    container_name: seaside-echo
     extends:
       file: compose.base.yml
       service: echo
@@ -71,17 +65,14 @@ networks:
         - subnet: 10.82.0.0/24
           gateway: 10.82.0.1
   sea-rout-int:
-    internal: true
     ipam:
       config:
         - subnet: 10.87.82.0/24
   sea-rout-ext:
-    internal: true
     ipam:
       config:
         - subnet: 10.87.42.0/24
   sea-serv-ext:
-    internal: true
     ipam:
       config:
         - subnet: 10.42.0.0/24

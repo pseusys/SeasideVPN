@@ -1,9 +1,5 @@
-name: seaside-algae-local
-
 services:
   algae:
-    image: seaside-algae-local-main
-    container_name: seaside-algae
     extends:
       file: compose.base.yml
       service: algae
@@ -26,7 +22,6 @@ services:
         condition: service_started
 
   algae-copy:
-    image: seaside-algae-local-copy
     extends:
       file: compose.base.yml
       service: algae
@@ -53,7 +48,7 @@ services:
         condition: service_healthy
 
   int-router:
-    container_name: seaside-router-local-internal
+    container_name: router-local-internal
     extends:
       file: compose.base.yml
       service: router
@@ -64,7 +59,6 @@ services:
         ipv4_address: 10.87.65.100
 
   whirlpool:
-    image: seaside-algae-whirlpool-local
     extends:
       file: compose.base.yml
       service: whirlpool
@@ -81,7 +75,7 @@ services:
         ipv4_address: 10.87.42.87
 
   ext-router:
-    container_name: seaside-router-local-external
+    container_name: router-local-external
     extends:
       file: compose.base.yml
       service: router
@@ -92,7 +86,6 @@ services:
         ipv4_address: 10.42.0.100
 
   echo:
-    image: seaside-echo-local
     extends:
       file: compose.base.yml
       service: echo
@@ -105,10 +98,9 @@ services:
 
   disruptor:
     image: gaiaadm/pumba
-    container_name: seaside-network-disruptor
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    command: "-l info netem -d 1h loss -p 25 seaside-router-local-internal seaside-router-local-external"
+    command: "-l info netem -d 1h loss -p 25 router-local-internal router-local-external"
     depends_on:
       int-router:
         condition: service_started

@@ -1,9 +1,5 @@
-name: seaside-algae-integration
-
 services:
   algae:
-    image: seaside-algae-integration
-    container_name: seaside-algae
     extends:
       file: compose.base.yml
       service: algae
@@ -24,7 +20,6 @@ services:
         condition: service_started
 
   router:
-    image: seaside-router-integration
     extends:
       file: compose.base.yml
       service: router
@@ -38,7 +33,6 @@ services:
         ipv4_address: 10.87.65.100
 
   whirlpool:
-    image: seaside-whirlpool-integration
     extends:
       file: compose.base.yml
       service: whirlpool

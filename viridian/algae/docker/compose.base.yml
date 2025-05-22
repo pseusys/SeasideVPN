@@ -3,11 +3,8 @@
 # They also will not be destroyed and recreated during tests - for speedup.
 # They are also reused in other Dockerfile targets in this directory.
 
-name: seaside-algae-base
-
 services:
   algae:
-    image: seaside-algae
     privileged: true
     init: true
     build:
@@ -28,8 +25,6 @@ services:
       - ../certificates/viridian:/seaside/viridian/ca:rw
 
   whirlpool:
-    image: seaside-whirlpool
-    container_name: seaside-whirlpool
     privileged: true
     init: true
     build:
@@ -48,8 +43,6 @@ services:
       - ../certificates:/seaside/caerulean/certificates:rw
 
   echo:
-    image: seaside-echo
-    container_name: seaside-echo
     privileged: true
     init: true
     build:
@@ -62,8 +55,6 @@ services:
       LOG_LEVEL: DEBUG
 
   router:
-    image: seaside-router
-    container_name: seaside-router
     privileged: true
     init: true
     build:

@@ -1,9 +1,5 @@
-name: seaside-algae-remote
-
 services:
   algae:
-    image: seaside-algae-remote
-    container_name: seaside-algae
     extends:
       file: compose.base.yml
       service: algae
@@ -21,7 +17,6 @@ services:
         condition: service_healthy
 
   whirlpool:
-    image: seaside-whirlpool-remote
     extends:
       file: compose.base.yml
       service: whirlpool
