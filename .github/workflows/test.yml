@@ -79,7 +79,7 @@ jobs:
       - name: Start Background Server
         id: start-background-server
         working-directory: .github/scripts
-        run: sudo npm run configure-viridian-test -- -p ${{ github.run_id }}_${{ github.job }}
+        run: sudo npm run configure-viridian-test -- -p ${{ github.run_id }}-${{ github.job }}
 
       - name: Load .ENV File
         uses: aarcangeli/load-dotenv@v1
@@ -119,7 +119,7 @@ jobs:
       - name: Terminate Background Server
         if: always() && steps.start-background-server.outcome == 'success'
         working-directory: .github/scripts
-        run: sudo npm run configure-viridian-test -- -p ${{ github.run_id }}_${{ github.job }} -r
+        run: sudo npm run configure-viridian-test -- -p ${{ github.run_id }}-${{ github.job }} -r
 
   viridian-reef-test:
     name: Test Viridian Reef
@@ -176,7 +176,7 @@ jobs:
         id: start-background-server
         if: runner.os != 'Windows'
         working-directory: .github/scripts
-        run: ${{ env.SUDO }} npm run configure-viridian-test -- -p ${{ github.run_id }}_${{ github.job }}_${{ matrix.os }}
+        run: ${{ env.SUDO }} npm run configure-viridian-test -- -p ${{ github.run_id }}-${{ github.job }}-${{ matrix.os }}
 
       - name: Load .ENV File
         if: runner.os != 'Windows'
@@ -225,7 +225,7 @@ jobs:
       - name: Terminate Background Server
         if: always() && steps.start-background-server.outcome == 'success'
         working-directory: .github/scripts
-        run: ${{ env.SUDO }} npm run configure-viridian-test -- -p ${{ github.run_id }}_${{ github.job }}_${{ matrix.os }} -r
+        run: ${{ env.SUDO }} npm run configure-viridian-test -- -p ${{ github.run_id }}-${{ github.job }}-${{ matrix.os }} -r
 
   caerulean-whirlpool-test:
     name: Test Caerulean Whirlpool

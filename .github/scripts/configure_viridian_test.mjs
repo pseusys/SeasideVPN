@@ -94,7 +94,7 @@ function parseArguments() {
 		project: {
 			type: "string",
 			short: "p",
-			default: null
+			default: "undefined"
 		},
 		help: {
 			type: "boolean",
@@ -150,7 +150,7 @@ function setupRouting(gatewayContainerIP, unreachableIP, unreachableNetwork, nam
  */
 async function launchDockerCompose(project) {
 	console.log("Spawning Docker compose process...");
-	const child = runCommand(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} -p ${project} up --detach --build whirlpool`);
+	const child = runCommand(`docker compose -f "${DOCKER_COMPOSE_ALGAE_PATH}" -p "${project}" up --detach --build whirlpool`);
 	console.log("Waiting for Docker compose process to initiate...");
 	await sleep(DOCKER_COMPOSE_TIMEOUT);
 	if (child.status !== 0) throw Error(`Docker compose command failed, with exit code: ${child.status}`);
@@ -163,7 +163,7 @@ async function launchDockerCompose(project) {
  */
 async function killDockerCompose(project) {
 	console.log("Killing Docker compose process...");
-	const child = runCommand(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} -p ${project} down`);
+	const child = runCommand(`docker compose -f "${DOCKER_COMPOSE_ALGAE_PATH}" -p "${project}" down`);
 	console.log("Waiting for Docker compose process to terminate...");
 	await sleep(DOCKER_COMPOSE_TIMEOUT);
 	if (child.status !== 0) throw Error(`Docker compose command failed, with exit code: ${child.status}`);
