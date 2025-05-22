@@ -202,7 +202,7 @@ impl<'a> ByteBuffer<'a> {
     pub fn prepend(&self, other: &[u8]) -> Self {
         let other_length = other.len();
         let new_start = self.start - other_length;
-        assert!(self.start >= self.length, "ByteBuffer backward capacity insufficient!");
+        assert!(other_length <= self.start, "ByteBuffer backward capacity insufficient!");
         self.data.borrow_mut()[new_start..self.start].copy_from_slice(other);
         ByteBuffer {
             data: self.data.clone(),
