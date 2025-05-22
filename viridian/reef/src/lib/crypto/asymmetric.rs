@@ -64,12 +64,12 @@ impl Asymmetric {
     fn hide_public_key(&self, public_key: &ByteBuffer) -> DynResult<ByteBuffer> {
         let mut state = Blake2bVar::new(SYMMETRIC_HASH_SIZE)?;
         let result = ByteBuffer::empty(N_SIZE + SYMMETRIC_HASH_SIZE);
-        let (mut n_number, mut hash) = result.split_mut(N_SIZE);
-        OsRng.fill_bytes(&mut n_number);
-        state.update(&n_number);
+        let (n_number, hash) = result.split_buf(N_SIZE);
+        OsRng.fill_bytes(&mut n_number.slice_mut());
+        state.update(&n_number.slice());
         state.update(&self.seed_key);
-        state.finalize_variable(&mut hash)?;
-        xor_bytes(&mut hash, &public_key.slice());
+        state.finalize_variable(&mut hash.slice_mut())?;
+        xor_bytes(&mut hash.slice_mut(), &public_key.slice());
         drop(n_number);
         drop(hash);
         Ok(result)

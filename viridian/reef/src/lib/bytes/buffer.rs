@@ -103,15 +103,6 @@ impl<'a> ByteBuffer<'a> {
             Ref::map(self.data.borrow(), |b| &b[new_divide..self.end])
         )
     }
-
-    #[inline]
-    pub fn split_mut(&self, divide: usize) -> (RefMut<[u8]>, RefMut<[u8]>) {
-        let new_divide = self.start + divide;
-        (
-            RefMut::map(self.data.borrow_mut(), |b| &mut b[self.start..new_divide]),
-            RefMut::map(self.data.borrow_mut(), |b| &mut b[new_divide..self.end])
-        )
-    }
 }
 
 impl<'a> ByteBuffer<'a> {
