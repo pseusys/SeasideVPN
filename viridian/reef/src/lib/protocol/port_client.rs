@@ -19,9 +19,9 @@ use super::ProtocolClientHandle;
 
 
 pub struct PortHandle<'a> {
-    peer_address: SockAddr,
+    peer_address: SocketAddr,
     asymmetric: Asymmetric,
-    local: SockAddr,
+    local: SocketAddr,
     token: ByteBuffer<'a>
 }
 
@@ -57,21 +57,26 @@ impl<'a> ProtocolClientHandle<'a> for PortHandle<'a> {
         };
         debug!("Handle set up to connect {local_address} (local) to {peer_address} (caerulean)!");
         Ok(PortHandle {
-            peer_address: SockAddr::from(peer_address),
+            peer_address,
             asymmetric: Asymmetric::new(&key)?,
-            local: SockAddr::from(local_address),
+            local: local_address,
             token
         })
     }
 
     fn connect(&mut self) -> DynResult<impl ReaderWriter> {
         let mut connection_socket = create_and_configure_socket()?;
-        debug!("Binding connection client to {:?}...", self.local);
-        connection_socket.bind(&self.local)?;
 
+        let local_address = SockAddr::from(self.local);
+        debug!("Binding connection client to {:?}...", self.local);
+        connection_socket.bind(&local_address)?;
+
+        let peer_address = SockAddr::from(self.peer_address);
         debug!("Connecting to listener at {:?}", self.peer_address);
-        connection_socket.connect(&self.peer_address)?;
-        debug!("Current user address: {:?}", connection_socket.local_addr()?);
+        connection_socket.connect(&peer_address)?;
+
+        let current_address = require_with!(connection_socket.local_addr()?.as_socket_ipv4(), "Not an IPv4 address!");
+        debug!("Current user address: {current_address}");
 
         let (mut symmetric, packet) = build_client_init(&self.asymmetric, &self.token)?;
         connection_socket.write_all(&packet.slice())?;
@@ -81,13 +86,13 @@ impl<'a> ProtocolClientHandle<'a> for PortHandle<'a> {
         debug!("Connection successful, user ID: {user_id}!");
 
         let main_socket = create_and_configure_socket()?;
-        debug!("Binding main client to {:?}...", self.local);
-        main_socket.bind(&self.local)?;
+        debug!("Binding main client to {}...", self.local);
+        main_socket.bind(&local_address)?;
 
-        let mut main_socket_address = require_with!(self.peer_address.as_socket_ipv4(), "Peer socket is not an IPv4 socket!");
+        let mut main_socket_address = self.peer_address.clone();
         main_socket_address.set_port(user_id);
         let main_address = SockAddr::from(main_socket_address);
-        debug!("Connecting to listener at {:?}", main_address);
+        debug!("Connecting to listener at {main_socket_address}");
         main_socket.connect(&main_address)?;
 
         Ok(PortClient {
