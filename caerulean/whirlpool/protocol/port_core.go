@@ -19,13 +19,19 @@ const (
 	PORT_CLIENT_INIT_HEADER int = 37
 	PORT_ANY_OTHER_HEADER   int = 5
 
-	DEFAULT_PORT_MAX_TAIL_LENGTH = 512
-	DEFAULT_PORT_TIMEOUT         = 32
+	DEFAULT_PORT_MAX_TAIL_LENGTH    = 512
+	DEFAULT_PORT_KEEPALIVE_IDLE     = 128
+	DEFAULT_PORT_KEEPALIVE_INTERVAL = 128
+	DEFAULT_PORT_KEEPALIVE_COUNT    = 8
+	DEFAULT_PORT_TIMEOUT            = 32
 )
 
 var (
-	PORT_MAX_TAIL_LENGTH = uint(utils.GetIntEnv("PORT_MAX_TAIL_LENGTH", DEFAULT_PORT_MAX_TAIL_LENGTH, 32))
-	PORT_TIMEOUT         = utils.GetFloatEnv("PORT_TIMEOUT", DEFAULT_PORT_TIMEOUT, 32)
+	PORT_MAX_TAIL_LENGTH    = uint(utils.GetIntEnv("PORT_MAX_TAIL_LENGTH", DEFAULT_PORT_MAX_TAIL_LENGTH, 32))
+	PORT_KEEPALIVE_IDLE     = utils.GetFloatEnv("PORT_KEEPALIVE_IDLE", DEFAULT_PORT_TIMEOUT, 32)
+	PORT_KEEPALIVE_INTERVAL = utils.GetFloatEnv("PORT_KEEPALIVE_INTERVAL", DEFAULT_PORT_TIMEOUT, 32)
+	PORT_KEEPALIVE_COUNT    = utils.GetFloatEnv("PORT_KEEPALIVE_COUNT", DEFAULT_PORT_TIMEOUT, 32)
+	PORT_TIMEOUT            = utils.GetFloatEnv("PORT_TIMEOUT", DEFAULT_PORT_TIMEOUT, 32)
 )
 
 func init() {
@@ -37,9 +43,9 @@ func init() {
 func configurePortSocket(conn *net.TCPConn) error {
 	config := net.KeepAliveConfig{
 		Enable:   true,
-		Idle:     time.Second * time.Duration(7200),
-		Interval: time.Second * time.Duration(75),
-		Count:    int(9),
+		Idle:     time.Second * time.Duration(PORT_KEEPALIVE_IDLE),
+		Interval: time.Second * time.Duration(PORT_KEEPALIVE_INTERVAL),
+		Count:    int(PORT_KEEPALIVE_COUNT),
 	}
 	if err := conn.SetKeepAliveConfig(config); err != nil {
 		return fmt.Errorf("error configuring socket: %v", err)
