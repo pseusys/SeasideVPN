@@ -63,7 +63,7 @@ impl ReaderWriter for Tunnel {
         Ok(buffer.rebuffer_end(read as isize))
     }
 
-    fn write_bytes(&mut self, bytes: &mut ByteBuffer) -> DynResult<usize> {
+    fn write_bytes(&mut self, bytes: ByteBuffer) -> DynResult<usize> {
         match self.tunnel.tun_device.send(&bytes.slice()) {
             Ok(res) => Ok(res),
             Err(res) => bail!("Error writing bytes to tunnel: {}", res)

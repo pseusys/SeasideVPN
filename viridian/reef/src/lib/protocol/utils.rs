@@ -6,7 +6,7 @@ use bincode::{encode_into_writer, Encode};
 use bincode::enc::write::SizeWriter;
 use socket2::Socket;
 
-use crate::bytes::HEADER_OVERHEAD;
+use crate::bytes::{get_buffer, HEADER_OVERHEAD};
 use crate::DynResult;
 
 
@@ -45,6 +45,12 @@ pub fn recv_exact(socket: &Socket, buf: &mut [u8]) -> Result<()> {
             Err(e) => return Err(e)
         }
     }
+    Ok(())
+}
+
+pub fn discard_exact(socket: &Socket, number: usize) -> Result<()> {
+    let buffer = get_buffer(Some(number));
+    recv_exact(socket, &mut buffer.slice_mut())?;
     Ok(())
 }
 

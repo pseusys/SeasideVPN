@@ -32,11 +32,11 @@ impl Symmetric {
         NONCE_LEN + MAC_LEN
     }
 
-    pub fn encrypt<'a>(&mut self, plaintext: &mut ByteBuffer<'a>, additional_data: Option<&ByteBuffer>) -> DynResult<ByteBuffer<'a>> {
+    pub fn encrypt<'a>(&mut self, mut plaintext: ByteBuffer<'a>, additional_data: Option<&ByteBuffer>) -> DynResult<ByteBuffer<'a>> {
         let nonce = XChaCha20Poly1305::generate_nonce(get_rng());
         let result = match additional_data {
-            Some(res) => self.cipher.encrypt_in_place(&nonce, &res.slice(), plaintext),
-            None => self.cipher.encrypt_in_place(&nonce, &[], plaintext),
+            Some(res) => self.cipher.encrypt_in_place(&nonce, &res.slice(), &mut plaintext),
+            None => self.cipher.encrypt_in_place(&nonce, &[], &mut plaintext),
         };
         match result {
             Ok(_) => Ok(plaintext.prepend(&nonce)),
@@ -44,7 +44,7 @@ impl Symmetric {
         }
     }
 
-    pub fn decrypt<'a>(&mut self, ciphertext_with_nonce: &mut ByteBuffer<'a>, additional_data: Option<&ByteBuffer>) -> DynResult<ByteBuffer<'a>> {
+    pub fn decrypt<'a>(&mut self, ciphertext_with_nonce: ByteBuffer<'a>, additional_data: Option<&ByteBuffer>) -> DynResult<ByteBuffer<'a>> {
         let (nonce_bytes, mut ciphertext) = ciphertext_with_nonce.split_buf(NONCE_LEN as isize);
         let nonce_slice = nonce_bytes.slice();
         let nonce = XNonce::from_slice(&nonce_slice);

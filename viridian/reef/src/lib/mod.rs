@@ -23,5 +23,5 @@ pub type DynResult<T> = Result<T, Box<dyn Error + Sync + Send>>;
 
 pub trait ReaderWriter: Clone + Send + 'static {
     fn read_bytes(&mut self) -> DynResult<ByteBuffer>;
-    fn write_bytes(&mut self, bytes: &mut ByteBuffer) -> DynResult<usize>;
+    fn write_bytes(&mut self, bytes: ByteBuffer) -> DynResult<usize>;
 }

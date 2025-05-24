@@ -71,7 +71,7 @@ impl Asymmetric {
         Ok(result)
     }
 
-    pub fn encrypt<'a>(&self, plaintext: &mut ByteBuffer<'a>) -> DynResult<(ByteBuffer, ByteBuffer<'a>)> {
+    pub fn encrypt<'a>(&self, plaintext: ByteBuffer<'a>) -> DynResult<(ByteBuffer, ByteBuffer<'a>)> {
         let ephemeral_secret = EphemeralSecret::random_from_rng(get_rng());
         let ephemeral_public = ByteBuffer::from(&PublicKey::from(&ephemeral_secret).to_bytes()[..]);
         let shared_secret = ephemeral_secret.diffie_hellman(&self.public_key);

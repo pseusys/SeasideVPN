@@ -82,12 +82,12 @@ impl<'a> Viridian<'a> {
     fn worker_task(mut reader: impl ReaderWriter, mut writer: impl ReaderWriter, message: &str) -> Result<(), Box<SimpleError>> {
         info!("Setting up worker task {}...", message);
         loop {
-            let mut packet = match reader.read_bytes() {
+            let packet = match reader.read_bytes() {
                 Err(res) => bail!("Error reading from tunnel: {res}!"),
                 Ok(res) => res
             };
             debug!("Captured {} bytes {}!", packet.len(), message);
-            match writer.write_bytes(&mut packet) {
+            match writer.write_bytes(packet) {
                 Err(res) => bail!("Error writing to socket: {res}!"),
                 Ok(res) => debug!("Sent {res} bytes to caerulean")
             };

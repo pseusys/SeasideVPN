@@ -38,20 +38,20 @@ pub fn create_and_configure_socket() -> DynResult<Socket> {
 pub fn build_client_init<'a, 'b>(cipher: &Asymmetric, token: &ByteBuffer<'b>) -> DynResult<(Symmetric, ByteBuffer<'b>)> {
     let mut rand = get_rng();
     let buffer_size = get_type_size::<ClientInitHeader>()?;
-    let mut buffer = get_buffer(Some(buffer_size));
+    let buffer = get_buffer(Some(buffer_size));
 
     let user_name = encode_to_32_bytes(CLIENT_NAME);
     let data_len = token.len() + Symmetric::ciphertext_overhead();
     let tail_len = rand.gen_range(0..=*PORT_TAIL_LENGTH);
     let header: ClientInitHeader = (ProtocolFlag::INIT as u8, user_name, data_len as u16, tail_len as u16);
     encode_into_slice(&header, &mut buffer.slice_mut(), ENCODE_CONF)?;
-    let (key, encrypted_header) = cipher.encrypt(&mut buffer)?;
+    let (key, encrypted_header) = cipher.encrypt(buffer)?;
 
     let mut symmetric = Symmetric::new(&key)?;
     let header_length = encrypted_header.len();
     let extended_encrypted_header = encrypted_header.expand_end(NONCE_LEN as isize);
     let header_with_body = extended_encrypted_header.append_buf(token);
-    symmetric.encrypt(&mut header_with_body.rebuffer_start((header_length + NONCE_LEN) as isize), None)?;
+    symmetric.encrypt(header_with_body.rebuffer_start((header_length + NONCE_LEN) as isize), None)?;
 
     let encrypted_length = header_with_body.len();
     let packet = header_with_body.expand_end(tail_len as isize);
@@ -59,18 +59,19 @@ pub fn build_client_init<'a, 'b>(cipher: &Asymmetric, token: &ByteBuffer<'b>) ->
     Ok((symmetric, packet))
 }
 
-pub fn build_any_data<'a>(cipher: &mut Symmetric, data: &mut ByteBuffer<'a>) -> DynResult<ByteBuffer<'a>> {
+pub fn build_any_data<'a>(cipher: &mut Symmetric, data: ByteBuffer<'a>) -> DynResult<ByteBuffer<'a>> {
+    let data_len = data.len();
     let mut rand = get_rng();
     let encrypted_data = cipher.encrypt(data, None)?;
 
-    let data_len = data.len() + Symmetric::ciphertext_overhead();
+    let encrypted_data_len = data_len + Symmetric::ciphertext_overhead();
     let tail_len = rand.gen_range(0..=*PORT_TAIL_LENGTH);
-    let header: AnyOtherHeader = (ProtocolFlag::DATA as u8, data_len as u16, tail_len as u16);
+    let header: AnyOtherHeader = (ProtocolFlag::DATA as u8, encrypted_data_len as u16, tail_len as u16);
 
     let header_size = get_type_size::<AnyOtherHeader>()?;
     let header_with_body = encrypted_data.expand_start((header_size + MAC_LEN) as isize);
     encode_into_slice(&header, &mut header_with_body.slice_end_mut(header_size), ENCODE_CONF)?;
-    let encrypted_message = cipher.encrypt(&mut header_with_body.rebuffer_end(header_size as isize), None)?;
+    let encrypted_message = cipher.encrypt(header_with_body.rebuffer_end(header_size as isize), None)?;
 
     let packet = encrypted_message.expand_end(tail_len as isize);
     rand.fill_bytes(&mut packet.slice_start_mut(packet.len() - tail_len));
@@ -80,20 +81,20 @@ pub fn build_any_data<'a>(cipher: &mut Symmetric, data: &mut ByteBuffer<'a>) -> 
 pub fn build_any_term<'a>(cipher: &mut Symmetric) -> DynResult<ByteBuffer<'a>> {
     let mut rand = get_rng();
     let buffer_size = get_type_size::<AnyOtherHeader>()?;
-    let mut buffer = get_buffer(Some(buffer_size));
+    let buffer = get_buffer(Some(buffer_size));
 
     let tail_len = rand.gen_range(0..=*PORT_TAIL_LENGTH);
     let header: AnyOtherHeader = (ProtocolFlag::TERM as u8, 0 as u16, tail_len as u16);
 
     encode_into_slice(&header, &mut buffer.slice_mut(), ENCODE_CONF)?;
-    let encrypted_header = cipher.encrypt(&mut buffer, None)?;
+    let encrypted_header = cipher.encrypt(buffer, None)?;
 
     let packet = encrypted_header.expand_end(tail_len as isize);
     rand.fill_bytes(&mut packet.slice_start_mut(buffer_size));
     Ok(packet)
 }
 
-pub fn parse_server_init<'a>(cipher: &mut Symmetric, packet: &mut ByteBuffer<'a>) -> DynResult<(u16, u16)> {
+pub fn parse_server_init<'a>(cipher: &mut Symmetric, packet: ByteBuffer<'a>) -> DynResult<(u16, u16)> {
     let header = cipher.decrypt(packet, None)?;
     let ((flags, init_status, user_id, tail_length), _): (ServerInitHeader, usize) = decode_from_slice(&header.slice(), ENCODE_CONF)?;
     if flags != ProtocolFlag::INIT as u8 {
@@ -105,7 +106,7 @@ pub fn parse_server_init<'a>(cipher: &mut Symmetric, packet: &mut ByteBuffer<'a>
     }
 }
 
-pub fn parse_any_message_header<'a>(cipher: &mut Symmetric, packet: &mut ByteBuffer<'a>) -> DynResult<(ProtocolMessageType, Option<(u16, u16)>)> {
+pub fn parse_any_message_header<'a>(cipher: &mut Symmetric, packet: ByteBuffer<'a>) -> DynResult<(ProtocolMessageType, Option<(u16, u16)>)> {
     let header = cipher.decrypt(packet, None)?;
     let ((flags, data_length, tail_length), _): (AnyOtherHeader, usize) = decode_from_slice(&header.slice(), ENCODE_CONF)?;
     if flags == ProtocolFlag::DATA as u8 {
@@ -117,6 +118,6 @@ pub fn parse_any_message_header<'a>(cipher: &mut Symmetric, packet: &mut ByteBuf
     }
 }
 
-pub fn parse_any_any_data<'a>(cipher: &mut Symmetric, packet: &mut ByteBuffer<'a>) -> DynResult<ByteBuffer<'a>> {
+pub fn parse_any_any_data<'a>(cipher: &mut Symmetric, packet: ByteBuffer<'a>) -> DynResult<ByteBuffer<'a>> {
     Ok(cipher.decrypt(packet, None)?)
 }

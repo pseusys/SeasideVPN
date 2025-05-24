@@ -62,9 +62,9 @@ pub struct TyphoonHandle<'a> {
 
 impl <'a> TyphoonHandle<'a> {
     async fn read_server_init(&self, socket: &UdpSocket, cipher: &mut Symmetric, packet_number: u32) -> DynResult<(u16, u32)> {
-        let mut buffer = get_buffer(None);
         debug!("Reading server initialization message...");
         loop {
+            let buffer = get_buffer(None);
             match socket.recv(&mut buffer.slice_mut()).await {
                 Ok(res) => debug!("Received initialization packet of size: {res}"),
                 Err(err) => {
@@ -72,7 +72,7 @@ impl <'a> TyphoonHandle<'a> {
                     continue;
                 }
             };
-            let (user_id, next_in) = match parse_server_init(cipher, &mut buffer, packet_number) {
+            let (user_id, next_in) = match parse_server_init(cipher, buffer, packet_number) {
                 Ok(res) => res,
                 Err(err) => {
                     warn!("Peer packet parsing error: {err}");
@@ -208,7 +208,7 @@ impl TyphoonClientInternal {
         self.prev_sent = get_timestamp();
     }
 
-    async fn send_hdsk<'a>(&mut self, symmetric: &mut Symmetric, packet_number: u32, data: Option<&ByteBuffer<'a>>) -> DynResult<()> {
+    async fn send_hdsk<'a>(&mut self, symmetric: &mut Symmetric, packet_number: u32, data: Option<ByteBuffer<'a>>) -> DynResult<()> {
         debug!("Sending handshake message...");
         self.regenerate_next_in();
         let packet = if let Some(package) = data {
@@ -340,10 +340,9 @@ impl TyphoonClient {
 
     async fn read_bytes(&mut self) -> DynResult<ByteBuffer> {
         let reader = self.internal.read().await;
-        let mut buffer = get_buffer(None);
-
         debug!("Reading started (at {}, from {})...", reader.socket.local_addr()?, reader.socket.peer_addr()?);
         loop {
+            let buffer = get_buffer(None);
             with_read!(self, new_self, {
                 if let Some(th) = &new_self.decay {
                     if th.is_finished() {
@@ -356,7 +355,7 @@ impl TyphoonClient {
                 continue;
             }
             debug!("Peer packet read: {} bytes", buffer.len());
-            let (msgtp, cons, data) = match parse_server_message(&mut self.symmetric, &mut buffer, reader.prev_packet_number) {
+            let (msgtp, cons, data) = match parse_server_message(&mut self.symmetric, buffer, reader.prev_packet_number) {
                 Ok((msgtp, cons, data)) => {
                     if msgtp as u8 & ProtocolFlag::HDSK as u8 == 1 {
                         with_write!(self, new_self, {
@@ -388,7 +387,7 @@ impl TyphoonClient {
         }
     }
 
-    async fn write_bytes(&mut self, bytes: &mut ByteBuffer<'_>) -> DynResult<usize> {
+    async fn write_bytes(&mut self, bytes: ByteBuffer<'_>) -> DynResult<usize> {
         with_read!(self, new_self, {
             if let Some(th) = &new_self.decay {
                 if th.is_finished() {
@@ -422,7 +421,7 @@ impl ReaderWriter for TyphoonClient {
         run_coroutine(self.read_bytes())
     }
 
-    fn write_bytes(&mut self, bytes: &mut ByteBuffer) -> DynResult<usize> {
+    fn write_bytes(&mut self, bytes: ByteBuffer) -> DynResult<usize> {
         run_coroutine(self.write_bytes(bytes))
     }
 }

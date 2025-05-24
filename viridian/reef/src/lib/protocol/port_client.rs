@@ -10,7 +10,7 @@ use socket2::{Socket, SockAddr};
 use crate::crypto::{Asymmetric, Symmetric};
 use crate::protocol::port_core::build_client_init;
 use crate::bytes::{get_buffer, ByteBuffer};
-use crate::protocol::utils::{recv_exact, send_exact};
+use crate::protocol::utils::{discard_exact, recv_exact, send_exact};
 use crate::{DynResult, ReaderWriter};
 use super::common::ProtocolMessageType;
 use super::port_core::*;
@@ -33,15 +33,12 @@ impl<'a> PortHandle<'a> {
 
         debug!("Reading server initialization message...");
         let header_end = get_type_size::<ServerInitHeader>()? + Symmetric::ciphertext_overhead();
-        let mut header_buff = buffer.rebuffer_end(header_end as isize);
+        let header_buff = buffer.rebuffer_end(header_end as isize);
         socket.read_exact(&mut header_buff.slice_mut())?;
-        let (user_id, tail_length) = parse_server_init(cipher, &mut header_buff)?;
+        let (user_id, tail_length) = parse_server_init(cipher, header_buff)?;
 
         debug!("Server initialization message received: user ID {user_id}, tail length {tail_length}");
-        let tail_end = header_end + tail_length as usize;
-        let tail_buff = &mut buffer.slice_both_mut(header_end, tail_end);
-        socket.read_exact(tail_buff)?;
-
+        discard_exact(socket, tail_length as usize)?;
         Ok(user_id)
     }
 }
@@ -119,10 +116,10 @@ impl ReaderWriter for PortClient {
         let buffer = get_buffer(None);
 
         let header_end = get_type_size::<AnyOtherHeader>()? + Symmetric::ciphertext_overhead();
-        let mut packet = buffer.rebuffer_end(header_end as isize);
+        let packet = buffer.rebuffer_end(header_end as isize);
         recv_exact(&self.socket, &mut packet.slice_mut())?;
 
-        let (msg_type, payload) = parse_any_message_header(&mut self.symmetric, &mut packet)?;
+        let (msg_type, payload) = parse_any_message_header(&mut self.symmetric, packet)?;
         if msg_type == ProtocolMessageType::Termination {
             bail!("Termination message received!");
         } else if msg_type != ProtocolMessageType::Data {
@@ -131,18 +128,16 @@ impl ReaderWriter for PortClient {
         let (data_length, tail_length) = require_with!(payload, "Unexpected error while decrypting, server message!");
 
         let data_end = header_end + data_length as usize;
-        let mut data_buff = &mut buffer.rebuffer_both(header_end as isize, data_end as isize);
+        let data_buff = buffer.rebuffer_both(header_end as isize, data_end as isize);
         recv_exact(&self.socket, &mut data_buff.slice_mut())?;
-        let data = parse_any_any_data(&mut self.symmetric, &mut data_buff)?;
+        discard_exact(&self.socket, tail_length as usize)?;
+
+        let data = parse_any_any_data(&mut self.symmetric, data_buff)?;
         debug!("Reading {} bytes from caerulean...", data.len());
-
-        let tail_end = data_end + tail_length as usize;
-        recv_exact(&self.socket, &mut buffer.slice_both_mut(data_end, tail_end))?;
-
         Ok(data)
     }
 
-    fn write_bytes(&mut self, bytes: &mut ByteBuffer) -> DynResult<usize> {
+    fn write_bytes(&mut self, bytes: ByteBuffer) -> DynResult<usize> {
         let data = build_any_data(&mut self.symmetric, bytes)?;
         debug!("Writing {} bytes to caerulean...", data.len());
         send_exact(&self.socket, &data.slice())?;
