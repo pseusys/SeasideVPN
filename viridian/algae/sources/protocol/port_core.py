@@ -96,7 +96,7 @@ class PortCore:
             flags, client_name, token_length, tail_length = unpack(cls._CLIENT_INIT_HEADER, header)
             client_name = client_name.decode().rstrip("\0")
         except BaseException as e:
-            raise ProtocolParseError("Error parsing client INIT messagen header!", e)
+            raise ProtocolParseError("Error parsing client INIT message header!", e)
         if flags != ProtocolFlag.INIT:
             raise ProtocolParseError(f"Client INIT message flags malformed: {flags:b} != {ProtocolFlag.INIT:b}!")
         return client_name, bytes(key), token_length, tail_length
