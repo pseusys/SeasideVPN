@@ -1,11 +1,10 @@
-use rand::rngs::OsRng;
-use rand::RngCore;
-
 use blake2::digest::{Update, VariableOutput};
 use blake2::Blake2bVar;
+use rand::RngCore;
 use x25519_dalek::{EphemeralSecret, PublicKey, SharedSecret};
 
 use crate::bytes::ByteBuffer;
+use crate::rng::get_rng;
 use crate::DynResult;
 use super::symmetric::Symmetric;
 
@@ -26,17 +25,16 @@ fn xor_bytes(a: &mut [u8], b: &[u8]) {
 
 pub struct Asymmetric {
     public_key: PublicKey,
-    seed_key: [u8; 8],
+    seed_key: [u8; 8]
 }
 
 impl Asymmetric {
     pub fn new(key: &ByteBuffer) -> DynResult<Asymmetric> {
         let asymmetric_key = key.slice();
         let private_bytes = <[u8; PUBLIC_KEY_SIZE]>::try_from(&asymmetric_key[..PUBLIC_KEY_SIZE])?;
-        let public_key = PublicKey::from(private_bytes);
         let seed_key = <[u8; SEED_SIZE]>::try_from(&asymmetric_key[PUBLIC_KEY_SIZE..])?;
         Ok(Asymmetric {
-            public_key,
+            public_key: PublicKey::from(private_bytes),
             seed_key,
         })
     }
@@ -64,19 +62,17 @@ impl Asymmetric {
     fn hide_public_key(&self, public_key: &ByteBuffer) -> DynResult<ByteBuffer> {
         let mut state = Blake2bVar::new(SYMMETRIC_HASH_SIZE)?;
         let result = ByteBuffer::empty(N_SIZE + SYMMETRIC_HASH_SIZE);
-        let (n_number, hash) = result.split_buf(N_SIZE);
-        OsRng.fill_bytes(&mut n_number.slice_mut());
+        let (n_number, hash) = result.split_buf(N_SIZE as isize);
+        get_rng().fill_bytes(&mut n_number.slice_mut());
         state.update(&n_number.slice());
         state.update(&self.seed_key);
         state.finalize_variable(&mut hash.slice_mut())?;
         xor_bytes(&mut hash.slice_mut(), &public_key.slice());
-        drop(n_number);
-        drop(hash);
         Ok(result)
     }
 
     pub fn encrypt<'a>(&self, plaintext: &mut ByteBuffer<'a>) -> DynResult<(ByteBuffer, ByteBuffer<'a>)> {
-        let ephemeral_secret = EphemeralSecret::random_from_rng(OsRng);
+        let ephemeral_secret = EphemeralSecret::random_from_rng(get_rng());
         let ephemeral_public = ByteBuffer::from(&PublicKey::from(&ephemeral_secret).to_bytes()[..]);
         let shared_secret = ephemeral_secret.diffie_hellman(&self.public_key);
         let symm_key = self.compute_blake2b_hash(&shared_secret, &ephemeral_public, &self.public_key)?;
