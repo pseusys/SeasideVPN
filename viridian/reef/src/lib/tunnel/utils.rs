@@ -1,6 +1,6 @@
 #[cfg(test)]
-#[path = "../../../tests/utils.rs"]
-mod utils_test;
+#[path = "../../../tests/tunnel/utils.rs"]
+mod test_utils;
 
 use std::ffi::CStr;
 use std::net::Ipv4Addr;

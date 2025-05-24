@@ -1,10 +1,10 @@
 from logging import getLogger
-from math import log2
-from typing import Counter, Generator
+from typing import Generator
 from unittest.mock import patch
 
 import pytest
 
+from .conftest import mock_random_bytes, shannon_entropy
 from sources.utils.crypto import Asymmetric, Symmetric
 from sources.protocol.port_core import PortCore
 from sources.protocol.utils import ProtocolMessageType, ProtocolReturnCode
@@ -44,18 +44,6 @@ SAMPLE_ANY_DATA_MESSAGE = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00
 SAMPLE_ANY_TERM_HEADER_LEN = 45
 SAMPLE_ANY_TERM_BODY_LEN = 0
 SAMPLE_ANY_TERM_MESSAGE = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00h\x9e\x96\x89\xf5\xbca\xb4FnQG\xab\xe6\xd6\xf6:\xde\x826#\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-
-
-# Utility functions:
-
-def shannon_entropy(data: bytes) -> float:
-    counter = Counter(data)
-    total = len(data)
-    return -sum((count / total) * log2(count / total) for count in counter.values())
-
-
-def mock_random_bytes(n: int = 32) -> bytes:
-    return bytes(n)
 
 
 # Fixtures:

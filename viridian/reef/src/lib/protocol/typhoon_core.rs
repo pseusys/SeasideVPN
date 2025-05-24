@@ -1,12 +1,12 @@
 use bincode::{decode_from_slice, encode_into_slice};
 use lazy_static::lazy_static;
-use rand::rngs::OsRng;
 use rand::Rng;
 use simple_error::bail;
 
 use crate::bytes::{get_buffer, ByteBuffer};
 use crate::crypto::{Asymmetric, Symmetric};
 use crate::protocol::utils::ENCODE_CONF;
+use crate::rng::get_rng;
 use crate::utils::parse_env;
 use crate::DynResult;
 use super::common::{ProtocolFlag, ProtocolMessageType, ProtocolReturnCode};
@@ -43,12 +43,12 @@ pub fn build_client_init<'a, 'b>(cipher: &Asymmetric, packet_number: u32, next_i
     let buffer = get_buffer(Some(buffer_size));
 
     let user_name = encode_to_32_bytes(CLIENT_NAME);
-    let tail_len = OsRng.gen_range(0..=*TYPHOON_MAX_TAIL_LENGTH);
+    let tail_len = get_rng().gen_range(0..=*TYPHOON_MAX_TAIL_LENGTH);
     let header: ClientInitHeader = (ProtocolFlag::INIT as u8, packet_number, user_name, next_in, tail_len as u16);
     encode_into_slice(header, &mut buffer.slice_mut(), ENCODE_CONF)?;
 
     let header_with_body = buffer.append_buf(token);
-    let mut message = header_with_body.expand_end(tail_len);
+    let mut message = header_with_body.expand_end(tail_len as isize);
     let (key, packet) = cipher.encrypt(&mut message)?;
     Ok((Symmetric::new(&key)?, packet))
 }
@@ -65,26 +65,26 @@ pub fn build_client_hdsk_data<'a>(cipher: &mut Symmetric, packet_number: u32, ne
 }
 
 fn build_client_hdsk_with_data<'a>(cipher: &mut Symmetric, flags: u8, packet_number: u32, next_in: u32, data: &ByteBuffer<'a>) -> DynResult<ByteBuffer<'a>> {
-    let tail_len = OsRng.gen_range(0..=*TYPHOON_MAX_TAIL_LENGTH);
+    let tail_len = get_rng().gen_range(0..=*TYPHOON_MAX_TAIL_LENGTH);
     let header: AnyHandshakeHeader = (flags, packet_number, next_in, tail_len as u16);
 
     let header_size = get_type_size::<AnyHandshakeHeader>()?;
-    let header_with_body = data.expand_start(header_size);
+    let header_with_body = data.expand_start(header_size as isize);
     encode_into_slice(header, &mut header_with_body.slice_end_mut(header_size), ENCODE_CONF)?;
 
-    let mut message = header_with_body.expand_end(tail_len);
+    let mut message = header_with_body.expand_end(tail_len as isize);
     Ok(cipher.encrypt(&mut message, None)?)
 }
 
 pub fn build_any_data<'a>(cipher: &mut Symmetric, data: &ByteBuffer<'a>) -> DynResult<ByteBuffer<'a>> {
-    let tail_len = OsRng.gen_range(0..=*TYPHOON_MAX_TAIL_LENGTH);
+    let tail_len = get_rng().gen_range(0..=*TYPHOON_MAX_TAIL_LENGTH);
     let header: AnyOtherHeader = (ProtocolFlag::DATA as u8, tail_len as u16);
 
     let header_size = get_type_size::<AnyOtherHeader>()?;
-    let header_with_body = data.expand_start(header_size);
+    let header_with_body = data.expand_start(header_size as isize);
     encode_into_slice(header, &mut header_with_body.slice_end_mut(header_size), ENCODE_CONF)?;
 
-    let mut message = header_with_body.expand_end(tail_len);
+    let mut message = header_with_body.expand_end(tail_len as isize);
     Ok(cipher.encrypt(&mut message, None)?)
 }
 
@@ -92,7 +92,7 @@ pub fn build_any_term<'a>(cipher: &mut Symmetric) -> DynResult<ByteBuffer<'a>> {
     let buffer_size = get_type_size::<AnyOtherHeader>()?;
     let mut buffer = get_buffer(Some(buffer_size));
 
-    let tail_len = OsRng.gen_range(0..=*TYPHOON_MAX_TAIL_LENGTH);
+    let tail_len = get_rng().gen_range(0..=*TYPHOON_MAX_TAIL_LENGTH);
     let header: AnyOtherHeader = (ProtocolFlag::TERM as u8, tail_len as u16);
     encode_into_slice(header, &mut buffer.slice_mut(), ENCODE_CONF)?;
 
@@ -120,7 +120,7 @@ fn parse_any_hdsk<'a>(data: &ByteBuffer<'a>, expected_packet_number: Option<u32>
     let header_size = get_type_size::<AnyHandshakeHeader>()?;
     let ((_, packet_number, next_in, tail_length), _): (AnyHandshakeHeader, usize) = decode_from_slice(&data.slice_end(header_size), ENCODE_CONF)?;
     let tail_offset = data.len() - tail_length as usize;
-    let payload  = data.rebuffer_both(header_size, tail_offset);
+    let payload  = data.rebuffer_both(header_size as isize, tail_offset as isize);
     if *TYPHOON_MIN_NEXT_IN > next_in || next_in > *TYPHOON_MAX_NEXT_IN {
         bail!("Incorrect next in value in server init: {} < {next_in} < {}", *TYPHOON_MIN_NEXT_IN, *TYPHOON_MAX_NEXT_IN)
     } else if let None = expected_packet_number {
@@ -138,7 +138,7 @@ fn parse_any_data<'a>(data: &ByteBuffer<'a>) -> DynResult<ByteBuffer<'a>> {
     let header_size = get_type_size::<AnyOtherHeader>()?;
     let ((_, tail_length), _): (AnyOtherHeader, usize) = decode_from_slice(&data.slice_end(header_size), ENCODE_CONF)?;
     let tail_offset = data.len() - tail_length as usize;
-    Ok(data.rebuffer_both(header_size, tail_offset))
+    Ok(data.rebuffer_both(header_size as isize, tail_offset as isize))
 }
 
 pub fn parse_server_message<'a>(cipher: &mut Symmetric, packet: &mut ByteBuffer<'a>, expected_packet_number: Option<u32>) -> DynResult<(ProtocolMessageType, Option<(u32, u32)>, Option<ByteBuffer<'a>>)> {

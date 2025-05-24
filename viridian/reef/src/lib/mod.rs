@@ -10,6 +10,13 @@ pub mod tunnel;
 pub mod link;
 pub mod utils;
 
+#[cfg(test)]
+#[path = "../../tests/rng.rs"]
+pub mod rng;
+
+#[cfg(not(test))]
+pub mod rng;
+
 
 pub type DynResult<T> = Result<T, Box<dyn Error + Sync + Send>>;
 

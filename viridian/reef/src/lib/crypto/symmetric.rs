@@ -1,10 +1,10 @@
 use chacha20poly1305::aead::AeadMutInPlace;
 use chacha20poly1305::{AeadCore, Key, KeyInit, XNonce, XChaCha20Poly1305};
-use rand::rngs::OsRng;
 
 use simple_error::bail;
 
 use crate::bytes::ByteBuffer;
+use crate::rng::get_rng;
 use crate::DynResult;
 
 
@@ -33,7 +33,7 @@ impl Symmetric {
     }
 
     pub fn encrypt<'a>(&mut self, plaintext: &mut ByteBuffer<'a>, additional_data: Option<&ByteBuffer>) -> DynResult<ByteBuffer<'a>> {
-        let nonce = XChaCha20Poly1305::generate_nonce(&mut OsRng);
+        let nonce = XChaCha20Poly1305::generate_nonce(get_rng());
         let result = match additional_data {
             Some(res) => self.cipher.encrypt_in_place(&nonce, &res.slice(), plaintext),
             None => self.cipher.encrypt_in_place(&nonce, &[], plaintext),
@@ -45,7 +45,7 @@ impl Symmetric {
     }
 
     pub fn decrypt<'a>(&mut self, ciphertext_with_nonce: &mut ByteBuffer<'a>, additional_data: Option<&ByteBuffer>) -> DynResult<ByteBuffer<'a>> {
-        let (mut ciphertext, nonce_bytes) = ciphertext_with_nonce.split_buf(NONCE_LEN);
+        let (mut ciphertext, nonce_bytes) = ciphertext_with_nonce.split_buf(NONCE_LEN as isize);
         let nonce_slice = nonce_bytes.slice();
         let nonce = XNonce::from_slice(&nonce_slice);
         let result = match additional_data {

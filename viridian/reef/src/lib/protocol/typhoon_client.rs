@@ -12,7 +12,6 @@ use lazy_static::lazy_static;
 use log::{debug, info, warn};
 use rand::Rng;
 use simple_error::bail;
-use rand::rngs::OsRng;
 use tokio::net::UdpSocket;
 use tokio::runtime::{Builder, Handle, Runtime};
 use tokio::select;
@@ -23,6 +22,7 @@ use tonic::async_trait;
 use crate::bytes::{get_buffer, ByteBuffer};
 use crate::crypto::{Asymmetric, Symmetric};
 use crate::protocol::common::{ProtocolFlag, ProtocolMessageType};
+use crate::rng::get_rng;
 use crate::{DynResult, ReaderWriter};
 use super::typhoon_core::*;
 use super::ProtocolClientHandle;
@@ -41,13 +41,15 @@ fn run_coroutine<'a, F: Future<Output = R> + 'a, R: 'a>(future: F) -> R {
 }
 
 
+#[inline]
 fn get_timestamp() -> u32 {
     let time = SystemTime::now().duration_since(UNIX_EPOCH).expect("Time went backwards").as_millis();
     (time % u32::MAX as u128) as u32
 }
 
+#[inline]
 fn generate_next_in(multiplier: f32) -> u32 {
-    (OsRng.gen_range(*TYPHOON_MIN_NEXT_IN..=*TYPHOON_MAX_NEXT_IN) as f32 * multiplier) as u32
+    (get_rng().gen_range(*TYPHOON_MIN_NEXT_IN..=*TYPHOON_MAX_NEXT_IN) as f32 * multiplier) as u32
 }
 
 

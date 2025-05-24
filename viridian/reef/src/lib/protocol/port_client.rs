@@ -33,7 +33,7 @@ impl<'a> PortHandle<'a> {
 
         debug!("Reading server initialization message...");
         let header_end = get_type_size::<ServerInitHeader>()? + Symmetric::ciphertext_overhead();
-        let mut header_buff = buffer.rebuffer_end(header_end);
+        let mut header_buff = buffer.rebuffer_end(header_end as isize);
         socket.read_exact(&mut header_buff.slice_mut())?;
         let (user_id, tail_length) = parse_server_init(cipher, &mut header_buff)?;
 
@@ -119,7 +119,7 @@ impl ReaderWriter for PortClient {
         let buffer = get_buffer(None);
 
         let header_end = get_type_size::<AnyOtherHeader>()? + Symmetric::ciphertext_overhead();
-        let mut packet = buffer.rebuffer_end(header_end);
+        let mut packet = buffer.rebuffer_end(header_end as isize);
         recv_exact(&self.socket, &mut packet.slice_mut())?;
 
         let (msg_type, payload) = parse_any_message_header(&mut self.symmetric, &mut packet)?;
@@ -131,7 +131,7 @@ impl ReaderWriter for PortClient {
         let (data_length, tail_length) = require_with!(payload, "Unexpected error while decrypting, server message!");
 
         let data_end = header_end + data_length as usize;
-        let mut data_buff = &mut buffer.rebuffer_both(header_end, data_end);
+        let mut data_buff = &mut buffer.rebuffer_both(header_end as isize, data_end as isize);
         recv_exact(&self.socket, &mut data_buff.slice_mut())?;
         let data = parse_any_any_data(&mut self.symmetric, &mut data_buff)?;
         debug!("Reading {} bytes from caerulean...", data.len());

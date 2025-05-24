@@ -60,7 +60,7 @@ impl ReaderWriter for Tunnel {
             Ok(res) => res,
             Err(res) => bail!("Error reading bytes from tunnel: {}", res)
         };
-        Ok(buffer.rebuffer_end(read))
+        Ok(buffer.rebuffer_end(read as isize))
     }
 
     fn write_bytes(&mut self, bytes: &mut ByteBuffer) -> DynResult<usize> {
