@@ -41,13 +41,15 @@ func (p *PortServer) Read(buffer *betterbuf.Buffer, viridianDict *users.Viridian
 	header := buffer.RebufferEnd(encryptedHeaderLength)
 	s, err := io.ReadFull(p.socket, header.Slice())
 	if err != nil {
-		return nil, fmt.Errorf("packet header reading error: %v", err)
+		logrus.Errorf("packet header reading error: %v", err)
+		return nil, nil
 	}
 	logrus.Debugf("Read %d bytes from viridian %d", s, p.peerID)
 
 	msgType, dataLength, tailLength, err := parsePortAnyMessageHeader(p.cipher, header)
 	if err != nil {
-		return nil, fmt.Errorf("packet header parsing error: %v", err)
+		logrus.Errorf("packet header parsing error: %v", err)
+		return nil, nil
 	}
 	logrus.Debugf("Parsed packet header from viridian %d: type %d, data %d, tail %d", p.peerID, msgType, dataLength, tailLength)
 
@@ -56,19 +58,22 @@ func (p *PortServer) Read(buffer *betterbuf.Buffer, viridianDict *users.Viridian
 		dataBuffer := buffer.Rebuffer(encryptedHeaderLength, encryptedHeaderLength+int(dataLength))
 		s, err := io.ReadFull(p.socket, dataBuffer.Slice())
 		if err != nil {
-			return nil, fmt.Errorf("packet data reading error: %v", err)
+			logrus.Errorf("packet data reading error: %v", err)
+			return nil, nil
 		}
 		logrus.Debugf("Read packet data from viridian %d: length %d", p.peerID, s)
 
 		value, err = parsePortAnyData(p.cipher, dataBuffer)
 		if err != nil {
-			return nil, fmt.Errorf("packet data parsing error: %v", err)
+			logrus.Errorf("packet data parsing error: %v", err)
+			return nil, nil
 		}
 		logrus.Debugf("Parsed packet data from viridian %d", p.peerID)
 
 		_, err = io.CopyN(io.Discard, p.socket, int64(tailLength))
 		if err != nil {
-			return nil, fmt.Errorf("packet tail skipping error: %v", err)
+			logrus.Errorf("packet tail skipping error: %v", err)
+			return nil, nil
 		}
 		logrus.Debugf("Read packet tail from viridian %d: length %d", p.peerID, tailLength)
 

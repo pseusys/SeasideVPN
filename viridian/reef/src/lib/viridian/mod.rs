@@ -144,8 +144,8 @@ impl<'a> Viridian<'a> {
                 },
                 Err(err) => bail!("VPN command execution error: {err}")
             },
-            serr = send_handle => bail!("Error in sending coroutine: {:#?}", serr.expect("Join error").expect("Infinite loop success")),
-            rerr = receive_handle => bail!("Error in receiving coroutine: {:#?}", rerr.expect("Join error").expect("Infinite loop success")),
+            serr = send_handle => bail!("Error in sending coroutine: {:#?}", serr.expect("Join error").expect_err("Infinite loop success")),
+            rerr = receive_handle => bail!("Error in receiving coroutine: {:#?}", rerr.expect("Join error").expect_err("Infinite loop success")),
             _ = handlers.next() => info!("Terminating gracefully...")
         };
 

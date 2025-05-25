@@ -127,7 +127,7 @@ func (t *TyphoonListener) returnWithErrorCode(conn *net.UDPConn, addr *net.UDPAd
 	} else {
 		returnCode = *code
 	}
-	logrus.Debugf("Finishing viridian at %v initialization with error code %d", addr, returnCode)
+	logrus.Debugf("Finishing viridian at %v initialization with error code %d", *addr, returnCode)
 
 	packet, err := buildTyphoonServerInit(cipher, 0, packetNumber, TYPHOON_NEVER_NEXT_IN, returnCode)
 	defer PacketPool.Put(packet)
@@ -171,7 +171,7 @@ func (t *TyphoonListener) handleInitMessage(viridianDict *users.ViridianDict, ad
 	if err != nil {
 		return nil, nil, nil, nil, UNKNOWN_ERROR, nil, nil, fmt.Errorf("error parsing viridian packet: %v", err)
 	}
-	logrus.Debugf("Viridian %v:%v packet received with info: name %s, key %v, packet number %d, next in %d, encrypted token %v", peerIP, peerPort, *viridianName, key, *packetNumber, *nextIn, encryptedToken)
+	logrus.Debugf("Viridian %v:%v packet received with info: name %s, symmetric key, packet number %d, next in %d, encrypted token %v", peerIP, peerPort, *viridianName, *packetNumber, *nextIn, encryptedToken)
 
 	cipher, err := crypto.NewSymmetric(key)
 	if err != nil {

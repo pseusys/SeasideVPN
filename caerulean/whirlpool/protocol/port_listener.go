@@ -127,7 +127,7 @@ func (p *PortListener) returnWithErrorCode(conn *net.TCPConn, cipher *crypto.Sym
 		peerPort = *peerID
 	}
 
-	logrus.Debugf("Finishing viridian at %v initialization with error code %d", conn, returnCode)
+	logrus.Debugf("Finishing viridian at %v initialization with error code %d", *conn, returnCode)
 	packet, err := buildPortServerInit(cipher, peerPort, returnCode)
 	if err != nil {
 		logrus.Errorf("Error building viridian init response: %v", err)
@@ -192,7 +192,7 @@ func (p *PortListener) handleInitMessage(viridianDict *users.ViridianDict, conn 
 	if err != nil {
 		return nil, nil, nil, nil, fmt.Errorf("error parsing viridian header: %v", err)
 	}
-	logrus.Debugf("Viridian %v:%v header received with info: name %s, key %v", listenIP, listenPort, *viridianName, key)
+	logrus.Debugf("Viridian %v:%v header received with info: name %s, symmetric key", listenIP, listenPort, *viridianName)
 
 	cipher, err := crypto.NewSymmetric(key)
 	if err != nil {
@@ -217,14 +217,14 @@ func (p *PortListener) handleInitMessage(viridianDict *users.ViridianDict, conn 
 		registrationCode = TOKEN_PARSE_ERROR
 		return nil, nil, nil, cipher, fmt.Errorf("error decrypting viridian token for the first time: %v", err)
 	}
-	logrus.Debugf("Viridian %v:%v token decrypted once: %v", listenIP, listenPort, decryptedToken)
+	logrus.Debugf("Viridian %v:%v token decrypted once successfully!", listenIP, listenPort)
 
 	tokenBytes, err := crypto.SERVER_KEY.Decrypt(decryptedToken, nil)
 	if err != nil {
 		registrationCode = TOKEN_PARSE_ERROR
 		return nil, nil, nil, cipher, fmt.Errorf("error decrypting viridian token for the second time: %v", err)
 	}
-	logrus.Debugf("Viridian %v:%v token decrypted twice: %v", listenIP, listenPort, tokenBytes)
+	logrus.Debugf("Viridian %v:%v token decrypted twice successfully!", listenIP, listenPort)
 
 	token := new(generated.UserToken)
 	err = proto.Unmarshal(tokenBytes.Slice(), token)

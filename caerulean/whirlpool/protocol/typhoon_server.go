@@ -104,7 +104,8 @@ func (t *TyphoonServer) regenerateNextIn(rememberSent bool) {
 func (t *TyphoonServer) Read(buffer *betterbuf.Buffer, viridianDict *users.ViridianDict, peerBytes []byte, tunIP *net.IP) (*betterbuf.Buffer, *TyphoonConsistencyPart, error) {
 	s, err := t.socket.Read(buffer.Slice())
 	if err != nil {
-		return nil, nil, fmt.Errorf("packet reading error: %v", err)
+		logrus.Errorf("packet reading error: %v", err)
+		return nil, nil, nil
 	}
 	logrus.Debugf("Read %d bytes from viridian %d", s, t.peerID)
 
