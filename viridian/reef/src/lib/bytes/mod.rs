@@ -20,8 +20,5 @@ lazy_static! {
 
 
 pub fn get_buffer<'a>(initial_size: Option<usize>) -> ByteBuffer<'a> {
-    match initial_size {
-        Some(res) => PACKET_POOL.allocate(res),
-        None => PACKET_POOL.allocate(0)
-    }
+    PACKET_POOL.allocate(initial_size)
 }

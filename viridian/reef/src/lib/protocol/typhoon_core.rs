@@ -55,7 +55,7 @@ pub fn build_client_init<'a, 'b>(cipher: &Asymmetric, packet_number: u32, next_i
 
 #[inline]
 pub fn build_client_hdsk<'a>(cipher: &mut Symmetric, packet_number: u32, next_in: u32) -> DynResult<ByteBuffer<'a>> {
-    let buffer = get_buffer(None);
+    let buffer = get_buffer(Some(0));
     build_client_hdsk_with_data(cipher, ProtocolFlag::HDSK as u8, packet_number, next_in, buffer)
 }
 

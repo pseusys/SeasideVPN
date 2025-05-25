@@ -85,9 +85,14 @@ impl <'a>BytePool {
         }
     }
 
-    pub fn allocate(&'a self, size: usize) -> ByteBuffer<'a> {
-        let remaining_after_cap = self.size + self.after_cap - size;
-        assert!(size <= self.size, "Requested size greater than initial size ({size} > {})!", self.size);
-        ByteBuffer::precise(self.before_cap, size, remaining_after_cap, self.pull())
+    pub fn allocate(&'a self, size: Option<usize>) -> ByteBuffer<'a> {
+        let (remaining_size, remaining_after_cap) = match size {
+            Some(res) => {
+                assert!(res <= self.size, "Requested size greater than initial size ({res} > {})!", self.size);
+                (res, self.size + self.after_cap - res)
+            },
+            None => (self.size, self.after_cap)
+        };
+        ByteBuffer::precise(self.before_cap, remaining_size, remaining_after_cap, self.pull())
     }
 }
