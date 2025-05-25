@@ -106,8 +106,8 @@ impl<'a> ByteBuffer<'a> {
 }
 
 impl<'a> ByteBuffer<'a> {
-    pub fn rebuffer_start(&self, start: isize) -> Self {
-        let new_start = (self.start as isize + start) as usize;
+    pub fn rebuffer_start(&self, start: usize) -> Self {
+        let new_start = self.start + start;
         assert!(new_start <= self.end, "ByteBuffer has negative length ({} > {new_start})!", self.end);
         ByteBuffer {
             data: self.data.clone(),
@@ -117,8 +117,8 @@ impl<'a> ByteBuffer<'a> {
         }
     }
 
-    pub fn rebuffer_end(&self, end: isize) -> Self {
-        let new_end = (self.start as isize + end) as usize;
+    pub fn rebuffer_end(&self, end: usize) -> Self {
+        let new_end = self.start + end;
         assert!(new_end <= self.length, "ByteBuffer exceeded its forward capacity ({new_end} > {})!", self.end);
         ByteBuffer {
             data: self.data.clone(),
@@ -128,9 +128,9 @@ impl<'a> ByteBuffer<'a> {
         }
     }
 
-    pub fn rebuffer_both(&self, start: isize, end: isize) -> Self {
-        let new_start = (self.start as isize + start) as usize;
-        let new_end = (self.start as isize + end) as usize;
+    pub fn rebuffer_both(&self, start: usize, end: usize) -> Self {
+        let new_start = self.start + start;
+        let new_end = self.start + end;
         assert!(new_start <= new_end, "ByteBuffer has negative length ({new_end} > {new_start})!");
         assert!(new_end <= self.length, "ByteBuffer exceeded its forward capacity ({new_end} > {})!", self.length);
         ByteBuffer {
@@ -141,9 +141,9 @@ impl<'a> ByteBuffer<'a> {
         }
     }
 
-    pub fn expand_start(&self, size: isize) -> Self {
-        assert!(size as usize <= self.start, "ByteBuffer has negative length ({size} > {})!", self.start);
-        let new_start = (self.start as isize + size) as usize;
+    pub fn expand_start(&self, size: usize) -> Self {
+        assert!(size <= self.start, "ByteBuffer has negative length ({size} > {})!", self.start);
+        let new_start = self.start - size;
         ByteBuffer {
             data: self.data.clone(),
             length: self.length,
@@ -152,8 +152,8 @@ impl<'a> ByteBuffer<'a> {
         }
     }
 
-    pub fn expand_end(&self, size: isize) -> Self {
-        let new_end = (self.end as isize + size) as usize;
+    pub fn expand_end(&self, size: usize) -> Self {
+        let new_end = self.end + size;
         assert!(new_end <= self.length, "ByteBuffer exceeded its forward capacity ({new_end} > {})!", self.length);
         ByteBuffer {
             data: self.data.clone(),
@@ -163,9 +163,8 @@ impl<'a> ByteBuffer<'a> {
         }
     }
 
-    pub fn split_buf(&self, divide: isize) -> (Self, Self) {
-        assert!(divide >= 0, "ByteBuffer can not dbe splitted before start (at {divide})!");
-        let new_divide = self.start + divide as usize;
+    pub fn split_buf(&self, divide: usize) -> (Self, Self) {
+        let new_divide = self.start + divide;
         assert!(new_divide <= self.end, "ByteBuffer has negative length ({new_divide} > {})!", self.end);
         (
             ByteBuffer {

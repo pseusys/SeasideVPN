@@ -49,7 +49,7 @@ impl Symmetric {
     }
 
     pub fn decrypt<'a>(&mut self, ciphertext_with_nonce: ByteBuffer<'a>, additional_data: Option<&ByteBuffer>) -> DynResult<ByteBuffer<'a>> {
-        let (nonce_bytes, mut ciphertext) = ciphertext_with_nonce.split_buf(NONCE_LEN as isize);
+        let (nonce_bytes, mut ciphertext) = ciphertext_with_nonce.split_buf(NONCE_LEN);
         let nonce = XNonce::clone_from_slice(&nonce_bytes.slice());
         let result = match additional_data {
             Some(res) => self.cipher.decrypt_in_place(&nonce, &res.slice(), &mut ciphertext),

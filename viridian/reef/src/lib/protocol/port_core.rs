@@ -49,12 +49,12 @@ pub fn build_client_init<'a, 'b>(cipher: &Asymmetric, token: &ByteBuffer<'b>) ->
 
     let mut symmetric = Symmetric::new(&key)?;
     let header_length = encrypted_header.len() + NONCE_LEN;
-    let header_with_body = encrypted_header.expand_end(NONCE_LEN as isize).append_buf(token);
-    let encrypted_body = symmetric.encrypt(header_with_body.rebuffer_start(header_length as isize), None)?;
-    let encrypted_header_with_body = encrypted_body.expand_start(header_length as isize);
+    let header_with_body = encrypted_header.expand_end(NONCE_LEN).append_buf(token);
+    let encrypted_body = symmetric.encrypt(header_with_body.rebuffer_start(header_length), None)?;
+    let encrypted_header_with_body = encrypted_body.expand_start(header_length);
 
     let encrypted_length = encrypted_header_with_body.len();
-    let packet = encrypted_header_with_body.expand_end(tail_len as isize);
+    let packet = encrypted_header_with_body.expand_end(tail_len);
     rand.fill_bytes(&mut packet.slice_start_mut(encrypted_length));
     Ok((symmetric, packet))
 }
@@ -69,11 +69,11 @@ pub fn build_any_data<'a>(cipher: &mut Symmetric, data: ByteBuffer<'a>) -> DynRe
     let header: AnyOtherHeader = (ProtocolFlag::DATA as u8, encrypted_data_len as u16, tail_len as u16);
 
     let header_size = get_type_size::<AnyOtherHeader>()?;
-    let header_with_body = encrypted_data.expand_start((header_size + MAC_LEN) as isize);
+    let header_with_body = encrypted_data.expand_start(header_size + MAC_LEN);
     encode_into_slice(&header, &mut header_with_body.slice_end_mut(header_size), ENCODE_CONF)?;
-    let encrypted_message = cipher.encrypt(header_with_body.rebuffer_end(header_size as isize), None)?;
+    let encrypted_message = cipher.encrypt(header_with_body.rebuffer_end(header_size), None)?;
 
-    let packet = encrypted_message.expand_end(tail_len as isize);
+    let packet = encrypted_message.expand_end(tail_len);
     rand.fill_bytes(&mut packet.slice_start_mut(packet.len() - tail_len));
     Ok(packet)
 }
@@ -89,7 +89,7 @@ pub fn build_any_term<'a>(cipher: &mut Symmetric) -> DynResult<ByteBuffer<'a>> {
     encode_into_slice(&header, &mut buffer.slice_mut(), ENCODE_CONF)?;
     let encrypted_header = cipher.encrypt(buffer, None)?;
 
-    let packet = encrypted_header.expand_end(tail_len as isize);
+    let packet = encrypted_header.expand_end(tail_len);
     rand.fill_bytes(&mut packet.slice_start_mut(buffer_size));
     Ok(packet)
 }
