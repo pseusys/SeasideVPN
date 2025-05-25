@@ -48,9 +48,9 @@ pub fn build_client_init<'a, 'b>(cipher: &Asymmetric, token: &ByteBuffer<'b>) ->
     let (key, encrypted_header) = cipher.encrypt(buffer)?;
 
     let mut symmetric = Symmetric::new(&key)?;
-    let header_length = encrypted_header.len() + NONCE_LEN;
-    let header_with_body = encrypted_header.expand_end(NONCE_LEN).append_buf(token);
-    let encrypted_body = symmetric.encrypt(header_with_body.rebuffer_start(header_length), None)?;
+    let header_length = encrypted_header.len();
+    let body = encrypted_header.expand_end(NONCE_LEN).append_buf(token).rebuffer_start(header_length + NONCE_LEN);
+    let encrypted_body = symmetric.encrypt(body, None)?;
     let encrypted_header_with_body = encrypted_body.expand_start(header_length);
 
     let encrypted_length = encrypted_header_with_body.len();
