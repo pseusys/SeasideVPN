@@ -8,11 +8,11 @@ use simple_error::{bail, require_with, SimpleError};
 use tokio::net::lookup_host;
 use tokio::process::Command;
 use tokio::select;
-use tokio::task::spawn_blocking;
+use tokio::task::JoinHandle;
 
 use crate::bytes::ByteBuffer;
 use crate::protocol::ProtocolClientHandle;
-use crate::{DynResult, ReaderWriter};
+use crate::{run_coroutine_conditionally, DynResult, ReaderWriter};
 use crate::protocol::{PortHandle, TyphoonHandle};
 use super::tunnel::Tunnel;
 use super::protocol::ProtocolType;
@@ -44,7 +44,6 @@ pub struct Viridian<'a> {
     tunnel: Tunnel,
     client_type: ProtocolType
 }
-
 
 impl<'a> Viridian<'a> {
     pub async fn new(address: Ipv4Addr, port: u16, token: ByteBuffer<'a>, key: ByteBuffer<'a>, protocol: ProtocolType) -> DynResult<Viridian<'a>> {
@@ -78,7 +77,7 @@ impl<'a> Viridian<'a> {
         Ok(Command::new(args[0]).args(&args[1..]).kill_on_drop(true).status().await?)
     }
 
-    fn worker_task(mut reader: impl ReaderWriter, mut writer: impl ReaderWriter, message: &str) -> Result<(), Box<SimpleError>> {
+    async fn worker_task(mut reader: impl ReaderWriter, mut writer: impl ReaderWriter, message: &str) -> Result<(), Box<SimpleError>> {
         info!("Setting up worker task {}...", message);
         loop {
             let packet = match reader.read_bytes() {
@@ -93,6 +92,14 @@ impl<'a> Viridian<'a> {
         }
     }
 
+    fn connect<T: ReaderWriter, C: ReaderWriter>(tunnel: T, client: C) -> (JoinHandle<Result<(), Box<SimpleError>>>, JoinHandle<Result<(), Box<SimpleError>>>) {
+        let (send_handle_tunnel, receive_handle_tunnel) = (tunnel.clone(), tunnel.clone());
+        let (send_handle_client, receive_handle_client) = (client.clone(), client.clone());
+        let send_handle = run_coroutine_conditionally!(Self::worker_task(send_handle_tunnel, send_handle_client, "viridian -> caerulean"));
+        let receive_handle = run_coroutine_conditionally!(Self::worker_task(receive_handle_client, receive_handle_tunnel, "caerulean -> viridian"));
+        (send_handle, receive_handle)
+    }
+
     pub async fn start(&mut self, command: Option<String>) -> DynResult<()> {
         debug!("Creating signal handlers...");
         let signals = create_signal_handlers()?;
@@ -105,25 +112,16 @@ impl<'a> Viridian<'a> {
         }
 
         debug!("Creating protocol client handle...");
-        let (send_handle_tunnel, receive_handle_tunnel) = (self.tunnel.clone(), self.tunnel.clone());
         let (send_handle, receive_handle) = match self.client_type {
             ProtocolType::PORT => {
-                let mut handle = PortHandle::new(self.key.clone(), self.token.clone(), self.address, self.port, None)?;
-                let client = handle.connect()?;
+                let client = PortHandle::new(self.key.clone(), self.token.clone(), self.address, self.port, None)?.connect()?;
                 debug!("Spawning PORT reader and writer coroutines...");
-                let (send_handle_client, receive_handle_client) = (client.clone(), client.clone());
-                let send_handle = spawn_blocking(move || { Self::worker_task(send_handle_tunnel, send_handle_client, "viridian -> caerulean") });
-                let receive_handle = spawn_blocking(move || { Self::worker_task(receive_handle_client, receive_handle_tunnel, "caerulean -> viridian") });
-                (send_handle, receive_handle)
+                Self::connect(self.tunnel.clone(), client)
             },
             ProtocolType::TYPHOON => {
-                let mut handle = TyphoonHandle::new(self.key.clone(), self.token.clone(), self.address, self.port, None)?;
-                let client = handle.connect()?;
+                let client = TyphoonHandle::new(self.key.clone(), self.token.clone(), self.address, self.port, None)?.connect()?;
                 debug!("Spawning TYPHOON reader and writer coroutines...");
-                let (send_handle_client, receive_handle_client) = (client.clone(), client.clone());
-                let send_handle = spawn_blocking(move || { Self::worker_task(send_handle_tunnel, send_handle_client, "viridian -> caerulean") });
-                let receive_handle = spawn_blocking(move || { Self::worker_task(receive_handle_client, receive_handle_tunnel, "caerulean -> viridian") });
-                (send_handle, receive_handle)
+                Self::connect(self.tunnel.clone(), client)
             }
         };
 

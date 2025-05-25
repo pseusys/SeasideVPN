@@ -91,7 +91,7 @@ fn process_link<'a>(link: Option<String>) -> DynResult<(Option<String>, Option<B
     }
 }
 
-#[tokio::main(flavor = "current_thread")]
+#[tokio::main]
 async fn main() -> DynResult<()> {
     init_logging();
     let opt = Opt::from_args();

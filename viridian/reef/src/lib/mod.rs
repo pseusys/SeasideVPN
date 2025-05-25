@@ -5,6 +5,7 @@ use bytes::ByteBuffer;
 pub mod bytes;
 pub mod crypto;
 pub mod protocol;
+pub mod runtime;
 pub mod viridian;
 pub mod tunnel;
 pub mod link;

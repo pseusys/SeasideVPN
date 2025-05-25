@@ -1,5 +1,4 @@
 use std::cmp::max;
-use std::future::Future;
 use std::mem::replace;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
@@ -8,12 +7,10 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::u32;
 
 use async_dropper::AsyncDrop;
-use lazy_static::lazy_static;
 use log::{debug, info, warn};
 use rand::Rng;
 use simple_error::bail;
 use tokio::net::UdpSocket;
-use tokio::runtime::{Builder, Handle, Runtime};
 use tokio::select;
 use tokio::sync::{mpsc, RwLock};
 use tokio::time::timeout;
@@ -23,22 +20,10 @@ use crate::bytes::{get_buffer, ByteBuffer};
 use crate::crypto::{Asymmetric, Symmetric};
 use crate::protocol::common::{ProtocolFlag, ProtocolMessageType};
 use crate::rng::get_rng;
+use crate::{run_coroutine_in_thread, run_coroutine_sync};
 use crate::{DynResult, ReaderWriter};
 use super::typhoon_core::*;
 use super::ProtocolClientHandle;
-
-
-lazy_static! {
-    static ref LocalTokioRuntime: Runtime = Builder::new_current_thread().enable_all().build().expect("Failed to start TYPHOON runtime!");
-}
-
-fn run_coroutine<'a, F: Future<Output = R> + 'a, R: 'a>(future: F) -> R {
-    let handle = match Handle::try_current() {
-        Ok(res) => res,
-        Err(_) => LocalTokioRuntime.handle().clone(),
-    };
-    handle.block_on(future)
-}
 
 
 #[inline]
@@ -144,9 +129,7 @@ impl <'a> TyphoonHandle<'a> {
         };
 
         let mut client_clone = client.clone();
-        let decay = spawn(move || {
-            run_coroutine(client_clone.decay_cycle(next_in, ctrl_sender, decay_receiver, termination_receiver))
-        });
+        let decay = run_coroutine_in_thread!(client_clone.decay_cycle(next_in, ctrl_sender, decay_receiver, termination_receiver));
         client.internal.write().await.decay.replace(decay);
 
         Ok(client)
@@ -172,7 +155,7 @@ impl <'a> ProtocolClientHandle<'a> for TyphoonHandle<'a> {
     }
 
     fn connect(&mut self) -> DynResult<impl ReaderWriter> {
-        run_coroutine(self.connect())
+        run_coroutine_sync!(self.connect())
     }
 }
 
@@ -418,11 +401,11 @@ impl Clone for TyphoonClient {
 
 impl ReaderWriter for TyphoonClient {
     fn read_bytes(&mut self) -> DynResult<ByteBuffer> {
-        run_coroutine(self.read_bytes())
+        run_coroutine_sync!(self.read_bytes())
     }
 
     fn write_bytes(&mut self, bytes: ByteBuffer) -> DynResult<usize> {
-        run_coroutine(self.write_bytes(bytes))
+        run_coroutine_sync!(self.write_bytes(bytes))
     }
 }
 
@@ -432,6 +415,6 @@ impl AsyncDrop for TyphoonClient {
     async fn async_drop(&mut self) {
         let new_int = self.internal.read().await;
         let packet = build_any_term(&mut self.symmetric).expect("Couldn't build termination packet!");
-        run_coroutine(new_int.socket.send(&packet.slice())).expect("Couldn't send termination packet: {e}");
+        run_coroutine_sync!(new_int.socket.send(&packet.slice())).expect("Couldn't send termination packet: {e}");
     }
 }
