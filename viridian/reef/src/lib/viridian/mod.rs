@@ -75,7 +75,9 @@ impl<'a> Viridian<'a> {
         let cmd = require_with!(command, "Command should not be None!");
         info!("Executing command '{cmd}'...");
         let args = cmd.split_whitespace().collect::<Vec<_>>();
-        Ok(Command::new(args[0]).args(&args[1..]).kill_on_drop(true).status().await?)
+        let status = Command::new(args[0]).args(&args[1..]).kill_on_drop(true).status().await?;
+        info!("Command exited with code: {status}!");
+        Ok(status)
     }
 
     fn worker_task(mut reader: impl ReaderWriter, mut writer: impl ReaderWriter, message: &str) -> Result<(), Box<SimpleError>> {
@@ -126,7 +128,6 @@ impl<'a> Viridian<'a> {
                 (send_handle, receive_handle)
             }
         };
-        
 
         debug!("Running DNS probe to check for globally available DNS servers...");
         if lookup_host("example.com").await.is_err() {
