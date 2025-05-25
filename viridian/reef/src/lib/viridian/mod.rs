@@ -75,8 +75,7 @@ impl<'a> Viridian<'a> {
         let cmd = require_with!(command, "Command should not be None!");
         info!("Executing command '{cmd}'...");
         let args = cmd.split_whitespace().collect::<Vec<_>>();
-        let status = Command::new(args[0]).args(&args[1..]).spawn().expect("Command failed to spawn!").wait().await?;
-        Ok(status)
+        Ok(Command::new(args[0]).args(&args[1..]).kill_on_drop(true).status().await?)
     }
 
     fn worker_task(mut reader: impl ReaderWriter, mut writer: impl ReaderWriter, message: &str) -> Result<(), Box<SimpleError>> {
