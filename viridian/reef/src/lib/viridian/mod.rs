@@ -75,9 +75,7 @@ impl<'a> Viridian<'a> {
         let cmd = require_with!(command, "Command should not be None!");
         info!("Executing command '{cmd}'...");
         let args = cmd.split_whitespace().collect::<Vec<_>>();
-        let status = Command::new(args[0]).args(&args[1..]).kill_on_drop(true).status().await?;
-        info!("Command exited with code: {status}!");
-        Ok(status)
+        Ok(Command::new(args[0]).args(&args[1..]).kill_on_drop(true).status().await?)
     }
 
     fn worker_task(mut reader: impl ReaderWriter, mut writer: impl ReaderWriter, message: &str) -> Result<(), Box<SimpleError>> {
@@ -140,6 +138,7 @@ impl<'a> Viridian<'a> {
                 Ok(status) => if status.success() {
                     println!("The command exited successfully!")
                 } else {
+                    println!("The command exited unsuccessfully!");
                     bail!("The command exited with error code: {status}")
                 },
                 Err(err) => bail!("VPN command execution error: {err}")
