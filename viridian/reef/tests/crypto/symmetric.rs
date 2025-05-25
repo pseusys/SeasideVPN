@@ -20,7 +20,7 @@ async fn test_symmetric_encrypt() {
     let mut symmetric = Symmetric::new(&key).expect("Error creating symmetric cypher!");
 
     let message_buffer = ByteBuffer::empty(64 + SAMPLE_DATA.len() + 64);
-    let cropped_message_buffer = message_buffer.rebuffer_both(64, (64 + SAMPLE_DATA.len()) as isize);
+    let cropped_message_buffer = message_buffer.rebuffer_both(64, 64 + SAMPLE_DATA.len());
     cropped_message_buffer.slice_mut().copy_from_slice(SAMPLE_DATA);
 
     let raw_additional_data = ByteBuffer::from(ADDITIONAL_DATA);
