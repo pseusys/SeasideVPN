@@ -138,7 +138,6 @@ impl<'a> Viridian<'a> {
                 Ok(status) => if status.success() {
                     println!("The command exited successfully!")
                 } else {
-                    println!("The command exited unsuccessfully!");
                     bail!("The command exited with error code: {status}")
                 },
                 Err(err) => bail!("VPN command execution error: {err}")

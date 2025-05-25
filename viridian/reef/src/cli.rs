@@ -139,5 +139,6 @@ async fn main() -> DynResult<()> {
     info!("Starting reef Viridian...");
     constructor.start(opt.command).await?;
 
+    info!("Destroying reef client...");
     Ok(())
 }
