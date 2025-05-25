@@ -18,6 +18,7 @@ class Logging:
         cls._base.setLevel(level)
         stream = StreamHandler()
         stream.setLevel(level)
+        cls._base.handlers.clear()
         cls._base.addHandler(stream)
         return cls.logger_for(name)
 

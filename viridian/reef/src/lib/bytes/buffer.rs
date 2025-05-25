@@ -142,7 +142,7 @@ impl<'a> ByteBuffer<'a> {
     }
 
     pub fn expand_start(&self, size: isize) -> Self {
-        assert!(size as usize >= self.start, "ByteBuffer has negative length ({} > {size})!", self.start);
+        assert!(size as usize <= self.start, "ByteBuffer has negative length ({size} > {})!", self.start);
         let new_start = (self.start as isize + size) as usize;
         ByteBuffer {
             data: self.data.clone(),
