@@ -48,13 +48,13 @@ pub fn build_client_init<'a, 'b>(cipher: &Asymmetric, token: &ByteBuffer<'b>) ->
     let (key, encrypted_header) = cipher.encrypt(buffer)?;
 
     let mut symmetric = Symmetric::new(&key)?;
-    let header_length = encrypted_header.len();
-    let extended_encrypted_header = encrypted_header.expand_end(NONCE_LEN as isize);
-    let header_with_body = extended_encrypted_header.append_buf(token);
-    symmetric.encrypt(header_with_body.rebuffer_start((header_length + NONCE_LEN) as isize), None)?;
+    let header_length = encrypted_header.len() + NONCE_LEN;
+    let header_with_body = encrypted_header.expand_end(NONCE_LEN as isize).append_buf(token);
+    let encrypted_body = symmetric.encrypt(header_with_body.rebuffer_start(header_length as isize), None)?;
+    let encrypted_header_with_body = encrypted_body.expand_start(header_length as isize);
 
-    let encrypted_length = header_with_body.len();
-    let packet = header_with_body.expand_end(tail_len as isize);
+    let encrypted_length = encrypted_header_with_body.len();
+    let packet = encrypted_header_with_body.expand_end(tail_len as isize);
     rand.fill_bytes(&mut packet.slice_start_mut(encrypted_length));
     Ok((symmetric, packet))
 }
