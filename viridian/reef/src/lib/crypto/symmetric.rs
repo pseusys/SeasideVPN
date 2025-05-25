@@ -1,3 +1,7 @@
+#[cfg(test)]
+#[path = "../../../tests/crypto/symmetric.rs"]
+mod test_symmetric;
+
 use chacha20poly1305::aead::AeadMutInPlace;
 use chacha20poly1305::{AeadCore, Key, KeyInit, XNonce, XChaCha20Poly1305};
 
