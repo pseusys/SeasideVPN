@@ -207,7 +207,7 @@ jobs:
         working-directory: viridian/algae
         env:
           SEASIDE_LOG_LEVEL: reeflib=DEBUG,INFO
-        run: ${{ env.SUDO }} ${{ env.RUNNER_COMMAND }} -- -s port -l "${{ env.WHIRLPOOL_LINK }}" -e "nft list ruleset"
+        run: ${{ env.SUDO }} ${{ env.RUNNER_COMMAND }} -- -s port -l "${{ env.WHIRLPOOL_LINK }}" -e "${{ env.TEST_COMMAND }}"
 
       - name: Test Viridian Reef TYPHOON (integration) 🧪
         id: test-viridian-reef-typhoon

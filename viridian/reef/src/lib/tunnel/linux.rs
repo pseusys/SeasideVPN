@@ -26,6 +26,7 @@ use super::{bytes_to_int, bytes_to_ip_address, bytes_to_string, TunnelInternal};
 use crate::DynResult;
 
 
+const NFT_PRIO_OVERRIDE: i32 = -500;
 const FRA_MASK: Rta = Rta::UnrecognizedConst(10);
 const NFTABLES_TABLE_NAME: &str = "seaside-reef-table";
 const NFTABLES_CHAIN_NAME: &str = "seaside-reef-chain";
@@ -173,7 +174,7 @@ fn enable_firewall(default_interface: &str, default_network: &Ipv4Net, seaside_a
             name: chain_name.clone(),
             _type: Some(NfChainType::Filter),
             hook: Some(hook),
-            prio: Some(0),
+            prio: Some(NFT_PRIO_OVERRIDE),
             ..Default::default()
         }));
         batch.add(NfListObject::Rule(Rule {
