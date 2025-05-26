@@ -293,13 +293,13 @@ impl TunnelInternal {
 impl Drop for TunnelInternal {
     #[allow(unused_must_use)]
     fn drop(&mut self) {
-        debug!("Disabling firewall...");
-        disable_firewall(&self.internal.firewall_table).inspect_err(|e| error!("Error disabling firewall: {}", e));
+        //debug!("Disabling firewall...");
+        //disable_firewall(&self.internal.firewall_table).inspect_err(|e| error!("Error disabling firewall: {}", e));
 
-        debug!("Resetting routing...");
-        disable_routing(&self.internal.route_message, &self.internal.rule_message).inspect_err(|e| error!("Error resetting routing: {}", e));
+        //debug!("Resetting routing...");
+        //disable_routing(&self.internal.route_message, &self.internal.rule_message).inspect_err(|e| error!("Error resetting routing: {}", e));
 
-        debug!("Restoring seaside-viridian-reef routing table...");
-        restore_svr_table(&mut self.internal.svr_data).inspect_err(|e| error!("Error restoring seaside-viridian-reef routing table: {}", e));
+        //debug!("Restoring seaside-viridian-reef routing table...");
+        //restore_svr_table(&mut self.internal.svr_data).inspect_err(|e| error!("Error restoring seaside-viridian-reef routing table: {}", e));
     }
 }
