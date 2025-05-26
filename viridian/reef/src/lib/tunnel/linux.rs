@@ -2,6 +2,8 @@
 #[path = "../../../tests/tunnel/linux.rs"]
 mod linux_test;
 
+use std::fs::File;
+use std::io::Write;
 use std::net::Ipv4Addr;
 
 use ipnet::Ipv4Net;
@@ -85,10 +87,12 @@ fn create_tunnel(name: &str, address: Ipv4Addr, netmask: Ipv4Addr, mtu: u16) -> 
     let mut config = Configuration::default();
     config.address(address).netmask(netmask).tun_name(name).mtu(mtu).up();
     config.platform_config(|conf| { conf.ensure_root_privileges(true); });
-    match create_as_async(&config) {
+    let tunnel = match create_as_async(&config) {
         Ok(device) => Ok(device),
         Err(err) => bail!("Error creating tunnel: {}", err)
-    }
+    };
+    File::create(format!("/proc/sys/net/ipv6/conf/{name}/disable_ipv6"))?.write(&[0x31])?;
+    tunnel
 }
 
 
