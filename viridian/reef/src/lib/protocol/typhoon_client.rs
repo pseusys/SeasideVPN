@@ -127,11 +127,9 @@ impl <'a> TyphoonHandle<'a> {
 
         let (ctrl_sender, ctrl_receiver) = mpsc::channel(1);
         let (decay_sender, decay_receiver) = mpsc::channel(1);
-        let (termination_sender, termination_receiver) = mpsc::channel(1);
         let client = TyphoonClient {
             internal: Arc::new(RwLock::new(TyphoonClientInternal {
                 socket,
-                termination_channel: termination_sender,
                 control_channel: ctrl_receiver,
                 decay_channel: decay_sender,
                 prev_packet_number: None,
@@ -145,7 +143,7 @@ impl <'a> TyphoonHandle<'a> {
         };
 
         let mut client_clone = client.clone();
-        let decay = run_coroutine_in_thread!(client_clone.decay_cycle(next_in, ctrl_sender, decay_receiver, termination_receiver));
+        let decay = run_coroutine_in_thread!(client_clone.decay_cycle(next_in, ctrl_sender, decay_receiver));
         client.internal.write().await.decay.replace(decay);
 
         Ok(client)
@@ -155,7 +153,6 @@ impl <'a> TyphoonHandle<'a> {
 
 struct TyphoonClientInternal {
     socket: UdpSocket,
-    termination_channel: mpsc::Sender<()>,
     control_channel: mpsc::Receiver<u32>,
     decay_channel: mpsc::Sender<u32>,
     prev_packet_number: Option<u32>,
@@ -212,11 +209,12 @@ impl TyphoonClientInternal {
 impl AsyncDrop for TyphoonClientInternal {
     #[allow(unused_must_use)]
     async fn async_drop(&mut self) {
-        self.termination_channel.send(()).await.expect("Decay cycle terminator is None!");
         let decay = replace(&mut self.decay, None);
         if let Some(thread) = decay {
-            let result = thread.await.expect("Thread termination error!");
-            result.inspect_err(|r| info!("Inner TYPHOON thread terminated with: {r}"));
+            if thread.is_finished() {
+                let result = thread.await.expect("Thread termination error!");
+                result.inspect_err(|r| info!("Inner TYPHOON thread terminated with: {r}"));
+            }
         }
     }
 }
@@ -246,27 +244,26 @@ macro_rules! with_read {
 }
 
 impl TyphoonClient {
-    async fn sleep(&mut self, duration: Duration, decay_chan: &mut mpsc::Receiver<u32>, termination_chan: &mut mpsc::Receiver<()>) -> DynResult<Option<u32>> {
+    async fn sleep(&mut self, duration: Duration, decay_chan: &mut mpsc::Receiver<u32>) -> Result<Option<u32>, ()> {
         select! {
-            _ = termination_chan.recv() => bail!("Thread terminated!"),
             res = decay_chan.recv() => match res {
                 Some(val) => Ok(Some(val)),
-                None => bail!("Decay channel was closed!"),
+                None => Err(()),
             },
             _ = tokio::time::sleep(duration) => Ok(None)
         }
     }
 
-    async fn decay_inner(&mut self, initial_next_in: u32, ctrl_chan_w: &mut mpsc::Sender<u32>, decay_chan: &mut mpsc::Receiver<u32>, termination_chan: &mut mpsc::Receiver<()>) -> DynResult<u32> {
+    async fn decay_inner(&mut self, initial_next_in: u32, ctrl_chan_w: &mut mpsc::Sender<u32>, decay_chan: &mut mpsc::Receiver<u32>) -> DynResult<Option<u32>> {
         let next_in_timeout = with_read!(self, new_self, {
             let next_in_timeout = max(initial_next_in - new_self.rtt(), 0);
             debug!("Decay started, sleeping for {next_in_timeout} milliseconds...");
             next_in_timeout as u64
         });
-        match self.sleep(Duration::from_millis(next_in_timeout), decay_chan, termination_chan).await {
-            Ok(Some(res)) => return Ok(res),
+        match self.sleep(Duration::from_millis(next_in_timeout), decay_chan).await {
+            Ok(Some(res)) => return Ok(Some(res)),
             Ok(None) => debug!("Next in timeout expired, proceeding to decay..."),
-            Err(err) => bail!(err)
+            Err(_) => return Ok(None)
         }
 
         for i in 0..*TYPHOON_MAX_RETRIES {
@@ -279,10 +276,10 @@ impl TyphoonClient {
                 }
                 (new_self.rtt() * 2) as u64
             });
-            match self.sleep(Duration::from_millis(shadowride_timeout), decay_chan, termination_chan).await {
-                Ok(Some(res)) => return Ok(res),
+            match self.sleep(Duration::from_millis(shadowride_timeout), decay_chan).await {
+                Ok(Some(res)) => return Ok(Some(res)),
                 Ok(None) => debug!("Shadowride timeout expired, proceeding to force sending..."),
-                Err(err) => bail!(err)
+                Err(_) => return Ok(None)
             }
 
             let next_in_timeout = with_write!(self, new_self, {
@@ -294,21 +291,22 @@ impl TyphoonClient {
                 debug!("Handshake sent, waiting for response for {next_in_timeout} milliseconds...");
                 next_in_timeout as u64
             });
-            match self.sleep(Duration::from_millis(next_in_timeout), decay_chan, termination_chan).await {
-                Ok(Some(res)) => return Ok(res),
+            match self.sleep(Duration::from_millis(next_in_timeout), decay_chan).await {
+                Ok(Some(res)) => return Ok(Some(res)),
                 Ok(None) => debug!("Next in timeout expired, proceeding to new iteration of decay..."),
-                Err(err) => bail!(err)
+                Err(_) => return Ok(None)
             }
         }
 
         bail!("Decay connection timed out!")
     }
 
-    async fn decay_cycle(&mut self, initial_next_in: u32, mut ctrl_chan_w: mpsc::Sender<u32>, mut decay_chan: mpsc::Receiver<u32>, mut termination_chan: mpsc::Receiver<()>) -> DynResult<()> {
+    async fn decay_cycle(&mut self, initial_next_in: u32, mut ctrl_chan_w: mpsc::Sender<u32>, mut decay_chan: mpsc::Receiver<u32>) -> DynResult<()> {
         let mut next_in = initial_next_in;
         loop {
-            match self.decay_inner(next_in, &mut ctrl_chan_w, &mut decay_chan, &mut termination_chan).await {
-                Ok(nin) => next_in = nin,
+            match self.decay_inner(next_in, &mut ctrl_chan_w, &mut decay_chan).await {
+                Ok(Some(nin)) => next_in = nin,
+                Ok(None) => return Ok(()),
                 Err(err) => bail!("Client decay cycle terminated error: {err}!")
             }
         }

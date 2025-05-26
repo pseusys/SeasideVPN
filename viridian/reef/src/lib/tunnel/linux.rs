@@ -265,11 +265,11 @@ impl TunnelInternal {
         let (default_address, default_cidr, default_name, default_mtu) = get_default_interface(seaside_address)?;
         debug!("Default network properties received: address {default_address}, CIDR {default_cidr}, name {default_name}, MTU {default_mtu}");
     
-        debug!("Creating tunnel device...");
+        debug!("Creating tunnel device: address {}, netmask {}...", tunnel_network.addr(), tunnel_network.netmask());
         let tunnel_device = create_tunnel(tunnel_name, tunnel_network.addr(), tunnel_network.netmask(), default_mtu as u16)?;
         let tunnel_index = get_address_device(tunnel_network)?;
 
-        debug!("Clearing seaside-viridian-reef routing table...");
+        debug!("Clearing seaside-viridian-reef routing table {svr_index}...");
         let svr_data = save_svr_table(svr_index)?;
 
         debug!("Setting up routing...");
