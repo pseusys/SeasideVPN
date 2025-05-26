@@ -57,15 +57,7 @@ impl<'a> Viridian<'a> {
 
         debug!("Creating tunnel with seaside address {address}, tunnel name {tunnel_name}, tunnel network {tunnel_address}/{tunnel_netmask}, SVR index {svr_index}...");
         let tunnel = Tunnel::new(address, &tunnel_name, tunnel_network, svr_index)?;
-
-        Ok(Viridian {
-            key,
-            token,
-            address,
-            port,
-            tunnel: tunnel,
-            client_type: protocol
-        })
+        Ok(Viridian { key, token, address, port, tunnel, client_type: protocol })
     }
 
     async fn run_vpn_command(&self, command: Option<String>) -> DynResult<ExitStatus> {

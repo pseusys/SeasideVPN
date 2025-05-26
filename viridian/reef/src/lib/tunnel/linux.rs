@@ -173,6 +173,7 @@ fn enable_firewall(default_interface: &str, default_network: &Ipv4Net, seaside_a
             name: chain_name.clone(),
             _type: Some(NfChainType::Filter),
             hook: Some(hook),
+            prio: Some(0),
             ..Default::default()
         }));
         batch.add(NfListObject::Rule(Rule {
