@@ -2,13 +2,13 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::Duration;
 
 use async_dropper::AsyncDrop;
+use async_trait::async_trait;
 use log::{debug, warn};
 use simple_error::{bail, require_with};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::{TcpSocket, TcpStream};
 use tokio::time::timeout;
-use tonic::async_trait;
 
 use crate::crypto::{Asymmetric, Symmetric};
 use crate::protocol::port_core::build_client_init;

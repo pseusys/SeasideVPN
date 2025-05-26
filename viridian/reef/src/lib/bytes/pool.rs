@@ -2,8 +2,8 @@ use std::mem::take;
 use std::ops::{Deref, DerefMut};
 
 use async_dropper::AsyncDrop;
+use async_trait::async_trait;
 use tokio::sync::Mutex;
-use tonic::async_trait;
 
 use super::buffer::ByteBuffer;
 

@@ -6,6 +6,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::u32;
 
 use async_dropper::AsyncDrop;
+use async_trait::async_trait;
 use log::{debug, info, warn};
 use rand::Rng;
 use simple_error::bail;
@@ -14,7 +15,6 @@ use tokio::select;
 use tokio::sync::{mpsc, RwLock};
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
-use tonic::async_trait;
 
 use crate::bytes::{get_buffer, ByteBuffer};
 use crate::crypto::{Asymmetric, Symmetric};

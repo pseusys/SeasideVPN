@@ -2,6 +2,7 @@ use std::error::Error;
 use std::net::Ipv4Addr;
 use std::sync::{Arc, Mutex};
 
+use async_trait::async_trait;
 use etherparse::IpHeaders;
 use ipnet::Ipv4Net;
 use log::{debug, info};
@@ -16,7 +17,6 @@ use windivert::prelude::WinDivertFlags;
 use windows::Win32::Foundation::{ERROR_BUFFER_OVERFLOW, ERROR_SUCCESS, WIN32_ERROR};
 use windows::Win32::NetworkManagement::IpHelper::{GetAdaptersAddresses, GetBestRoute, GAA_FLAG_INCLUDE_PREFIX, MIB_IPFORWARDROW, IP_ADAPTER_ADDRESSES_LH};
 use tun::{create_as_async, AsyncDevice, Configuration};
-use tonic::async_trait;
 use windows::Win32::Networking::WinSock::AF_INET;
 
 use super::{bytes_to_ip_address, Creatable, Tunnel};
