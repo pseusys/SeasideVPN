@@ -21,9 +21,8 @@ use crate::crypto::{Asymmetric, Symmetric};
 use crate::protocol::common::{ProtocolFlag, ProtocolMessageType};
 use crate::rng::get_rng;
 use crate::{run_coroutine_in_thread, run_coroutine_sync};
-use crate::{DynResult, ReaderWriter};
+use crate::{DynResult, Reader, Writer};
 use super::typhoon_core::*;
-use super::ProtocolClientHandle;
 
 
 #[inline]
@@ -92,11 +91,9 @@ impl <'a> TyphoonHandle<'a> {
 
         bail!("Connection could not be established (maximum retries reached)!")
     }
-}
 
-impl <'a> ProtocolClientHandle<'a> for TyphoonHandle<'a> {
     #[allow(refining_impl_trait)]
-    fn new(key: ByteBuffer<'_>, token: ByteBuffer<'a>, address: Ipv4Addr, port: u16, local: Option<Ipv4Addr>) -> DynResult<Self> {
+    pub fn new(key: ByteBuffer<'_>, token: ByteBuffer<'a>, address: Ipv4Addr, port: u16, local: Option<Ipv4Addr>) -> DynResult<Self> {
         debug!("Creating TYPHOON protocol handle...");
         let peer_address = SocketAddr::new(IpAddr::V4(address), port);
         let local_address = match local {
@@ -112,7 +109,7 @@ impl <'a> ProtocolClientHandle<'a> for TyphoonHandle<'a> {
         })
     }
 
-    async fn connect(&mut self) -> DynResult<impl ReaderWriter> {
+    pub async fn connect(&mut self) -> DynResult<impl Reader + Writer + Clone> {
         debug!("Binding connection client to {}...", self.local);
         let socket = UdpSocket::bind(self.local).await?;
 
@@ -324,7 +321,7 @@ impl Clone for TyphoonClient {
     }
 }
 
-impl ReaderWriter for TyphoonClient {
+impl Reader for TyphoonClient {
     async fn read_bytes(&mut self) -> DynResult<ByteBuffer> {
         let reader = self.internal.read().await;
         debug!("Reading started (at {}, from {})...", reader.socket.local_addr()?, reader.socket.peer_addr()?);
@@ -373,7 +370,9 @@ impl ReaderWriter for TyphoonClient {
             }
         }
     }
+}
 
+impl Writer for TyphoonClient {
     async fn write_bytes(&mut self, bytes: ByteBuffer<'_>) -> DynResult<usize> {
         with_read!(self, new_self, {
             if let Some(th) = &new_self.decay {
@@ -403,6 +402,6 @@ impl AsyncDrop for TyphoonClient {
     async fn async_drop(&mut self) {
         let new_int = self.internal.read().await;
         let packet = build_any_term(&mut self.symmetric).expect("Couldn't build termination packet!");
-        run_coroutine_sync!(new_int.socket.send(&packet.slice())).expect("Couldn't send termination packet: {e}");
+        run_coroutine_sync!(new_int.socket.send(&packet.slice())).inspect_err(|e| warn!("Couldn't send termination packet: {e}"));
     }
 }

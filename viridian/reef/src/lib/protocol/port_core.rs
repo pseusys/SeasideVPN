@@ -1,3 +1,4 @@
+use std::net::TcpStream;
 use std::time::Duration;
 
 use bincode::{decode_from_slice, encode_into_slice};
@@ -27,12 +28,12 @@ lazy_static! {
 }
 
 
-pub fn create_and_configure_socket() -> DynResult<Socket> {
+pub fn create_and_configure_socket() -> DynResult<TcpStream> {
     let socket = Socket::new(Domain::IPV4, Type::STREAM, Some(Protocol::TCP))?;
     let keepalive = TcpKeepalive::new().with_time(Duration::from_secs(7200)).with_interval(Duration::from_secs(75));
     socket.set_tcp_keepalive(&keepalive)?;
     socket.set_reuse_address(true)?;
-    Ok(socket)
+    Ok(socket.into())
 }
 
 pub fn build_client_init<'a, 'b>(cipher: &Asymmetric, token: &ByteBuffer<'b>) -> DynResult<(Symmetric, ByteBuffer<'b>)> {

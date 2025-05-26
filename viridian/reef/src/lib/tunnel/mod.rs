@@ -4,7 +4,8 @@ use ipnet::Ipv4Net;
 use simple_error::bail;
 use tun::AsyncDevice;
 
-use crate::{bytes::{get_buffer, ByteBuffer}, DynResult, ReaderWriter};
+use crate::bytes::{get_buffer, ByteBuffer};
+use crate::{DynResult, Reader, Writer};
 
 
 #[cfg(target_os = "linux")]
@@ -53,7 +54,7 @@ impl Clone for Tunnel {
     }
 }
 
-impl ReaderWriter for Tunnel {
+impl Reader for Tunnel {
     async fn read_bytes(&mut self) -> DynResult<ByteBuffer> {
         let buffer = get_buffer(None);
         let read = match self.tunnel.tun_device.recv(&mut buffer.slice_mut()).await {
@@ -62,7 +63,9 @@ impl ReaderWriter for Tunnel {
         };
         Ok(buffer.rebuffer_end(read))
     }
+}
 
+impl Writer for Tunnel {
     async fn write_bytes(&mut self, bytes: ByteBuffer<'_>) -> DynResult<usize> {
         match self.tunnel.tun_device.send(&bytes.slice()).await {
             Ok(res) => Ok(res),

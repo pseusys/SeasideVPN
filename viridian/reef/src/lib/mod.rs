@@ -24,7 +24,10 @@ pub mod rng;
 pub type DynResult<T> = Result<T, Box<dyn Error + Sync + Send>>;
 
 
-pub trait ReaderWriter: Clone + Send + 'static {
+pub trait Reader: Send + 'static {
     fn read_bytes(&mut self) -> impl Future<Output = DynResult<ByteBuffer>>;
+}
+
+pub trait Writer: Send + 'static {
     fn write_bytes(&mut self, bytes: ByteBuffer) -> impl Future<Output = DynResult<usize>>;
 }
