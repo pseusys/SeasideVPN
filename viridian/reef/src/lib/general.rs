@@ -20,7 +20,10 @@ async fn worker_task(mut reader: impl ReaderWriter, mut writer: impl ReaderWrite
                 Ok(res) => res
             },
             ld = terminator.recv() => match ld {
-                Ok(_) => return Ok(()),
+                Ok(_) => {
+                    info!("Terminating worker task {}...", message);
+                    return Ok(())
+                },
                 Err(_) => bail!("Terminating worker task with error!")
             }
         };
