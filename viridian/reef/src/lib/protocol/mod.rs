@@ -20,7 +20,7 @@ pub use typhoon_client::*;
 
 pub trait ProtocolClientHandle<'a> {
     fn new(key: ByteBuffer<'_>, token: ByteBuffer<'a>, address: Ipv4Addr, port: u16, local: Option<Ipv4Addr>) -> DynResult<impl ProtocolClientHandle<'a>>;
-    fn connect(&mut self) -> DynResult<impl ReaderWriter>;
+    fn connect(&mut self) -> impl std::future::Future<Output = DynResult<impl ReaderWriter>>;
 }
 
 

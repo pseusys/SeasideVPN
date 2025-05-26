@@ -61,7 +61,7 @@ impl<'a> ProtocolClientHandle<'a> for PortHandle<'a> {
         })
     }
 
-    fn connect(&mut self) -> DynResult<impl ReaderWriter> {
+    async fn connect(&mut self) -> DynResult<impl ReaderWriter> {
         let mut connection_socket = create_and_configure_socket()?;
 
         let local_address = SockAddr::from(self.local);
@@ -112,7 +112,7 @@ impl Clone for PortClient {
 }
 
 impl ReaderWriter for PortClient {
-    fn read_bytes(&mut self) -> DynResult<ByteBuffer> {
+    async fn read_bytes(&mut self) -> DynResult<ByteBuffer> {
         let buffer = get_buffer(None);
 
         let header_end = get_type_size::<AnyOtherHeader>()? + Symmetric::ciphertext_overhead();
@@ -137,7 +137,7 @@ impl ReaderWriter for PortClient {
         Ok(data)
     }
 
-    fn write_bytes(&mut self, bytes: ByteBuffer) -> DynResult<usize> {
+    async fn write_bytes(&mut self, bytes: ByteBuffer<'_>) -> DynResult<usize> {
         let data = build_any_data(&mut self.symmetric, bytes)?;
         debug!("Writing {} bytes to caerulean...", data.len());
         send_exact(&self.socket, &data.slice())?;

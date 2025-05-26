@@ -2,7 +2,7 @@ use std::{net::Ipv4Addr, sync::Arc};
 
 use ipnet::Ipv4Net;
 use simple_error::bail;
-use tun::Device;
+use tun::AsyncDevice;
 
 use crate::{bytes::{get_buffer, ByteBuffer}, DynResult, ReaderWriter};
 
@@ -27,7 +27,7 @@ pub use utils::*;
 struct TunnelInternal {
     def_ip: Ipv4Addr,
     def_cidr: u8,
-    tun_device: Device,
+    tun_device: AsyncDevice,
 
     internal: PlatformInternalConfig
 }
@@ -54,17 +54,17 @@ impl Clone for Tunnel {
 }
 
 impl ReaderWriter for Tunnel {
-    fn read_bytes(&mut self) -> DynResult<ByteBuffer> {
+    async fn read_bytes(&mut self) -> DynResult<ByteBuffer> {
         let buffer = get_buffer(None);
-        let read = match self.tunnel.tun_device.recv(&mut buffer.slice_mut()) {
+        let read = match self.tunnel.tun_device.recv(&mut buffer.slice_mut()).await {
             Ok(res) => res,
             Err(res) => bail!("Error reading bytes from tunnel: {}", res)
         };
         Ok(buffer.rebuffer_end(read))
     }
 
-    fn write_bytes(&mut self, bytes: ByteBuffer) -> DynResult<usize> {
-        match self.tunnel.tun_device.send(&bytes.slice()) {
+    async fn write_bytes(&mut self, bytes: ByteBuffer<'_>) -> DynResult<usize> {
+        match self.tunnel.tun_device.send(&bytes.slice()).await {
             Ok(res) => Ok(res),
             Err(res) => bail!("Error writing bytes to tunnel: {}", res)
         }

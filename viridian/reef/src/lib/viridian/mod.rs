@@ -8,12 +8,10 @@ use simple_error::{bail, require_with, SimpleError};
 use tokio::net::lookup_host;
 use tokio::process::Command;
 use tokio::select;
-use tokio::task::JoinHandle;
 
 use crate::bytes::ByteBuffer;
-use crate::protocol::ProtocolClientHandle;
-use crate::{run_coroutine_conditionally, DynResult, ReaderWriter};
-use crate::protocol::{PortHandle, TyphoonHandle};
+use crate::general::create_handle;
+use crate::DynResult;
 use super::tunnel::Tunnel;
 use super::protocol::ProtocolType;
 use super::utils::{parse_env, parse_str_env};
@@ -77,29 +75,6 @@ impl<'a> Viridian<'a> {
         Ok(Command::new(args[0]).args(&args[1..]).kill_on_drop(true).status().await?)
     }
 
-    async fn worker_task(mut reader: impl ReaderWriter, mut writer: impl ReaderWriter, message: &str) -> Result<(), Box<SimpleError>> {
-        info!("Setting up worker task {}...", message);
-        loop {
-            let packet = match reader.read_bytes() {
-                Err(res) => bail!("Error reading from tunnel: {res}!"),
-                Ok(res) => res
-            };
-            debug!("Captured {} bytes {}!", packet.len(), message);
-            match writer.write_bytes(packet) {
-                Err(res) => bail!("Error writing to socket: {res}!"),
-                Ok(res) => debug!("Sent {res} bytes to caerulean")
-            };
-        }
-    }
-
-    fn connect<T: ReaderWriter, C: ReaderWriter>(tunnel: T, client: C) -> (JoinHandle<Result<(), Box<SimpleError>>>, JoinHandle<Result<(), Box<SimpleError>>>) {
-        let (send_handle_tunnel, receive_handle_tunnel) = (tunnel.clone(), tunnel.clone());
-        let (send_handle_client, receive_handle_client) = (client.clone(), client.clone());
-        let send_handle = run_coroutine_conditionally!(Self::worker_task(send_handle_tunnel, send_handle_client, "viridian -> caerulean"));
-        let receive_handle = run_coroutine_conditionally!(Self::worker_task(receive_handle_client, receive_handle_tunnel, "caerulean -> viridian"));
-        (send_handle, receive_handle)
-    }
-
     pub async fn start(&mut self, command: Option<String>) -> DynResult<()> {
         debug!("Creating signal handlers...");
         let signals = create_signal_handlers()?;
@@ -112,18 +87,7 @@ impl<'a> Viridian<'a> {
         }
 
         debug!("Creating protocol client handle...");
-        let (send_handle, receive_handle) = match self.client_type {
-            ProtocolType::PORT => {
-                let client = PortHandle::new(self.key.clone(), self.token.clone(), self.address, self.port, None)?.connect()?;
-                debug!("Spawning PORT reader and writer coroutines...");
-                Self::connect(self.tunnel.clone(), client)
-            },
-            ProtocolType::TYPHOON => {
-                let client = TyphoonHandle::new(self.key.clone(), self.token.clone(), self.address, self.port, None)?.connect()?;
-                debug!("Spawning TYPHOON reader and writer coroutines...");
-                Self::connect(self.tunnel.clone(), client)
-            }
-        };
+        let (send_handle, receive_handle, termination) = create_handle(&self.client_type, self.tunnel.clone(), self.key.clone(), self.token.clone(), self.address, self.port, None).await?;
 
         debug!("Running DNS probe to check for globally available DNS servers...");
         if lookup_host("example.com").await.is_err() {
@@ -131,20 +95,27 @@ impl<'a> Viridian<'a> {
         }
 
         debug!("Running VPN processes asynchronously...");
-        select! {
+        let result = select! {
             res = self.run_vpn_command(command), if command.is_some() => match res {
-                Ok(status) => if status.success() {
-                    println!("The command exited successfully!")
-                } else {
-                    bail!("The command exited with error code: {status}")
+                Ok(status) => {
+                    if status.success() {
+                        println!("The command exited successfully!");
+                        Ok(())
+                    } else {
+                        Err(SimpleError::new("The command exited with error code: {status}"))
+                    }
                 },
-                Err(err) => bail!("VPN command execution error: {err}")
+                Err(err) => Err(SimpleError::new(format!("VPN command execution error: {err}")))
             },
-            serr = send_handle => bail!("Error in sending coroutine: {:#?}", serr.expect("Join error").expect_err("Infinite loop success")),
-            rerr = receive_handle => bail!("Error in receiving coroutine: {:#?}", rerr.expect("Join error").expect_err("Infinite loop success")),
-            _ = handlers.next() => info!("Terminating gracefully...")
+            serr = send_handle => Err(SimpleError::new(format!("Error in sending coroutine: {:#?}", serr.expect("Join error").expect_err("Infinite loop success")))),
+            rerr = receive_handle => Err(SimpleError::new(format!("Error in receiving coroutine: {:#?}", rerr.expect("Join error").expect_err("Infinite loop success")))),
+            _ = handlers.next() => {
+                info!("Terminating gracefully...");
+                Ok(())
+            }
         };
 
-        Ok(())
+        termination.send(())?;
+        Ok(result?)
     }
 }

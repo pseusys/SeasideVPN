@@ -17,7 +17,7 @@ use nftables::schema::{Chain, NfListObject, Rule, Table};
 use nftables::stmt::{Accept, Mangle, Match, Operator, Statement};
 use nftables::types::{NfChainType, NfFamily, NfHook};
 use simple_error::{bail, require_with};
-use tun::{create, Configuration, Device};
+use tun::{create_as_async, AsyncDevice, Configuration};
 
 use super::nl_utils::{copy_rtmsg, create_address_message, create_attr, create_clear_cache_message, create_header, create_interface_message, create_routing_message, create_rtmsg, create_socket, send_netlink_message, send_netlink_stream};
 use super::{bytes_to_int, bytes_to_ip_address, bytes_to_string, TunnelInternal};
@@ -81,11 +81,11 @@ fn get_default_interface(seaside_address: Ipv4Addr) -> DynResult<(Ipv4Addr, u8, 
 }
 
 
-fn create_tunnel(name: &str, address: Ipv4Addr, netmask: Ipv4Addr, mtu: u16) -> DynResult<Device> {
+fn create_tunnel(name: &str, address: Ipv4Addr, netmask: Ipv4Addr, mtu: u16) -> DynResult<AsyncDevice> {
     let mut config = Configuration::default();
     config.address(address).netmask(netmask).tun_name(name).mtu(mtu).up();
     config.platform_config(|conf| { conf.ensure_root_privileges(true); });
-    match create(&config) {
+    match create_as_async(&config) {
         Ok(device) => Ok(device),
         Err(err) => bail!("Error creating tunnel: {}", err)
     }

@@ -2,7 +2,7 @@ use std::cmp::max;
 use std::mem::replace;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
-use std::thread::{spawn, JoinHandle};
+use std::thread::JoinHandle;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::u32;
 
@@ -154,7 +154,7 @@ impl <'a> ProtocolClientHandle<'a> for TyphoonHandle<'a> {
         })
     }
 
-    fn connect(&mut self) -> DynResult<impl ReaderWriter> {
+    async fn connect(&mut self) -> DynResult<impl ReaderWriter> {
         run_coroutine_sync!(self.connect())
     }
 }
@@ -320,7 +320,15 @@ impl TyphoonClient {
             }
         }
     }
+}
 
+impl Clone for TyphoonClient {
+    fn clone(&self) -> Self {
+        Self { internal: self.internal.clone(), symmetric: self.symmetric.clone() }
+    }
+}
+
+impl ReaderWriter for TyphoonClient {
     async fn read_bytes(&mut self) -> DynResult<ByteBuffer> {
         let reader = self.internal.read().await;
         debug!("Reading started (at {}, from {})...", reader.socket.local_addr()?, reader.socket.peer_addr()?);
@@ -390,22 +398,6 @@ impl TyphoonClient {
             }
         });
         Ok(0)
-    }
-}
-
-impl Clone for TyphoonClient {
-    fn clone(&self) -> Self {
-        Self { internal: self.internal.clone(), symmetric: self.symmetric.clone() }
-    }
-}
-
-impl ReaderWriter for TyphoonClient {
-    fn read_bytes(&mut self) -> DynResult<ByteBuffer> {
-        run_coroutine_sync!(self.read_bytes())
-    }
-
-    fn write_bytes(&mut self, bytes: ByteBuffer) -> DynResult<usize> {
-        run_coroutine_sync!(self.write_bytes(bytes))
     }
 }
 

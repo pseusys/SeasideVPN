@@ -8,35 +8,27 @@ lazy_static! {
 
 
 #[macro_export]
-macro_rules! acquire_handle {
-    () => {
+macro_rules! run_coroutine_sync {
+    ($future:expr) => {{
         match tokio::runtime::Handle::try_current() {
             Ok(res) => res,
             Err(_) => $crate::runtime::LocalTokioRuntime.handle().clone()
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! run_coroutine_sync {
-    ($future:expr) => {{
-        $crate::acquire_handle!().block_on($future)
+        }.block_on($future)
     }};
 }
 
 #[macro_export]
 macro_rules! run_coroutine_in_thread {
     ($future:expr) => {
-        spawn(move || { $crate::run_coroutine_sync!($future) })
+        std::thread::spawn(move || { $crate::run_coroutine_sync!($future) })
     };
 }
-
 
 #[macro_export]
 macro_rules! run_coroutine_conditionally {
     ($future:expr) => {
         match tokio::runtime::Handle::try_current() {
-            Ok(res) => res.spawn(async { $future.await }),
+            Ok(_) => tokio::task::spawn_local(async { tokio::task::LocalSet::new().run_until($future).await }),
             Err(_) => $crate::runtime::LocalTokioRuntime.spawn_blocking(move || { $crate::run_coroutine_sync!($future) })
         }
     };
