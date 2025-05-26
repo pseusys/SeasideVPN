@@ -41,7 +41,7 @@ func (p *PortServer) Read(buffer *betterbuf.Buffer, viridianDict *users.Viridian
 	header := buffer.RebufferEnd(encryptedHeaderLength)
 	s, err := io.ReadFull(p.socket, header.Slice())
 	if err != nil {
-		logrus.Errorf("packet header reading error: %v", err)
+		logrus.Errorf("packet header reading error: %v", err) // TODO: check if socket is closed!!
 		return nil, nil
 	}
 	logrus.Debugf("Read %d bytes from viridian %d", s, p.peerID)
@@ -63,19 +63,19 @@ func (p *PortServer) Read(buffer *betterbuf.Buffer, viridianDict *users.Viridian
 		}
 		logrus.Debugf("Read packet data from viridian %d: length %d", p.peerID, s)
 
-		value, err = parsePortAnyData(p.cipher, dataBuffer)
-		if err != nil {
-			logrus.Errorf("packet data parsing error: %v", err)
-			return nil, nil
-		}
-		logrus.Debugf("Parsed packet data from viridian %d", p.peerID)
-
 		_, err = io.CopyN(io.Discard, p.socket, int64(tailLength))
 		if err != nil {
 			logrus.Errorf("packet tail skipping error: %v", err)
 			return nil, nil
 		}
 		logrus.Debugf("Read packet tail from viridian %d: length %d", p.peerID, tailLength)
+
+		value, err = parsePortAnyData(p.cipher, dataBuffer)
+		if err != nil {
+			logrus.Errorf("packet data parsing error: %v", err)
+			return nil, nil
+		}
+		logrus.Debugf("Parsed packet data from viridian %d", p.peerID)
 
 	} else if msgType == TYPE_TERMINATION {
 		return nil, fmt.Errorf("connection with viridian %d terminated", p.peerID)

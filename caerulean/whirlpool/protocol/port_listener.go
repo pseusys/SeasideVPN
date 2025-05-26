@@ -127,7 +127,7 @@ func (p *PortListener) returnWithErrorCode(conn *net.TCPConn, cipher *crypto.Sym
 		peerPort = *peerID
 	}
 
-	logrus.Debugf("Finishing viridian at %v initialization with error code %d", *conn, returnCode)
+	logrus.Debugf("Finishing viridian at %v initialization with error code %d", conn.LocalAddr(), returnCode)
 	packet, err := buildPortServerInit(cipher, peerPort, returnCode)
 	if err != nil {
 		logrus.Errorf("Error building viridian init response: %v", err)
@@ -212,6 +212,13 @@ func (p *PortListener) handleInitMessage(viridianDict *users.ViridianDict, conn 
 	}
 	logrus.Debugf("Viridian %v:%v token read: %d bytes", listenIP, listenPort, encryptedToken.Length())
 
+	conn.SetReadDeadline(time.Now().Add(defaultTimeout))
+	n, err := io.CopyN(io.Discard, conn, int64(tailLength))
+	if err != nil {
+		return nil, nil, nil, cipher, fmt.Errorf("error reading viridian tail: %v", err)
+	}
+	logrus.Debugf("Viridian %v:%v tail read: %d bytes", listenIP, listenPort, n)
+
 	decryptedToken, err := cipher.Decrypt(encryptedToken, nil)
 	if err != nil {
 		registrationCode = TOKEN_PARSE_ERROR
@@ -233,12 +240,6 @@ func (p *PortListener) handleInitMessage(viridianDict *users.ViridianDict, conn 
 		return nil, nil, nil, cipher, fmt.Errorf("error unmarshaling viridian token: %v", err)
 	}
 	logrus.Debugf("Viridian %v:%v token parsed: name %s, identifier %s", listenIP, listenPort, token.Name, token.Identifier)
-
-	n, err := io.CopyN(io.Discard, conn, int64(tailLength))
-	if err != nil {
-		return nil, nil, nil, cipher, fmt.Errorf("error reading viridian tail: %v", err)
-	}
-	logrus.Debugf("Viridian %v:%v tail read: %d bytes", listenIP, listenPort, n)
 
 	handle, peerID, err := viridianDict.Add(func() (any, uint16, error) { return createPortViridianHandle(p.address) }, viridianName, token, users.PROTOCOL_PORT)
 	if err != nil {
