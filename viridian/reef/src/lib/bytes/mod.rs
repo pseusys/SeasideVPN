@@ -19,6 +19,6 @@ lazy_static! {
 }
 
 
-pub fn get_buffer<'a>(initial_size: Option<usize>) -> ByteBuffer<'a> {
-    PACKET_POOL.allocate(initial_size)
+pub async fn get_buffer<'a>(initial_size: Option<usize>) -> ByteBuffer<'a> {
+    PACKET_POOL.allocate(initial_size).await
 }

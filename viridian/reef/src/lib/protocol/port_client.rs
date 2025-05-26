@@ -21,7 +21,7 @@ use super::utils::get_type_size;
 
 macro_rules! discard_exact {
     ($socket:expr, $tail:expr, $wait:expr) => {{
-        let buffer = get_buffer(Some($tail));
+        let buffer = get_buffer(Some($tail)).await;
         match $wait {
             Some(res) => timeout(res, $socket.read_exact(&mut buffer.slice_mut())).await?,
             None => $socket.read_exact(&mut buffer.slice_mut()).await
@@ -40,13 +40,13 @@ pub struct PortHandle<'a> {
 impl<'a> PortHandle<'a> {
     pub async fn read_server_init(&self, cipher: &mut Symmetric, socket: &mut TcpStream) -> DynResult<u16> {
         let wait = Duration::from_millis(*PORT_TIMEOUT as u64);
-        let buffer = get_buffer(None);
+        let buffer = get_buffer(None).await;
 
         debug!("Reading server initialization message...");
         let header_end = get_type_size::<ServerInitHeader>()? + Symmetric::ciphertext_overhead();
         let header_buff = buffer.rebuffer_end(header_end);
         timeout(wait, socket.read_exact(&mut header_buff.slice_mut())).await??;
-        let (user_id, tail_length) = parse_server_init(cipher, header_buff)?;
+        let (user_id, tail_length) = parse_server_init(cipher, header_buff).await?;
 
         debug!("Server initialization message received: user ID {user_id}, tail length {tail_length}");
         discard_exact!(socket, tail_length as usize, Some(wait))?;
@@ -80,7 +80,7 @@ impl<'a> PortHandle<'a> {
         let mut connection_stream = connection_socket.connect(self.peer_address).await?;
         debug!("Current user address: {}", connection_stream.local_addr()?);
 
-        let (mut symmetric, packet) = build_client_init(&self.asymmetric, &self.token)?;
+        let (mut symmetric, packet) = build_client_init(&self.asymmetric, &self.token).await?;
         connection_stream.write_all(&packet.slice()).await?;
         debug!("Initialization packet sent: {} bytes", packet.len());
 
@@ -122,13 +122,13 @@ pub struct PortClientWriter {
 
 impl Reader for PortClientReader {
     async fn read_bytes(&mut self) -> DynResult<ByteBuffer> {
-        let buffer = get_buffer(None);
+        let buffer = get_buffer(None).await;
 
         let header_end = get_type_size::<AnyOtherHeader>()? + Symmetric::ciphertext_overhead();
         let packet = buffer.rebuffer_end(header_end);
         self.socket.read_exact(&mut packet.slice_mut()).await?;
 
-        let (msg_type, payload) = parse_any_message_header(&mut self.symmetric, packet)?;
+        let (msg_type, payload) = parse_any_message_header(&mut self.symmetric, packet).await?;
         if msg_type == ProtocolMessageType::Termination {
             bail!("Termination message received!");
         } else if msg_type != ProtocolMessageType::Data {
@@ -141,7 +141,7 @@ impl Reader for PortClientReader {
         self.socket.read_exact(&mut data_buff.slice_mut()).await?;
         discard_exact!(&mut self.socket, tail_length as usize, None)?;
 
-        let data = parse_any_any_data(&mut self.symmetric, data_buff)?;
+        let data = parse_any_any_data(&mut self.symmetric, data_buff).await?;
         debug!("Reading {} bytes from caerulean...", data.len());
         Ok(data)
     }
@@ -149,7 +149,7 @@ impl Reader for PortClientReader {
 
 impl Writer for PortClientWriter {
     async fn write_bytes(&mut self, bytes: ByteBuffer<'_>) -> DynResult<usize> {
-        let data = build_any_data(&mut self.symmetric, bytes)?;
+        let data = build_any_data(&mut self.symmetric, bytes).await?;
         debug!("Writing {} bytes to caerulean...", data.len());
         self.socket.write_all(&data.slice()).await?;
         Ok(data.len())
@@ -160,7 +160,7 @@ impl Writer for PortClientWriter {
 impl AsyncDrop for PortClientWriter {
     #[allow(unused_must_use)]
     async fn async_drop(&mut self) {
-        let packet = build_any_term(&mut self.symmetric).expect("Couldn't build termination packet!");
+        let packet = build_any_term(&mut self.symmetric).await.expect("Couldn't build termination packet!");
         run_coroutine_sync!(self.socket.write_all(&packet.slice())).inspect_err(|e| warn!("Couldn't send termination packet: {e}"));
     }
 }

@@ -1,6 +1,9 @@
 use std::mem::take;
 use std::ops::{Deref, DerefMut};
-use std::sync::Mutex;
+
+use async_dropper::AsyncDrop;
+use tokio::sync::Mutex;
+use tonic::async_trait;
 
 use super::buffer::ByteBuffer;
 
@@ -42,10 +45,11 @@ impl DerefMut for KeptVector<'_> {
     }
 }
 
-impl<'a> Drop for KeptVector<'a> {
-    fn drop(&mut self) {
+#[async_trait]
+impl<'a> AsyncDrop for KeptVector<'a> {
+    async fn async_drop(&mut self) {
         if let Some(pl) = self.pool {
-            pl.push(take(&mut self.data))
+            pl.push(take(&mut self.data)).await
         }
     }
 }
@@ -71,13 +75,13 @@ impl <'a>BytePool {
         }
     }
 
-    fn push(&self, ptr: Vec<u8>) {
-        self.pool.lock().expect("Byte pool panicked!").push(ptr);
+    async fn push(&self, ptr: Vec<u8>) {
+        self.pool.lock().await.push(ptr);
     }
 
-    fn pull(&'a self) -> KeptVector<'a> {
+    async fn pull(&'a self) -> KeptVector<'a> {
         KeptVector {
-            data: match self.pool.lock().expect("Byte pool panicked!").pop() {
+            data: match self.pool.lock().await.pop() {
                 Some(res) => res,
                 None => vec![0u8; self.capacity],
             },
@@ -85,7 +89,7 @@ impl <'a>BytePool {
         }
     }
 
-    pub fn allocate(&'a self, size: Option<usize>) -> ByteBuffer<'a> {
+    pub async fn allocate(&'a self, size: Option<usize>) -> ByteBuffer<'a> {
         let (remaining_size, remaining_after_cap) = match size {
             Some(res) => {
                 assert!(res <= self.size, "Requested size greater than initial size ({res} > {})!", self.size);
@@ -93,6 +97,6 @@ impl <'a>BytePool {
             },
             None => (self.size, self.after_cap)
         };
-        ByteBuffer::precise(self.before_cap, remaining_size, remaining_after_cap, self.pull())
+        ByteBuffer::precise(self.before_cap, remaining_size, remaining_after_cap, self.pull().await)
     }
 }

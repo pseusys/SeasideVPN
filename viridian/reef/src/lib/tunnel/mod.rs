@@ -56,7 +56,7 @@ impl Clone for Tunnel {
 
 impl Reader for Tunnel {
     async fn read_bytes(&mut self) -> DynResult<ByteBuffer> {
-        let buffer = get_buffer(None);
+        let buffer = get_buffer(None).await;
         let read = match self.tunnel.tun_device.recv(&mut buffer.slice_mut()).await {
             Ok(res) => res,
             Err(res) => bail!("Error reading bytes from tunnel: {}", res)

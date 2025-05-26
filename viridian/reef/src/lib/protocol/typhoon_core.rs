@@ -38,9 +38,9 @@ lazy_static! {
 }
 
 
-pub fn build_client_init<'a, 'b>(cipher: &Asymmetric, packet_number: u32, next_in: u32, token: &ByteBuffer<'b>) -> DynResult<(Symmetric, ByteBuffer<'b>)> {
+pub async fn build_client_init<'a, 'b>(cipher: &Asymmetric, packet_number: u32, next_in: u32, token: &ByteBuffer<'b>) -> DynResult<(Symmetric, ByteBuffer<'b>)> {
     let buffer_size = get_type_size::<ClientInitHeader>()?;
-    let buffer = get_buffer(Some(buffer_size));
+    let buffer = get_buffer(Some(buffer_size)).await;
 
     let user_name = encode_to_32_bytes(CLIENT_NAME);
     let tail_len = get_rng().gen_range(0..=*TYPHOON_MAX_TAIL_LENGTH);
@@ -54,17 +54,17 @@ pub fn build_client_init<'a, 'b>(cipher: &Asymmetric, packet_number: u32, next_i
 }
 
 #[inline]
-pub fn build_client_hdsk<'a>(cipher: &mut Symmetric, packet_number: u32, next_in: u32) -> DynResult<ByteBuffer<'a>> {
-    let buffer = get_buffer(Some(0));
-    build_client_hdsk_with_data(cipher, ProtocolFlag::HDSK as u8, packet_number, next_in, buffer)
+pub async fn build_client_hdsk<'a>(cipher: &mut Symmetric, packet_number: u32, next_in: u32) -> DynResult<ByteBuffer<'a>> {
+    let buffer = get_buffer(Some(0)).await;
+    build_client_hdsk_with_data(cipher, ProtocolFlag::HDSK as u8, packet_number, next_in, buffer).await
 }
 
 #[inline]
-pub fn build_client_hdsk_data<'a>(cipher: &mut Symmetric, packet_number: u32, next_in: u32, data: ByteBuffer<'a>) -> DynResult<ByteBuffer<'a>> {
-    build_client_hdsk_with_data(cipher, ProtocolFlag::HDSK | ProtocolFlag::DATA, packet_number, next_in, data)
+pub async fn build_client_hdsk_data<'a>(cipher: &mut Symmetric, packet_number: u32, next_in: u32, data: ByteBuffer<'a>) -> DynResult<ByteBuffer<'a>> {
+    build_client_hdsk_with_data(cipher, ProtocolFlag::HDSK | ProtocolFlag::DATA, packet_number, next_in, data).await
 }
 
-fn build_client_hdsk_with_data<'a>(cipher: &mut Symmetric, flags: u8, packet_number: u32, next_in: u32, data: ByteBuffer<'a>) -> DynResult<ByteBuffer<'a>> {
+async fn build_client_hdsk_with_data<'a>(cipher: &mut Symmetric, flags: u8, packet_number: u32, next_in: u32, data: ByteBuffer<'a>) -> DynResult<ByteBuffer<'a>> {
     let tail_len = get_rng().gen_range(0..=*TYPHOON_MAX_TAIL_LENGTH);
     let header: AnyHandshakeHeader = (flags, packet_number, next_in, tail_len as u16);
 
@@ -76,7 +76,7 @@ fn build_client_hdsk_with_data<'a>(cipher: &mut Symmetric, flags: u8, packet_num
     Ok(cipher.encrypt(message, None)?)
 }
 
-pub fn build_any_data<'a>(cipher: &mut Symmetric, data: ByteBuffer<'a>) -> DynResult<ByteBuffer<'a>> {
+pub async fn build_any_data<'a>(cipher: &mut Symmetric, data: ByteBuffer<'a>) -> DynResult<ByteBuffer<'a>> {
     let tail_len = get_rng().gen_range(0..=*TYPHOON_MAX_TAIL_LENGTH);
     let header: AnyOtherHeader = (ProtocolFlag::DATA as u8, tail_len as u16);
 
@@ -88,9 +88,9 @@ pub fn build_any_data<'a>(cipher: &mut Symmetric, data: ByteBuffer<'a>) -> DynRe
     Ok(cipher.encrypt(message, None)?)
 }
 
-pub fn build_any_term<'a>(cipher: &mut Symmetric) -> DynResult<ByteBuffer<'a>> {
+pub async fn build_any_term<'a>(cipher: &mut Symmetric) -> DynResult<ByteBuffer<'a>> {
     let buffer_size = get_type_size::<AnyOtherHeader>()?;
-    let buffer = get_buffer(Some(buffer_size));
+    let buffer = get_buffer(Some(buffer_size)).await;
 
     let tail_len = get_rng().gen_range(0..=*TYPHOON_MAX_TAIL_LENGTH);
     let header: AnyOtherHeader = (ProtocolFlag::TERM as u8, tail_len as u16);
@@ -99,7 +99,7 @@ pub fn build_any_term<'a>(cipher: &mut Symmetric) -> DynResult<ByteBuffer<'a>> {
     Ok(cipher.encrypt(buffer, None)?)
 }
 
-pub fn parse_server_init(cipher: &mut Symmetric, packet: ByteBuffer, expected_packet_number: u32) -> DynResult<(u16, u32)> {
+pub async fn parse_server_init(cipher: &mut Symmetric, packet: ByteBuffer<'_>, expected_packet_number: u32) -> DynResult<(u16, u32)> {
     let header_size = get_type_size::<ServerInitHeader>()?;
     let data = cipher.decrypt(packet, None)?;
     let ((flags, packet_number, init_status, user_id, next_in, _), _): (ServerInitHeader, usize) = decode_from_slice(&data.slice_end(header_size), ENCODE_CONF)?;
@@ -116,7 +116,7 @@ pub fn parse_server_init(cipher: &mut Symmetric, packet: ByteBuffer, expected_pa
     }
 }
 
-fn parse_any_hdsk<'a>(data: ByteBuffer<'a>, expected_packet_number: Option<u32>) -> DynResult<(u32, u32, Option<ByteBuffer<'a>>)> {
+async fn parse_any_hdsk<'a>(data: ByteBuffer<'a>, expected_packet_number: Option<u32>) -> DynResult<(u32, u32, Option<ByteBuffer<'a>>)> {
     let header_size = get_type_size::<AnyHandshakeHeader>()?;
     let ((_, packet_number, next_in, tail_length), _): (AnyHandshakeHeader, usize) = decode_from_slice(&data.slice_end(header_size), ENCODE_CONF)?;
     let tail_offset = data.len() - tail_length as usize;
@@ -134,24 +134,24 @@ fn parse_any_hdsk<'a>(data: ByteBuffer<'a>, expected_packet_number: Option<u32>)
     }
 }
 
-fn parse_any_data<'a>(data: ByteBuffer<'a>) -> DynResult<ByteBuffer<'a>> {
+async fn parse_any_data<'a>(data: ByteBuffer<'a>) -> DynResult<ByteBuffer<'a>> {
     let header_size = get_type_size::<AnyOtherHeader>()?;
     let ((_, tail_length), _): (AnyOtherHeader, usize) = decode_from_slice(&data.slice_end(header_size), ENCODE_CONF)?;
     let tail_offset = data.len() - tail_length as usize;
     Ok(data.rebuffer_both(header_size, tail_offset))
 }
 
-pub fn parse_server_message<'a>(cipher: &mut Symmetric, packet: ByteBuffer<'a>, expected_packet_number: Option<u32>) -> DynResult<(ProtocolMessageType, Option<(u32, u32)>, Option<ByteBuffer<'a>>)> {
+pub async fn parse_server_message<'a>(cipher: &mut Symmetric, packet: ByteBuffer<'a>, expected_packet_number: Option<u32>) -> DynResult<(ProtocolMessageType, Option<(u32, u32)>, Option<ByteBuffer<'a>>)> {
     let data = cipher.decrypt(packet, None)?;
     let flags = data.get(0).clone();
     if flags == ProtocolFlag::HDSK | ProtocolFlag::DATA {
-        let (packet_number, next_in, payload) = parse_any_hdsk(data, expected_packet_number)?;
+        let (packet_number, next_in, payload) = parse_any_hdsk(data, expected_packet_number).await?;
         Ok((ProtocolMessageType::HandshakeData, Some((packet_number, next_in)), payload))
     } else if flags == ProtocolFlag::HDSK as u8 {
-        let (packet_number, next_in, payload) = parse_any_hdsk(data, expected_packet_number)?;
+        let (packet_number, next_in, payload) = parse_any_hdsk(data, expected_packet_number).await?;
         Ok((ProtocolMessageType::Handshake, Some((packet_number, next_in)), payload))
     } else if flags == ProtocolFlag::DATA as u8 {
-        let payload = parse_any_data(data)?;
+        let payload = parse_any_data(data).await?;
         Ok((ProtocolMessageType::Data, None, Some(payload)))
     } else if flags == ProtocolFlag::TERM as u8 {
         Ok((ProtocolMessageType::Termination, None, None))

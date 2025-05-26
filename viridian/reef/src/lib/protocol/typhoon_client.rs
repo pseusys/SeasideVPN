@@ -48,7 +48,7 @@ impl <'a> TyphoonHandle<'a> {
     async fn read_server_init(&self, socket: &UdpSocket, cipher: &mut Symmetric, packet_number: u32) -> DynResult<(u16, u32)> {
         debug!("Reading server initialization message...");
         loop {
-            let buffer = get_buffer(None);
+            let buffer = get_buffer(None).await;
             match socket.recv(&mut buffer.slice_mut()).await {
                 Ok(res) => debug!("Received initialization packet of size: {res}"),
                 Err(err) => {
@@ -56,7 +56,7 @@ impl <'a> TyphoonHandle<'a> {
                     continue;
                 }
             };
-            let (user_id, next_in) = match parse_server_init(cipher, buffer, packet_number) {
+            let (user_id, next_in) = match parse_server_init(cipher, buffer, packet_number).await {
                 Ok(res) => res,
                 Err(err) => {
                     warn!("Peer packet parsing error: {err}");
@@ -77,7 +77,7 @@ impl <'a> TyphoonHandle<'a> {
             let next_in = generate_next_in(*TYPHOON_INITIAL_NEXT_IN);
 
             debug!("Sending initialization packet with: packet number {packet_number} and next in {next_in}...");
-            let (mut symmetric, packet) = build_client_init(&self.asymmetric, packet_number, next_in, &self.token)?;
+            let (mut symmetric, packet) = build_client_init(&self.asymmetric, packet_number, next_in, &self.token).await?;
             socket.send(&packet.slice()).await?;
             let sleep = next_in + (*TYPHOON_DEFAULT_TIMEOUT).clamp(*TYPHOON_MIN_TIMEOUT, *TYPHOON_MAX_TIMEOUT);
 
@@ -188,9 +188,9 @@ impl TyphoonClientInternal {
         debug!("Sending handshake message...");
         self.regenerate_next_in();
         let packet = if let Some(package) = data {
-            build_client_hdsk_data(symmetric, packet_number, self.prev_next_in, package)?
+            build_client_hdsk_data(symmetric, packet_number, self.prev_next_in, package).await?
         } else {
-            build_client_hdsk(symmetric, packet_number, self.prev_next_in)?
+            build_client_hdsk(symmetric, packet_number, self.prev_next_in).await?
         };
         self.socket.send(&packet.slice()).await?;
         Ok(())
@@ -326,7 +326,7 @@ impl Reader for TyphoonClient {
         let reader = self.internal.read().await;
         debug!("Reading started (at {}, from {})...", reader.socket.local_addr()?, reader.socket.peer_addr()?);
         loop {
-            let buffer = get_buffer(None);
+            let buffer = get_buffer(None).await;
             with_read!(self, new_self, {
                 if let Some(th) = &new_self.decay {
                     if th.is_finished() {
@@ -339,7 +339,7 @@ impl Reader for TyphoonClient {
                 continue;
             }
             debug!("Peer packet read: {} bytes", buffer.len());
-            let (msgtp, cons, data) = match parse_server_message(&mut self.symmetric, buffer, reader.prev_packet_number) {
+            let (msgtp, cons, data) = match parse_server_message(&mut self.symmetric, buffer, reader.prev_packet_number).await {
                 Ok((msgtp, cons, data)) => {
                     if msgtp as u8 & ProtocolFlag::HDSK as u8 == 1 {
                         with_write!(self, new_self, {
@@ -386,7 +386,7 @@ impl Writer for TyphoonClient {
                 Some(packet_number) => new_self.send_hdsk(&mut self.symmetric, packet_number, Some(bytes)).await?,
                 None => {
                     debug!("Sending data message: {} bytes...", bytes.len());
-                    let packet = build_any_data(&mut self.symmetric, bytes)?;
+                    let packet = build_any_data(&mut self.symmetric, bytes).await?;
                     new_self.socket.send(&packet.slice()).await?;
                     return Ok(packet.len())
                 }
@@ -401,7 +401,7 @@ impl AsyncDrop for TyphoonClient {
     #[allow(unused_must_use)]
     async fn async_drop(&mut self) {
         let new_int = self.internal.read().await;
-        let packet = build_any_term(&mut self.symmetric).expect("Couldn't build termination packet!");
+        let packet = build_any_term(&mut self.symmetric).await.expect("Couldn't build termination packet!");
         run_coroutine_sync!(new_int.socket.send(&packet.slice())).inspect_err(|e| warn!("Couldn't send termination packet: {e}"));
     }
 }
