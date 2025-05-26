@@ -115,6 +115,7 @@ impl<'a> Viridian<'a> {
             }
         };
 
+        debug!("Waiting for background task termination...");
         termination.send(())?;
         Ok(result?)
     }
