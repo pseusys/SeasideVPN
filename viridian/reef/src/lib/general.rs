@@ -8,7 +8,7 @@ use tokio::task::JoinHandle;
 
 use crate::bytes::ByteBuffer;
 use crate::protocol::{PortHandle, ProtocolClientHandle, ProtocolType, TyphoonHandle};
-use crate::{run_coroutine_conditionally, DynResult, ReaderWriter};
+use crate::{run_coroutine_in_thread, DynResult, ReaderWriter};
 
 
 async fn worker_task(mut reader: impl ReaderWriter, mut writer: impl ReaderWriter, mut terminator: Receiver<()>, message: &str) -> Result<(), Box<SimpleError>> {
@@ -37,8 +37,8 @@ fn connect<T: ReaderWriter, C: ReaderWriter>(tunnel: T, client: C) -> (JoinHandl
     let (send_handle_tunnel, receive_handle_tunnel) = (tunnel.clone(), tunnel.clone());
     let (send_handle_client, receive_handle_client) = (client.clone(), client.clone());
     let (send_term_receiver, receive_term_receiver) = (termination_sender.subscribe(), termination_sender.subscribe());
-    let send_handle = run_coroutine_conditionally!(worker_task(send_handle_tunnel, send_handle_client, send_term_receiver, "viridian -> caerulean"));
-    let receive_handle = run_coroutine_conditionally!(worker_task(receive_handle_client, receive_handle_tunnel, receive_term_receiver, "caerulean -> viridian"));
+    let send_handle = run_coroutine_in_thread!(worker_task(send_handle_tunnel, send_handle_client, send_term_receiver, "viridian -> caerulean"));
+    let receive_handle = run_coroutine_in_thread!(worker_task(receive_handle_client, receive_handle_tunnel, receive_term_receiver, "caerulean -> viridian"));
     (send_handle, receive_handle, termination_sender)
 }
 

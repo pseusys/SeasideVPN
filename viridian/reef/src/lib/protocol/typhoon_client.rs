@@ -2,7 +2,6 @@ use std::cmp::max;
 use std::mem::replace;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
-use std::thread::JoinHandle;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::u32;
 
@@ -13,6 +12,7 @@ use simple_error::bail;
 use tokio::net::UdpSocket;
 use tokio::select;
 use tokio::sync::{mpsc, RwLock};
+use tokio::task::JoinHandle;
 use tokio::time::timeout;
 use tonic::async_trait;
 
@@ -220,9 +220,9 @@ impl AsyncDrop for TyphoonClientInternal {
     #[allow(unused_must_use)]
     async fn async_drop(&mut self) {
         self.termination_channel.send(()).await.expect("Decay cycle terminator is None!");
-        let decay = replace(&mut self.decay, None).and_then(|t| Some(t.join()));
+        let decay = replace(&mut self.decay, None);
         if let Some(thread) = decay {
-            let result = thread.expect("Thread termination error!");
+            let result = thread.await.expect("Thread termination error!");
             result.inspect_err(|r| info!("Inner TYPHOON thread terminated with: {r}"));
         }
     }
