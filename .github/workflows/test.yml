@@ -79,7 +79,9 @@ jobs:
       - name: Start Background Server
         id: start-background-server
         working-directory: .github/scripts
-        run: sudo npm run configure-viridian-test --
+        run: |
+          sudo iptables -V
+          sudo npm run configure-viridian-test
 
       - name: Load .ENV File
         uses: aarcangeli/load-dotenv@v1
@@ -96,7 +98,7 @@ jobs:
         run: |
           LINK=$(poetry poe -q fixture -a "${{ env.SEASIDE_ADDRESS }}" -p "${{ env.SEASIDE_API_PORT }}" -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian -s)
           echo "WHIRLPOOL_LINK=$LINK" >> $GITHUB_ENV
-  
+
       - name: Test Echo Server Access (no VPN)
         working-directory: viridian/algae
         run: eval "${{ env.TEST_COMMAND }}" && exit 1 || true
