@@ -104,7 +104,7 @@ jobs:
       - name: Test Viridian Algae PORT (standalone) 🧪
         id: test-viridian-algae-port
         working-directory: viridian/algae
-        run: sudo -E env "PATH=$PATH" poetry poe client -s port -l "${{ env.WHIRLPOOL_LINK }}" -e "${{ env.TEST_COMMAND }}"
+        run: sudo -E env "PATH=$PATH" poetry poe client -s port -l "${{ env.WHIRLPOOL_LINK }}" -e "nft list ruleset"
 
       - name: Test Viridian Algae TYPHOON (standalone) 🧪
         id: test-viridian-algae-typhoon
