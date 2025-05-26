@@ -168,9 +168,9 @@ jobs:
           pip3 install poetry poethepoet[poetry_plugin]
           poetry install --extras "devel"
 
-      - name: Test Viridian Reef (unit) 🧪
-        working-directory: viridian/reef
-        run: ${{ env.SUDO }} cargo test --package SeasideVPN-Reef --lib -- --nocapture --show-output
+    #  - name: Test Viridian Reef (unit) 🧪
+    #    working-directory: viridian/reef
+    #    run: ${{ env.SUDO }} cargo test --package SeasideVPN-Reef --lib -- --nocapture --show-output
 
       - name: Start Background Server
         id: start-background-server

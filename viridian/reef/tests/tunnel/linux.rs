@@ -243,7 +243,6 @@ async fn test_enable_disable_firewall() {
     let (nftables_out, _) = run_command("nft", ["list", "ruleset"]).expect("Error getting 'iptables' data!");
     let nftables_match = nft_regex.captures(&nftables_out).expect("NFT rule didn't match anything!");
 
-    /*
     assert_eq!(&nftables_match["table"], NFTABLES_TABLE_NAME, "NFT table name doesn't match!");
     for (pref, name) in vec![("o", "output"), ("f", "forward")] {
         assert_eq!(&nftables_match[format!("{pref}chain").as_str()], format!("{NFTABLES_CHAIN_NAME}-{name}"), "NFT {name} chain name doesn't match!");
@@ -254,7 +253,6 @@ async fn test_enable_disable_firewall() {
         assert_eq!(&nftables_match[format!("{pref}odest").as_str()], default_net.trunc().to_string(), "NFT {name} chain tunnel rule destination IP address range doesn't match!");
         assert_eq!(&nftables_match[format!("{pref}mark").as_str()], format!("{svr_idx:#010x}"), "NFT {name} chain tunnel rule mark value doesn't match!");
     }
-    */
 
     disable_firewall(&table).expect("Error disabling firewall!");
 
