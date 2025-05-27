@@ -131,8 +131,8 @@ impl <'a> TyphoonHandle<'a> {
         let (ctrl_sender, ctrl_receiver) = mpsc::channel(1);
         let (decay_sender, decay_receiver) = mpsc::channel(1);
         let client = TyphoonClient {
+            socket: Arc::new(socket),
             internal: Arc::new(RwLock::new(TyphoonClientInternal {
-                socket,
                 control_channel: ctrl_receiver,
                 decay_channel: decay_sender,
                 prev_packet_number: None,
@@ -155,7 +155,6 @@ impl <'a> TyphoonHandle<'a> {
 
 
 struct TyphoonClientInternal {
-    socket: UdpSocket,
     control_channel: mpsc::Receiver<u32>,
     decay_channel: mpsc::Sender<u32>,
     prev_packet_number: Option<u32>,
@@ -184,7 +183,7 @@ impl TyphoonClientInternal {
         self.prev_sent = get_timestamp();
     }
 
-    async fn send_hdsk<'a>(&mut self, symmetric: &mut Symmetric, packet_number: u32, data: Option<ByteBuffer<'a>>) -> DynResult<()> {
+    async fn send_hdsk<'a>(&mut self, symmetric: &mut Symmetric, socket: &UdpSocket, packet_number: u32, data: Option<ByteBuffer<'a>>) -> DynResult<()> {
         debug!("Sending handshake message...");
         self.regenerate_next_in();
         let packet = if let Some(package) = data {
@@ -192,7 +191,7 @@ impl TyphoonClientInternal {
         } else {
             build_client_hdsk(symmetric, packet_number, self.prev_next_in).await?
         };
-        self.socket.send(&packet.slice()).await?;
+        socket.send(&packet.slice()).await?;
         Ok(())
     }
 
@@ -224,6 +223,7 @@ impl AsyncDrop for TyphoonClientInternal {
 
 
 pub struct TyphoonClient {
+    socket: Arc<UdpSocket>,
     internal: Arc<RwLock<TyphoonClientInternal>>,
     symmetric: Symmetric
 }
@@ -287,7 +287,7 @@ impl TyphoonClient {
 
             let next_in_timeout = with_write!(self, new_self, {
                 match new_self.control_channel.try_recv() {
-                    Ok(packet_number) => new_self.send_hdsk(&mut self.symmetric, packet_number, None).await?,
+                    Ok(packet_number) => new_self.send_hdsk(&mut self.symmetric, &self.socket, packet_number, None).await?,
                     Err(_) => debug!("Shadowriding handshake was already performed!"),
                 }
                 let next_in_timeout = new_self.prev_next_in + new_self.timeout();
@@ -318,14 +318,13 @@ impl TyphoonClient {
 
 impl Clone for TyphoonClient {
     fn clone(&self) -> Self {
-        Self { internal: self.internal.clone(), symmetric: self.symmetric.clone() }
+        Self { socket: self.socket.clone(), internal: self.internal.clone(), symmetric: self.symmetric.clone() }
     }
 }
 
 impl Reader for TyphoonClient {
     async fn read_bytes(&mut self) -> DynResult<ByteBuffer> {
-        let reader = self.internal.read().await;
-        debug!("Reading started (at {}, from {})...", reader.socket.local_addr()?, reader.socket.peer_addr()?);
+        debug!("Reading started (at {}, from {})...", self.socket.local_addr()?, self.socket.peer_addr()?);
         loop {
             let buffer = get_buffer(None).await;
             with_read!(self, new_self, {
@@ -335,7 +334,7 @@ impl Reader for TyphoonClient {
                     }
                 }
             });
-            let size = match reader.socket.recv(&mut buffer.slice_mut()).await {
+            let size = match self.socket.recv(&mut buffer.slice_mut()).await {
                 Ok(res) => {
                     debug!("Received a packet of size: {res}");
                     res
@@ -346,7 +345,10 @@ impl Reader for TyphoonClient {
                 }
             };
             debug!("Peer packet read: {} bytes", buffer.len());
-            let (msgtp, cons, data) = match parse_server_message(&mut self.symmetric, buffer.rebuffer_end(size), reader.prev_packet_number).await {
+            let message_parse_result = with_read!(self, new_self, {
+                parse_server_message(&mut self.symmetric, buffer.rebuffer_end(size), new_self.prev_packet_number).await
+            });
+            let (msgtp, cons, data) = match message_parse_result {
                 Ok((msgtp, cons, data)) => {
                     if msgtp as u8 & ProtocolFlag::HDSK as u8 == 1 {
                         with_write!(self, new_self, {
@@ -389,17 +391,19 @@ impl Writer for TyphoonClient {
             }
         });
         with_write!(self, new_self, {
-            match new_self.control_channel.recv().await {
-                Some(packet_number) => new_self.send_hdsk(&mut self.symmetric, packet_number, Some(bytes)).await?,
-                None => {
+            match new_self.control_channel.try_recv() {
+                Ok(res) => {
+                    new_self.send_hdsk(&mut self.symmetric, &self.socket, res, Some(bytes)).await?;
+                    Ok(0)
+                },
+                Err(_) => {
                     debug!("Sending data message: {} bytes...", bytes.len());
                     let packet = build_any_data(&mut self.symmetric, bytes).await?;
-                    new_self.socket.send(&packet.slice()).await?;
-                    return Ok(packet.len())
+                    self.socket.send(&packet.slice()).await?;
+                    Ok(packet.len())
                 }
             }
-        });
-        Ok(0)
+        })
     }
 }
 
@@ -407,8 +411,7 @@ impl Writer for TyphoonClient {
 impl AsyncDrop for TyphoonClient {
     #[allow(unused_must_use)]
     async fn async_drop(&mut self) {
-        let new_int = self.internal.read().await;
         let packet = build_any_term(&mut self.symmetric).await.expect("Couldn't build termination packet!");
-        run_coroutine_sync!(new_int.socket.send(&packet.slice())).inspect_err(|e| warn!("Couldn't send termination packet: {e}"));
+        run_coroutine_sync!(self.socket.send(&packet.slice())).inspect_err(|e| warn!("Couldn't send termination packet: {e}"));
     }
 }
