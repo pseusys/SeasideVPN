@@ -79,7 +79,7 @@ impl<'a> Viridian<'a> {
         }
 
         debug!("Creating protocol client handle...");
-        let (send_handle, receive_handle, termination) = create_handle(&self.client_type, self.tunnel.clone(), self.tunnel.clone(), self.key.clone(), self.token.clone(), self.address, self.port, None).await?;
+        let (send_handle, receive_handle, termination) = create_handle(&self.client_type, self.tunnel.clone(), self.tunnel.clone(), self.key.clone(), self.token.clone(), self.address, self.port, Some(self.tunnel.default_interface().0)).await?;
 
         debug!("Running DNS probe to check for globally available DNS servers...");
         if lookup_host("example.com").await.is_err() {

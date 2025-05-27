@@ -16,7 +16,7 @@ use nftables::batch::Batch;
 use nftables::expr::{Expression, Meta, MetaKey, NamedExpression, Payload, PayloadField, Prefix};
 use nftables::helper::apply_ruleset;
 use nftables::schema::{Chain, NfListObject, Rule, Table};
-use nftables::stmt::{Accept, Mangle, Match, Operator, Statement};
+use nftables::stmt::{Accept, Counter, Mangle, Match, Operator, Statement};
 use nftables::types::{NfChainType, NfFamily, NfHook};
 use simple_error::{bail, require_with};
 use tun::{create_as_async, AsyncDevice, Configuration};
@@ -205,6 +205,7 @@ fn enable_firewall(default_interface: &str, default_network: &Ipv4Net, seaside_a
                     right: Expression::String(seaside_address.to_string()),
                     op: Operator::EQ
                 }),
+                Statement::Counter(Counter::Anonymous(None)),
                 Statement::Accept(Some(Accept {}))
             ],
             ..Default::default()
@@ -212,7 +213,7 @@ fn enable_firewall(default_interface: &str, default_network: &Ipv4Net, seaside_a
         batch.add(NfListObject::Rule(Rule {
             family: NfFamily::IP,
             table: NFTABLES_TABLE_NAME.to_string(),
-            chain: chain_name,
+            chain: chain_name.clone(),
             expr: vec![
                 Statement::Match(Match {
                     left: Expression::Named(NamedExpression::Meta(Meta {
@@ -238,6 +239,7 @@ fn enable_firewall(default_interface: &str, default_network: &Ipv4Net, seaside_a
                     })),
                     value: Expression::Number(u32::from(svr_index))
                 }),
+                Statement::Counter(Counter::Anonymous(None)),
                 Statement::Accept(Some(Accept {}))
             ],
             ..Default::default()

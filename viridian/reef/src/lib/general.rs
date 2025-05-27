@@ -14,6 +14,7 @@ use crate::{run_coroutine_in_thread, DynResult, Reader, Writer};
 async fn worker_task(mut reader: impl Reader, mut writer: impl Writer, mut terminator: Receiver<()>, message: &str) -> Result<(), Box<SimpleError>> {
     info!("Setting up worker task {}...", message);
     loop {
+        debug!("Reading bytes {}...", message);
         let packet = select! {
             pk = reader.read_bytes() => match pk {
                 Err(res) => bail!("Error reading from tunnel: {res}!"),
@@ -30,7 +31,7 @@ async fn worker_task(mut reader: impl Reader, mut writer: impl Writer, mut termi
         debug!("Captured {} bytes {}!", packet.len(), message);
         match writer.write_bytes(packet).await {
             Err(res) => bail!("Error writing to socket: {res}!"),
-            Ok(res) => debug!("Sent {res} bytes to caerulean!")
+            Ok(res) => debug!("Sent {res} bytes {}!", message)
         };
     }
 }
