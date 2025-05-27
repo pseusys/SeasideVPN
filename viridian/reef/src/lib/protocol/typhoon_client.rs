@@ -49,14 +49,17 @@ impl <'a> TyphoonHandle<'a> {
         debug!("Reading server initialization message...");
         loop {
             let buffer = get_buffer(None).await;
-            match socket.recv(&mut buffer.slice_mut()).await {
-                Ok(res) => debug!("Received initialization packet of size: {res}"),
+            let size = match socket.recv(&mut buffer.slice_mut()).await {
+                Ok(res) => {
+                    debug!("Received initialization packet of size: {res}");
+                    res
+                },
                 Err(err) => {
                     warn!("Invalid packet read error: {err}");
                     continue;
                 }
             };
-            let (user_id, next_in) = match parse_server_init(cipher, buffer, packet_number).await {
+            let (user_id, next_in) = match parse_server_init(cipher, buffer.rebuffer_end(size), packet_number).await {
                 Ok(res) => res,
                 Err(err) => {
                     warn!("Peer packet parsing error: {err}");
@@ -332,12 +335,18 @@ impl Reader for TyphoonClient {
                     }
                 }
             });
-            if let Err(err) = reader.socket.recv(&mut buffer.slice_mut()).await {
-                warn!("Invalid packet read error: {err}");
-                continue;
-            }
+            let size = match reader.socket.recv(&mut buffer.slice_mut()).await {
+                Ok(res) => {
+                    debug!("Received a packet of size: {res}");
+                    res
+                },
+                Err(err) => {
+                    warn!("Invalid packet read error: {err}");
+                    continue;
+                }
+            };
             debug!("Peer packet read: {} bytes", buffer.len());
-            let (msgtp, cons, data) = match parse_server_message(&mut self.symmetric, buffer, reader.prev_packet_number).await {
+            let (msgtp, cons, data) = match parse_server_message(&mut self.symmetric, buffer.rebuffer_end(size), reader.prev_packet_number).await {
                 Ok((msgtp, cons, data)) => {
                     if msgtp as u8 & ProtocolFlag::HDSK as u8 == 1 {
                         with_write!(self, new_self, {
