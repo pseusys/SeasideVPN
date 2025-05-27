@@ -2,22 +2,17 @@
 #[path = "../../../tests/tunnel/linux.rs"]
 mod linux_test;
 
+use std::error::Error;
 use std::fs::File;
 use std::io::Write;
 use std::net::Ipv4Addr;
 
 use ipnet::Ipv4Net;
-use log::{debug, error};
+use log::{debug, error, info};
 use neli::consts::nl::NlTypeWrapper;
 use neli::consts::rtnl::{Ifa, Ifla, RtTable, Rta, Rtm};
 use neli::rtnl::{Ifinfomsg, Rtmsg};
 use neli::socket::NlSocketHandle;
-use nftables::batch::Batch;
-use nftables::expr::{Expression, Meta, MetaKey, NamedExpression, Payload, PayloadField, Prefix};
-use nftables::helper::apply_ruleset;
-use nftables::schema::{Chain, NfListObject, Rule, Table};
-use nftables::stmt::{Accept, Counter, Mangle, Match, Operator, Statement};
-use nftables::types::{NfChainType, NfFamily, NfHook};
 use simple_error::{bail, require_with};
 use tun::{create_as_async, AsyncDevice, Configuration};
 
@@ -26,10 +21,7 @@ use super::{bytes_to_int, bytes_to_ip_address, bytes_to_string, TunnelInternal};
 use crate::DynResult;
 
 
-const NFT_PRIO_OVERRIDE: i32 = -500;
 const FRA_MASK: Rta = Rta::UnrecognizedConst(10);
-const NFTABLES_TABLE_NAME: &str = "seaside-reef-table";
-const NFTABLES_CHAIN_NAME: &str = "seaside-reef-chain";
 
 
 fn get_default_address_and_device(socket: &mut NlSocketHandle, target: Ipv4Addr) -> DynResult<(Ipv4Addr, i32)> {
@@ -155,107 +147,30 @@ fn disable_routing(route_message: &Rtmsg, rule_message: &Rtmsg) -> DynResult<()>
     Ok(())
 }
 
-
-fn enable_firewall(default_interface: &str, default_network: &Ipv4Net, seaside_address: &Ipv4Addr, svr_index: u8) -> DynResult<Table> {
-    let mut batch = Batch::new();
-
-    let table = Table {
-        family: NfFamily::IP,
-        name: NFTABLES_TABLE_NAME.to_string(),
-        ..Default::default()
-    };
-    batch.add(NfListObject::Table(table.clone()));
-
-    for (hook, name) in vec![(NfHook::Output, "output"), (NfHook::Forward, "forward")] {
-        let chain_name = format!("{NFTABLES_CHAIN_NAME}-{name}");
-        batch.add(NfListObject::Chain(Chain {
-            family: NfFamily::IP,
-            table: NFTABLES_TABLE_NAME.to_string(),
-            name: chain_name.clone(),
-            _type: Some(NfChainType::Filter),
-            hook: Some(hook),
-            prio: Some(NFT_PRIO_OVERRIDE),
-            ..Default::default()
-        }));
-        batch.add(NfListObject::Rule(Rule {
-            family: NfFamily::IP,
-            table: NFTABLES_TABLE_NAME.to_string(),
-            chain: chain_name.clone(),
-            expr: vec![
-                Statement::Match(Match {
-                    left: Expression::Named(NamedExpression::Meta(Meta {
-                        key: MetaKey::Oifname
-                    })),
-                    right: Expression::String(default_interface.to_string()),
-                    op: Operator::EQ
-                }),
-                Statement::Match(Match {
-                    left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField {
-                        protocol: "ip".to_string(),
-                        field: "saddr".to_string()
-                    }))),
-                    right: Expression::String(default_network.addr().to_string()),
-                    op: Operator::EQ
-                }),
-                Statement::Match(Match {
-                    left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField {
-                        protocol: "ip".to_string(),
-                        field: "daddr".to_string()
-                    }))),
-                    right: Expression::String(seaside_address.to_string()),
-                    op: Operator::EQ
-                }),
-                Statement::Counter(Counter::Anonymous(None)),
-                Statement::Accept(Some(Accept {}))
-            ],
-            ..Default::default()
-        }));
-        batch.add(NfListObject::Rule(Rule {
-            family: NfFamily::IP,
-            table: NFTABLES_TABLE_NAME.to_string(),
-            chain: chain_name.clone(),
-            expr: vec![
-                Statement::Match(Match {
-                    left: Expression::Named(NamedExpression::Meta(Meta {
-                        key: MetaKey::Oifname
-                    })),
-                    right: Expression::String(default_interface.to_string()),
-                    op: Operator::EQ
-                }),
-                Statement::Match(Match {
-                    left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField {
-                        protocol: "ip".to_string(),
-                        field: "daddr".to_string()
-                    }))),
-                    right: Expression::Named(NamedExpression::Prefix(Prefix {
-                        addr: Box::new(Expression::String(default_network.network().to_string())),
-                        len: u32::from(default_network.prefix_len())
-                    })),
-                    op: Operator::NEQ
-                }),
-                Statement::Mangle(Mangle {
-                    key: Expression::Named(NamedExpression::Meta(Meta {
-                        key: MetaKey::Mark
-                    })),
-                    value: Expression::Number(u32::from(svr_index))
-                }),
-                Statement::Counter(Counter::Anonymous(None)),
-                Statement::Accept(Some(Accept {}))
-            ],
-            ..Default::default()
-        }));
-    }
-
-    apply_ruleset(&batch.to_nftables(), None, None)?;
-    Ok(table)
+fn create_firewall_rules(default_name: &str, default_network: &Ipv4Net, seaside_address: &Ipv4Addr, svr_idx: u8) -> Vec<String> {
+    let sia = format!("-o {default_name} ! --dst {}/{} -j ACCEPT", default_network.addr(), default_network.netmask());
+    let sim = format!("-o {default_name} ! --dst {}/{} -j MARK --set-mark {svr_idx}", default_network.addr(), default_network.netmask());
+    let sc = format!("-o {default_name} --src {} --dst {seaside_address} -j ACCEPT", default_network.addr());
+    return vec![sia, sim, sc];
 }
 
-fn disable_firewall(nftable: &Table) -> DynResult<()> {
-    let mut batch = Batch::new();
+fn enable_firewall(firewall_rules: &Vec<String>) -> Result<(), Box<dyn Error>> {
+    let ipt = iptables::new(false)?;
+    for chain in ["OUTPUT", "FORWARD"].iter() {
+        for rule in firewall_rules.iter() {
+            ipt.insert_unique("mangle", chain, rule, 1)?;
+        }
+    }
+    Ok(())
+}
 
-    batch.delete(NfListObject::Table(nftable.clone()));
-
-    apply_ruleset(&batch.to_nftables(), None, None)?;
+fn disable_firewall(firewall_rules: &Vec<String>) -> Result<(), Box<dyn Error>> {
+    let ipt = iptables::new(false)?;
+    for chain in ["OUTPUT", "FORWARD"].iter() {
+        for rule in firewall_rules.iter() {
+            ipt.delete("mangle", chain, rule)?;
+        }
+    }
     Ok(())
 }
 
@@ -264,7 +179,7 @@ pub struct PlatformInternalConfig {
     svr_data: Vec<Rtmsg>,
     route_message: Rtmsg,
     rule_message: Rtmsg,
-    firewall_table: Table
+    firewall_table: Vec<String>
 }
 
 impl TunnelInternal {
@@ -285,7 +200,11 @@ impl TunnelInternal {
 
         debug!("Enabling firewall...");
         let default_network = Ipv4Net::new(default_address, default_cidr)?;
-        let firewall_table = enable_firewall(&default_name, &default_network, &seaside_address, svr_index)?;
+        let firewall_table = create_firewall_rules(&default_name, &default_network, &seaside_address, svr_index);
+        match enable_firewall(&firewall_table) {
+            Ok(_) => info!("Firewall enabled!"),
+            Err(err) => bail!("Error enabling firewall: {err}"),
+        };
 
         let internal = PlatformInternalConfig {svr_data, route_message, rule_message, firewall_table};
         Ok(Self {def_ip: default_address, def_cidr: default_cidr, tun_device: tunnel_device, internal})

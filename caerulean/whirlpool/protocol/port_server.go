@@ -40,8 +40,10 @@ func (p *PortServer) Read(buffer *betterbuf.Buffer, viridianDict *users.Viridian
 	encryptedHeaderLength := PORT_ANY_OTHER_HEADER + crypto.SymmetricCiphertextOverhead
 	header := buffer.RebufferEnd(encryptedHeaderLength)
 	s, err := io.ReadFull(p.socket, header.Slice())
-	if err != nil {
-		logrus.Errorf("packet header reading error: %v", err) // TODO: check if socket is closed!!
+	if err == io.EOF {
+		return nil, fmt.Errorf("socket closed error: %v", err)
+	} else if err != nil {
+		logrus.Errorf("packet header reading error: %v", err)
 		return nil, nil
 	}
 	logrus.Debugf("Read %d bytes from viridian %d", s, p.peerID)

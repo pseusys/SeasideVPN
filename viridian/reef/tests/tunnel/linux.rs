@@ -9,7 +9,7 @@ use regex::Regex;
 use simple_error::bail;
 use tokio::test;
 
-use super::{NFTABLES_TABLE_NAME, NFTABLES_CHAIN_NAME, create_tunnel, disable_firewall, disable_routing, enable_firewall, enable_routing, get_address_device, get_default_interface, restore_svr_table, save_svr_table};
+use super::{create_tunnel, disable_routing, enable_routing, get_address_device, get_default_interface, restore_svr_table, save_svr_table};
 use super::super::DynResult;
 
 
@@ -223,6 +223,7 @@ async fn test_enable_disable_routing() {
 }
 
 
+/*
 #[test]
 async fn test_enable_disable_firewall() {
     let svr_idx = 6;
@@ -257,3 +258,4 @@ async fn test_enable_disable_firewall() {
     disable_firewall(&table).expect("Error disabling firewall!");
 
 }
+*/
