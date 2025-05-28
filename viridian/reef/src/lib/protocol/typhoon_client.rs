@@ -219,6 +219,9 @@ impl AsyncDrop for TyphoonClientInternal {
         if let Some(thread) = decay {
             let result = thread.await.expect("Thread termination error!");
             result.inspect_err(|r| info!("Inner TYPHOON thread terminated with: {r}"));
+            warn!("Decay dropped");
+        } else {
+            warn!("Decay copy dropped");
         }
     }
 }
@@ -417,6 +420,7 @@ impl AsyncDrop for TyphoonClient {
         with_read!(self, mut_self, {
             mut_self.termination_channel.send(()).await.inspect_err(|e| warn!("Couldn't terminate decay: {e}"));
         });
+        debug!("Sending termination packet to caerulean...");
         let packet = build_any_term(&mut self.symmetric).await.expect("Couldn't build termination packet!");
         run_coroutine_sync!(self.socket.send(&packet.slice())).inspect_err(|e| warn!("Couldn't send termination packet: {e}"));
     }
