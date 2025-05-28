@@ -10,7 +10,7 @@ use rand::Rng;
 use simple_error::bail;
 use tokio::net::UdpSocket;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
-use tokio::select;
+use tokio::{pin, select};
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, timeout};

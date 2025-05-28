@@ -2,7 +2,7 @@ from logging import getLogger
 from os import environ, getenv
 from pickle import loads
 from socket import AF_INET, SOCK_STREAM, socket
-from time import perf_counter
+from time import perf_counter, sleep
 
 import pytest
 
@@ -27,3 +27,4 @@ def test_local_echo(random_message: bytes) -> None:
 
     end_time = perf_counter()
     logger.info(f"Local network access took {end_time - start_time:.3f} seconds.")
+    sleep(300)
