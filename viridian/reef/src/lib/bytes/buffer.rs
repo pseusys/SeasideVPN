@@ -46,7 +46,7 @@ impl<'a> ByteBuffer<'a> {
 impl<'a> ByteBuffer<'a> {
     #[inline]
     pub fn get(&self, at: usize) -> Ref<u8> {
-        Ref::map(self.data.borrow(), |b| &b[at])
+        Ref::map(self.data.borrow(), |b| &b[self.start + at])
     }
 
     #[inline]
