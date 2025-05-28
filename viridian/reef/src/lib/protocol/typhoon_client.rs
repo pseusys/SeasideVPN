@@ -1,6 +1,7 @@
 use std::cmp::max;
 use std::mem::replace;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::u32;
@@ -131,31 +132,35 @@ impl <'a> TyphoonHandle<'a> {
         let (ctrl_sender, ctrl_receiver) = channel(1);
         let (decay_sender, decay_receiver) = channel(1);
         let client = TyphoonClient {
-            socket: Arc::new(socket),
-            internal: Arc::new(RwLock::new(TyphoonClientInternal {
-                termination_channel: term_sender,
-                control_channel: ctrl_receiver,
-                decay_channel: decay_sender,
-                prev_packet_number: None,
-                prev_next_in: 0,
-                prev_sent: 0,
-                rttvar: None,
-                srtt: None,
-                decay: None
-            })),
+            internal: Arc::new(TyphoonClientImmutable {
+                socket,
+                references: AtomicUsize::new(0),
+                internal: RwLock::new(TyphoonClientMutable {
+                    termination_channel: term_sender,
+                    control_channel: ctrl_receiver,
+                    decay_channel: decay_sender,
+                    prev_packet_number: None,
+                    prev_next_in: 0,
+                    prev_sent: 0,
+                    rttvar: None,
+                    srtt: None,
+                    decay: None
+                })
+            }),
             symmetric: cipher
         };
 
         let mut client_clone = client.clone();
         let decay = run_coroutine_in_thread!(client_clone.decay_cycle(next_in, ctrl_sender, decay_receiver, term_receiver));
-        client.internal.write().await.decay.replace(decay);
+        client.internal.references.fetch_sub(1, Ordering::SeqCst);
+        client.internal.internal.write().await.decay.replace(decay);
 
         Ok(client)
     }
 }
 
 
-struct TyphoonClientInternal {
+struct TyphoonClientMutable {
     termination_channel: Sender<()>,
     control_channel: Receiver<u32>,
     decay_channel: Sender<u32>,
@@ -167,7 +172,7 @@ struct TyphoonClientInternal {
     decay: Option<JoinHandle<DynResult<()>>>
 }
 
-impl TyphoonClientInternal {
+impl TyphoonClientMutable {
     fn rtt(&self) -> u32 {
         self.srtt.unwrap_or(*TYPHOON_DEFAULT_RTT).clamp(*TYPHOON_MIN_RTT, *TYPHOON_MAX_RTT) as u32
     }
@@ -209,7 +214,7 @@ impl TyphoonClientInternal {
     }
 }
 
-impl Drop for TyphoonClientInternal {
+impl Drop for TyphoonClientMutable {
     #[allow(unused_must_use)]
     fn drop(&mut self) {
         let decay = replace(&mut self.decay, None);
@@ -221,15 +226,21 @@ impl Drop for TyphoonClientInternal {
 }
 
 
+struct TyphoonClientImmutable {
+    socket: UdpSocket,
+    references: AtomicUsize,
+    internal: RwLock<TyphoonClientMutable>
+}
+
+
 pub struct TyphoonClient {
-    socket: Arc<UdpSocket>,
-    internal: Arc<RwLock<TyphoonClientInternal>>,
+    internal: Arc<TyphoonClientImmutable>,
     symmetric: Symmetric
 }
 
 macro_rules! with_write {
     ($retrieval:expr, $handle:ident, $code:block) => {{
-        let mut $handle = $retrieval.internal.write().await;
+        let mut $handle = $retrieval.internal.internal.write().await;
         let result = $code;
         drop($handle);
         result
@@ -238,7 +249,7 @@ macro_rules! with_write {
 
 macro_rules! with_read {
     ($retrieval:expr, $handle:ident, $code:block) => {{
-        let $handle = $retrieval.internal.read().await;
+        let $handle = $retrieval.internal.internal.read().await;
         let result = $code;
         drop($handle);
         result
@@ -289,7 +300,7 @@ impl TyphoonClient {
 
             let next_in_timeout = with_write!(self, new_self, {
                 match new_self.control_channel.try_recv() {
-                    Ok(packet_number) => new_self.send_hdsk(&mut self.symmetric, &self.socket, packet_number, None).await?,
+                    Ok(packet_number) => new_self.send_hdsk(&mut self.symmetric, &self.internal.socket, packet_number, None).await?,
                     Err(_) => debug!("Shadowriding handshake was already performed!"),
                 }
                 let next_in_timeout = new_self.prev_next_in + new_self.timeout();
@@ -320,13 +331,14 @@ impl TyphoonClient {
 
 impl Clone for TyphoonClient {
     fn clone(&self) -> Self {
-        Self { socket: self.socket.clone(), internal: self.internal.clone(), symmetric: self.symmetric.clone() }
+        self.internal.references.fetch_add(1, Ordering::SeqCst);
+        Self { internal: self.internal.clone(), symmetric: self.symmetric.clone() }
     }
 }
 
 impl Reader for TyphoonClient {
     async fn read_bytes(&mut self) -> DynResult<ByteBuffer> {
-        debug!("Reading started (at {}, from {})...", self.socket.local_addr()?, self.socket.peer_addr()?);
+        debug!("Reading started (at {}, from {})...", self.internal.socket.local_addr()?, self.internal.socket.peer_addr()?);
         loop {
             let buffer = get_buffer(None).await;
             with_read!(self, new_self, {
@@ -336,7 +348,7 @@ impl Reader for TyphoonClient {
                     }
                 }
             });
-            let size = match self.socket.recv(&mut buffer.slice_mut()).await {
+            let size = match self.internal.socket.recv(&mut buffer.slice_mut()).await {
                 Ok(res) => {
                     debug!("Received a packet of size: {res}");
                     res
@@ -395,13 +407,13 @@ impl Writer for TyphoonClient {
         with_write!(self, new_self, {
             match new_self.control_channel.try_recv() {
                 Ok(res) => {
-                    new_self.send_hdsk(&mut self.symmetric, &self.socket, res, Some(bytes)).await?;
+                    new_self.send_hdsk(&mut self.symmetric, &self.internal.socket, res, Some(bytes)).await?;
                     Ok(0)
                 },
                 Err(_) => {
                     debug!("Sending data message: {} bytes...", bytes.len());
                     let packet = build_any_data(&mut self.symmetric, bytes).await?;
-                    self.socket.send(&packet.slice()).await?;
+                    self.internal.socket.send(&packet.slice()).await?;
                     Ok(packet.len())
                 }
             }
@@ -413,15 +425,21 @@ impl Drop for TyphoonClient {
     #[allow(unused_must_use)]
     fn drop(&mut self) {
         run_coroutine_sync!(async {
-            debug!("TCDROP!!");
-            if Arc::strong_count(&self.internal) == 1 {
-                with_read!(self, mut_self, {
-                    mut_self.termination_channel.send(()).await.inspect_err(|e| warn!("Couldn't terminate decay: {e}"));
-                });
-                debug!("Sending termination packet to caerulean...");
-                let packet = build_any_term(&mut self.symmetric).await.expect("Couldn't build termination packet!");
-                self.socket.send(&packet.slice()).await.inspect_err(|e| warn!("Couldn't send termination packet: {e}"));
-            }
+            with_read!(self, new_self, {
+                if self.internal.references.load(Ordering::SeqCst) == 0 {
+                    if new_self.decay.is_none() {
+                        return;
+                    } else {
+                        new_self.termination_channel.send(()).await.inspect_err(|e| warn!("Couldn't terminate decay: {e}"));
+                    }
+                } else {
+                    self.internal.references.fetch_sub(1, Ordering::SeqCst);
+                    return;
+                }
+            });
+            debug!("Sending termination packet to caerulean...");
+            let packet = build_any_term(&mut self.symmetric).await.expect("Couldn't build termination packet!");
+            self.internal.socket.send(&packet.slice()).await.inspect_err(|e| warn!("Couldn't send termination packet: {e}"));
         });
     }
 }
