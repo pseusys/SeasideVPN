@@ -8,31 +8,22 @@ lazy_static! {
 
 
 #[macro_export]
-macro_rules! acquire_handle {
-    () => {
-        match tokio::runtime::Handle::try_current() {
-            Ok(res) => {
-                log::warn!("Using existing runtime!");
-                res
-            },
-            Err(_) => {
-                log::warn!("Creating new runtime!");
-                $crate::runtime::LocalTokioRuntime.handle().clone()
-            }
-        }
-    };
-}
-
-#[macro_export]
 macro_rules! run_coroutine_sync {
     ($future:expr) => {{
-        $crate::acquire_handle!().block_on($future)
+        match tokio::runtime::Handle::try_current() {
+            Ok(res) => tokio::task::block_in_place(move || { res.block_on($future) }),
+            Err(_) => $crate::runtime::LocalTokioRuntime.block_on($future)
+        }
     }};
 }
 
 #[macro_export]
 macro_rules! run_coroutine_in_thread {
-    ($future:expr) => {
-        $crate::acquire_handle!().spawn_blocking(move || { $crate::run_coroutine_sync!($future) })
-    };
+    ($future:expr) => {{
+        let handle = match tokio::runtime::Handle::try_current() {
+            Ok(res) => res,
+            Err(_) => $crate::runtime::LocalTokioRuntime.handle().clone()
+        };
+        handle.clone().spawn_blocking(move || { handle.block_on($future) })
+    }};
 }
