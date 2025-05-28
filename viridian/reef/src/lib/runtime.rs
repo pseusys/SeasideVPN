@@ -11,8 +11,14 @@ lazy_static! {
 macro_rules! acquire_handle {
     () => {
         match tokio::runtime::Handle::try_current() {
-            Ok(res) => res,
-            Err(_) => $crate::runtime::LocalTokioRuntime.handle().clone()
+            Ok(res) => {
+                log::warn!("Using existing runtime!");
+                res
+            },
+            Err(_) => {
+                log::warn!("Creating new runtime!");
+                $crate::runtime::LocalTokioRuntime.handle().clone()
+            }
         }
     };
 }
