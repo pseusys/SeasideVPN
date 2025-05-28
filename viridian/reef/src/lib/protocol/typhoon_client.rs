@@ -248,12 +248,14 @@ macro_rules! with_read {
 
 impl TyphoonClient {
     async fn wait(&mut self, duration: Duration, decay_chan: &mut Receiver<u32>, term_chan: &mut Receiver<()>) -> Result<Option<u32>, ()> {
+        let timeout = sleep(duration);
+        pin!(timeout);
         select! {
             res = decay_chan.recv() => match res {
                 Some(val) => Ok(Some(val)),
                 None => Err(()),
             },
-            _ = sleep(duration) => Ok(None),
+            _ = timeout => Ok(None),
             _ = term_chan.recv() => Err(())
         }
     }
