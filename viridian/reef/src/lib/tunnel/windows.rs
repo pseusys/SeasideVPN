@@ -2,7 +2,6 @@ use std::error::Error;
 use std::net::Ipv4Addr;
 use std::sync::{Arc, Mutex};
 
-use async_trait::async_trait;
 use etherparse::IpHeaders;
 use ipnet::Ipv4Net;
 use log::{debug, info};
@@ -179,7 +178,6 @@ pub struct PlatformInternalConfig {
     routing_stopper: Sender<()>
 }
 
-#[async_trait]
 impl Creatable for Tunnel {
     async fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_network: Ipv4Net, _: u8) -> DynResult<Tunnel> {
         debug!("Checking system default network properties...");

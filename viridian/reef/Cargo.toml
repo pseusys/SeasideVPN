@@ -10,8 +10,6 @@ authors = [
 
 
 [dependencies]
-async-dropper = { version = "^0.3.1", features = [ "tokio", "simple" ] }
-async-trait = "^0.1.88"
 base64 = "^0.22.1"
 bincode = "^2.0.1"
 blake2 = "^0.10.6"
@@ -28,7 +26,7 @@ rand = "^0.8.5"
 simple-error = "^0.3.1"
 socket2 = "^0.5.9"
 structopt = { version = "^0.3.26", optional = true }
-tokio = { version = "^1.45.0", features = ["macros", "rt-multi-thread", "process", "signal", "net"] }
+tokio = { version = "^1.45.0", features = ["macros", "rt-multi-thread", "process", "signal", "net", "time"] }
 tun = { version = "^0.7.1", features = ["async"] }
 url = "^2.5.4"
 x25519-dalek = { version = "^2.0.1", features = ["static_secrets"] }

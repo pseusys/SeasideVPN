@@ -1,8 +1,6 @@
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::Duration;
 
-use async_dropper::AsyncDrop;
-use async_trait::async_trait;
 use log::{debug, warn};
 use simple_error::{bail, require_with};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -156,11 +154,12 @@ impl Writer for PortClientWriter {
     }
 }
 
-#[async_trait]
-impl AsyncDrop for PortClientWriter {
+impl Drop for PortClientWriter {
     #[allow(unused_must_use)]
-    async fn async_drop(&mut self) {
-        let packet = build_any_term(&mut self.symmetric).await.expect("Couldn't build termination packet!");
-        run_coroutine_sync!(self.socket.write_all(&packet.slice())).inspect_err(|e| warn!("Couldn't send termination packet: {e}"));
+    fn drop(&mut self) {
+        run_coroutine_sync!(async {
+            let packet = build_any_term(&mut self.symmetric).await.expect("Couldn't build termination packet!");
+            self.socket.write_all(&packet.slice()).await.inspect_err(|e| warn!("Couldn't send termination packet: {e}"));
+        });
     }
 }

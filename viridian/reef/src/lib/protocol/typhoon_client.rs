@@ -5,8 +5,6 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::u32;
 
-use async_dropper::AsyncDrop;
-use async_trait::async_trait;
 use log::{debug, info, warn};
 use rand::Rng;
 use simple_error::bail;
@@ -211,17 +209,13 @@ impl TyphoonClientInternal {
     }
 }
 
-#[async_trait]
-impl AsyncDrop for TyphoonClientInternal {
+impl Drop for TyphoonClientInternal {
     #[allow(unused_must_use)]
-    async fn async_drop(&mut self) {
+    fn drop(&mut self) {
         let decay = replace(&mut self.decay, None);
         if let Some(thread) = decay {
-            let result = thread.await.expect("Thread termination error!");
+            let result = run_coroutine_sync!(thread).expect("Thread termination error!");
             result.inspect_err(|r| info!("Inner TYPHOON thread terminated with: {r}"));
-            warn!("Decay dropped");
-        } else {
-            warn!("Decay copy dropped");
         }
     }
 }
@@ -413,15 +407,16 @@ impl Writer for TyphoonClient {
     }
 }
 
-#[async_trait]
-impl AsyncDrop for TyphoonClient {
+impl Drop for TyphoonClient {
     #[allow(unused_must_use)]
-    async fn async_drop(&mut self) {
-        with_read!(self, mut_self, {
-            mut_self.termination_channel.send(()).await.inspect_err(|e| warn!("Couldn't terminate decay: {e}"));
+    fn drop(&mut self) {
+        run_coroutine_sync!(async {
+            with_read!(self, mut_self, {
+                mut_self.termination_channel.send(()).await.inspect_err(|e| warn!("Couldn't terminate decay: {e}"));
+            });
+            debug!("Sending termination packet to caerulean...");
+            let packet = build_any_term(&mut self.symmetric).await.expect("Couldn't build termination packet!");
+            run_coroutine_sync!(self.socket.send(&packet.slice())).inspect_err(|e| warn!("Couldn't send termination packet: {e}"));
         });
-        debug!("Sending termination packet to caerulean...");
-        let packet = build_any_term(&mut self.symmetric).await.expect("Couldn't build termination packet!");
-        run_coroutine_sync!(self.socket.send(&packet.slice())).inspect_err(|e| warn!("Couldn't send termination packet: {e}"));
     }
 }

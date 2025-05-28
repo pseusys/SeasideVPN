@@ -1,9 +1,9 @@
 use std::mem::take;
 use std::ops::{Deref, DerefMut};
 
-use async_dropper::AsyncDrop;
-use async_trait::async_trait;
 use tokio::sync::Mutex;
+
+use crate::run_coroutine_sync;
 
 use super::buffer::ByteBuffer;
 
@@ -45,12 +45,13 @@ impl DerefMut for KeptVector<'_> {
     }
 }
 
-#[async_trait]
-impl<'a> AsyncDrop for KeptVector<'a> {
-    async fn async_drop(&mut self) {
-        if let Some(pl) = self.pool {
-            pl.push(take(&mut self.data)).await
-        }
+impl<'a> Drop for KeptVector<'a> {
+    fn drop(&mut self) {
+        run_coroutine_sync!(async {
+            if let Some(pl) = self.pool {
+                pl.push(take(&mut self.data)).await
+            }
+        });
     }
 }
 
