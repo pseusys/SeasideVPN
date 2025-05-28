@@ -11,11 +11,10 @@ use log::{debug, info, warn};
 use rand::Rng;
 use simple_error::bail;
 use tokio::net::UdpSocket;
-use tokio::select;
-use tokio::sync::mpsc::{channel, Receiver, Sender};
-use tokio::sync::RwLock;
+use tokio::{pin, select};
+use tokio::sync::{mpsc, RwLock};
 use tokio::task::JoinHandle;
-use tokio::time::timeout;
+use tokio::time::{sleep, timeout};
 
 use crate::bytes::{get_buffer, ByteBuffer};
 use crate::crypto::{Asymmetric, Symmetric};
@@ -129,13 +128,11 @@ impl <'a> TyphoonHandle<'a> {
         socket.connect(main_address).await?;
         info!("Connected to the server at {}", socket.peer_addr()?);
 
-        let (term_sender, term_receiver) = channel(1);
-        let (ctrl_sender, ctrl_receiver) = channel(1);
-        let (decay_sender, decay_receiver) = channel(1);
+        let (ctrl_sender, ctrl_receiver) = mpsc::channel(1);
+        let (decay_sender, decay_receiver) = mpsc::channel(1);
         let client = TyphoonClient {
             socket: Arc::new(socket),
             internal: Arc::new(RwLock::new(TyphoonClientInternal {
-                termination_channel: term_sender,
                 control_channel: ctrl_receiver,
                 decay_channel: decay_sender,
                 prev_packet_number: None,
@@ -149,7 +146,7 @@ impl <'a> TyphoonHandle<'a> {
         };
 
         let mut client_clone = client.clone();
-        let decay = run_coroutine_in_thread!(client_clone.decay_cycle(next_in, ctrl_sender, decay_receiver, term_receiver));
+        let decay = run_coroutine_in_thread!(client_clone.decay_cycle(next_in, ctrl_sender, decay_receiver));
         client.internal.write().await.decay.replace(decay);
 
         Ok(client)
@@ -158,9 +155,8 @@ impl <'a> TyphoonHandle<'a> {
 
 
 struct TyphoonClientInternal {
-    termination_channel: Sender<()>,
-    control_channel: Receiver<u32>,
-    decay_channel: Sender<u32>,
+    control_channel: mpsc::Receiver<u32>,
+    decay_channel: mpsc::Sender<u32>,
     prev_packet_number: Option<u32>,
     prev_next_in: u32,
     prev_sent: u32,
@@ -251,24 +247,25 @@ macro_rules! with_read {
 }
 
 impl TyphoonClient {
-    async fn sleep(&mut self, duration: Duration, decay_chan: &mut Receiver<u32>, term_chan: &mut Receiver<()>) -> Result<Option<u32>, ()> {
+    async fn wait(&mut self, duration: Duration, decay_chan: &mut mpsc::Receiver<u32>) -> Result<Option<u32>, ()> {
+        let sleep_handle = sleep(duration);
+        pin!(sleep_handle);
         select! {
             res = decay_chan.recv() => match res {
                 Some(val) => Ok(Some(val)),
-                None => Err(())
+                None => Err(()),
             },
-            _ = term_chan.recv() => Err(()),
-            _ = tokio::time::sleep(duration) => Ok(None)
+            _ = sleep_handle => Ok(None)
         }
     }
 
-    async fn decay_inner(&mut self, initial_next_in: u32, ctrl_chan_w: &mut Sender<u32>, decay_chan: &mut Receiver<u32>, term_chan: &mut Receiver<()>) -> DynResult<Option<u32>> {
+    async fn decay_inner(&mut self, initial_next_in: u32, ctrl_chan_w: &mut mpsc::Sender<u32>, decay_chan: &mut mpsc::Receiver<u32>) -> DynResult<Option<u32>> {
         let next_in_timeout = with_read!(self, new_self, {
             let next_in_timeout = max(initial_next_in - new_self.rtt(), 0);
             debug!("Decay started, sleeping for {next_in_timeout} milliseconds...");
             next_in_timeout as u64
         });
-        match self.sleep(Duration::from_millis(next_in_timeout), decay_chan, term_chan).await {
+        match self.wait(Duration::from_millis(next_in_timeout), decay_chan).await {
             Ok(Some(res)) => return Ok(Some(res)),
             Ok(None) => debug!("Next in timeout expired, proceeding to decay..."),
             Err(_) => return Ok(None)
@@ -284,7 +281,7 @@ impl TyphoonClient {
                 }
                 (new_self.rtt() * 2) as u64
             });
-            match self.sleep(Duration::from_millis(shadowride_timeout), decay_chan, term_chan).await {
+            match self.wait(Duration::from_millis(shadowride_timeout), decay_chan).await {
                 Ok(Some(res)) => return Ok(Some(res)),
                 Ok(None) => debug!("Shadowride timeout expired, proceeding to force sending..."),
                 Err(_) => return Ok(None)
@@ -299,7 +296,7 @@ impl TyphoonClient {
                 debug!("Handshake sent, waiting for response for {next_in_timeout} milliseconds...");
                 next_in_timeout as u64
             });
-            match self.sleep(Duration::from_millis(next_in_timeout), decay_chan, term_chan).await {
+            match self.wait(Duration::from_millis(next_in_timeout), decay_chan).await {
                 Ok(Some(res)) => return Ok(Some(res)),
                 Ok(None) => debug!("Next in timeout expired, proceeding to new iteration of decay..."),
                 Err(_) => return Ok(None)
@@ -309,10 +306,10 @@ impl TyphoonClient {
         bail!("Decay connection timed out!")
     }
 
-    async fn decay_cycle(&mut self, initial_next_in: u32, mut ctrl_chan_w: Sender<u32>, mut decay_chan: Receiver<u32>, mut term_chan: Receiver<()>) -> DynResult<()> {
+    async fn decay_cycle(&mut self, initial_next_in: u32, mut ctrl_chan_w: mpsc::Sender<u32>, mut decay_chan: mpsc::Receiver<u32>) -> DynResult<()> {
         let mut next_in = initial_next_in;
         loop {
-            match self.decay_inner(next_in, &mut ctrl_chan_w, &mut decay_chan, &mut term_chan).await {
+            match self.decay_inner(next_in, &mut ctrl_chan_w, &mut decay_chan).await {
                 Ok(Some(nin)) => next_in = nin,
                 Ok(None) => return Ok(()),
                 Err(err) => bail!("Client decay cycle terminated error: {err}!")
@@ -416,9 +413,6 @@ impl Writer for TyphoonClient {
 impl AsyncDrop for TyphoonClient {
     #[allow(unused_must_use)]
     async fn async_drop(&mut self) {
-        with_read!(self, new_self, {
-            new_self.termination_channel.send(()).await.inspect_err(|e| warn!("Couldn't terminate decay: {e}"));
-        });
         let packet = build_any_term(&mut self.symmetric).await.expect("Couldn't build termination packet!");
         run_coroutine_sync!(self.socket.send(&packet.slice())).inspect_err(|e| warn!("Couldn't send termination packet: {e}"));
     }
