@@ -413,6 +413,7 @@ impl Drop for TyphoonClient {
     #[allow(unused_must_use)]
     fn drop(&mut self) {
         run_coroutine_sync!(async {
+            debug!("TCDROP!!");
             if Arc::strong_count(&self.internal) == 1 {
                 with_read!(self, mut_self, {
                     mut_self.termination_channel.send(()).await.inspect_err(|e| warn!("Couldn't terminate decay: {e}"));
