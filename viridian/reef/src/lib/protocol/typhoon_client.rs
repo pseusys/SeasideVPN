@@ -212,6 +212,7 @@ impl TyphoonClientInternal {
 impl Drop for TyphoonClientInternal {
     #[allow(unused_must_use)]
     fn drop(&mut self) {
+        debug!("Destroying typhoon client internal");
         let decay = replace(&mut self.decay, None);
         if let Some(thread) = decay {
             let result = run_coroutine_sync!(thread).expect("Thread termination error!");
@@ -411,14 +412,12 @@ impl Drop for TyphoonClient {
     #[allow(unused_must_use)]
     fn drop(&mut self) {
         run_coroutine_sync!(async {
-            if Arc::strong_count(&self.socket) == 1 {
-                with_read!(self, mut_self, {
-                    mut_self.termination_channel.send(()).await.inspect_err(|e| warn!("Couldn't terminate decay: {e}"));
-                });
-                debug!("Sending termination packet to caerulean...");
-                let packet = build_any_term(&mut self.symmetric).await.expect("Couldn't build termination packet!");
-                self.socket.send(&packet.slice()).await.inspect_err(|e| warn!("Couldn't send termination packet: {e}"));
-            }
+            with_read!(self, mut_self, {
+                mut_self.termination_channel.send(()).await.inspect_err(|e| warn!("Couldn't terminate decay: {e}"));
+            });
+            debug!("Sending termination packet to caerulean...");
+            let packet = build_any_term(&mut self.symmetric).await.expect("Couldn't build termination packet!");
+            self.socket.send(&packet.slice()).await.inspect_err(|e| warn!("Couldn't send termination packet: {e}"));
         });
     }
 }
