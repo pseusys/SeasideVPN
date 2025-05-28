@@ -2,14 +2,14 @@ from logging import getLogger
 from os import environ, getenv
 from pickle import loads
 from socket import AF_INET, SOCK_STREAM, socket
-from time import perf_counter, sleep
+from time import perf_counter
 
 import pytest
 
 logger = getLogger(__name__)
 
 
-#@pytest.mark.timeout(float(getenv("TEST_TIMEOUT", 60.0)))
+@pytest.mark.timeout(float(getenv("TEST_TIMEOUT", 60.0)))
 def test_local_echo(random_message: bytes) -> None:
     logger.info("Testing with local echo server")
     echo_address, local_address = environ["ECHO_ADDRESS"], environ["LOCAL_ADDRESS"]
@@ -27,4 +27,3 @@ def test_local_echo(random_message: bytes) -> None:
 
     end_time = perf_counter()
     logger.info(f"Local network access took {end_time - start_time:.3f} seconds.")
-    sleep(300)

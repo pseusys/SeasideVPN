@@ -196,10 +196,10 @@ jobs:
           LINK=$(poetry poe -q fixture -a "${{ env.SEASIDE_ADDRESS }}" -p "${{ env.SEASIDE_API_PORT }}" -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian -s)
           echo "WHIRLPOOL_LINK=$LINK" >> $GITHUB_ENV
 
-    #  - name: Test Echo Server Access (no VPN)
-    #    if: runner.os != 'Windows'
-    #    working-directory: viridian/algae
-    #    run: eval "${{ env.TEST_COMMAND }}" && exit 1 || true
+      - name: Test Echo Server Access (no VPN)
+        if: runner.os != 'Windows'
+        working-directory: viridian/algae
+        run: eval "${{ env.TEST_COMMAND }}" && exit 1 || true
 
       - name: Test Viridian Reef PORT (integration) 🧪
         id: test-viridian-reef-port

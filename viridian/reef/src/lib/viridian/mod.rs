@@ -7,7 +7,7 @@ use log::{debug, error, info};
 use simple_error::{bail, require_with, SimpleError};
 use tokio::net::lookup_host;
 use tokio::process::Command;
-use tokio::select;
+use tokio::{select, try_join};
 
 use crate::bytes::ByteBuffer;
 use crate::general::create_handle;
@@ -79,7 +79,7 @@ impl<'a> Viridian<'a> {
         }
 
         debug!("Creating protocol client handle...");
-        let (send_handle, receive_handle, termination) = create_handle(&self.client_type, self.tunnel.clone(), self.tunnel.clone(), self.key.clone(), self.token.clone(), self.address, self.port, Some(self.tunnel.default_interface().0)).await?;
+        let (mut send_handle, mut receive_handle, termination) = create_handle(&self.client_type, self.tunnel.clone(), self.tunnel.clone(), self.key.clone(), self.token.clone(), self.address, self.port, Some(self.tunnel.default_interface().0)).await?;
 
         debug!("Running DNS probe to check for globally available DNS servers...");
         if lookup_host("example.com").await.is_err() {
@@ -99,8 +99,8 @@ impl<'a> Viridian<'a> {
                 },
                 Err(err) => Err(SimpleError::new(format!("VPN command execution error: {err}")))
             },
-            serr = send_handle => Err(SimpleError::new(format!("Error in sending coroutine: {:#?}", serr.expect("Join error").expect_err("Infinite loop success")))),
-            rerr = receive_handle => Err(SimpleError::new(format!("Error in receiving coroutine: {:#?}", rerr.expect("Join error").expect_err("Infinite loop success")))),
+            serr = &mut send_handle => Err(SimpleError::new(format!("Error in sending coroutine: {:#?}", serr.expect("Join error").expect_err("Infinite loop success")))),
+            rerr = &mut receive_handle => Err(SimpleError::new(format!("Error in receiving coroutine: {:#?}", rerr.expect("Join error").expect_err("Infinite loop success")))),
             _ = handlers.next() => {
                 info!("Terminating gracefully...");
                 Ok(())
@@ -108,7 +108,12 @@ impl<'a> Viridian<'a> {
         };
 
         debug!("Waiting for background task termination...");
-        termination.send(())?;
+        let _ = termination.send(()).inspect_err(|_| debug!("Apparently all the background tasks have already terminated!"));
+        match try_join!(send_handle, receive_handle) {
+            Ok(_) => debug!("All the background tasks terminated successfully!"),
+            Err(res) => debug!("A background task failed with an error: {res}")
+        }
+
         Ok(result?)
     }
 }

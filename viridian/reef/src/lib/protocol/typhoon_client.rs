@@ -212,7 +212,6 @@ impl TyphoonClientInternal {
 impl Drop for TyphoonClientInternal {
     #[allow(unused_must_use)]
     fn drop(&mut self) {
-        debug!("Destroying typhoon client internal");
         let decay = replace(&mut self.decay, None);
         if let Some(thread) = decay {
             let result = run_coroutine_sync!(thread).expect("Thread termination error!");

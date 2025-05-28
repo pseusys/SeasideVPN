@@ -12,10 +12,7 @@ macro_rules! run_coroutine_sync {
     ($future:expr) => {{
         match tokio::runtime::Handle::try_current() {
             Ok(res) => tokio::task::block_in_place(move || { res.block_on($future) }),
-            Err(_) => {
-                log::debug!("NEW RUNTIME CREATED!!");
-                $crate::runtime::LocalTokioRuntime.block_on($future)
-            }
+            Err(_) => $crate::runtime::LocalTokioRuntime.block_on($future)
         }
     }};
 }
@@ -25,10 +22,7 @@ macro_rules! run_coroutine_in_thread {
     ($future:expr) => {{
         let handle = match tokio::runtime::Handle::try_current() {
             Ok(res) => res,
-            Err(_) => {
-                log::debug!("NEW RUNTIME CREATED!!");
-                $crate::runtime::LocalTokioRuntime.handle().clone()
-            }
+            Err(_) => $crate::runtime::LocalTokioRuntime.handle().clone()
         };
         handle.clone().spawn_blocking(move || { handle.block_on($future) })
     }};
