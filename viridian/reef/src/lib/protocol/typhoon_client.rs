@@ -411,12 +411,14 @@ impl Drop for TyphoonClient {
     #[allow(unused_must_use)]
     fn drop(&mut self) {
         run_coroutine_sync!(async {
-            with_read!(self, mut_self, {
-                mut_self.termination_channel.send(()).await.inspect_err(|e| warn!("Couldn't terminate decay: {e}"));
-            });
-            debug!("Sending termination packet to caerulean...");
-            let packet = build_any_term(&mut self.symmetric).await.expect("Couldn't build termination packet!");
-            run_coroutine_sync!(self.socket.send(&packet.slice())).inspect_err(|e| warn!("Couldn't send termination packet: {e}"));
+            if Arc::strong_count(&self.socket) == 1 {
+                with_read!(self, mut_self, {
+                    mut_self.termination_channel.send(()).await.inspect_err(|e| warn!("Couldn't terminate decay: {e}"));
+                });
+                debug!("Sending termination packet to caerulean...");
+                let packet = build_any_term(&mut self.symmetric).await.expect("Couldn't build termination packet!");
+                self.socket.send(&packet.slice()).await.inspect_err(|e| warn!("Couldn't send termination packet: {e}"));
+            }
         });
     }
 }

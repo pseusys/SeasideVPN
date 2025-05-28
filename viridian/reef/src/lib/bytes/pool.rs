@@ -49,7 +49,7 @@ impl<'a> Drop for KeptVector<'a> {
     fn drop(&mut self) {
         run_coroutine_sync!(async {
             if let Some(pl) = self.pool {
-                pl.push(take(&mut self.data)).await
+                pl.push(take(&mut self.data)).await;
             }
         });
     }
