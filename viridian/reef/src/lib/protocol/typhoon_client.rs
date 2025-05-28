@@ -132,6 +132,7 @@ impl <'a> TyphoonHandle<'a> {
         let (ctrl_sender, ctrl_receiver) = channel(1);
         let (decay_sender, decay_receiver) = channel(1);
         let client = TyphoonClient {
+            keeper: true,
             internal: Arc::new(TyphoonClientImmutable {
                 socket,
                 references: AtomicUsize::new(0),
@@ -151,6 +152,7 @@ impl <'a> TyphoonHandle<'a> {
         };
 
         let mut client_clone = client.clone();
+        client_clone.keeper = false;
         let decay = run_coroutine_in_thread!(client_clone.decay_cycle(next_in, ctrl_sender, decay_receiver, term_receiver));
         client.internal.references.fetch_sub(1, Ordering::SeqCst);
         client.internal.internal.write().await.decay.replace(decay);
@@ -214,17 +216,6 @@ impl TyphoonClientMutable {
     }
 }
 
-impl Drop for TyphoonClientMutable {
-    #[allow(unused_must_use)]
-    fn drop(&mut self) {
-        let decay = replace(&mut self.decay, None);
-        if let Some(thread) = decay {
-            let result = run_coroutine_sync!(thread).expect("Thread termination error!");
-            result.inspect_err(|r| info!("Inner TYPHOON thread terminated with: {r}"));
-        }
-    }
-}
-
 
 struct TyphoonClientImmutable {
     socket: UdpSocket,
@@ -234,6 +225,7 @@ struct TyphoonClientImmutable {
 
 
 pub struct TyphoonClient {
+    keeper: bool,
     internal: Arc<TyphoonClientImmutable>,
     symmetric: Symmetric
 }
@@ -332,7 +324,7 @@ impl TyphoonClient {
 impl Clone for TyphoonClient {
     fn clone(&self) -> Self {
         self.internal.references.fetch_add(1, Ordering::SeqCst);
-        Self { internal: self.internal.clone(), symmetric: self.symmetric.clone() }
+        Self { keeper: self.keeper, internal: self.internal.clone(), symmetric: self.symmetric.clone() }
     }
 }
 
@@ -425,16 +417,18 @@ impl Drop for TyphoonClient {
     #[allow(unused_must_use)]
     fn drop(&mut self) {
         run_coroutine_sync!(async {
-            with_read!(self, new_self, {
-                if self.internal.references.load(Ordering::SeqCst) == 0 {
-                    if new_self.decay.is_none() {
-                        return;
-                    } else {
-                        new_self.termination_channel.send(()).await.inspect_err(|e| warn!("Couldn't terminate decay: {e}"));
-                    }
-                } else {
-                    self.internal.references.fetch_sub(1, Ordering::SeqCst);
-                    return;
+            if !self.keeper {
+                return;
+            } else if self.internal.references.load(Ordering::SeqCst) > 0 {
+                self.internal.references.fetch_sub(1, Ordering::SeqCst);
+                return;
+            }
+            with_write!(self, new_self, {
+                let decay = replace(&mut new_self.decay, None);
+                if let Some(thread) = decay {
+                    new_self.termination_channel.send(()).await.inspect_err(|e| warn!("Couldn't terminate decay: {e}"));
+                    let result = run_coroutine_sync!(thread).expect("Thread termination error!");
+                    result.inspect_err(|r| info!("Inner TYPHOON thread terminated with: {r}"));
                 }
             });
             debug!("Sending termination packet to caerulean...");
