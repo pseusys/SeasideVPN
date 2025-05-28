@@ -143,7 +143,7 @@ async fn parse_any_data<'a>(data: ByteBuffer<'a>) -> DynResult<ByteBuffer<'a>> {
 
 pub async fn parse_server_message<'a>(cipher: &mut Symmetric, packet: ByteBuffer<'a>, expected_packet_number: Option<u32>) -> DynResult<(ProtocolMessageType, Option<(u32, u32)>, Option<ByteBuffer<'a>>)> {
     let data = cipher.decrypt(packet, None)?;
-    let flags = data.get(0).clone();
+    let flags = *data.get(0);
     if flags == ProtocolFlag::HDSK | ProtocolFlag::DATA {
         let (packet_number, next_in, payload) = parse_any_hdsk(data, expected_packet_number).await?;
         Ok((ProtocolMessageType::HandshakeData, Some((packet_number, next_in)), payload))
