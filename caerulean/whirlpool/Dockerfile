@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # Docker image for building whirlpool executable and testing
-FROM golang:1.23-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 WORKDIR /seaside/caerulean
 
@@ -10,9 +10,7 @@ ARG RUNNING_IN_CI
 # Protobuf development library are required for executable building.
 # Go lint and iptables are required for testing.
 ENV PROTOGO_PROTOC_VERSION=24.4
-RUN apk add --no-cache make tar wget build-base iptables protobuf protobuf-dev \
-    && go install github.com/pseusys/protogo@latest \
-    && go install github.com/xlab/c-for-go@latest
+RUN apk add --no-cache make tar wget build-base iptables protobuf protobuf-dev && go install github.com/pseusys/protogo@latest
 
 ENV RUNNING_IN_CI=${RUNNING_IN_CI:-0}
 
@@ -30,7 +28,7 @@ RUN go build -o whirlpool.run ./sources
 
 
 # Docker image for whirlpool executable production running
-FROM alpine:3.17 AS default
+FROM alpine:3.21 AS default
 
 WORKDIR /seaside/caerulean
 
