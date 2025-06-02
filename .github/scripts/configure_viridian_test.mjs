@@ -143,7 +143,10 @@ function setupRouting(gatewayContainerIP, unreachableIP, unreachableNetwork, nam
  */
 async function launchDockerCompose() {
 	console.log("Spawning Docker compose process...");
-	const child = runCommand(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} up --detach --build whirlpool`);
+	const child = runCommandForSystem(
+		`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} up --detach --build whirlpool`,
+		`wsl-bash docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} up --detach --build whirlpool`
+	);
 	console.log("Waiting for Docker compose process to initiate...");
 	await sleep(DOCKER_COMPOSE_TIMEOUT);
 	if (child.status !== 0) throw Error(`Docker compose command failed, with exit code: ${child.status}`);
