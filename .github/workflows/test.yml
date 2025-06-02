@@ -112,7 +112,7 @@ jobs:
         run: sudo -E env "PATH=$PATH" poetry poe client -s typhoon -l "${{ env.WHIRLPOOL_LINK }}" -e "${{ env.TEST_COMMAND }}"
 
       - name: Print Whirlpool Logs
-        if: runner.os != 'Windows' && failure() && (steps.test-viridian-algae-port.outcome == 'failure' || steps.test-viridian-algae-typhoon.outcome == 'failure')
+        if: failure() && (steps.test-viridian-algae-port.outcome == 'failure' || steps.test-viridian-algae-typhoon.outcome == 'failure')
         working-directory: viridian/algae
         run: docker compose -f docker/compose.standalone.yml logs whirlpool
 
@@ -139,6 +139,10 @@ jobs:
     steps:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
+
+      - name: Setup WSL
+        if: runner.os == 'Windows'
+        uses: Vampire/setup-wsl@v5
 
       - name: Install NodeJS 🪢
         uses: actions/setup-node@v4.1.0
@@ -174,19 +178,16 @@ jobs:
 
       - name: Start Background Server
         id: start-background-server
-        if: runner.os != 'Windows'
         working-directory: .github/scripts
         run: ${{ env.SUDO }} npm run configure-viridian-test
 
       - name: Load .ENV File
-        if: runner.os != 'Windows'
         uses: aarcangeli/load-dotenv@v1
         with:
           path: viridian/algae/docker
           filenames: test.conf.env
 
       - name: Get Connection Link
-        if: runner.os != 'Windows'
         working-directory: viridian/algae
         env:
           SEASIDE_ADDRESS: 10.87.82.87
@@ -197,13 +198,11 @@ jobs:
           echo "WHIRLPOOL_LINK=$LINK" >> $GITHUB_ENV
 
       - name: Test Echo Server Access (no VPN)
-        if: runner.os != 'Windows'
         working-directory: viridian/algae
         run: eval "${{ env.TEST_COMMAND }}" && exit 1 || true
 
       - name: Test Viridian Reef PORT (integration) 🧪
         id: test-viridian-reef-port
-        if: runner.os != 'Windows'
         working-directory: viridian/algae
         env:
           SEASIDE_LOG_LEVEL: reeflib=DEBUG,INFO
@@ -211,14 +210,13 @@ jobs:
 
       - name: Test Viridian Reef TYPHOON (integration) 🧪
         id: test-viridian-reef-typhoon
-        if: runner.os != 'Windows'
         working-directory: viridian/algae
         env:
           SEASIDE_LOG_LEVEL: reeflib=DEBUG,INFO
         run: ${{ env.SUDO }} ${{ env.RUNNER_COMMAND }} -- -s typhoon -l "${{ env.WHIRLPOOL_LINK }}" -e "${{ env.TEST_COMMAND }}"
 
       - name: Print Whirlpool Logs
-        if: runner.os != 'Windows' && failure() && (steps.test-viridian-reef-port.outcome == 'failure' || steps.test-viridian-reef-typhoon.outcome == 'failure')
+        if: failure() && (steps.test-viridian-reef-port.outcome == 'failure' || steps.test-viridian-reef-typhoon.outcome == 'failure')
         working-directory: viridian/algae
         run: docker compose -f docker/compose.standalone.yml logs whirlpool
 
