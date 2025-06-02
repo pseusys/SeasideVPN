@@ -427,7 +427,7 @@ impl Drop for TyphoonClient {
                 let decay = replace(&mut new_self.decay, None);
                 if let Some(thread) = decay {
                     new_self.termination_channel.send(()).await.inspect_err(|e| warn!("Couldn't terminate decay: {e}"));
-                    let result = run_coroutine_sync!(thread).expect("Thread termination error!");
+                    let result = thread.await.expect("Thread termination error!");
                     result.inspect_err(|r| info!("Inner TYPHOON thread terminated with: {r}"));
                 }
             });
