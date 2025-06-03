@@ -207,20 +207,20 @@ impl TunnelInternal {
         };
 
         let internal = PlatformInternalConfig {svr_data, route_message, rule_message, firewall_table};
-        Ok(Self {def_ip: default_address, def_cidr: default_cidr, tun_device: tunnel_device, internal})
+        Ok(Self {def_ip: default_address, def_cidr: default_cidr, tun_device: tunnel_device, _internal: internal})
     }
 }
 
-impl Drop for TunnelInternal {
+impl Drop for PlatformInternalConfig {
     #[allow(unused_must_use)]
     fn drop(&mut self) {
         debug!("Disabling firewall...");
-        disable_firewall(&self.internal.firewall_table).inspect_err(|e| error!("Error disabling firewall: {}", e));
+        disable_firewall(&self.firewall_table).inspect_err(|e| error!("Error disabling firewall: {}", e));
 
         debug!("Resetting routing...");
-        disable_routing(&self.internal.route_message, &self.internal.rule_message).inspect_err(|e| error!("Error resetting routing: {}", e));
+        disable_routing(&self.route_message, &self.rule_message).inspect_err(|e| error!("Error resetting routing: {}", e));
 
         debug!("Restoring seaside-viridian-reef routing table...");
-        restore_svr_table(&mut self.internal.svr_data).inspect_err(|e| error!("Error restoring seaside-viridian-reef routing table: {}", e));
+        restore_svr_table(&mut self.svr_data).inspect_err(|e| error!("Error restoring seaside-viridian-reef routing table: {}", e));
     }
 }

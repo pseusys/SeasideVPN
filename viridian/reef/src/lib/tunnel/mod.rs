@@ -30,7 +30,7 @@ struct TunnelInternal {
     def_cidr: u8,
     tun_device: AsyncDevice,
 
-    internal: PlatformInternalConfig
+    _internal: PlatformInternalConfig
 }
 
 
