@@ -102,7 +102,7 @@ function getOutputForSystem(linuxCommand = undefined, windowsCommand = undefined
 function optionallyConvertPathToWSL(path) {
 	switch (platform) {
 		case "win32":
-			return runCommand(`wslpath -a ${path}`).stdout.toString().trim();
+			return runCommand(`wsl wslpath -a ${path}`).stdout.toString().trim();
 		default:
 			return path;
 	}
