@@ -1,6 +1,6 @@
 import { parseArgs } from "node:util";
 import { readFileSync } from "node:fs";
-import { dirname, join, sep, posix, win32 } from "node:path";
+import { dirname, join } from "node:path";
 import { spawnSync, ChildProcess } from "node:child_process";
 import { platform } from "process";
 
@@ -68,11 +68,11 @@ function runCommand(command) {
 function runCommandForSystem(linuxCommand = undefined, windowsCommand = undefined, macosCommand = undefined) {
 	switch (platform) {
 		case "darwin":
-			if (macosCommand !== undefined) return runCommand(macosCommand.replaceAll(sep, posix.sep));
+			if (macosCommand !== undefined) return runCommand(macosCommand);
 		case "linux":
-			if (linuxCommand !== undefined) return runCommand(linuxCommand.replaceAll(sep, posix.sep));
+			if (linuxCommand !== undefined) return runCommand(linuxCommand);
 		case "win32":
-			if (windowsCommand !== undefined) return runCommand(windowsCommand.replaceAll(sep, `${win32.sep}${win32.sep}`));
+			if (windowsCommand !== undefined) return runCommand(windowsCommand);
 		default:
 			throw Error(`Command for platform ${platform} is not defined!`);
 	}
@@ -91,6 +91,21 @@ function runCommandForSystem(linuxCommand = undefined, windowsCommand = undefine
  */
 function getOutputForSystem(linuxCommand = undefined, windowsCommand = undefined, macosCommand = undefined) {
 	return runCommandForSystem(linuxCommand, windowsCommand, macosCommand).stdout.toString().trim();
+}
+
+/**
+ * Convert given path to WSL-compatible format (using `wslpath` tool) if running on Windows.
+ * Return path as it is otherwise.
+ * @param {string} path path ro convert.
+ * @returns {string} converted path.
+ */
+function optionallyConvertPathToWSL(path) {
+	switch (platform) {
+		case "win32":
+			return runCommand(`wslpath -a ${path}`).stdout.toString().trim();
+		default:
+			return path;
+	}
 }
 
 /**
@@ -154,10 +169,11 @@ function setupRouting(gatewayContainerIP, unreachableIP, unreachableNetwork, nam
 /**
  * Launch Docker compose project in the background.
  * Wait for some time to check if it started successfully and throw an error if it did.
+ * @param {string} path Docker Compose standalone project file path.
  */
-async function launchDockerCompose() {
+async function launchDockerCompose(path) {
 	console.log("Spawning Docker compose process...");
-	runCommandForSystem(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} up --detach --build whirlpool`, `wsl -u root podman compose -f ${DOCKER_COMPOSE_ALGAE_PATH} up --detach --build whirlpool`);
+	runCommandForSystem(`docker compose -f ${path} up --detach --build whirlpool`, `wsl -u root podman compose -f ${path} up --detach --build whirlpool`);
 	console.log("Waiting for Docker compose process to initiate...");
 	await sleep(DOCKER_COMPOSE_TIMEOUT);
 	console.log("Docker compose process started!");
@@ -165,10 +181,11 @@ async function launchDockerCompose() {
 
 /**
  * Kill Docker compose process (with docker compose) running in the background.
+ * @param {string} path Docker Compose standalone project file path.
  */
-async function killDockerCompose() {
+async function killDockerCompose(path) {
 	console.log("Killing Docker compose process...");
-	runCommandForSystem(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} down`, `wsl -u root podman compose -f ${DOCKER_COMPOSE_ALGAE_PATH} down`);
+	runCommandForSystem(`docker compose -f ${path} down`, `wsl -u root podman compose -f ${path} down`);
 	console.log("Docker compose process killed!");
 }
 
@@ -180,9 +197,9 @@ async function killDockerCompose() {
 const args = parseArguments();
 if (!args.reset) {
 	const { gatewayIP, whirlpoolIP, whirlpoolNetwork, echoIP, echoNetwork } = parseDockerComposeFile();
-	await launchDockerCompose();
+	await launchDockerCompose(optionallyConvertPathToWSL(DOCKER_COMPOSE_ALGAE_PATH));
 	setupRouting(gatewayIP, echoIP, echoNetwork, "echo");
 	setupRouting(gatewayIP, whirlpoolIP, whirlpoolNetwork, "whirlpool");
 } else {
-	await killDockerCompose();
+	await killDockerCompose(optionallyConvertPathToWSL(DOCKER_COMPOSE_ALGAE_PATH));
 }
