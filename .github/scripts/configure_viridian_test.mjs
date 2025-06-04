@@ -173,7 +173,7 @@ function setupRouting(gatewayContainerIP, unreachableIP, unreachableNetwork, nam
 	const route = getOutputForSystem(`ip route get ${unreachableIP}`, `wsl -u root ip route get ${unreachableIP}`);
 	console.log(`Route to the ${name} IP found:\n${route}`);
 	if (platform == "win32") {
-		const WSLIP = getOutput("wsl -u root sh -c \\\"ip route | grep '^default' | awk '{print \\\$3}'\\\"");
+		const WSLIP = getOutput("wsl -u root sh -c \\\"ip route | grep '^default' | awk '{print \\$3}'\\\"");
 		console.log(`Setting route to the ${name} via WSL host IP: ${WSLIP}...`);
 		runCommand(`route add ${unreachableNetwork} ${WSLIP}`);
 		console.log(`Looking for the route to the ${name} via WSL...`);
