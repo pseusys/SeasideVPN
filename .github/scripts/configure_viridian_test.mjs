@@ -1,6 +1,6 @@
 import { parseArgs } from "node:util";
 import { readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, sep, posix } from "node:path";
 import { spawnSync, ChildProcess } from "node:child_process";
 import { platform } from "process";
 
@@ -28,10 +28,8 @@ const DOCKER_COMPOSE_GATEWAY_CONTAINER = "int-router";
 const DOCKER_COMPOSE_WHIRLPOOL_CONTAINER = "whirlpool";
 // Echo server for VPN access.
 const DOCKER_COMPOSE_ECHO_CONTAINER = "echo";
-// Path to `viridian/algae` directory.
-const PYTHON_LIB_ALGAE_PATH = join(dirname(import.meta.dirname), "..", "viridian", "algae");
 // Path to the Docker compose configuration file in `viridian/algae` directory.
-const DOCKER_COMPOSE_ALGAE_PATH = join(PYTHON_LIB_ALGAE_PATH, "docker", "compose.standalone.yml");
+const DOCKER_COMPOSE_ALGAE_PATH = join(dirname(import.meta.dirname), "..", "viridian", "algae", "docker", "compose.standalone.yml").replaceAll(sep, posix.sep);
 
 /**
  * Print usage help message and exit with code 0.
