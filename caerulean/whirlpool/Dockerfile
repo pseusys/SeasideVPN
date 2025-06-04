@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # Docker image for building whirlpool executable and testing
-FROM golang:1.24-alpine AS builder
+FROM golang:1.23-alpine AS builder
 
 WORKDIR /seaside/caerulean
 
@@ -28,7 +28,7 @@ RUN go build -o whirlpool.run ./sources
 
 
 # Docker image for whirlpool executable production running
-FROM alpine:3.21 AS default
+FROM alpine:3.17 AS default
 
 WORKDIR /seaside/caerulean
 
