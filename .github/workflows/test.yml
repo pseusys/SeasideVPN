@@ -150,7 +150,8 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           wsl -u root hostname -I
-          ping -n 5 $(wsl -u root hostname -I)
+          $ip = wsl -u root hostname -I
+          ping -n 5 $ip
       
       - name: Configure WSL
         if: runner.os == 'Windows'
