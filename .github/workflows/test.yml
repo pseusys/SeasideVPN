@@ -143,6 +143,10 @@ jobs:
       - name: Setup WSL
         if: runner.os == 'Windows'
         uses: Vampire/setup-wsl@v5
+        with:
+          distribution: Ubuntu-24.04
+          additional-packages:
+            docker
 
       - name: Install NodeJS 🪢
         uses: actions/setup-node@v4.1.0
