@@ -122,8 +122,8 @@ function optionallyConvertPathToWSL(path) {
  * @returns {object} containing string keys "network" and "netmask".
  */
 function convertNetworkAddress(network) {
-	const [ip, prefixLength] = cidr.split("/");
-	const maskBinary = "1".repeat(parseInt(prefixLength)).padEnd(32, "0");
+	const [ip, cidr] = network.split("/");
+	const maskBinary = "1".repeat(parseInt(cidr)).padEnd(32, "0");
 	const mask = [
 	  	parseInt(maskBinary.slice(0, 8), 2),
 	  	parseInt(maskBinary.slice(8, 16), 2),
