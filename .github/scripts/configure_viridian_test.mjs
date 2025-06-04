@@ -64,19 +64,33 @@ function runCommand(command) {
  * @param {string | undefined} linuxCommand command for Linux OS.
  * @param {string | undefined} windowsCommand command for Windows OS.
  * @param {string | undefined} macosCommand command for MacOS.
- * @returns {string} command STDOUT output as a string.
+ * @returns {ChildProcess} child process spawned by the command.
  */
 function runCommandForSystem(linuxCommand = undefined, windowsCommand = undefined, macosCommand = undefined) {
 	switch (platform) {
 		case "darwin":
-			if (macosCommand !== undefined) return runCommand(macosCommand).stdout.toString().trim();
+			if (macosCommand !== undefined) return runCommand(macosCommand);
 		case "linux":
-			if (linuxCommand !== undefined) return runCommand(linuxCommand).stdout.toString().trim();
+			if (linuxCommand !== undefined) return runCommand(linuxCommand);
 		case "win32":
-			if (windowsCommand !== undefined) return runCommand(windowsCommand).stdout.toString().trim();
+			if (windowsCommand !== undefined) return runCommand(windowsCommand);
 		default:
 			throw Error(`Command for platform ${platform} is not defined!`);
 	}
+}
+
+/**
+ * Execute different console commands for different operation systems.
+ * Throw an error if no command is provided for current OS.
+ * Throw an error if command failed to start or returned non-zero code.
+ * The OS supported: Linux, Windows, MacOS.
+ * @param {string | undefined} linuxCommand command for Linux OS.
+ * @param {string | undefined} windowsCommand command for Windows OS.
+ * @param {string | undefined} macosCommand command for MacOS.
+ * @returns {string} command STDOUT output as a string.
+ */
+function getOutputForSystem(linuxCommand = undefined, windowsCommand = undefined, macosCommand = undefined) {
+	return runCommandForSystem(linuxCommand, windowsCommand, macosCommand).stdout.toString().trim();
 }
 
 /**
@@ -133,7 +147,7 @@ function setupRouting(gatewayContainerIP, unreachableIP, unreachableNetwork, nam
 	console.log(`Setting a new route to the ${name} network...`);
 	runCommandForSystem(`ip route add ${unreachableNetwork} via ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}`, `route add ${unreachableNetwork} ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}`);
 	console.log(`Looking for the new route to the ${name} IP...`);
-	const route = runCommandForSystem(`ip route get ${unreachableIP}`, `route print ${unreachableIP}`);
+	const route = getOutputForSystem(`ip route get ${unreachableIP}`, `route print ${unreachableIP}`);
 	console.log(`Route to the ${name} IP found:\n${route}`);
 }
 
@@ -143,13 +157,9 @@ function setupRouting(gatewayContainerIP, unreachableIP, unreachableNetwork, nam
  */
 async function launchDockerCompose() {
 	console.log("Spawning Docker compose process...");
-	const child = runCommandForSystem(
-		`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} up --detach --build whirlpool`,
-		`wsl-bash docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} up --detach --build whirlpool`
-	);
+	runCommandForSystem(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} up --detach --build whirlpool`, `wsl-bash docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} up --detach --build whirlpool`);
 	console.log("Waiting for Docker compose process to initiate...");
 	await sleep(DOCKER_COMPOSE_TIMEOUT);
-	if (child.status !== 0) throw Error(`Docker compose command failed, with exit code: ${child.status}`);
 	console.log("Docker compose process started!");
 }
 
@@ -158,10 +168,7 @@ async function launchDockerCompose() {
  */
 async function killDockerCompose() {
 	console.log("Killing Docker compose process...");
-	const child = runCommand(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} down`);
-	console.log("Waiting for Docker compose process to terminate...");
-	await sleep(DOCKER_COMPOSE_TIMEOUT);
-	if (child.status !== 0) throw Error(`Docker compose command failed, with exit code: ${child.status}`);
+	runCommandForSystem(`docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} down`, `wsl-bash docker compose -f ${DOCKER_COMPOSE_ALGAE_PATH} down`);
 	console.log("Docker compose process killed!");
 }
 
