@@ -12,8 +12,6 @@ const BLUE = "\x1b[34m";
 const GREEN = "\x1b[32m";
 const RESET = "\x1b[0m";
 
-// Metric value that will be used for new default routes (greater than Viridian Algae metric value).
-const REASONABLY_LOW_METRIC_VALUE = 10;
 // Timeout for Docker compose to initialize (and stop completely in case of an error).
 const DOCKER_COMPOSE_TIMEOUT = 15;
 // Echo server network for VPN access.
@@ -52,6 +50,16 @@ function runCommand(command) {
 	if (child.error) throw Error(`Command execution error: ${child.error.message}`);
 	else if (child.status !== 0) throw Error(`Command failed with error code: ${child.status}\n${child.stderr.toString()}`);
 	else return child;
+}
+
+/**
+ * Execute a console command.
+ * Throw an error if command failed to start or returned non-zero code.
+ * @param {string} command the command to execute.
+ * @returns {string} command STDOUT output as a string.
+ */
+function getOutput(command) {
+	return runCommand(command).stdout.toString().trim();
 }
 
 /**
@@ -158,12 +166,20 @@ function parseDockerComposeFile() {
  */
 function setupRouting(gatewayContainerIP, unreachableIP, unreachableNetwork, name=null) {
 	console.log(`Removing a route to the ${name} network...`);
-	runCommandForSystem(`ip route delete ${unreachableNetwork}`, `route delete ${unreachableNetwork}`);
+	runCommandForSystem(`ip route delete ${unreachableNetwork}`, `wsl -u root ip route delete ${unreachableNetwork}`);
 	console.log(`Setting a new route to the ${name} network...`);
-	runCommandForSystem(`ip route add ${unreachableNetwork} via ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}`, `route add ${unreachableNetwork} ${gatewayContainerIP} metric ${REASONABLY_LOW_METRIC_VALUE}`);
+	runCommandForSystem(`ip route add ${unreachableNetwork} via ${gatewayContainerIP}`, `wsl -u root ip route add ${unreachableNetwork} via ${gatewayContainerIP}`);
 	console.log(`Looking for the new route to the ${name} IP...`);
-	const route = getOutputForSystem(`ip route get ${unreachableIP}`, `route print ${unreachableIP}`);
+	const route = getOutputForSystem(`ip route get ${unreachableIP}`, `wsl -u root ip route get ${unreachableIP}`);
 	console.log(`Route to the ${name} IP found:\n${route}`);
+	if (platform == "win32") {
+		const WSLIP = getOutput("wsl hostname -I");
+		console.log(`Setting route to the ${name} via WSL host IP: ${WSLIP}...`);
+		runCommand(`route add ${unreachableNetwork} ${WSLIP}`);
+		console.log(`Looking for the route to the ${name} via WSL...`);
+		const WSLroute = getOutput(`route print ${unreachableIP}`);
+		console.log(`Route to the ${name} via WSL configured:\n${WSLroute}`);
+	}
 }
 
 /**
