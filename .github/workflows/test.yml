@@ -146,8 +146,8 @@ jobs:
         with:
           distribution: Ubuntu-24.04
           additional-packages:
-            podman
-            docker-compose-plugin
+            podman-docker
+            podman-compose
 
       - name: Install NodeJS 🪢
         uses: actions/setup-node@v4.1.0
