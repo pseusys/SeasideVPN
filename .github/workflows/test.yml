@@ -145,6 +145,12 @@ jobs:
         uses: Vampire/setup-wsl@v5
         with:
           distribution: Ubuntu-24.04
+
+      - name: TEST STEP
+        if: runner.os == 'Windows'
+        run: |
+          wsl -u root hostname -I
+          ping -n 5 172.22.62.11
       
       - name: Configure WSL
         if: runner.os == 'Windows'
