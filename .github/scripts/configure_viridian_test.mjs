@@ -56,6 +56,7 @@ function runCommand(command) {
 
 /**
  * Execute different console commands for different operation systems.
+ * Transform all paths so that separators are consistent with the selected platform.
  * Throw an error if no command is provided for current OS.
  * Throw an error if command failed to start or returned non-zero code.
  * The OS supported: Linux, Windows, MacOS.
@@ -71,7 +72,7 @@ function runCommandForSystem(linuxCommand = undefined, windowsCommand = undefine
 		case "linux":
 			if (linuxCommand !== undefined) return runCommand(linuxCommand.replaceAll(sep, posix.sep));
 		case "win32":
-			if (windowsCommand !== undefined) return runCommand(windowsCommand.replaceAll(sep, win32.sep));
+			if (windowsCommand !== undefined) return runCommand(windowsCommand.replaceAll(sep, `${win32.sep}${win32.sep}`));
 		default:
 			throw Error(`Command for platform ${platform} is not defined!`);
 	}
@@ -79,6 +80,7 @@ function runCommandForSystem(linuxCommand = undefined, windowsCommand = undefine
 
 /**
  * Execute different console commands for different operation systems.
+ * Transform all paths so that separators are consistent with the selected platform.
  * Throw an error if no command is provided for current OS.
  * Throw an error if command failed to start or returned non-zero code.
  * The OS supported: Linux, Windows, MacOS.
