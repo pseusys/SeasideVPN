@@ -1,6 +1,6 @@
 import { parseArgs } from "node:util";
-import { readFileSync, writeFileSync } from "node:fs";
-import { dirname, join, sep, posix } from "node:path";
+import { readFileSync } from "node:fs";
+import { dirname, join, sep, posix, win32 } from "node:path";
 import { spawnSync, ChildProcess } from "node:child_process";
 import { platform } from "process";
 
@@ -29,7 +29,7 @@ const DOCKER_COMPOSE_WHIRLPOOL_CONTAINER = "whirlpool";
 // Echo server for VPN access.
 const DOCKER_COMPOSE_ECHO_CONTAINER = "echo";
 // Path to the Docker compose configuration file in `viridian/algae` directory.
-const DOCKER_COMPOSE_ALGAE_PATH = join(dirname(import.meta.dirname), "..", "viridian", "algae", "docker", "compose.standalone.yml").replaceAll(sep, posix.sep);
+const DOCKER_COMPOSE_ALGAE_PATH = join(dirname(import.meta.dirname), "..", "viridian", "algae", "docker", "compose.standalone.yml");
 
 /**
  * Print usage help message and exit with code 0.
@@ -67,11 +67,11 @@ function runCommand(command) {
 function runCommandForSystem(linuxCommand = undefined, windowsCommand = undefined, macosCommand = undefined) {
 	switch (platform) {
 		case "darwin":
-			if (macosCommand !== undefined) return runCommand(macosCommand);
+			if (macosCommand !== undefined) return runCommand(macosCommand.replaceAll(sep, posix.sep));
 		case "linux":
-			if (linuxCommand !== undefined) return runCommand(linuxCommand);
+			if (linuxCommand !== undefined) return runCommand(linuxCommand.replaceAll(sep, posix.sep));
 		case "win32":
-			if (windowsCommand !== undefined) return runCommand(windowsCommand);
+			if (windowsCommand !== undefined) return runCommand(windowsCommand.replaceAll(sep, win32.sep));
 		default:
 			throw Error(`Command for platform ${platform} is not defined!`);
 	}
