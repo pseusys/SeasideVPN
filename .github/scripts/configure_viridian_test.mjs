@@ -122,15 +122,15 @@ function optionallyConvertPathToWSL(path) {
  * @returns {object} containing string keys "network" and "netmask".
  */
 function convertNetworkAddress(network) {
-	const [ip, cidr] = network.split("/");
-	const maskBinary = "1".repeat(parseInt(cidr)).padEnd(32, "0");
-	const mask = [
-	  	parseInt(maskBinary.slice(0, 8), 2),
-	  	parseInt(maskBinary.slice(8, 16), 2),
-	  	parseInt(maskBinary.slice(16, 24), 2),
-	  	parseInt(maskBinary.slice(24, 32), 2),
+	const [network, cidr] = network.split("/");
+	const mask = "1".repeat(parseInt(cidr)).padEnd(32, "0");
+	const netmask = [
+	  	parseInt(mask.slice(0, 8), 2),
+	  	parseInt(mask.slice(8, 16), 2),
+	  	parseInt(mask.slice(16, 24), 2),
+	  	parseInt(mask.slice(24, 32), 2),
 	].join(".");
-	return { network: ip, netmask: mask };
+	return { network, netmask };
   }
 
 /**
@@ -192,9 +192,9 @@ function setupRouting(gatewayContainerIP, unreachableIP, unreachableNetwork, nam
 	if (platform == "win32") {
 		const WSLIP = getOutput(`wsl -u root sh -c "ip route | grep '^default' | awk '{print \\$3}'"`);
 		console.log(`Preparing route to the ${name} via WSL host IP: ${WSLIP}...`);
-		const { unreachableNetworkIP, unreachableNetworkMask } = convertNetworkAddress(unreachableNetwork);
-		console.log(`Setting route to the ${name}, specifically: network ${unreachableNetworkIP} netmask ${unreachableNetworkMask}...`);
-		runCommand(`route add ${unreachableNetworkIP} mask ${unreachableNetworkMask} ${WSLIP}`);
+		const { network, netmask } = convertNetworkAddress(unreachableNetwork);
+		console.log(`Setting route to the ${name}, specifically: network ${network} netmask ${netmask}...`);
+		runCommand(`route add ${network} mask ${netmask} ${WSLIP}`);
 		console.log(`Looking for the route to the ${name} via WSL...`);
 		const WSLroute = getOutput(`route print ${unreachableIP}`);
 		console.log(`Route to the ${name} via WSL configured:\n${WSLroute}`);
