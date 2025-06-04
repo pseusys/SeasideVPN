@@ -1,6 +1,6 @@
 import { parseArgs } from "node:util";
 import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, win32 } from "node:path";
 import { spawnSync, ChildProcess } from "node:child_process";
 import { platform } from "process";
 
@@ -102,7 +102,7 @@ function getOutputForSystem(linuxCommand = undefined, windowsCommand = undefined
 function optionallyConvertPathToWSL(path) {
 	switch (platform) {
 		case "win32":
-			return runCommand(`wsl wslpath -a ${path}`).stdout.toString().trim();
+			return runCommand(`wsl wslpath -a ${path.replaceAll(win32.sep, `${win32.sep}${win32.sep}`)}`).stdout.toString().trim();
 		default:
 			return path;
 	}
