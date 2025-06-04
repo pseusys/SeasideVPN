@@ -145,9 +145,7 @@ jobs:
         uses: Vampire/setup-wsl@v5
         with:
           distribution: Ubuntu-24.04
-          additional-packages:
-            podman
-            podman-compose
+          wsl-shell-command: curl -fsSL https://get.docker.com | sudo sh
 
       - name: Install NodeJS 🪢
         uses: actions/setup-node@v4.1.0

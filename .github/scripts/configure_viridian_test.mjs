@@ -173,7 +173,7 @@ function setupRouting(gatewayContainerIP, unreachableIP, unreachableNetwork, nam
  */
 async function launchDockerCompose(path) {
 	console.log("Spawning Docker compose process...");
-	runCommandForSystem(`docker compose -f ${path} up --detach --build whirlpool`, `wsl -u root podman compose -f ${path} up --detach --build whirlpool`);
+	runCommandForSystem(`docker compose -f ${path} up --detach --build whirlpool`, `wsl -u root docker compose -f ${path} up --detach --build whirlpool`);
 	console.log("Waiting for Docker compose process to initiate...");
 	await sleep(DOCKER_COMPOSE_TIMEOUT);
 	console.log("Docker compose process started!");
@@ -185,7 +185,7 @@ async function launchDockerCompose(path) {
  */
 async function killDockerCompose(path) {
 	console.log("Killing Docker compose process...");
-	runCommandForSystem(`docker compose -f ${path} down`, `wsl -u root podman compose -f ${path} down`);
+	runCommandForSystem(`docker compose -f ${path} down`, `wsl -u root docker compose -f ${path} down`);
 	console.log("Docker compose process killed!");
 }
 
