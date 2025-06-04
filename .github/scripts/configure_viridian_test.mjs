@@ -118,11 +118,11 @@ function optionallyConvertPathToWSL(path) {
 
 /**
  * Convert network address such as IP/CIDR to IP address and netmask.
- * @param {string} network address, should be a valid IP address and a CIDR, separated by '/'.
+ * @param {string} address network address, should be a valid IP address and a CIDR, separated by '/'.
  * @returns {object} containing string keys "network" and "netmask".
  */
-function convertNetworkAddress(network) {
-	const [network, cidr] = network.split("/");
+function convertNetworkAddress(address) {
+	const [network, cidr] = address.split("/");
 	const mask = "1".repeat(parseInt(cidr)).padEnd(32, "0");
 	const netmask = [
 	  	parseInt(mask.slice(0, 8), 2),
