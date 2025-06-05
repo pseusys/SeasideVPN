@@ -169,10 +169,14 @@ jobs:
       - name: TEST STEP
         if: runner.os == 'Windows'
         run: |
-          (wsl -u root hostname -I).Split()[0].Trim()
           wsl -u root iptables -t nat -L -v -n
           wsl -u root iptables -t filter -L -v -n
           wsl -u root ip addr show
+          $ip = (wsl -u root hostname -I).Split()[0].Trim()
+          $ip
+          ping -n 5 $ip
+          ping -n 5 10.87.82.87
+          ping -n 5 10.42.0.42
 
       - name: Install NodeJS 🪢
         uses: actions/setup-node@v4.1.0
@@ -206,6 +210,18 @@ jobs:
         working-directory: viridian/reef
         run: ${{ env.SUDO }} cargo test --package SeasideVPN-Reef --lib -- --nocapture --show-output
 
+      - name: TEST STEP
+        if: runner.os == 'Windows'
+        run: |
+          wsl -u root iptables -t nat -L -v -n
+          wsl -u root iptables -t filter -L -v -n
+          wsl -u root ip addr show
+          $ip = (wsl -u root hostname -I).Split()[0].Trim()
+          $ip
+          ping -n 5 $ip
+          ping -n 5 10.87.82.87
+          ping -n 5 10.42.0.42
+
       - name: Start Background Server
         id: start-background-server
         working-directory: .github/scripts
@@ -218,6 +234,7 @@ jobs:
           wsl -u root iptables -t filter -L -v -n
           wsl -u root ip addr show
           $ip = (wsl -u root hostname -I).Split()[0].Trim()
+          $ip
           ping -n 5 $ip
           ping -n 5 10.87.82.87
           ping -n 5 10.42.0.42
