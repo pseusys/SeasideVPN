@@ -145,13 +145,15 @@ jobs:
         uses: Vampire/setup-wsl@v5
         with:
           distribution: Ubuntu-24.04
-
-      - name: Configure WSL
-        if: runner.os == 'Windows'
-        shell: wsl-bash -u root {0}
-        run: |
-          curl -fsSL https://get.docker.com | sudo sh
-          cat /etc/wsl.conf
+          wsl-conf: |
+            [boot]
+            systemd = true
+            command = "curl -fsSL https://get.docker.com | sudo sh"
+            [wsl2]
+            firewall = false
+            networkingMode = mirrored
+            [experimental]
+            hostAddressLoopback = true
 
       - name: Install NodeJS 🪢
         uses: actions/setup-node@v4.1.0

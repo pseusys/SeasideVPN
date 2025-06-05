@@ -190,14 +190,11 @@ function setupRouting(gatewayContainerIP, unreachableIP, unreachableNetwork, nam
 	const route = getOutputForSystem(`ip route get ${unreachableIP}`, `wsl -u root ip route get ${unreachableIP}`);
 	console.log(`Route to the ${name} IP found:\n${route}`);
 	if (platform == "win32") {
-		const WSLIP = getOutput("wsl -u root hostname -I").split(" ")[0].trim();
-		console.log(`Preparing route to the ${name} via WSL host IP: ${WSLIP}...`);
-		const { network, netmask } = convertNetworkAddress(unreachableNetwork);
-		console.log(`Setting route to the ${name}, specifically: network ${network} netmask ${netmask}...`);
-		runCommand(`route add ${network} mask ${netmask} ${WSLIP}`);
 		console.log(`Looking for the route to the ${name} via WSL...`);
 		const WSLroute = getOutput(`route print ${unreachableIP}`);
 		console.log(`Route to the ${name} via WSL configured:\n${WSLroute}`);
+		const ALLWSLroute = getOutput(`route print ${unreachableIP}`);
+		console.log(`Route to everywhere via WSL configured:\n${ALLWSLroute}`);
 	}
 }
 
