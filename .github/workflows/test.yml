@@ -149,7 +149,9 @@ jobs:
       - name: Configure WSL
         if: runner.os == 'Windows'
         shell: wsl-bash -u root {0}
-        run: curl -fsSL https://get.docker.com | sudo sh
+        run: |
+          curl -fsSL https://get.docker.com | sudo sh
+          cat /etc/wsl.conf
 
       - name: Install NodeJS 🪢
         uses: actions/setup-node@v4.1.0
