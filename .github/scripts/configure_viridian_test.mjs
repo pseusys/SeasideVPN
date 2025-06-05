@@ -196,7 +196,7 @@ function setupRouting(gatewayContainerIP, unreachableIP, unreachableNetwork, nam
 		console.log(`Setting route to the ${name}, specifically: network ${network} netmask ${netmask}...`);
 		runCommand(`route add ${network} mask ${netmask} ${gatewayIP}`);
 		console.log(`Looking for the route to the ${name} via WSL...`);
-		const unreachableRoute = getOutput(`powershell -Command "Get-NetRoute -DestinationPrefix ${unreachableIP}/32"`);
+		const unreachableRoute = getOutput(`powershell -Command "Find-NetRoute -RemoteIPAddress ${unreachableIP}"`);
 		console.log(`Route to the ${name} via WSL configured:\n${unreachableRoute}`);
 	}
 }
