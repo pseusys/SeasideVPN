@@ -170,9 +170,10 @@ jobs:
           route add 10.82.0.0 mask 255.255.255.0 $WSLIP
           route add 10.42.0.0 mask 255.255.255.0 $WSLIP
 
-          apt install openssh-server
-          systemctl enable ssh
-          systemctl start ssh
+          # TODO: REMOVE!!!@!!!
+          wsl -u root apt install openssh-server
+          wsl -u root systemctl enable ssh
+          wsl -u root systemctl start ssh
 
       - name: TEST STEP
         if: runner.os == 'Windows'
