@@ -163,11 +163,11 @@ function parseArguments() {
 function parseDockerComposeFile() {
 	console.log("Reading Docker compose file...");
 	const composeDict = parse(readFileSync(DOCKER_COMPOSE_ALGAE_PATH).toString());
-	const whirlpoolIP = composeDict["services"][DOCKER_COMPOSE_WHIRLPOOL_CONTAINER]["networks"][DOCKER_COMPOSE_WHIRLPOOL_NETWORK]["ipv4_address"];
-	const gatewayIP = composeDict["services"][DOCKER_COMPOSE_GATEWAY_CONTAINER]["networks"][DOCKER_COMPOSE_GATEWAY_NETWORK]["ipv4_address"];
-	const echoIP = composeDict["services"][DOCKER_COMPOSE_ECHO_CONTAINER]["networks"][DOCKER_COMPOSE_ECHO_NETWORK]["ipv4_address"];
-	const whirlpoolNetwork = composeDict["networks"][DOCKER_COMPOSE_WHIRLPOOL_NETWORK]["ipam"]["config"][0]["subnet"];
-	const echoNetwork = composeDict["networks"][DOCKER_COMPOSE_ECHO_NETWORK]["ipam"]["config"][0]["subnet"];
+	const whirlpoolIP = composeDict["services"][DOCKER_COMPOSE_WHIRLPOOL_CONTAINER]["networks"][DOCKER_COMPOSE_WHIRLPOOL_NETWORK]["ipv4_address"].trim();
+	const gatewayIP = composeDict["services"][DOCKER_COMPOSE_GATEWAY_CONTAINER]["networks"][DOCKER_COMPOSE_GATEWAY_NETWORK]["ipv4_address"].trim();
+	const echoIP = composeDict["services"][DOCKER_COMPOSE_ECHO_CONTAINER]["networks"][DOCKER_COMPOSE_ECHO_NETWORK]["ipv4_address"].trim();
+	const whirlpoolNetwork = composeDict["networks"][DOCKER_COMPOSE_WHIRLPOOL_NETWORK]["ipam"]["config"][0]["subnet"].trim();
+	const echoNetwork = composeDict["networks"][DOCKER_COMPOSE_ECHO_NETWORK]["ipam"]["config"][0]["subnet"].trim();
 	console.log(`Extracted compose parameters: gateway IP (${gatewayIP}), echo IP (${echoIP}), echo network (${echoNetwork})`);
 	return { gatewayIP, whirlpoolIP, whirlpoolNetwork, echoIP, echoNetwork };
 }
@@ -196,7 +196,7 @@ function setupRouting(gatewayContainerIP, unreachableIP, unreachableNetwork, nam
 		console.log(`Setting route to the ${name}, specifically: network ${network} netmask ${netmask}...`);
 		runCommand(`route add ${network} mask ${netmask} ${WSLIP}`);
 		console.log(`Looking for the route to the ${name} via WSL...`);
-		const WSLroute = getOutput(`route print`); // getOutput(`route print ${unreachableIP}`);
+		const WSLroute = getOutput(`route print ${unreachableIP}`);
 		console.log(`Route to the ${name} via WSL configured:\n${WSLroute}`);
 	}
 }
