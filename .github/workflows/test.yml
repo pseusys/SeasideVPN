@@ -157,6 +157,7 @@ jobs:
         uses: Vampire/setup-wsl@v5
         with:
           distribution: Ubuntu-24.04
+          set-as-default: true
 
       - name: Post-Configure WSL
         if: runner.os == 'Windows'
@@ -165,6 +166,9 @@ jobs:
           wsl -u root bash -c "curl -fsSL https://get.docker.com | sh"
           wsl -u root iptables -t filter -A FORWARD -i eth0 -d ${{ env.SEASIDE_ADDRESS }}/24 -j ACCEPT
           wsl -u root iptables -t nat -A POSTROUTING -o eth0 -s ${{ env.SEASIDE_ADDRESS }}/24 -j MASQUERADE
+          $WSLIP = (wsl -u root hostname -I).Split()[0].Trim()
+          route add 10.82.0.0 mask 255.255.255.0 $WSLIP
+          route add 10.42.0.0 mask 255.255.255.0 $WSLIP
 
       - name: TEST STEP
         if: runner.os == 'Windows'

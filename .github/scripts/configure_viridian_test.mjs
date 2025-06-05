@@ -53,16 +53,6 @@ function runCommand(command) {
 }
 
 /**
- * Execute a console command.
- * Throw an error if command failed to start or returned non-zero code.
- * @param {string} command the command to execute.
- * @returns {string} command STDOUT output as a string.
- */
-function getOutput(command) {
-	return runCommand(command).stdout.toString().trim();
-}
-
-/**
  * Execute different console commands for different operation systems.
  * Transform all paths so that separators are consistent with the selected platform.
  * Throw an error if no command is provided for current OS.
@@ -115,23 +105,6 @@ function optionallyConvertPathToWSL(path) {
 			return path;
 	}
 }
-
-/**
- * Convert network address such as IP/CIDR to IP address and netmask.
- * @param {string} address network address, should be a valid IP address and a CIDR, separated by '/'.
- * @returns {object} containing string keys "network" and "netmask".
- */
-function convertNetworkAddress(address) {
-	const [network, cidr] = address.split("/");
-	const mask = "1".repeat(parseInt(cidr)).padEnd(32, "0");
-	const netmask = [
-	  	parseInt(mask.slice(0, 8), 2),
-	  	parseInt(mask.slice(8, 16), 2),
-	  	parseInt(mask.slice(16, 24), 2),
-	  	parseInt(mask.slice(24, 32), 2),
-	].join(".");
-	return { network, netmask };
-  }
 
 /**
  * Parse CLI and environment flags and arguments.
@@ -189,16 +162,6 @@ function setupRouting(gatewayContainerIP, unreachableIP, unreachableNetwork, nam
 	console.log(`Looking for the new route to the ${name} IP...`);
 	const route = getOutputForSystem(`ip route get ${unreachableIP}`, `wsl -u root ip route get ${unreachableIP}`);
 	console.log(`Route to the ${name} IP found:\n${route}`);
-	if (platform == "win32") {
-		const gatewayIP = getOutput("wsl -u root hostname -I").split(" ")[0].trim();
-		console.log(`Preparing route to the ${name} via WSL gateway IP: ${gatewayIP}...`);
-		const { network, netmask } = convertNetworkAddress(unreachableNetwork);
-		console.log(`Setting route to the ${name}, specifically: network ${network} netmask ${netmask}...`);
-		runCommand(`route add ${network} mask ${netmask} ${gatewayIP}`);
-		console.log(`Looking for the route to the ${name} via WSL...`);
-		const unreachableRoute = getOutput(`powershell -Command "Find-NetRoute -RemoteIPAddress ${unreachableIP}"`);
-		console.log(`Route to the ${name} via WSL configured:\n${unreachableRoute}`);
-	}
 }
 
 /**
