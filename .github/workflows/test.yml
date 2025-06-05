@@ -170,17 +170,12 @@ jobs:
           route add 10.82.0.0 mask 255.255.255.0 $WSLIP
           route add 10.42.0.0 mask 255.255.255.0 $WSLIP
 
-          # TODO: REMOVE!!!@!!!
-          wsl -u root apt install openssh-server
-          wsl -u root systemctl enable ssh
-          wsl -u root systemctl start ssh
-
       - name: TEST STEP
         if: runner.os == 'Windows'
         run: |
           $ip = (wsl -u root hostname -I).Split()[0].Trim()
           $ip
-          Test-NetConnection $ip -Port 22
+          ping -n 5 $ip
           Test-NetConnection 10.87.82.87 -Port 8587
           Test-NetConnection 10.42.0.42 -Port 5000
           wsl -u root iptables -t nat -L -v -n
@@ -224,7 +219,7 @@ jobs:
         run: |
           $ip = (wsl -u root hostname -I).Split()[0].Trim()
           $ip
-          Test-NetConnection $ip -Port 22
+          ping -n 5 $ip
           Test-NetConnection 10.87.82.87 -Port 8587
           Test-NetConnection 10.42.0.42 -Port 5000
           wsl -u root iptables -t nat -L -v -n
@@ -241,7 +236,7 @@ jobs:
         run: |
           $ip = (wsl -u root hostname -I).Split()[0].Trim()
           $ip
-          Test-NetConnection $ip -Port 22
+          ping -n 5 $ip
           Test-NetConnection 10.87.82.87 -Port 8587
           Test-NetConnection 10.42.0.42 -Port 5000
           wsl -u root iptables -t nat -L -v -n
