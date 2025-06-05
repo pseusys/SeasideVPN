@@ -173,14 +173,14 @@ jobs:
       - name: TEST STEP
         if: runner.os == 'Windows'
         run: |
-          wsl -u root iptables -t nat -L -v -n
-          wsl -u root iptables -t filter -L -v -n
-          wsl -u root ip addr show
           $ip = (wsl -u root hostname -I).Split()[0].Trim()
           $ip
           ping -n 5 $ip
           ping -n 5 10.87.82.87
           ping -n 5 10.42.0.42
+          wsl -u root iptables -t nat -L -v -n
+          wsl -u root iptables -t filter -L -v -n
+          wsl -u root ip addr show
 
       - name: Install NodeJS 🪢
         uses: actions/setup-node@v4.1.0
@@ -217,14 +217,14 @@ jobs:
       - name: TEST STEP
         if: runner.os == 'Windows'
         run: |
-          wsl -u root iptables -t nat -L -v -n
-          wsl -u root iptables -t filter -L -v -n
-          wsl -u root ip addr show
           $ip = (wsl -u root hostname -I).Split()[0].Trim()
           $ip
           ping -n 5 $ip
           ping -n 5 10.87.82.87
           ping -n 5 10.42.0.42
+          wsl -u root iptables -t nat -L -v -n
+          wsl -u root iptables -t filter -L -v -n
+          wsl -u root ip addr show
 
       - name: Start Background Server
         id: start-background-server
@@ -234,14 +234,14 @@ jobs:
       - name: TEST STEP
         if: runner.os == 'Windows'
         run: |
-          wsl -u root iptables -t nat -L -v -n
-          wsl -u root iptables -t filter -L -v -n
-          wsl -u root ip addr show
           $ip = (wsl -u root hostname -I).Split()[0].Trim()
           $ip
           ping -n 5 $ip
           ping -n 5 10.87.82.87
           ping -n 5 10.42.0.42
+          wsl -u root iptables -t nat -L -v -n
+          wsl -u root iptables -t filter -L -v -n
+          wsl -u root ip addr show
 
       - name: Load .ENV File
         uses: aarcangeli/load-dotenv@v1
