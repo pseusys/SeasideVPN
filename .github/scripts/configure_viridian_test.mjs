@@ -196,6 +196,8 @@ function setupRouting(gatewayContainerIP, unreachableIP, unreachableNetwork, nam
 		console.log(`Setting route to the ${name}, specifically: network ${network} netmask ${netmask}...`);
 		runCommand(`route add ${network} mask ${netmask} ${gatewayIP}`);
 		console.log(`Looking for the route to the ${name} via WSL...`);
+		const hostroute = getOutput(`route -4 print ${gatewayIP}`);
+		console.log(`Route to the ${name} via host configured:\n${hostroute}`);
 		const WSLroute = getOutput(`route -4 print ${unreachableIP}`);
 		console.log(`Route to the ${name} via WSL configured:\n${WSLroute}`);
 		const ALLWSLroute = getOutput(`route -4 print`);
