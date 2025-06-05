@@ -140,31 +140,22 @@ jobs:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
 
-    #  - name: Pre-Configure WSL
-    #    if: runner.os == 'Windows'
-    #    run: |
-    #      @"
-    #      [wsl2]
-    #      firewall = false
-    #      networkingMode = mirrored
-    #      [experimental]
-    #      hostAddressLoopback = true
-    #      "@ | Out-File -FilePath "$env:USERPROFILE\.wslconfig" -Encoding utf8
+      - name: Pre-Configure WSL
+        if: runner.os == 'Windows'
+        run: |
+          @"
+          [wsl2]
+          firewall = false
+          networkingMode = mirrored
+          [experimental]
+          hostAddressLoopback = true
+          "@ | Out-File -FilePath "$env:USERPROFILE\.wslconfig" -Encoding utf8
 
       - name: Setup WSL
         if: runner.os == 'Windows'
         uses: Vampire/setup-wsl@v5
         with:
           distribution: Ubuntu-24.04
-
-      - name: TEST STEP
-        if: runner.os == 'Windows'
-        run: |
-          wsl -u root hostname -I
-          powershell -Command "Get-NetIPConfiguration"
-          powershell -Command "Get-NetIPConfiguration | Where-Object { `$_.InterfaceAlias -like '*WSL*' }"
-          powershell -Command "Get-NetIPConfiguration | Where-Object { `$_.InterfaceAlias -like '*WSL*' } | Select-Object -ExpandProperty IPv4DefaultGateway"
-          powershell -Command "Get-NetIPConfiguration | Where-Object { `$_.InterfaceAlias -like '*WSL*' } | Select-Object -ExpandProperty IPv4DefaultGateway | Select-Object -ExpandProperty NextHop"
 
       - name: Post-Configure WSL
         if: runner.os == 'Windows'
