@@ -166,9 +166,7 @@ jobs:
           wsl -u root bash -c "curl -fsSL https://get.docker.com | sh"
           wsl -u root iptables -t filter -A FORWARD -i eth0 -d ${{ env.SEASIDE_ADDRESS }}/24 -j ACCEPT
           wsl -u root iptables -t nat -A POSTROUTING -o eth0 -s ${{ env.SEASIDE_ADDRESS }}/24 -j MASQUERADE
-          $WSLIP = (wsl -u root hostname -I).Split()[0].Trim()
-          route add 10.82.0.0 mask 255.255.255.0 $WSLIP
-          route add 10.42.0.0 mask 255.255.255.0 $WSLIP
+          route add 10.87.82.0 mask 255.255.255.0 (wsl -u root hostname -I).Split()[0].Trim()
 
       - name: TEST STEP
         if: runner.os == 'Windows'
@@ -178,6 +176,8 @@ jobs:
           ping -n 5 $ip
           Test-NetConnection 10.87.82.87 -Port 8587
           Test-NetConnection 10.42.0.42 -Port 5000
+          Find-NetRoute -RemoteIPAddress 10.87.82.87
+          Find-NetRoute -RemoteIPAddress 10.42.0.42
           wsl -u root iptables -t nat -L -v -n
           wsl -u root iptables -t filter -L -v -n
           wsl -u root ip addr show
@@ -222,6 +222,8 @@ jobs:
           ping -n 5 $ip
           Test-NetConnection 10.87.82.87 -Port 8587
           Test-NetConnection 10.42.0.42 -Port 5000
+          Find-NetRoute -RemoteIPAddress 10.87.82.87
+          Find-NetRoute -RemoteIPAddress 10.42.0.42
           wsl -u root iptables -t nat -L -v -n
           wsl -u root iptables -t filter -L -v -n
           wsl -u root ip addr show
@@ -239,6 +241,8 @@ jobs:
           ping -n 5 $ip
           Test-NetConnection 10.87.82.87 -Port 8587
           Test-NetConnection 10.42.0.42 -Port 5000
+          Find-NetRoute -RemoteIPAddress 10.87.82.87
+          Find-NetRoute -RemoteIPAddress 10.42.0.42
           wsl -u root iptables -t nat -L -v -n
           wsl -u root iptables -t filter -L -v -n
           wsl -u root ip addr show
