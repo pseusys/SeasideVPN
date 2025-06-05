@@ -157,6 +157,14 @@ jobs:
         with:
           distribution: Ubuntu-24.04
 
+      - name: TEST STEP
+        if: runner.os == 'Windows'
+        run: |
+          powershell -Command "Get-NetIPConfiguration"
+          powershell -Command "Get-NetIPConfiguration | Where-Object { `$_.InterfaceAlias -like '*WSL*' }"
+          powershell -Command "Get-NetIPConfiguration | Where-Object { `$_.InterfaceAlias -like '*WSL*' } | Select-Object -ExpandProperty IPv4DefaultGateway"
+          powershell -Command "Get-NetIPConfiguration | Where-Object { `$_.InterfaceAlias -like '*WSL*' } | Select-Object -ExpandProperty IPv4DefaultGateway | Select-Object -ExpandProperty NextHop"
+
       - name: Post-Configure WSL
         if: runner.os == 'Windows'
         shell: wsl-bash -u root {0}
