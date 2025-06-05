@@ -190,7 +190,7 @@ function setupRouting(gatewayContainerIP, unreachableIP, unreachableNetwork, nam
 	const route = getOutputForSystem(`ip route get ${unreachableIP}`, `wsl -u root ip route get ${unreachableIP}`);
 	console.log(`Route to the ${name} IP found:\n${route}`);
 	if (platform == "win32") {
-		const gatewayIP = getOutput("hostname -I").split(" ")[0].trim();
+		const gatewayIP = getOutput("wsl -u root hostname -I").split(" ")[0].trim();
 		console.log(`Preparing route to the ${name} via WSL gateway IP: ${gatewayIP}...`);
 		const { network, netmask } = convertNetworkAddress(unreachableNetwork);
 		console.log(`Setting route to the ${name}, specifically: network ${network} netmask ${netmask}...`);
