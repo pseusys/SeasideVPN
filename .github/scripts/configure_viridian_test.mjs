@@ -190,9 +190,7 @@ function setupRouting(gatewayContainerIP, unreachableIP, unreachableNetwork, nam
 	const route = getOutputForSystem(`ip route get ${unreachableIP}`, `wsl -u root ip route get ${unreachableIP}`);
 	console.log(`Route to the ${name} IP found:\n${route}`);
 	if (platform == "win32") {
-		const interfaces = getOutput(`powershell -Command "Get-NetAdapter | Select-Object InterfaceAlias, Name, Status"`);
-		console.log(`Available interfaces: ${interfaces}...`);
-		const gatewayIP = getOutput(`powershell -Command "Get-NetIPConfiguration | Where-Object { \$_.InterfaceAlias -like '*WSL*' } | Select-Object -ExpandProperty IPv4DefaultGateway | Select-Object -ExpandProperty NextHop"`);
+		const gatewayIP = getOutput(`powershell -Command "Get-NetIPConfiguration | Where-Object { \\\$_.InterfaceAlias -like '*WSL*' } | Select-Object -ExpandProperty IPv4DefaultGateway | Select-Object -ExpandProperty NextHop"`);
 		console.log(`Preparing route to the ${name} via WSL gateway IP: ${gatewayIP}...`);
 		const { network, netmask } = convertNetworkAddress(unreachableNetwork);
 		console.log(`Setting route to the ${name}, specifically: network ${network} netmask ${netmask}...`);
