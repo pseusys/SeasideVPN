@@ -192,18 +192,12 @@ function setupRouting(gatewayContainerIP, unreachableIP, unreachableNetwork, nam
 	if (platform == "win32") {
 		const gatewayIP = getOutput("wsl -u root hostname -I").split(" ")[0].trim();
 		console.log(`Preparing route to the ${name} via WSL gateway IP: ${gatewayIP}...`);
-		const wslIF = getOutput(`powershell -Command "Get-NetIPConfiguration | Where-Object { \`$_.IPv4Address.IPAddress -eq ${gatewayIP} } | Select-Object InterfaceIndex"`);
-		console.log(`Preparing route using interface: ${wslIF}...`);
 		const { network, netmask } = convertNetworkAddress(unreachableNetwork);
 		console.log(`Setting route to the ${name}, specifically: network ${network} netmask ${netmask}...`);
-		runCommand(`route add ${network} mask ${netmask} ${gatewayIP} if ${wslIF}`);
+		runCommand(`route add ${network} mask ${netmask} ${gatewayIP}`);
 		console.log(`Looking for the route to the ${name} via WSL...`);
-		const hostroute = getOutput(`route -4 print ${gatewayIP}`);
-		console.log(`Route to the ${name} via host configured:\n${hostroute}`);
-		const WSLroute = getOutput(`powershell -Command "Get-NetRoute -DestinationPrefix ${unreachableNetwork}"`);
-		console.log(`Route (netroute) to the ${name} via WSL configured:\n${WSLroute}`);
-		const ALLWSLroute = getOutput(`route -4 print`);
-		console.log(`Route to everywhere via WSL configured:\n${ALLWSLroute}`);
+		const unreachableRoute = getOutput(`powershell -Command "Get-NetRoute -DestinationPrefix ${unreachableIP}/32"`);
+		console.log(`Route to the ${name} via WSL configured:\n${unreachableRoute}`);
 	}
 }
 

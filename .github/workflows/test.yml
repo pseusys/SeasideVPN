@@ -162,13 +162,6 @@ jobs:
         shell: wsl-bash -u root {0}
         run: curl -fsSL https://get.docker.com | sudo sh
 
-      - name: TEST STEP
-        if: runner.os == 'Windows'
-        run: |
-          $ip = (wsl -u root hostname -I).Split()[0].Trim()
-          tracert $ip
-          ping -n 5 $ip
-
       - name: Install NodeJS 🪢
         uses: actions/setup-node@v4.1.0
         with:
