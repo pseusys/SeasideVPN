@@ -140,7 +140,7 @@ jobs:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
 
-      - name: Configure WSL
+      - name: Pre-Configure WSL
         if: runner.os == 'Windows'
         run: |
           @"
@@ -156,10 +156,11 @@ jobs:
         uses: Vampire/setup-wsl@v5
         with:
           distribution: Ubuntu-24.04
-          wsl-conf: |
-            [boot]
-            systemd = true
-            command = "curl -fsSL https://get.docker.com | sudo sh"
+
+      - name: Post-Configure WSL
+        if: runner.os == 'Windows'
+        shell: wsl-bash -u root {0}
+        run: curl -fsSL https://get.docker.com | sudo sh
 
       - name: Install NodeJS 🪢
         uses: actions/setup-node@v4.1.0
