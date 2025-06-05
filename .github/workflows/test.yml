@@ -140,6 +140,17 @@ jobs:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
 
+      - name: Configure WSL
+        if: runner.os == 'Windows'
+        run: |
+          @"
+          [wsl2]
+          firewall = false
+          networkingMode = mirrored
+          [experimental]
+          hostAddressLoopback = true
+          "@ | Out-File -FilePath "$env:USERPROFILE\.wslconfig" -Encoding utf8
+
       - name: Setup WSL
         if: runner.os == 'Windows'
         uses: Vampire/setup-wsl@v5
@@ -149,11 +160,6 @@ jobs:
             [boot]
             systemd = true
             command = "curl -fsSL https://get.docker.com | sudo sh"
-            [wsl2]
-            firewall = false
-            networkingMode = mirrored
-            [experimental]
-            hostAddressLoopback = true
 
       - name: Install NodeJS 🪢
         uses: actions/setup-node@v4.1.0
