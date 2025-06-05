@@ -199,6 +199,16 @@ jobs:
         working-directory: .github/scripts
         run: ${{ env.SUDO }} npm run configure-viridian-test
 
+      - name: TEST STEP
+        if: runner.os == 'Windows'
+        run: |
+          wsl -u root hostname -I
+          $ip = wsl -u root hostname -I
+          $ip = (wsl -u root hostname -I).Split()[0].Trim()
+          ping -n 5 $ip
+          ping -n 5 10.87.82.87
+          ping -n 5 10.42.0.42
+
       - name: Load .ENV File
         uses: aarcangeli/load-dotenv@v1
         with:
