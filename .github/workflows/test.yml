@@ -146,13 +146,6 @@ jobs:
         with:
           distribution: Ubuntu-24.04
 
-      - name: TEST STEP
-        if: runner.os == 'Windows'
-        run: |
-          wsl -u root hostname -I
-          $ip = (wsl -u root hostname -I).Split()[0].Trim()
-          ping -n 5 $ip
-      
       - name: Configure WSL
         if: runner.os == 'Windows'
         shell: wsl-bash -u root {0}

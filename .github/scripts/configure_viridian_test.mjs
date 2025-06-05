@@ -194,9 +194,9 @@ function setupRouting(gatewayContainerIP, unreachableIP, unreachableNetwork, nam
 		console.log(`Preparing route to the ${name} via WSL host IP: ${WSLIP}...`);
 		const { network, netmask } = convertNetworkAddress(unreachableNetwork);
 		console.log(`Setting route to the ${name}, specifically: network ${network} netmask ${netmask}...`);
-		runCommand(`route -p add ${network} mask ${netmask} ${WSLIP}`);
+		runCommand(`route add ${network} mask ${netmask} ${WSLIP}`);
 		console.log(`Looking for the route to the ${name} via WSL...`);
-		const WSLroute = getOutput(`route -p print ${unreachableIP}`);
+		const WSLroute = getOutput(`route print`); // getOutput(`route print ${unreachableIP}`);
 		console.log(`Route to the ${name} via WSL configured:\n${WSLroute}`);
 	}
 }
