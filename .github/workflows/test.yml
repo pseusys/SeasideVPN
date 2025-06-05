@@ -207,6 +207,9 @@ jobs:
       - name: TEST STEP
         if: runner.os == 'Windows'
         run: |
+          wsl -u root iptables -t nat -L -v -n
+          wsl -u root iptables -t filter -L -v -n
+          wsl -u root ip addr show
           $ip = (wsl -u root hostname -I).Split()[0].Trim()
           ping -n 5 $ip
           ping -n 5 10.87.82.87
