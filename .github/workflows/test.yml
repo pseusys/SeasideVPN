@@ -140,16 +140,16 @@ jobs:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
 
-      - name: Pre-Configure WSL
-        if: runner.os == 'Windows'
-        run: |
-          @"
-          [wsl2]
-          firewall = false
-          networkingMode = mirrored
-          [experimental]
-          hostAddressLoopback = true
-          "@ | Out-File -FilePath "$env:USERPROFILE\.wslconfig" -Encoding utf8
+    #  - name: Pre-Configure WSL
+    #    if: runner.os == 'Windows'
+    #    run: |
+    #      @"
+    #      [wsl2]
+    #      firewall = false
+    #      networkingMode = mirrored
+    #      [experimental]
+    #      hostAddressLoopback = true
+    #      "@ | Out-File -FilePath "$env:USERPROFILE\.wslconfig" -Encoding utf8
 
       - name: Setup WSL
         if: runner.os == 'Windows'
