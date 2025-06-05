@@ -192,9 +192,11 @@ function setupRouting(gatewayContainerIP, unreachableIP, unreachableNetwork, nam
 	if (platform == "win32") {
 		const gatewayIP = getOutput("wsl -u root hostname -I").split(" ")[0].trim();
 		console.log(`Preparing route to the ${name} via WSL gateway IP: ${gatewayIP}...`);
+		const wslIF = getOutput(`powershell -Command "Get-NetIPConfiguration | Where-Object { \`$_.IPv4Address.IPAddress -eq ${gatewayIP} } | Select-Object InterfaceIndex"`);
+		console.log(`Preparing route using interface: ${wslIF}...`);
 		const { network, netmask } = convertNetworkAddress(unreachableNetwork);
 		console.log(`Setting route to the ${name}, specifically: network ${network} netmask ${netmask}...`);
-		runCommand(`route add ${network} mask ${netmask} ${gatewayIP}`);
+		runCommand(`route add ${network} mask ${netmask} ${gatewayIP} if ${wslIF}`);
 		console.log(`Looking for the route to the ${name} via WSL...`);
 		const hostroute = getOutput(`route -4 print ${gatewayIP}`);
 		console.log(`Route to the ${name} via host configured:\n${hostroute}`);

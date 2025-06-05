@@ -202,6 +202,7 @@ jobs:
       - name: TEST STEP
         if: runner.os == 'Windows'
         run: |
+          powershell -Command "Get-NetIPConfiguration | Where-Object { `$_.IPv4Address.IPAddress -eq ${gatewayIP} } | Select-Object InterfaceIndex"
           $ip = (wsl -u root hostname -I).Split()[0].Trim()
           ping -n 5 $ip
           ping -n 5 10.87.82.87
