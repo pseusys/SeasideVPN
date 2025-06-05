@@ -193,7 +193,7 @@ function setupRouting(gatewayContainerIP, unreachableIP, unreachableNetwork, nam
 		console.log(`Looking for the route to the ${name} via WSL...`);
 		const WSLroute = getOutput(`route print ${unreachableIP}`);
 		console.log(`Route to the ${name} via WSL configured:\n${WSLroute}`);
-		const ALLWSLroute = getOutput(`route print ${unreachableIP}`);
+		const ALLWSLroute = getOutput(`route print`);
 		console.log(`Route to everywhere via WSL configured:\n${ALLWSLroute}`);
 	}
 }
