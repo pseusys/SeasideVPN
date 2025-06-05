@@ -166,7 +166,7 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           $ip = (wsl -u root hostname -I).Split()[0].Trim()
-          powershell -Command "Get-NetIPConfiguration | Where-Object { `$_.IPv4Address.IPAddress -eq $ip } | Select-Object InterfaceIndex"
+          tracert $ip
           ping -n 5 $ip
 
       - name: Install NodeJS 🪢
