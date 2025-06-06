@@ -177,6 +177,7 @@ jobs:
           wsl -u root sh -c "tcpdump -i eth0 > ./ip-log-eth0.txt 2>&1 &"
           wsl -u root sh -c "tcpdump -i any > ./ip-log-any.txt 2>&1 &"
           wsl -u root ls .
+          wsl -u root sleep 30
 
       - name: TEST STEP
         if: runner.os == 'Windows'
