@@ -158,6 +158,8 @@ jobs:
         with:
           distribution: Ubuntu-24.04
           set-as-default: true
+          additional-packages:
+            tcpdump
 
       - name: Post-Configure WSL
         if: runner.os == 'Windows'
@@ -172,8 +174,8 @@ jobs:
           wsl -u root iptables -t nat -A POSTROUTING -d 10.87.82.0/24 -j MASQUERADE
           route add 10.42.0.0 mask 255.255.255.0 $WSL_IP
           route add 10.87.82.0 mask 255.255.255.0 $WSL_IP
-          wsl -u root tcpdump -i eth0 -l -n -nn
-          wsl -u root sh -c "tcpdump -i any -l -n -nn > ./ip-log-any.txt 2>&1 &"
+          wsl -u root sh -c "tcpdump -i eth0 -l -n > ./ip-log-eth0.txt 2>&1 &"
+          wsl -u root sh -c "tcpdump -i any -l -n > ./ip-log-any.txt 2>&1 &"
 
       - name: TEST STEP
         if: runner.os == 'Windows'
