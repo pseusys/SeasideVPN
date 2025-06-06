@@ -158,6 +158,7 @@ jobs:
           wsl -u root sysctl -w net.ipv4.ip_forward=1
           wsl -u root sh -c "curl -fsSL https://get.docker.com | sh"
           wsl -u root docker compose -f $COMPOSE_PATH up --build --detach
+          wsl -u root iptables -t filter -A INPUT -i eth0 -j DROP
           wsl -u root iptables -t filter -A FORWARD -i eth0 -d 10.42.0.0/24 -j DROP
           wsl -u root iptables -t filter -A FORWARD -i eth0 -d 10.87.82.0/24 -j ACCEPT
           wsl -u root iptables -t nat -A POSTROUTING -d 10.87.82.0/24 -j MASQUERADE
