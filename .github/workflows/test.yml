@@ -152,14 +152,13 @@ jobs:
 
       - name: Post-Configure WSL
         if: runner.os == 'Windows'
-#          wsl -u root iptables -t filter -A INPUT -i eth0 -j DROP
         run: |
           $WSL_IP = (wsl -u root hostname -I).Split()[0].Trim()
           $COMPOSE_PATH = (wsl wslpath -a .\\viridian\\algae\\docker\\compose.standalone.yml).Trim()
           wsl -u root sysctl -w net.ipv4.ip_forward=1
           wsl -u root sh -c "curl -fsSL https://get.docker.com | sh"
           wsl -u root docker compose -f $COMPOSE_PATH up --build --detach
-          wsl -u root iptables -t filter -A INPUT -i eth0 -j DROP
+          wsl -u root iptables -t filter -A INPUT -i eth0 -j ACCEPT
           wsl -u root iptables -t filter -A FORWARD -i eth0 -d 10.42.0.0/24 -j DROP
           wsl -u root iptables -t filter -A FORWARD -i eth0 -d 10.87.82.0/24 -j ACCEPT
           wsl -u root iptables -t nat -A POSTROUTING -d 10.87.82.0/24 -j MASQUERADE
