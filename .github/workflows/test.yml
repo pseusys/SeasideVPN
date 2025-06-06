@@ -182,10 +182,11 @@ jobs:
       - name: TEST STEP
         if: runner.os == 'Windows'
         run: |
-          $ip = (wsl -u root hostname -I).Split()[0].Trim()
-          $ip
-          wsl -u root docker compose ps
-          ping -n 5 $ip
+          $WSL_IP = (wsl -u root hostname -I).Split()[0].Trim()
+          $COMPOSE_PATH = (wsl wslpath -a .\\viridian\\algae\\docker\\compose.standalone.yml).Trim()
+          $WSL_IP
+          wsl -u root docker compose -f $COMPOSE_PATH ps
+          ping -n 5 $WSL_IP
           Test-NetConnection 10.87.82.87 -Port 8587
           Test-NetConnection 10.42.0.42 -Port 5000
           Find-NetRoute -RemoteIPAddress 10.87.82.87
