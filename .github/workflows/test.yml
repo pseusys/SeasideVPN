@@ -188,8 +188,8 @@ jobs:
           Test-NetConnection 10.42.0.42 -Port 5000
           Find-NetRoute -RemoteIPAddress 10.87.82.87
           Find-NetRoute -RemoteIPAddress 10.42.0.42
-          wsl -u root iptables -t nat -L -v -n
-          wsl -u root iptables -t filter -L -v -n
+          wsl -u root iptables -t filter -L FORWARD -v -n --line-numbers
+          wsl -u root iptables -t nat -L POSTROUTING -v -n --line-numbers
           wsl -u root ip addr show
           wsl -u root ip route show
           wsl -u root ls .
