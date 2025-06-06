@@ -169,7 +169,7 @@ jobs:
           wsl -u root docker compose -f $COMPOSE_PATH up --build --detach
           wsl -u root iptables -t filter -A FORWARD -i eth0 -d 10.42.0.0/24 -j DROP
           wsl -u root iptables -t filter -A FORWARD -i eth0 -d 10.87.82.0/24 -j ACCEPT
-          wsl -u root iptables -t nat -A POSTROUTING -i eth0 -d 10.87.82.0/24 -j MASQUERADE
+          wsl -u root iptables -t nat -A POSTROUTING -d 10.87.82.0/24 -j MASQUERADE
           route add 10.42.0.0 mask 255.255.255.0 $WSL_IP
           route add 10.87.82.0 mask 255.255.255.0 $WSL_IP
 
