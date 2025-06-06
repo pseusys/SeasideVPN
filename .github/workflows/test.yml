@@ -163,7 +163,10 @@ jobs:
           wsl -u root iptables -t nat -A POSTROUTING -d 10.87.82.0/24 -j MASQUERADE
           route add 10.42.0.0 mask 255.255.255.0 $WSL_IP
           route add 10.87.82.0 mask 255.255.255.0 $WSL_IP
+          New-NetFirewallRule -DisplayName "Allow All to WSL2" -Direction Inbound -Action Allow -RemoteAddress $WSL_IP -Protocol Any -Profile Any -Enabled True
+          New-NetFirewallRule -DisplayName "Allow All to WSL2" -Direction Outbound -Action Allow -RemoteAddress $WSL_IP -Protocol Any -Profile Any -Enabled True
           New-NetFirewallRule -DisplayName "Allow All to WSL2" -Direction Inbound -Action Allow -LocalAddress $WSL_IP -Protocol Any -Profile Any -Enabled True
+          New-NetFirewallRule -DisplayName "Allow All to WSL2" -Direction Outbound -Action Allow -LocalsAddress $WSL_IP -Protocol Any -Profile Any -Enabled True
           wsl -u root sh -c "tcpdump -o eth0 > ./ip-log-eth0.txt 2>&1 &"
           wsl -u root sh -c "tcpdump -o any > ./ip-log-any.txt 2>&1 &"
           wsl -u root sh -c "tcpdump -o lo > ./ip-log-lo.txt 2>&1 &"
@@ -197,7 +200,7 @@ jobs:
           route print 10.87.82.87
           route print 10.87.82.0
           route print 10.87.82.*
-          Get-NetFirewallRule | Where-Object { $_.Enabled -eq 'True' -and $_.DisplayName -like '*WSL*' } | Format-Table DisplayName, Direction, Action, Profile, Enabled
+          Get-NetFirewallRule | Where-Object { $_.Enabled -eq 'True' } | Format-Table DisplayName, Direction, Action, Profile, Enabled
 
       - name: Install NodeJS 🪢
         uses: actions/setup-node@v4.1.0
