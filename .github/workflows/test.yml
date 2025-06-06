@@ -184,6 +184,7 @@ jobs:
         run: |
           $ip = (wsl -u root hostname -I).Split()[0].Trim()
           $ip
+          wsl -u root docker compose ps
           ping -n 5 $ip
           Test-NetConnection 10.87.82.87 -Port 8587
           Test-NetConnection 10.42.0.42 -Port 5000
