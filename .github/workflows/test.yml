@@ -166,7 +166,7 @@ jobs:
           New-NetFirewallRule -DisplayName "Allow All to WSL2" -Direction Inbound -Action Allow -RemoteAddress $WSL_IP -Protocol Any -Profile Any -Enabled True
           New-NetFirewallRule -DisplayName "Allow All to WSL2" -Direction Outbound -Action Allow -RemoteAddress $WSL_IP -Protocol Any -Profile Any -Enabled True
           New-NetFirewallRule -DisplayName "Allow All to WSL2" -Direction Inbound -Action Allow -LocalAddress $WSL_IP -Protocol Any -Profile Any -Enabled True
-          New-NetFirewallRule -DisplayName "Allow All to WSL2" -Direction Outbound -Action Allow -LocalsAddress $WSL_IP -Protocol Any -Profile Any -Enabled True
+          New-NetFirewallRule -DisplayName "Allow All to WSL2" -Direction Outbound -Action Allow -LocalAddress $WSL_IP -Protocol Any -Profile Any -Enabled True
           wsl -u root sh -c "tcpdump -o eth0 > ./ip-log-eth0.txt 2>&1 &"
           wsl -u root sh -c "tcpdump -o any > ./ip-log-any.txt 2>&1 &"
           wsl -u root sh -c "tcpdump -o lo > ./ip-log-lo.txt 2>&1 &"
