@@ -157,10 +157,10 @@ jobs:
           $COMPOSE_PATH = (wsl wslpath -a .\\viridian\\algae\\docker\\compose.standalone.yml).Trim()
           wsl -u root sysctl -w net.ipv4.ip_forward=1
           wsl -u root sh -c "curl -fsSL https://get.docker.com | sh"
-          wsl -u root iptables -t nat -A POSTROUTING -d 10.87.82.0/24 -j MASQUERADE
           wsl -u root docker compose -f $COMPOSE_PATH up --build --detach
           wsl -u root iptables -t filter -A DOCKER-USER -i eth0 -d 10.42.0.0/24 -j REJECT
           wsl -u root iptables -t filter -A DOCKER-USER -i eth0 -d 10.87.82.0/24 -j ACCEPT
+          wsl -u root iptables -t nat -A POSTROUTING -d 10.87.82.0/24 -j MASQUERADE
           route add 10.42.0.0 mask 255.255.255.0 $WSL_IP
           route add 10.87.82.0 mask 255.255.255.0 $WSL_IP
           New-NetFirewallRule -DisplayName "Allow All to WSL2" -Direction Inbound -Action Allow -RemoteAddress $WSL_IP -Protocol Any -Profile Any -Enabled True
@@ -195,11 +195,17 @@ jobs:
               }
           }
           catch {
-              Write-Host "Connection error to 10.87.82.87: $_"
+              Write-Host "Connection error to 10.87.82.87:"
+              Write-Host $_.Exception.Message
+              Write-Host $_.Exception.StackTrace
+              if ($_.Exception.InnerException) {
+                  Write-Host "Inner exception: $($_.Exception.InnerException.Message)"
+              }
           }
           finally {
               $tcp.Close()
           }
+          $tcp = New-Object Net.Sockets.TcpClient
           try {
               $tcp.Connect("10.42.0.42", 5000)
               if ($tcp.Connected) {
@@ -209,7 +215,12 @@ jobs:
               }
           }
           catch {
-              Write-Host "Connection error to 10.42.0.42: $_"
+              Write-Host "Connection error to 10.42.0.42:"
+              Write-Host $_.Exception.Message
+              Write-Host $_.Exception.StackTrace
+              if ($_.Exception.InnerException) {
+                  Write-Host "Inner exception: $($_.Exception.InnerException.Message)"
+              }
           }
           finally {
               $tcp.Close()
