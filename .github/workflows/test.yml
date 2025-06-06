@@ -163,9 +163,9 @@ jobs:
           wsl -u root iptables -t nat -A POSTROUTING -d 10.87.82.0/24 -j MASQUERADE
           route add 10.42.0.0 mask 255.255.255.0 $WSL_IP
           route add 10.87.82.0 mask 255.255.255.0 $WSL_IP
-          wsl -u root sh -c "tcpdump -i eth0 > ./ip-log-eth0.txt 2>&1 &"
-          wsl -u root sh -c "tcpdump -i any > ./ip-log-any.txt 2>&1 &"
-          wsl -u root sh -c "tcpdump -i lo > ./ip-log-lo.txt 2>&1 &"
+          wsl -u root sh -c "tcpdump -o eth0 > ./ip-log-eth0.txt 2>&1 &"
+          wsl -u root sh -c "tcpdump -o any > ./ip-log-any.txt 2>&1 &"
+          wsl -u root sh -c "tcpdump -o lo > ./ip-log-lo.txt 2>&1 &"
           wsl -u root ls .
           wsl -u root sleep 30
 
@@ -196,6 +196,7 @@ jobs:
           route print 10.87.82.87
           route print 10.87.82.0
           route print 10.87.82.*
+          Get-NetFirewallRule
 
       - name: Install NodeJS 🪢
         uses: actions/setup-node@v4.1.0
