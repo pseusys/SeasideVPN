@@ -158,8 +158,8 @@ jobs:
           wsl -u root sysctl -w net.ipv4.ip_forward=1
           wsl -u root sh -c "curl -fsSL https://get.docker.com | sh"
           wsl -u root docker compose -f $COMPOSE_PATH up --build --detach
-          wsl -u root iptables -t filter -I FORWARD 1 -i eth0 -d 10.42.0.0/24 -j DROP
-          wsl -u root iptables -t filter -I FORWARD 2 -i eth0 -d 10.87.82.0/24 -j ACCEPT
+          wsl -u root iptables -t filter -I DOCKER-USER 1 -i eth0 -d 10.42.0.0/24 -j DROP
+          wsl -u root iptables -t filter -I DOCKER-USER 1 -i eth0 -d 10.87.82.0/24 -j ACCEPT
           wsl -u root iptables -t nat -I POSTROUTING 1 -d 10.87.82.0/24 -j MASQUERADE
           route add 10.42.0.0 mask 255.255.255.0 $WSL_IP
           route add 10.87.82.0 mask 255.255.255.0 $WSL_IP
@@ -187,7 +187,8 @@ jobs:
           wsl -u root iptables -t nat -L -v -n
           Test-NetConnection 10.87.82.87 -Port 8587
           Test-NetConnection 10.42.0.42 -Port 5000
-          wsl -u root iptables -S
+          wsl -u root iptables -t filter -S
+          wsl -u root iptables -t nat -S
           Find-NetRoute -RemoteIPAddress 10.87.82.87
           Find-NetRoute -RemoteIPAddress 10.42.0.42
           wsl -u root iptables -t filter -L INPUT -v -n --line-numbers
