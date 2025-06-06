@@ -172,7 +172,7 @@ jobs:
           wsl -u root iptables -t nat -A POSTROUTING -d 10.87.82.0/24 -j MASQUERADE
           route add 10.42.0.0 mask 255.255.255.0 $WSL_IP
           route add 10.87.82.0 mask 255.255.255.0 $WSL_IP
-          wsl -u root sh -c "tcpdump -i eth0 -l -n -nn > ./ip-log-eth0.txt 2>&1 &"
+          wsl -u root sh -c "tcpdump -i eth0 -l -n -nn > ./ip-log-eth0.txt 2>&1"
           wsl -u root sh -c "tcpdump -i any -l -n -nn > ./ip-log-any.txt 2>&1 &"
 
       - name: TEST STEP
@@ -189,9 +189,9 @@ jobs:
           wsl -u root iptables -t filter -L -v -n
           wsl -u root ip addr show
           wsl -u root ip route show
-          wsl -u echo "eth0 dump:"
+          wsl echo "eth0 dump:"
           wsl -u root cat ./ip-log-eth0.txt
-          wsl -u echo "any dump:"
+          wsl echo "any dump:"
           wsl -u root cat ./ip-log-any.txt
 
       - name: Install NodeJS 🪢
