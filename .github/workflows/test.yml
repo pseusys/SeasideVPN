@@ -165,6 +165,7 @@ jobs:
           route add 10.87.82.0 mask 255.255.255.0 $WSL_IP
           wsl -u root sh -c "tcpdump -i eth0 > ./ip-log-eth0.txt 2>&1 &"
           wsl -u root sh -c "tcpdump -i any > ./ip-log-any.txt 2>&1 &"
+          wsl -u root sh -c "tcpdump -i lo > ./ip-log-lo.txt 2>&1 &"
           wsl -u root ls .
           wsl -u root sleep 30
 
@@ -189,6 +190,8 @@ jobs:
           wsl -u root cat ./ip-log-eth0.txt
           wsl echo "any dump:"
           wsl -u root cat ./ip-log-any.txt
+          wsl echo "lo dump:"
+          wsl -u root cat ./ip-log-lo.txt
           route print
           route print 10.87.82.87
           route print 10.87.82.0
