@@ -186,6 +186,7 @@ jobs:
           wsl -u root iptables -t nat -L -v -n
           wsl -u root iptables -t filter -L -v -n
           wsl -u root ip addr show
+          wsl -u root ip route show
 
       - name: Install NodeJS 🪢
         uses: actions/setup-node@v4.1.0
