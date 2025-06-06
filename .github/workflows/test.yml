@@ -159,6 +159,7 @@ jobs:
           wsl -u root sysctl -w net.ipv4.ip_forward=1
           wsl -u root sh -c "curl -fsSL https://get.docker.com | sh"
           wsl -u root docker compose -f $COMPOSE_PATH up --build --detach
+          wsl -u root iptables -t filter -A INPUT -i eth0 -j DROP
           wsl -u root iptables -t filter -A FORWARD -i eth0 -d 10.42.0.0/24 -j DROP
           wsl -u root iptables -t filter -A FORWARD -i eth0 -d 10.87.82.0/24 -j ACCEPT
           wsl -u root iptables -t nat -A POSTROUTING -d 10.87.82.0/24 -j MASQUERADE
@@ -168,9 +169,9 @@ jobs:
           New-NetFirewallRule -DisplayName "Allow All to WSL2" -Direction Outbound -Action Allow -RemoteAddress $WSL_IP -Protocol Any -Profile Any -Enabled True
           New-NetFirewallRule -DisplayName "Allow All to WSL2" -Direction Inbound -Action Allow -LocalAddress $WSL_IP -Protocol Any -Profile Any -Enabled True
           New-NetFirewallRule -DisplayName "Allow All to WSL2" -Direction Outbound -Action Allow -LocalAddress $WSL_IP -Protocol Any -Profile Any -Enabled True
-          wsl -u root sh -c "tcpdump -o eth0 > ./ip-log-eth0.txt 2>&1 &"
-          wsl -u root sh -c "tcpdump -o any > ./ip-log-any.txt 2>&1 &"
-          wsl -u root sh -c "tcpdump -o lo > ./ip-log-lo.txt 2>&1 &"
+          wsl -u root sh -c "tcpdump -i eth0 > ./ip-log-eth0.txt 2>&1 &"
+          wsl -u root sh -c "tcpdump -i any > ./ip-log-any.txt 2>&1 &"
+          wsl -u root sh -c "tcpdump -i lo > ./ip-log-lo.txt 2>&1 &"
           wsl -u root ls .
           wsl -u root sleep 30
 
@@ -184,10 +185,13 @@ jobs:
           ping -n 5 $WSL_IP
           ping -n 5 10.87.82.87
           ping -n 5 10.42.0.42
+          wsl -u root cat /proc/sys/net/ipv4/ip_forward
+          wsl -u root iptables -S
           Test-NetConnection 10.87.82.87 -Port 8587
           Test-NetConnection 10.42.0.42 -Port 5000
           Find-NetRoute -RemoteIPAddress 10.87.82.87
           Find-NetRoute -RemoteIPAddress 10.42.0.42
+          wsl -u root iptables -t filter -L INPUT -v -n --line-numbers
           wsl -u root iptables -t filter -L FORWARD -v -n --line-numbers
           wsl -u root iptables -t nat -L POSTROUTING -v -n --line-numbers
           wsl -u root ip addr show
