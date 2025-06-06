@@ -145,8 +145,7 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           @"
-          [wsl2]
-          firewall = false
+          [wsl2]+
           networkingMode = mirrored
           [experimental]
           hostAddressLoopback = true
