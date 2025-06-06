@@ -185,8 +185,35 @@ jobs:
           ping -n 5 10.42.0.42
           wsl -u root iptables -t filter -L -v -n
           wsl -u root iptables -t nat -L -v -n
-          Test-NetConnection 10.87.82.87 -Port 8587
-          Test-NetConnection 10.42.0.42 -Port 5000
+          $tcp = New-Object Net.Sockets.TcpClient
+          try {
+              $tcp.Connect("10.87.82.87", 8587)
+              if ($tcp.Connected) {
+                  Write-Host "Connected successfully to 10.87.82.87!"
+              } else {
+                  Write-Host "Failed to connect to 10.87.82.87."
+              }
+          }
+          catch {
+              Write-Host "Connection error to 10.87.82.87: $_"
+          }
+          finally {
+              $tcp.Close()
+          }
+          try {
+              $tcp.Connect("10.42.0.42", 5000)
+              if ($tcp.Connected) {
+                  Write-Host "Connected successfully to 10.42.0.42!"
+              } else {
+                  Write-Host "Failed to connect to 10.42.0.42."
+              }
+          }
+          catch {
+              Write-Host "Connection error to 10.42.0.42: $_"
+          }
+          finally {
+              $tcp.Close()
+          }
           wsl -u root iptables -t filter -S
           wsl -u root iptables -t nat -S
           Find-NetRoute -RemoteIPAddress 10.87.82.87
