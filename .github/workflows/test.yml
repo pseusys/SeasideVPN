@@ -162,11 +162,16 @@ jobs:
       - name: Post-Configure WSL
         if: runner.os == 'Windows'
         run: |
+          $WSL_IP = (wsl -u root hostname -I).Split()[0].Trim()
+          $COMPOSE_PATH = (wsl wslpath -a .\\viridian\\algae\\docker\\compose.standalone.yml).Trim()
           wsl -u root sysctl -w net.ipv4.ip_forward=1
           wsl -u root bash -c "curl -fsSL https://get.docker.com | sh"
+          wsl -u root docker compose -f $COMPOSE_PATH up --build --detach
+          wsl -u root iptables -t filter -A FORWARD -i eth0 -d ${{ env.ECHO_ADDRESS }}/24 -j DROP
           wsl -u root iptables -t filter -A FORWARD -i eth0 -d ${{ env.SEASIDE_ADDRESS }}/24 -j ACCEPT
           wsl -u root iptables -t nat -A POSTROUTING -o eth0 -s ${{ env.SEASIDE_ADDRESS }}/24 -j MASQUERADE
-          route add 10.87.82.0 mask 255.255.255.0 (wsl -u root hostname -I).Split()[0].Trim()
+          route add 10.42.0.0 mask 255.255.255.0 $WSL_IP
+          route add 10.87.82.0 mask 255.255.255.0 $WSL_IP
 
       - name: TEST STEP
         if: runner.os == 'Windows'
