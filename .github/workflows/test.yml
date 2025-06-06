@@ -197,7 +197,7 @@ jobs:
           route print 10.87.82.87
           route print 10.87.82.0
           route print 10.87.82.*
-          Get-NetFirewallRule
+          Get-NetFirewallRule | Where-Object { $_.Enabled -eq 'True' -and $_.DisplayName -like '*WSL*' } | Format-Table DisplayName, Direction, Action, Profile, Enabled
 
       - name: Install NodeJS 🪢
         uses: actions/setup-node@v4.1.0
