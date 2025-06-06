@@ -141,16 +141,6 @@ jobs:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
 
-      - name: Pre-Configure WSL
-        if: runner.os == 'Windows'
-        run: |
-          @"
-          [wsl2]+
-          networkingMode = mirrored
-          [experimental]
-          hostAddressLoopback = true
-          "@ | Out-File -FilePath "$env:USERPROFILE\.wslconfig" -Encoding utf8
-
       - name: Setup WSL
         if: runner.os == 'Windows'
         uses: Vampire/setup-wsl@v5
@@ -199,6 +189,10 @@ jobs:
           wsl -u root cat ./ip-log-eth0.txt
           wsl echo "any dump:"
           wsl -u root cat ./ip-log-any.txt
+          route print
+          route print 10.87.82.87
+          route print 10.87.82.0
+          route print 10.87.82.*
 
       - name: Install NodeJS 🪢
         uses: actions/setup-node@v4.1.0
