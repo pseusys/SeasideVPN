@@ -187,6 +187,7 @@ jobs:
           wsl -u root iptables -t nat -L -v -n
           Test-NetConnection 10.87.82.87 -Port 8587
           Test-NetConnection 10.42.0.42 -Port 5000
+          wsl -u root iptables -S
           Find-NetRoute -RemoteIPAddress 10.87.82.87
           Find-NetRoute -RemoteIPAddress 10.42.0.42
           wsl -u root iptables -t filter -L INPUT -v -n --line-numbers
