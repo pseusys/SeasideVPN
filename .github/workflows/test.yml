@@ -161,10 +161,14 @@ jobs:
           route add 10.42.0.0 mask 255.255.255.0 $WSL_IP
           route add 10.87.82.0 mask 255.255.255.0 $WSL_IP
           $LOCAL_IP = (Find-NetRoute -RemoteIPAddress $WSL_IP | Select-Object -First 1).IPAddress
-          wsl -u root iptables -t filter -A DOCKER-USER -s $LOCAL_IP -d 10.42.0.0/24 -j LOG --log-prefix "VPN REJECT: "
+          wsl -u root iptables -t filter -A DOCKER-USER -s $LOCAL_IP -d 10.42.0.0/24 -j LOG --log-prefix "VPN REJECT FORWARD: "
           wsl -u root iptables -t filter -A DOCKER-USER -s $LOCAL_IP -d 10.42.0.0/24 -j REJECT
-          wsl -u root iptables -t filter -A DOCKER-USER -s $LOCAL_IP -d 10.87.82.0/24 -j LOG --log-prefix "VPN ACCEPT: "
+          wsl -u root iptables -t filter -A DOCKER-USER -s $LOCAL_IP -d 10.87.82.0/24 -j LOG --log-prefix "VPN ACCEPT FORWARD: "
           wsl -u root iptables -t filter -A DOCKER-USER -s $LOCAL_IP -d 10.87.82.0/24 -j ACCEPT
+          wsl -u root iptables -t filter -A DOCKER-USER -d $LOCAL_IP -s 10.42.0.0/24 -j LOG --log-prefix "VPN REJECT BACKWARD: "
+          wsl -u root iptables -t filter -A DOCKER-USER -d $LOCAL_IP -s 10.42.0.0/24 -j REJECT
+          wsl -u root iptables -t filter -A DOCKER-USER -d $LOCAL_IP -s 10.87.82.0/24 -j LOG --log-prefix "VPN ACCEPT BACKWARD: "
+          wsl -u root iptables -t filter -A DOCKER-USER -d $LOCAL_IP -s 10.87.82.0/24 -j ACCEPT
           wsl -u root iptables -t nat -A POSTROUTING -s $LOCAL_IP -d 10.87.82.0/24 -j LOG --log-prefix "VPN MASQUERADE: "
           wsl -u root iptables -t nat -A POSTROUTING -s $LOCAL_IP -d 10.87.82.0/24 -j MASQUERADE
           New-NetFirewallRule -DisplayName "Allow All to WSL2" -Direction Inbound -Action Allow -RemoteAddress $WSL_IP -Protocol Any -Profile Any -Enabled True
