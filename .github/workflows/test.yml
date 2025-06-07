@@ -161,8 +161,11 @@ jobs:
           route add 10.42.0.0 mask 255.255.255.0 $WSL_IP
           route add 10.87.82.0 mask 255.255.255.0 $WSL_IP
           $LOCAL_IP = (Find-NetRoute -RemoteIPAddress $WSL_IP | Select-Object -First 1).IPAddress
+          wsl -u root iptables -t filter -A DOCKER-USER -s $LOCAL_IP -d 10.42.0.0/24 -j LOG --log-prefix "VPN REJECT: "
           wsl -u root iptables -t filter -A DOCKER-USER -s $LOCAL_IP -d 10.42.0.0/24 -j REJECT
+          wsl -u root iptables -t filter -A DOCKER-USER -s $LOCAL_IP -d 10.87.82.0/24 -j LOG --log-prefix "VPN ACCEPT: "
           wsl -u root iptables -t filter -A DOCKER-USER -s $LOCAL_IP -d 10.87.82.0/24 -j ACCEPT
+          wsl -u root iptables -t nat -A POSTROUTING -s $LOCAL_IP -d 10.87.82.0/24 -j LOG --log-prefix "VPN MASQUERADE: "
           wsl -u root iptables -t nat -A POSTROUTING -s $LOCAL_IP -d 10.87.82.0/24 -j MASQUERADE
           New-NetFirewallRule -DisplayName "Allow All to WSL2" -Direction Inbound -Action Allow -RemoteAddress $WSL_IP -Protocol Any -Profile Any -Enabled True
           New-NetFirewallRule -DisplayName "Allow All to WSL2" -Direction Outbound -Action Allow -RemoteAddress $WSL_IP -Protocol Any -Profile Any -Enabled True
@@ -184,8 +187,8 @@ jobs:
           ping -n 5 $WSL_IP
           ping -n 5 10.87.82.87
           ping -n 5 10.42.0.42
-          wsl -u root iptables -t filter -L -v -n
-          wsl -u root iptables -t nat -L -v -n
+          wsl -u root iptables -t filter -S
+          wsl -u root iptables -t nat -S
           $tcp = New-Object Net.Sockets.TcpClient
           try {
               $tcp.Connect("10.87.82.87", 8587)
@@ -226,12 +229,11 @@ jobs:
           finally {
               $tcp.Close()
           }
-          wsl -u root iptables -t filter -S
-          wsl -u root iptables -t nat -S
+          wsl -u root iptables -t filter -L -v -n
+          wsl -u root iptables -t nat -L -v -n
           Find-NetRoute -RemoteIPAddress 10.87.82.87
           Find-NetRoute -RemoteIPAddress 10.42.0.42
-          wsl -u root iptables -t filter -L INPUT -v -n --line-numbers
-          wsl -u root iptables -t filter -L FORWARD -v -n --line-numbers
+          wsl -u root iptables -t filter -L DOCKER-USER -v -n --line-numbers
           wsl -u root iptables -t nat -L POSTROUTING -v -n --line-numbers
           wsl -u root ip addr show
           wsl -u root ip route show
@@ -248,6 +250,7 @@ jobs:
           route print 10.87.82.*
           Get-NetFirewallRule | Where-Object { $_.Enabled -eq 'True' } | Format-Table DisplayName, Direction, Action, Profile, Enabled
           wsl -u root docker compose -f $COMPOSE_PATH logs
+          sudo journalctl -k | grep "VPN"
 
       - name: Install NodeJS 🪢
         uses: actions/setup-node@v4.1.0
