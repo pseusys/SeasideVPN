@@ -250,7 +250,7 @@ jobs:
           route print 10.87.82.*
           Get-NetFirewallRule | Where-Object { $_.Enabled -eq 'True' } | Format-Table DisplayName, Direction, Action, Profile, Enabled
           wsl -u root docker compose -f $COMPOSE_PATH logs
-          sudo journalctl -k | grep "VPN"
+          wsl -u root journalctl -k | grep "VPN"
 
       - name: Install NodeJS 🪢
         uses: actions/setup-node@v4.1.0
