@@ -160,7 +160,7 @@ jobs:
           $WSL_IP = (wsl -u root hostname -I).Split()[0].Trim()
           $COMPOSE_PATH = (wsl wslpath -a .\\viridian\\algae\\docker\\compose.standalone.yml).Trim()
           wsl -u root sysctl -w net.ipv4.ip_forward=1
-          wsl -u root sh -c "set -x && env $(cat /etc/os-release | xargs) && curl -fsSL https://download.docker.com/linux/${ID}/gpg | tee /etc/apt/trusted.gpg.d/docker.asc && echo \"deb [arch=amd64] https://download.docker.com/linux/${ID} ${VERSION_CODENAME} stable\" | tee /etc/apt/sources.list.d/docker.list && apt update && apt install docker-ce docker-ce-cli containerd.io && systemctl start docker"
+          wsl -u root sh -c "set -x && curl -fsSL https://download.docker.com/linux/ubuntu/gpg | tee /etc/apt/trusted.gpg.d/docker.asc && echo \"deb [arch=amd64] https://download.docker.com/linux/ubuntu noble stable\" | tee /etc/apt/sources.list.d/docker.list && apt update && apt install docker-ce docker-ce-cli containerd.io && systemctl start docker"
           wsl -u root docker compose -f $COMPOSE_PATH up --build --detach
           route add 10.42.0.0 mask 255.255.255.0 $WSL_IP
           route add 10.87.82.0 mask 255.255.255.0 $WSL_IP
