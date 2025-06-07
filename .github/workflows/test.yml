@@ -247,8 +247,7 @@ jobs:
           route print 10.87.82.0
           route print 10.87.82.*
           Get-NetFirewallRule | Where-Object { $_.Enabled -eq 'True' } | Format-Table DisplayName, Direction, Action, Profile, Enabled
-          wsl -u root docker compose -f $COMPOSE_PATH logs whirlpool
-          wsl -u root docker compose -f $COMPOSE_PATH logs echo
+          wsl -u root docker compose -f $COMPOSE_PATH logs
 
       - name: Install NodeJS 🪢
         uses: actions/setup-node@v4.1.0
