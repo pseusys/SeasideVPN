@@ -193,6 +193,8 @@ jobs:
           ping -n 5 $WSL_IP
           ping -n 5 10.87.82.87
           ping -n 5 10.42.0.42
+          wsl -u root ping -c 5 10.87.82.87
+          wsl -u root ping -c 5 10.42.0.42
           wsl -u root iptables -t filter -S
           wsl -u root iptables -t nat -S
           $tcp = New-Object Net.Sockets.TcpClient
@@ -235,6 +237,8 @@ jobs:
           finally {
               $tcp.Close()
           }
+          wsl -u root nc -vz 10.87.82.87 8587
+          wsl -u root nc -vz 10.42.0.42 5000
           wsl -u root iptables -t filter -L -v -n
           wsl -u root iptables -t nat -L -v -n
           Find-NetRoute -RemoteIPAddress 10.87.82.87
@@ -258,7 +262,6 @@ jobs:
           wsl -u root docker compose -f $COMPOSE_PATH logs
           wsl -u root journalctl -k | grep "VPN"
           wsl -u root journalctl -u docker
-          wsl -u root docker plugin ls
 
       - name: Install NodeJS 🪢
         uses: actions/setup-node@v4.1.0
