@@ -106,9 +106,8 @@ class _SystemUtils:
         if dns_server == cls._EMPTY_IP_ADDRESS:
             return resolv_conf_data, next([line for line in resolv_conf_lines if line.startswith("nameserver")], None)
         else:
-            contents_filtered = [line for line in resolv_conf_lines if not line.startswith("nameserver")]
-            new_contents = f"{'\n'.join(contents_filtered)}\nnameserver {dns_server}"
-            cls._RESOLV_CONF_PATH.write_text(new_contents)
+            contents_filtered = "\n".join([line for line in resolv_conf_lines if not line.startswith("nameserver")])
+            cls._RESOLV_CONF_PATH.write_text(f"{contents_filtered}\nnameserver {dns_server}")
             return resolv_conf_data, str(dns_server)
 
     @classmethod
