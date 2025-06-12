@@ -10,7 +10,7 @@ from signal import SIGINT, SIGTERM
 from socket import gethostbyname
 from subprocess import PIPE
 from sys import argv, exit
-from typing import AsyncIterator, Literal, Optional, Sequence, Union
+from typing import AsyncIterator, List, Literal, Optional, Sequence, Union
 
 from ..interaction.system import Tunnel
 from ..interaction.whirlpool import WhirlpoolClient
@@ -40,6 +40,10 @@ _DEFAULT_TUNNEL_NETMASK = "255.255.255.0"
 # Default tunnel interface seaside-viridian-algae code.
 _DEFAULT_TUNNEL_SVA = 65
 
+_DEFAULT_CURRENT_DNS = IPv4Address("0.0.0.0")
+
+_DEFAULT_UNIVERSAL_DNS = IPv4Address("8.8.8.8")
+
 logger = create_logger(__name__)
 
 
@@ -51,13 +55,21 @@ parser.add_argument("-k", "--key", default=None, type=str, help="Caerulean API k
 parser.add_argument("-t", "--token", default=None, type=decodebytes, help="Caerulean API token (base64 encoded, will be used directly during VPN connection if provided)")
 parser.add_argument("-r", "--public", default=None, type=decodebytes, help="Caerulean public key (base64 encoded, will be used directly during VPN connection if provided)")
 parser.add_argument("-s", "--protocol", default=None, help=f"Caerulean control protocol, one of the 'port' or 'typhoon' (default: {_DEFAULT_PROTO})")
+parser.add_argument("-d", "--dns", default=_DEFAULT_UNIVERSAL_DNS, type=IPv4Address, help=f"DNS server to use when connected to VPN (use '{_DEFAULT_CURRENT_DNS}' to use the current DNS server, default: {_DEFAULT_UNIVERSAL_DNS})")
 parser.add_argument("-l", "--link", default=None, help="Connection link, will be used instead of other arguments if specified")
+parser.add_argument("--capture-iface", default=None, nargs="*", help="Network interfaces to capture, multiple allowed (default: the same interface that will be used to access caerulean)")
+parser.add_argument("--exempt-iface", nargs="*", help="Network interfaces to exempt, multiple allowed (default: none)")
+parser.add_argument("--capture-ranges", nargs="*", help="IP address ranges to capture, multiple allowed (default: none)")
+parser.add_argument("--exempt-ranges", nargs="*", help="IP address ranges to exempt, multiple allowed (default: none)")
+parser.add_argument("--capture-addresses", nargs="*", help="IP addresses to capture, multiple allowed (default: none)")
+parser.add_argument("--exempt-addresses", nargs="*", help="IP addresses to exempt, multiple allowed (default: none)")
+parser.add_argument("--local-address", default=None, type=IPv4Address, help="The IP address that will be used for talking to caerulean (default: the first IP address on the interface that will be used to access caerulean)")
 parser.add_argument("-v", "--version", action="version", version=f"Seaside Viridian Algae version {__version__}", help="Print algae version number and exit")
 parser.add_argument("-e", "--command", default=None, help="Command to execute and exit (required!)")
 
 
 class AlgaeClient:
-    def __init__(self, address: str, port: int, protocol: Optional[Union[Literal["typhoon"], Literal["port"]]] = None):
+    def __init__(self, address: str, port: int, dns: IPv4Address, protocol: Optional[Union[Literal["typhoon"], Literal["port"]]] = None, capture_iface: Optional[List[str]] = None, capture_ranges: Optional[List[str]] = None, capture_addresses: Optional[List[str]] = None, exempt_iface: Optional[List[str]] = None, exempt_ranges: Optional[List[str]] = None, exempt_addresses: Optional[List[str]] = None, local_address: Optional[IPv4Address] = None):
         try:
             self._address = str(IPv4Address(address))
         except AddressValueError:
@@ -75,7 +87,7 @@ class AlgaeClient:
         tunnel_address = IPv4Address(getenv("SEASIDE_TUNNEL_ADDRESS", _DEFAULT_TUNNEL_ADDRESS))
         tunnel_netmask = IPv4Address(getenv("SEASIDE_TUNNEL_NETMASK", _DEFAULT_TUNNEL_NETMASK))
         tunnel_sva = int(getenv("SEASIDE_TUNNEL_SVA", _DEFAULT_TUNNEL_SVA))
-        self._tunnel = Tunnel(tunnel_name, tunnel_address, tunnel_netmask, tunnel_sva, IPv4Address(self._address))
+        self._tunnel = Tunnel(tunnel_name, tunnel_address, tunnel_netmask, tunnel_sva, IPv4Address(self._address), dns, capture_iface, capture_ranges, capture_addresses, exempt_iface, exempt_ranges, exempt_addresses, local_address)
 
     async def _send_to_caerulean(self, connection: SeasideClient, tunnel: int) -> None:
         loop = get_running_loop()

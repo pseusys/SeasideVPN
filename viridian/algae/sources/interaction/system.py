@@ -41,6 +41,12 @@ class _SystemUtils:
     # Unix TUN device maximal file name length.
     _UNIX_IFNAMSIZ = 16
 
+    # Path to 'resolv.conf' file.
+    _RESOLV_CONF_PATH = Path("/etc/resolv.conf")
+
+    # Unspecified IP address.
+    _EMPTY_IP_ADDRESS = IPv4Address("0.0.0.0")
+
     @classmethod
     def _create_tunnel(cls, name: str) -> Tuple[int, str]:
         """
@@ -64,6 +70,17 @@ class _SystemUtils:
         return descriptor, tunnel_dev
 
     @classmethod
+    def _get_interface_info(cls, index: Optional[int] = None, label: Optional[str] = None) -> Tuple[IPv4Interface, str, int]:
+        with IPRoute() as ip:
+            arguments = {k: v for k, v in dict(index=index, label=label).items() if v is not None}
+            addr_iface = list(ip.get_addr(**arguments))[0]
+            default_cidr = addr_iface["prefixlen"]
+            default_iface = addr_iface.get_attr("IFA_LABEL")
+            default_ip = addr_iface.get_attr("IFA_ADDRESS")
+            default_mtu = int(ip.get_links(index=addr_iface["index"])[0].get_attr("IFLA_MTU"))
+            return IPv4Interface(f"{default_ip}/{default_cidr}"), default_iface, default_mtu
+
+    @classmethod
     def _get_default_interface(cls, seaside_address: str) -> Tuple[IPv4Interface, str, int]:
         """
         Get current default network interface, its IP, CIDR and MTU.
@@ -72,12 +89,71 @@ class _SystemUtils:
         """
         with IPRoute() as ip:
             caerulean_dev = list(ip.route("get", dst=seaside_address))[0].get_attr("RTA_OIF")
-            addr_iface = list(ip.get_addr(index=caerulean_dev))[0]
-            default_cidr = addr_iface["prefixlen"]
-            default_iface = addr_iface.get_attr("IFA_LABEL")
-            default_ip = addr_iface.get_attr("IFA_ADDRESS")
-            default_mtu = int(ip.get_links(index=caerulean_dev)[0].get_attr("IFLA_MTU"))
-            return IPv4Interface(f"{default_ip}/{default_cidr}"), default_iface, default_mtu
+            return cls._get_interface_info(index=caerulean_dev)
+
+    @classmethod
+    def _get_interface_by_ip(cls, address: IPv4Address) -> Tuple[IPv4Interface, str, int]:
+        with IPRoute() as ip:
+            for addr in ip.get_addr():
+                if addr.get_attr("IFA_ADDRESS") == str(address):
+                    return cls._get_interface_info(index=addr["index"])
+            raise ValueError(f"IP address {address} not found among local interfaces!")
+
+    @classmethod
+    def _set_dns_servers(cls, dns_server: IPv4Address) -> Tuple[str, Optional[str]]:
+        resolv_conf_data = cls._RESOLV_CONF_PATH.read_text()
+        resolv_conf_lines = resolv_conf_data.split("\n")
+        if dns_server == cls._EMPTY_IP_ADDRESS:
+            return resolv_conf_data, next([line for line in resolv_conf_lines if line.startswith("nameserver")], None)
+        else:
+            contents_filtered = [line for line in resolv_conf_lines if not line.startswith("nameserver")]
+            new_contents = f"{'\n'.join(contents_filtered)}\nnameserver {dns_server}"
+            cls._RESOLV_CONF_PATH.write_text(new_contents)
+            return resolv_conf_data, str(dns_server)
+
+    @classmethod
+    def _reset_dns_servers(cls, resolv_conf_data: str):
+        cls._RESOLV_CONF_PATH.write_text(resolv_conf_data)
+
+    @classmethod
+    def _create_allowing_rule(cls, def_subnet: Optional[str], seaside_address: str, default_interface: Optional[str]) -> Rule:
+        rule = Rule()
+        if def_subnet is not None:
+            rule.src = def_subnet
+        if default_interface is not None:
+            rule.out_interface = default_interface
+        rule.dst = seaside_address
+        rule.target = Target(rule, "ACCEPT")
+        return rule
+
+    @classmethod
+    def _create_internet_rule_mark(cls, default_interface: Optional[str], def_prefixlen: str, sva_code: int) -> Rule:
+        rule = Rule()
+        if default_interface is not None:
+            rule.out_interface = default_interface
+        rule.dst = f"!{def_prefixlen}"
+        mark = Target(rule, "MARK")
+        mark.set_mark = str(sva_code)
+        rule.target = mark
+        return rule
+
+    @classmethod
+    def _create_internet_rule_accept(cls, default_interface: str, def_prefixlen: str) -> Rule:
+        rule = Rule()
+        rule.out_interface = default_interface
+        rule.dst = f"!{def_prefixlen}"
+        rule.target = Target(rule, "ACCEPT")
+        return rule
+
+    @classmethod
+    def _send_clear_cache_message(cls, iproute: IPRoute):
+        iproute.put(rtmsg(), msg_type=RTM_NEWROUTE, msg_flags=NLM_F_REPLACE | NLM_F_ECHO)
+        iproute.put(rtmsg(), msg_type=RTM_NEWRULE, msg_flags=NLM_F_REPLACE | NLM_F_ECHO)
+
+    @classmethod
+    def _restore_table_routes(cls, iproute: IPRoute, routes: List) -> None:
+        for route in routes:
+            iproute.put(route, msg_type=RTM_NEWROUTE, msg_flags=NLM_F_REQUEST)
 
 
 class Tunnel(AbstractAsyncContextManager):
@@ -87,7 +163,7 @@ class Tunnel(AbstractAsyncContextManager):
     It also creates and removes iptables rules for packet forwarding.
     """
 
-    def __init__(self, name: str, address: IPv4Address, netmask: IPv4Address, sva_code: int, seaside_address: IPv4Address):
+    def __init__(self, name: str, address: IPv4Address, netmask: IPv4Address, sva_code: int, seaside_address: IPv4Address, dns: IPv4Address, capture_iface: Optional[List[str]] = None, capture_ranges: Optional[List[str]] = None, capture_addresses: Optional[List[str]] = None, exempt_iface: Optional[List[str]] = None, exempt_ranges: Optional[List[str]] = None, exempt_addresses: Optional[List[str]] = None, local_address: Optional[IPv4Address] = None):
         """
         Tunnel constructor.
         :param self: instance of Tunnel.
@@ -106,56 +182,44 @@ class Tunnel(AbstractAsyncContextManager):
 
         self._tunnel_ip = str(address)
         self._tunnel_cidr = tunnel_network.prefixlen
-        self._def_iface, def_iface_name, self._mtu = _SystemUtils._get_default_interface(seaside_adr_str)
+        self._def_iface, def_iface_name, self._mtu = _SystemUtils._get_default_interface(seaside_adr_str) if local_address is None else _SystemUtils._get_interface_by_ip(local_address)
 
         self._sva_code = sva_code
         self._active = True
         self._operational = False
 
+        self._resolv_conf_data, new_dns = _SystemUtils._set_dns_servers(dns)
+        logger.info(f"Set DNS server to {Fore.BLUE}{new_dns}{Fore.RESET} set")
+
         self._descriptor, self._tunnel_dev = _SystemUtils._create_tunnel(name)
         logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} created")
 
-        self._send_to_caerulean_rule = self._create_caerulean_rule(seaside_adr_str, def_iface_name)
-        self._send_to_internet_rule_mark = self._create_internet_rule_mark(def_iface_name, sva_code)
-        self._send_to_internet_rule_accept = self._create_internet_rule_accept(def_iface_name)
-        logger.info(f"Packet capturing rules {Fore.GREEN}created{Fore.RESET}")
+        self._iptables_rules = [_SystemUtils._create_allowing_rule(str(self._def_iface), seaside_adr_str, def_iface_name), _SystemUtils._create_allowing_rule(None, f"{new_dns}/32", None)]
+        logger.info(f"Allowed packets to {Fore.BLUE}caerulean{Fore.RESET} and to {Fore.BLUE}DNS{Fore.RESET}")
+
+        result_capture_interfaces = list(set(list() if capture_iface is None else capture_iface) - set(list() if exempt_iface is None else exempt_iface))
+        result_capture_interfaces = [def_iface_name] if len(result_capture_interfaces) == 0 else result_capture_interfaces
+        for interface in result_capture_interfaces:
+            iface, iface_name, _ = _SystemUtils._get_interface_info(label=interface)
+            self._iptables_rules += [_SystemUtils._create_internet_rule_mark(iface_name, iface.with_prefixlen, sva_code), _SystemUtils._create_internet_rule_accept(iface_name, iface.with_prefixlen)]
+        logger.info(f"Capturing packets from interfaces: {Fore.BLUE}{result_capture_interfaces}{Fore.RESET}")
+
+        capture_ranges = (list() if capture_ranges is None else capture_ranges) + (list() if capture_addresses is None else [f"{address}/32" for address in capture_addresses])
+        exempt_ranges = (list() if exempt_ranges is None else exempt_ranges) + (list() if exempt_addresses is None else [f"{address}/32" for address in exempt_addresses])
+
+        result_capture_ranges = list(set(capture_ranges) - set(exempt_ranges))
+        for range in result_capture_ranges:
+            self._iptables_rules += [_SystemUtils._create_internet_rule_mark(None, range, sva_code), _SystemUtils._create_internet_rule_accept(None, range)]
+        logger.info(f"Capturing packets from ranges: {Fore.BLUE}{result_capture_ranges}{Fore.RESET}")
+
+        result_exempt_ranges = list(set(exempt_ranges) - set(capture_ranges))
+        for range in result_exempt_ranges:
+            self._iptables_rules += [_SystemUtils._create_internet_rule_accept(None, range)]
+        logger.info(f"Letting through packets from ranges: {Fore.BLUE}{result_exempt_ranges}{Fore.RESET}")
 
         self._filter_output_chain = Chain(Table(Table.MANGLE), "OUTPUT")
         self._filter_forward_chain = Chain(Table(Table.MANGLE), "FORWARD")
-
-    def _create_caerulean_rule(self, seaside_address: str, default_interface: str) -> Rule:
-        rule = Rule()
-        rule.src = str(self._def_iface)
-        rule.out_interface = default_interface
-        rule.dst = seaside_address
-        rule.target = Target(rule, "ACCEPT")
-        return rule
-
-    def _create_internet_rule_skeleton(self, default_interface: str) -> Rule:
-        rule = Rule()
-        rule.out_interface = default_interface
-        rule.dst = f"!{self._def_iface.with_prefixlen}"
-        return rule
-
-    def _create_internet_rule_mark(self, default_interface: str, sva_code: int) -> Rule:
-        rule = self._create_internet_rule_skeleton(default_interface)
-        mark = Target(rule, "MARK")
-        mark.set_mark = str(sva_code)
-        rule.target = mark
-        return rule
-
-    def _create_internet_rule_accept(self, default_interface: str) -> Rule:
-        rule = self._create_internet_rule_skeleton(default_interface)
-        rule.target = Target(rule, "ACCEPT")
-        return rule
-
-    def _send_clear_cache_message(self, iproute: IPRoute):
-        iproute.put(rtmsg(), msg_type=RTM_NEWROUTE, msg_flags=NLM_F_REPLACE | NLM_F_ECHO)
-        iproute.put(rtmsg(), msg_type=RTM_NEWRULE, msg_flags=NLM_F_REPLACE | NLM_F_ECHO)
-
-    def _restore_table_routes(self, iproute: IPRoute, routes: List) -> None:
-        for route in routes:
-            iproute.put(route, msg_type=RTM_NEWROUTE, msg_flags=NLM_F_REQUEST)
+        logger.info(f"Packet capturing rules {Fore.GREEN}created{Fore.RESET}")
 
     @property
     def operational(self) -> bool:
@@ -191,18 +255,16 @@ class Tunnel(AbstractAsyncContextManager):
 
         :param chain: the iptables chain to insert rules to.
         """
-        chain.insert_rule(self._send_to_internet_rule_accept)
-        chain.insert_rule(self._send_to_internet_rule_mark)
-        chain.insert_rule(self._send_to_caerulean_rule)
+        for rule in reversed(self._iptables_rules):
+            chain.insert_rule(rule)
 
     def _reset_iptables_rules(self, chain: Chain) -> None:
         """
         Remove forwarding rules from iptables.
         :param chain: the iptables chain to remove rules from.
         """
-        chain.delete_rule(self._send_to_caerulean_rule)
-        chain.delete_rule(self._send_to_internet_rule_mark)
-        chain.delete_rule(self._send_to_internet_rule_accept)
+        for rule in self._iptables_rules:
+            chain.delete_rule(rule)
 
     def up(self) -> None:
         """
@@ -225,7 +287,7 @@ class Tunnel(AbstractAsyncContextManager):
             self._sva_routes = ip.flush_routes(table=self._sva_code)
             ip.route("add", table=self._sva_code, dst="default", gateway=self._tunnel_ip, oif=self._tunnel_dev)
             ip.rule("add", fwmark=self._sva_code, table=self._sva_code)
-            self._send_clear_cache_message(ip)
+            _SystemUtils._send_clear_cache_message(ip)
             logger.info(f"Packet forwarding via tunnel {Fore.GREEN}enabled{Fore.RESET}")
         self._operational = True
 
@@ -242,8 +304,8 @@ class Tunnel(AbstractAsyncContextManager):
 
         with IPRoute() as ip:
             ip.rule("remove", fwmark=self._sva_code, table=self._sva_code)
-            self._restore_table_routes(ip, self._sva_routes)
-            self._send_clear_cache_message(ip)
+            _SystemUtils._restore_table_routes(ip, self._sva_routes)
+            _SystemUtils._send_clear_cache_message(ip)
             logger.info(f"Packet forwarding via tunnel {Fore.GREEN}disabled{Fore.RESET}")
             ip.link("set", index=self._tunnel_dev, state="down")
             logger.info(f"Tunnel {Fore.GREEN}disabled{Fore.RESET}")
@@ -259,6 +321,7 @@ class Tunnel(AbstractAsyncContextManager):
             with IPRoute() as ip:
                 ip.link("del", index=self._tunnel_dev)
             logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} deleted")
+            _SystemUtils._reset_dns_servers(self._resolv_conf_data)
             self._active = False
         else:
             logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} already deleted")
