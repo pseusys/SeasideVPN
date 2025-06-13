@@ -4,10 +4,10 @@ from ipaddress import IPv4Address, IPv4Interface, IPv4Network
 from os import O_RDWR, getegid, geteuid, open
 from pathlib import Path
 from struct import pack
+from subprocess import run
 from typing import List, Optional, Tuple
 
 from colorama import Fore
-from iptc import Chain, Rule, Table, Target
 from pyroute2 import IPRoute
 from pyroute2.netlink import NLM_F_ECHO, NLM_F_REPLACE, NLM_F_REQUEST
 from pyroute2.netlink.rtnl import RTM_NEWROUTE, RTM_NEWRULE
@@ -46,6 +46,9 @@ class _SystemUtils:
 
     # Unspecified IP address.
     _EMPTY_IP_ADDRESS = IPv4Address("0.0.0.0")
+
+    _OUTPUT_CHAIN = "OUTPUT"
+    _FORWARD_CHAIN = "FORWARD"
 
     @classmethod
     def _create_tunnel(cls, name: str) -> Tuple[int, str]:
@@ -115,34 +118,32 @@ class _SystemUtils:
         cls._RESOLV_CONF_PATH.write_text(resolv_conf_data)
 
     @classmethod
-    def _create_allowing_rule(cls, def_subnet: Optional[str], seaside_address: str, default_interface: Optional[str]) -> Rule:
-        rule = Rule()
+    def _create_allowing_rule(cls, def_subnet: Optional[str], seaside_address: str, default_interface: Optional[str]) -> str:
+        rule = str()
         if def_subnet is not None:
-            rule.src = def_subnet
+            rule = f"{rule} -s {def_subnet}"
         if default_interface is not None:
-            rule.out_interface = default_interface
-        rule.dst = seaside_address
-        rule.target = Target(rule, "ACCEPT")
+            rule = f"{rule} -o {default_interface}"
+        rule = f"{rule} -d {seaside_address}"
+        rule = f"{rule} -j ACCEPT"
         return rule
 
     @classmethod
-    def _create_marking_rule(cls, default_interface: Optional[str], def_prefixlen: str, sva_code: int) -> Rule:
-        rule = Rule()
+    def _create_marking_rule(cls, default_interface: Optional[str], def_prefixlen: str, sva_code: int) -> str:
+        rule = str()
         if default_interface is not None:
-            rule.out_interface = default_interface
-        rule.dst = f"!{def_prefixlen}"
-        mark = Target(rule, "MARK")
-        mark.set_mark = str(sva_code)
-        rule.target = mark
+            rule = f"{rule} -o {default_interface}"
+        rule = f"{rule} -d !{def_prefixlen}"
+        rule = f"{rule} -j MARK --set-mark {hex(sva_code)}"
         return rule
 
     @classmethod
-    def _create_marking_allowing_rule(cls, default_interface: Optional[str], def_prefixlen: str) -> Rule:
-        rule = Rule()
+    def _create_marking_allowing_rule(cls, default_interface: Optional[str], def_prefixlen: str) -> str:
+        rule = str()
         if default_interface is not None:
-            rule.out_interface = default_interface
-        rule.dst = f"!{def_prefixlen}"
-        rule.target = Target(rule, "ACCEPT")
+            rule = f"{rule} -o {default_interface}"
+        rule = f"{rule} -d !{def_prefixlen}"
+        rule = f"{rule} -j ACCEPT"
         return rule
 
     @classmethod
@@ -216,9 +217,6 @@ class Tunnel(AbstractAsyncContextManager):
         for range in result_exempt_ranges:
             self._iptables_rules += [_SystemUtils._create_marking_allowing_rule(None, range)]
         logger.info(f"Letting through packets from ranges: {Fore.BLUE}{result_exempt_ranges}{Fore.RESET}")
-
-        self._filter_output_chain = Chain(Table(Table.MANGLE), "OUTPUT")
-        self._filter_forward_chain = Chain(Table(Table.MANGLE), "FORWARD")
         logger.info(f"Packet capturing rules {Fore.GREEN}created{Fore.RESET}")
 
     @property
@@ -245,7 +243,7 @@ class Tunnel(AbstractAsyncContextManager):
         """
         return self._descriptor
 
-    def _setup_iptables_rules(self, chain: Chain) -> None:
+    def _setup_iptables_rules(self, chain: str) -> None:
         """
         Insert forwarding rules into iptables.
         The rules are inserted in the following order:
@@ -256,15 +254,15 @@ class Tunnel(AbstractAsyncContextManager):
         :param chain: the iptables chain to insert rules to.
         """
         for rule in reversed(self._iptables_rules):
-            chain.insert_rule(rule)
+            run(f"iptables -t mangle -I {chain} 1 {rule}", shell=True, text=True, check=True)
 
-    def _reset_iptables_rules(self, chain: Chain) -> None:
+    def _reset_iptables_rules(self, chain: str) -> None:
         """
         Remove forwarding rules from iptables.
         :param chain: the iptables chain to remove rules from.
         """
         for rule in self._iptables_rules:
-            chain.delete_rule(rule)
+            run(f"iptables -t mangle -D {chain} {rule}", shell=True, text=True, check=True)
 
     def up(self) -> None:
         """
@@ -273,8 +271,8 @@ class Tunnel(AbstractAsyncContextManager):
         Afterwards, clear routes in table numbered with seaside viridian algae universal code and add default route to tunnel network interface there.
         Finally, add ip rule to look up routes for packets marked with seaside viridian algae universal code in the corresponding ip route table.
         """
-        self._setup_iptables_rules(self._filter_output_chain)
-        self._setup_iptables_rules(self._filter_forward_chain)
+        self._setup_iptables_rules(_SystemUtils._OUTPUT_CHAIN)
+        self._setup_iptables_rules(_SystemUtils._FORWARD_CHAIN)
         logger.info(f"Packet forwarding with mark {Fore.BLUE}{self._sva_code}{Fore.RESET} via table {Fore.BLUE}{self._sva_code}{Fore.RESET} configured")
 
         with IPRoute() as ip:
@@ -298,8 +296,8 @@ class Tunnel(AbstractAsyncContextManager):
         Afterwards, remove ip rule to look up routes for packets marked with seaside viridian algae universal code in the corresponding ip route table.
         Finally, set tunnel interface down.
         """
-        self._reset_iptables_rules(self._filter_output_chain)
-        self._reset_iptables_rules(self._filter_forward_chain)
+        self._reset_iptables_rules(_SystemUtils._OUTPUT_CHAIN)
+        self._reset_iptables_rules(_SystemUtils._FORWARD_CHAIN)
         logger.info(f"Packet forwarding with mark {Fore.BLUE}{self._sva_code}{Fore.RESET} via table {Fore.BLUE}{self._sva_code}{Fore.RESET} removed")
 
         with IPRoute() as ip:
