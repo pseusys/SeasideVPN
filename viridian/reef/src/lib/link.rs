@@ -10,7 +10,7 @@ use crate::bytes::ByteBuffer;
 use crate::DynResult;
 
 
-pub fn parse_client_link<'a>(link: String) -> DynResult<(String, ByteBuffer<'a>, Option<u16>, Option<u16>, ByteBuffer<'a>)> {
+pub fn parse_client_link<'a>(link: String) -> DynResult<(String, ByteBuffer<'a>, Option<u16>, Option<u16>, ByteBuffer<'a>, Option<String>)> {
     let url = Url::parse(&link)?;
     if url.scheme() != "seaside+client" {
         bail!("Unexpected link scheme: {}", url.scheme());
@@ -34,5 +34,10 @@ pub fn parse_client_link<'a>(link: String) -> DynResult<(String, ByteBuffer<'a>,
         None => None,
     };
 
-    Ok((address.to_string(), parsed_public, port, typhoon, parsed_token))
+    let dns = match query.get("dns") {
+        Some(res) => Some(res.to_string()),
+        None => None,
+    };
+
+    Ok((address.to_string(), parsed_public, port, typhoon, parsed_token, dns))
 }

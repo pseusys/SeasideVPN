@@ -22,6 +22,7 @@ message WhirlpoolAuthenticationResponse {
     bytes public_key = 2;
     int32 port_port = 3;
     int32 typhoon_port = 4;
+    string dns = 5;
 }
 
 

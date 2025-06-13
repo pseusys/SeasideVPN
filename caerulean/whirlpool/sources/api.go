@@ -27,6 +27,7 @@ import (
 
 const (
 	DEFAULT_CERTIFICATES_PATH = "certificates"
+	DEFAULT_SUGGESTED_DNS     = "8.8.8.8"
 
 	DEFAULT_ADMIN_KEYS           = ""
 	DEFAULT_ADMIN_TOKEN_TIMEOUT  = 24 * 365
@@ -39,6 +40,7 @@ var (
 
 	ADMIN_TOKEN_TIMEOUT  = utils.GetIntEnv("SEASIDE_ADMIN_TOKEN_TIMEOUT", DEFAULT_ADMIN_TOKEN_TIMEOUT, 32)
 	GRPC_MAX_TAIL_LENGTH = uint(utils.GetIntEnv("SEASIDE_GRPC_MAX_TAIL_LENGTH", DEFAULT_GRPC_MAX_TAIL_LENGTH, 32))
+	SUGGESTED_DNS_SERVER = utils.GetEnv("SEASIDE_SUGGESTED_DNS", DEFAULT_SUGGESTED_DNS)
 )
 
 // Metaserver structure.
@@ -178,5 +180,6 @@ func (server *WhirlpoolServer) Authenticate(ctx context.Context, request *genera
 		PublicKey:   crypto.PRIVATE_KEY.PublicKey().Slice(),
 		PortPort:    server.portPort,
 		TyphoonPort: server.typhoonPort,
+		Dns:         &SUGGESTED_DNS_SERVER,
 	}, nil
 }

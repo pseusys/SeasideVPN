@@ -30,6 +30,8 @@ message SeasideConnectionClientCertificate {
     optional uint32 typhoon = 4;
     // User authentication token
     bytes token = 5;
+    // Suggested DNS server to use
+    optional string dns = 6;
 }
 
 // Seaside user token used for connection

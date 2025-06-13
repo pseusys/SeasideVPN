@@ -105,7 +105,8 @@ WhirlpoolConnectionLinkDict = TypedDict(
         "public": bytes,
         "port": Optional[int],
         "typhoon": Optional[int],
-        "token": bytes
+        "token": bytes,
+        "dns": Optional[str]
     },
 )
 
@@ -118,8 +119,11 @@ def urlsafe_b64decode_nopad(encoded: str) -> bytes:
     return urlsafe_b64decode(f"{encoded}{'=' * (-len(encoded) % 4)}")
 
 
-def _extract_from_query(query_params: Dict[Any, List[str]], name: str, cast: Callable[[Any], _T]) -> _T:
-    value = query_params.setdefault(name, [None])[0]
+def _extract_from_query(query_params: Dict[Any, List[str]], name: str, cast: Callable[[Any], _T], optional: bool = False) -> _T:
+    if optional:
+        value = query_params.get(name, [None])[0]
+    else:
+        value = query_params[name][0]
     return None if value is None else cast(value)
 
 
@@ -146,9 +150,10 @@ def parse_connection_link(link: str) -> Union[SurfaceConnectionLinkDict, Whirlpo
         result["key"] = _extract_from_query(query_params, "key", urlsafe_b64decode_nopad)
     elif link_type == "client":
         result["public"] = _extract_from_query(query_params, "public", urlsafe_b64decode_nopad)
-        result["port"] = _extract_from_query(query_params, "port", int)
-        result["typhoon"] = _extract_from_query(query_params, "typhoon", int)
+        result["port"] = _extract_from_query(query_params, "port", int, True)
+        result["typhoon"] = _extract_from_query(query_params, "typhoon", int, True)
         result["token"] = _extract_from_query(query_params, "token", urlsafe_b64decode_nopad)
+        result["dns"] = _extract_from_query(query_params, "dns", str, True)
     else:
         raise RuntimeError(f"Unknown connection link node type scheme: {link_type}")
     return result
@@ -156,11 +161,20 @@ def parse_connection_link(link: str) -> Union[SurfaceConnectionLinkDict, Whirlpo
 
 def create_connection_link(link: Union[SurfaceConnectionLinkDict, WhirlpoolConnectionLinkDict]) -> str:
     if set(link.keys()) == SurfaceConnectionLinkDict.__required_keys__:
-        link_key = urlsafe_b64encode_nopad(link["key"])
-        return f"seaside+admin://{link['address']}:{link['port']}?key={link_key}"
+        link_body = f"seaside+admin://{link['address']}:{link['port']}"
+        if "key" in link.keys():
+            link_body = f"{link_body}?key={urlsafe_b64encode_nopad(link['key'])}"
+        return link_body
     elif set(link.keys()) == WhirlpoolConnectionLinkDict.__required_keys__:
         link_public = urlsafe_b64encode_nopad(link["public"])
         link_token = urlsafe_b64encode_nopad(link["token"])
-        return f"seaside+client://{link['address']}?port={link['port']}&typhoon={link['typhoon']}&public={link_public}&token={link_token}"
+        link_body = f"seaside+client://{link['address']}?public={link_public}&token={link_token}"
+        if "port" in link.keys():
+            link_body = f"{link_body}&port={link['port']}"
+        if "typhoon" in link.keys():
+            link_body = f"{link_body}&typhoon={link['typhoon']}"
+        if "dns" in link.keys():
+            link_body = f"{link_body}&dns={link['dns']}"
+        return link_body
     else:
         raise RuntimeError(f"Unknown link arguments: {link.keys()}")

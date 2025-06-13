@@ -126,7 +126,7 @@ class _SystemUtils:
         return rule
 
     @classmethod
-    def _create_internet_rule_mark(cls, default_interface: Optional[str], def_prefixlen: str, sva_code: int) -> Rule:
+    def _create_marking_rule(cls, default_interface: Optional[str], def_prefixlen: str, sva_code: int) -> Rule:
         rule = Rule()
         if default_interface is not None:
             rule.out_interface = default_interface
@@ -137,9 +137,10 @@ class _SystemUtils:
         return rule
 
     @classmethod
-    def _create_internet_rule_accept(cls, default_interface: str, def_prefixlen: str) -> Rule:
+    def _create_marking_allowing_rule(cls, default_interface: Optional[str], def_prefixlen: str) -> Rule:
         rule = Rule()
-        rule.out_interface = default_interface
+        if default_interface is not None:
+            rule.out_interface = default_interface
         rule.dst = f"!{def_prefixlen}"
         rule.target = Target(rule, "ACCEPT")
         return rule
@@ -200,7 +201,7 @@ class Tunnel(AbstractAsyncContextManager):
         result_capture_interfaces = [def_iface_name] if len(result_capture_interfaces) == 0 else result_capture_interfaces
         for interface in result_capture_interfaces:
             iface, iface_name, _ = _SystemUtils._get_interface_info(label=interface)
-            self._iptables_rules += [_SystemUtils._create_internet_rule_mark(iface_name, iface.with_prefixlen, sva_code), _SystemUtils._create_internet_rule_accept(iface_name, iface.with_prefixlen)]
+            self._iptables_rules += [_SystemUtils._create_marking_rule(iface_name, iface.with_prefixlen, sva_code), _SystemUtils._create_marking_allowing_rule(iface_name, iface.with_prefixlen)]
         logger.info(f"Capturing packets from interfaces: {Fore.BLUE}{result_capture_interfaces}{Fore.RESET}")
 
         capture_ranges = (list() if capture_ranges is None else capture_ranges) + (list() if capture_addresses is None else [f"{address}/32" for address in capture_addresses])
@@ -208,12 +209,12 @@ class Tunnel(AbstractAsyncContextManager):
 
         result_capture_ranges = list(set(capture_ranges) - set(exempt_ranges))
         for range in result_capture_ranges:
-            self._iptables_rules += [_SystemUtils._create_internet_rule_mark(None, range, sva_code), _SystemUtils._create_internet_rule_accept(None, range)]
+            self._iptables_rules += [_SystemUtils._create_marking_rule(None, range, sva_code), _SystemUtils._create_marking_allowing_rule(None, range)]
         logger.info(f"Capturing packets from ranges: {Fore.BLUE}{result_capture_ranges}{Fore.RESET}")
 
         result_exempt_ranges = list(set(exempt_ranges) - set(capture_ranges))
         for range in result_exempt_ranges:
-            self._iptables_rules += [_SystemUtils._create_internet_rule_accept(None, range)]
+            self._iptables_rules += [_SystemUtils._create_marking_allowing_rule(None, range)]
         logger.info(f"Letting through packets from ranges: {Fore.BLUE}{result_exempt_ranges}{Fore.RESET}")
 
         self._filter_output_chain = Chain(Table(Table.MANGLE), "OUTPUT")

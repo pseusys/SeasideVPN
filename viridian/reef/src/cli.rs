@@ -118,7 +118,7 @@ fn process_link<'a>(link: Option<String>) -> DynResult<(Option<String>, Option<B
 async fn main() -> DynResult<()> {
     init_logging();
     let opt = Opt::from_args();
-    let (link_address, link_public, link_port, link_typhoon, link_token) = process_link(opt.link)?;
+    let (link_address, link_public, link_port, link_typhoon, link_token, link_dns) = process_link(opt.link)?;
 
     let public = match link_public {
         Some(res) => res,
