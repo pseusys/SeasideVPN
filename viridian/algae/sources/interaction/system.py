@@ -133,7 +133,7 @@ class _SystemUtils:
         rule = str()
         if default_interface is not None:
             rule = f"{rule} -o {default_interface}"
-        rule = f"{rule} -d !{def_prefixlen}"
+        rule = f"{rule} ! -d {def_prefixlen}"
         rule = f"{rule} -j MARK --set-mark {hex(sva_code)}"
         return rule
 
@@ -142,7 +142,7 @@ class _SystemUtils:
         rule = str()
         if default_interface is not None:
             rule = f"{rule} -o {default_interface}"
-        rule = f"{rule} -d !{def_prefixlen}"
+        rule = f"{rule} ! -d {def_prefixlen}"
         rule = f"{rule} -j ACCEPT"
         return rule
 
