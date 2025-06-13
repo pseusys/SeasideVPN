@@ -25,6 +25,7 @@ runs:
 
     - name: Install Node Dependencies 🔮
       working-directory: .github/scripts
+      shell: bash
       run: npm install
 
     - name: Setup Python 3.11 🐍
