@@ -17,6 +17,7 @@ use reeflib::DynResult;
 
 
 const DEFAULT_CAERULEAN_ADDRESS: &str = "127.0.0.1";
+const DEFAULT_DNS_ADDRESS: &str = "8.8.8.8";
 const DEFAULT_CAERULEAN_PORT: &str = "8587";
 const DEFAULT_LOG_LEVEL: &str = "INFO";
 
@@ -59,9 +60,31 @@ struct Opt {
     #[structopt(short = "s", long)]
     protocol: Option<String>,
 
+    /// Caerulean suggested DNS server (required, if not provided by 'link' argument!)
+    #[structopt(short = "d", long, default_value = DEFAULT_DNS_ADDRESS)]
+    dns: Option<String>,
+
     /// Connection link, will be used instead of other arguments if specified
     #[structopt(short = "l", long)]
     link: Option<String>,
+
+    #[structopt(long = "capture-iface")]
+    capture_iface: Option<String>,
+
+    #[structopt(long = "exempt-iface")]
+    exempt_iface: Option<String>,
+
+    #[structopt(long = "capture-ranges")]
+    capture_ranges: Option<String>,
+
+    #[structopt(long = "exempt-ranges")]
+    exempt_ranges: Option<String>,
+
+    #[structopt(long = "capture-addresses")]
+    capture_addresses: Option<String>,
+
+    #[structopt(long = "exempt-addresses")]
+    exempt_addresses: Option<String>,
 
     /// Install VPN connection, run command and exit after command is finished
     #[structopt(short = "e", long)]
@@ -122,6 +145,7 @@ async fn main() -> DynResult<()> {
         ProtocolType::PORT => link_port,
         ProtocolType::TYPHOON => link_typhoon,
     };
+
     let port = match link_port_number {
         Some(res) => res,
         None => opt.port
@@ -132,8 +156,11 @@ async fn main() -> DynResult<()> {
         None => opt.address
     };
 
+    // TODO: extract from link!
+    let dns = parse_address(&opt.dns)?;
+
     info!("Creating reef client...");
-    debug!("Parameters for reef client: address {address}, port {port}, protocol {protocol:?}, token length {}, public key length {}", token.len(), public.len());
+    debug!("Parameters for reef client: address {address}, port {port}, protocol {protocol:?}, token length {}, public key length {}, dns {dns}", token.len(), public.len());
     let mut constructor = Viridian::new(address, port, token, public, protocol).await?;
 
     info!("Starting reef Viridian...");
