@@ -5,7 +5,8 @@
 	"type": "module",
 	"scripts": {
 		"deploy-whirlpool-beget": "node deploy_whirlpool_beget.mjs",
-		"configure-viridian-test": "node configure_viridian_test.mjs",
+		"configure-viridian-test-setup": "node configure_viridian_test.mjs",
+		"configure-viridian-test-reset": "node configure_viridian_test.mjs -r",
 		"lint-scripts": "npx prettier . --check",
 		"format-scripts": "npx prettier . --write"
 	},

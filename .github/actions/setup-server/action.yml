@@ -1,0 +1,73 @@
+name: Setup server action
+description: Setup VPN server for testing
+
+inputs:
+  target:
+    description: The IP address that will be used for testing
+    required: true
+    default: example.com
+  test-command:
+    description: Test command for no VPN access test
+
+outputs:
+  connection-link:
+    description: VPN connection link
+    value: ${{ steps.get-server-connection-link.outputs.connection-link }}
+
+runs:
+  using: composite
+
+  steps:
+    - name: Install NodeJS 🪢
+      uses: actions/setup-node@v4.1.0
+      with:
+        node-version: 22
+
+    - name: Install Node Dependencies 🔮
+      working-directory: .github/scripts
+      run: npm install
+
+    - name: Setup Python 3.11 🐍
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Install Dependencies 🔮
+      working-directory: viridian/algae
+      shell: bash
+      run: |
+        pip3 install poetry poethepoet[poetry_plugin]
+        poetry install --extras "client devel"
+
+    - name: Resolve Target
+      id: resolve-target
+      shell: bash
+      run: echo "target-ip=$(node ${{ github.action_path }}/resolve-target.js ${{ inputs.target }})" >> $GITHUB_OUTPUT
+
+    - name: Start Background Server
+      id: start-background-server
+      working-directory: .github/scripts
+      shell: bash
+      run: echo "server-ip=$(sudo node configure_viridian_test.mjs -t ${{ steps.resolve-target.outputs.target-ip }} -s)" >> $GITHUB_OUTPUT
+
+    - name: Load .ENV File
+      uses: aarcangeli/load-dotenv@v1
+      with:
+        path: viridian/algae/docker
+        filenames: test.conf.env
+
+    - name: Get Connection Link
+      id: get-server-connection-link
+      working-directory: viridian/algae
+      shell: bash
+      env:
+        SEASIDE_ADDRESS: ${{ steps.start-background-server.outputs.server-ip }}
+        SEASIDE_ROOT_CERTIFICATE_AUTHORITY: ${{ github.workspace }}/viridian/algae/certificates/viridian/rootCA.crt
+        SEASIDE_LOG_LEVEL: ERROR
+      run: echo "connection-link=$(poetry poe -q fixture -a "${{ env.SEASIDE_ADDRESS }}" -p "${{ env.SEASIDE_API_PORT }}" -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian -s)" >> $GITHUB_OUTPUT
+
+    - name: Test Echo Server Access (no VPN)
+      if: ${{ inputs.test-command != '' }}
+      working-directory: viridian/algae
+      shell: bash
+      run: eval "${{ inputs.test-command }}" && exit 1 || true

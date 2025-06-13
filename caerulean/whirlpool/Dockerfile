@@ -69,10 +69,7 @@ ENTRYPOINT ["./whirlpool.run"]
 HEALTHCHECK --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s CMD netstat -tulpn | grep -q ":$SEASIDE_CTRLPORT"
 
 
-FROM default AS default-routed
-
-ARG NETWORK_GATEWAY
-ENV ARG_NETWORK_GATEWAY=$NETWORK_GATEWAY
+FROM default AS default-certified
 
 ARG SEASIDE_ADDRESS
 ENV SEASIDE_ADDRESS=$SEASIDE_ADDRESS
@@ -85,5 +82,13 @@ RUN mkdir -p /tmp/certificates/caerulean && mkdir -p /tmp/certificates/viridian 
     && openssl req -digest -new -x509 -sha256 -nodes -keyout viridian/rootCA.key -out viridian/rootCA.crt -days 365250 -newkey rsa:2048 -subj "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPN" -addext keyUsage=critical,digitalSignature,nonRepudiation,keyEncipherment,dataEncipherment,keyAgreement,keyCertSign,cRLSign -addext extendedKeyUsage=serverAuth,clientAuth \
     && openssl x509 -req -CA viridian/rootCA.crt -CAkey viridian/rootCA.key -in caerulean/cert.csr -out caerulean/cert.crt -days 365250 -CAcreateserial -copy_extensions=copyall
 
+ENTRYPOINT ["sh", "-c", "cp -r /tmp/certificates ./ && ./whirlpool.run"]
+
+
+FROM default-certified AS default-routed
+
+ARG NETWORK_GATEWAY
+ENV NETWORK_GATEWAY=$NETWORK_GATEWAY
+
 # Setup default route IP and run viridian algae with command.
-ENTRYPOINT ["sh", "-c", "ip route replace default via $ARG_NETWORK_GATEWAY && cp -r /tmp/certificates ./ && ./whirlpool.run"]
+ENTRYPOINT ["sh", "-c", "ip route replace default via $NETWORK_GATEWAY && cp -r /tmp/certificates ./ && ./whirlpool.run"]

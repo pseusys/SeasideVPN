@@ -61,7 +61,7 @@ struct Opt {
     protocol: Option<String>,
 
     /// Caerulean suggested DNS server (required, if not provided by 'link' argument!)
-    #[structopt(short = "d", long, default_value = DEFAULT_DNS_ADDRESS)]
+    #[structopt(short = "d", long, default_value = DEFAULT_DNS_ADDRESS, parse(try_from_str = parse_address))]
     dns: Option<String>,
 
     /// Connection link, will be used instead of other arguments if specified
@@ -156,8 +156,10 @@ async fn main() -> DynResult<()> {
         None => opt.address
     };
 
-    // TODO: extract from link!
-    let dns = parse_address(&opt.dns)?;
+    let dns = match link_dns {
+        Some(res) => parse_address(&res)?,
+        None => opt.dns
+    };
 
     info!("Creating reef client...");
     debug!("Parameters for reef client: address {address}, port {port}, protocol {protocol:?}, token length {}, public key length {}, dns {dns}", token.len(), public.len());

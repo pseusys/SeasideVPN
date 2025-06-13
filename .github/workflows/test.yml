@@ -47,79 +47,27 @@ jobs:
     name: Test Viridian Algae Quick
     runs-on: ubuntu-latest
     env:
-      TEST_TIMEOUT: 15.0
-      LOCAL_ADDRESS: 10.82.0.1
-      ECHO_ADDRESS: 10.42.0.42
-      TEST_COMMAND: poetry run pytest --log-cli-level=INFO tests/test_local.py
+      TEST_COMMAND: curl -I --fail https://example.com
 
     steps:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
 
-      - name: Install NodeJS 🪢
-        uses: actions/setup-node@v4.1.0
+      - name: Setup VPN Server
+        id: setup-test-server
+        uses: ./.github/actions/setup-server
         with:
-          node-version: 22
-
-      - name: Install Node Dependencies 🔮
-        working-directory: .github/scripts
-        run: npm install
-
-      - name: Setup Python 3.11 🐍
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install Dependencies 🔮
-        working-directory: viridian/algae
-        run: |
-          pip3 install poetry poethepoet[poetry_plugin]
-          poetry install --extras "client devel"
-
-      - name: Start Background Server
-        id: start-background-server
-        working-directory: .github/scripts
-        run: sudo npm run configure-viridian-test
-
-      - name: Load .ENV File
-        uses: aarcangeli/load-dotenv@v1
-        with:
-          path: viridian/algae/docker
-          filenames: test.conf.env
-
-      - name: Get Connection Link
-        working-directory: viridian/algae
-        env:
-          SEASIDE_ADDRESS: 10.87.82.87
-          SEASIDE_ROOT_CERTIFICATE_AUTHORITY: ${{ github.workspace }}/viridian/algae/certificates/viridian/rootCA.crt
-          SEASIDE_LOG_LEVEL: ERROR
-        run: |
-          LINK=$(poetry poe -q fixture -a "${{ env.SEASIDE_ADDRESS }}" -p "${{ env.SEASIDE_API_PORT }}" -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian -s)
-          echo "WHIRLPOOL_LINK=$LINK" >> $GITHUB_ENV
-
-      - name: Test Echo Server Access (no VPN)
-        working-directory: viridian/algae
-        run: eval "${{ env.TEST_COMMAND }}" && exit 1 || true
+          test-command: ${{ env.TEST_COMMAND }}
 
       - name: Test Viridian Algae PORT (standalone) 🧪
         id: test-viridian-algae-port
         working-directory: viridian/algae
-        run: sudo -E env "PATH=$PATH" poetry poe client -s port -l "${{ env.WHIRLPOOL_LINK }}" -e "${{ env.TEST_COMMAND }}"
+        run: sudo -E env "PATH=$PATH" poetry poe client -s port -l "${{ steps.setup-test-server.outputs.connection-link }}" -e "${{ env.TEST_COMMAND }}"
 
       - name: Test Viridian Algae TYPHOON (standalone) 🧪
         id: test-viridian-algae-typhoon
         working-directory: viridian/algae
-        run: sudo -E env "PATH=$PATH" poetry poe client -s typhoon -l "${{ env.WHIRLPOOL_LINK }}" -e "${{ env.TEST_COMMAND }}"
-
-      - name: Print Whirlpool Logs
-        if: failure() && (steps.test-viridian-algae-port.outcome == 'failure' || steps.test-viridian-algae-typhoon.outcome == 'failure')
-        working-directory: viridian/algae
-        run: docker compose -f docker/compose.standalone.yml logs whirlpool
-
-      - name: Terminate Background Server
-        if: always() && steps.start-background-server.outcome == 'success'
-        working-directory: .github/scripts
-        run: sudo npm run configure-viridian-test -- -r
+        run: sudo -E env "PATH=$PATH" poetry poe client -s typhoon -l "${{ steps.setup-test-server.outputs.connection-link }}" -e "${{ env.TEST_COMMAND }}"
 
   viridian-reef-test:
     name: Test Viridian Reef

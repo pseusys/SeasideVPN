@@ -1,78 +1,29 @@
 services:
-  int-router:
-    extends:
-      file: compose.base.yml
-      service: router
-    build:
-      args:
-        RESTRICTED_ADDRESS: 10.42.0.42
-    networks:
-      sea-cli-int:
-        ipv4_address: 10.82.0.100
-      sea-rout-int:
-        ipv4_address: 10.87.82.100
-
-  whirlpool:
+  whirlpool-base:
+    image: whirlpool-standalone
+    container_name: whirlpool-standalone
     extends:
       file: compose.base.yml
       service: whirlpool
     build:
+      target: default-certified
       args:
-        NETWORK_GATEWAY: 10.87.42.100
-        SEASIDE_ADDRESS: 10.87.82.87
-    environment:
-      SEASIDE_LOG_LEVEL: DEBUG
-      SEASIDE_EXTERNAL: 10.87.42.87
-    networks:
-      sea-rout-int:
-        ipv4_address: 10.87.82.87
-      sea-rout-ext:
-        ipv4_address: 10.87.42.87
-    depends_on:
-      int-router:
-        condition: service_started
-      ext-router:
-        condition: service_started
-      echo:
-        condition: service_healthy
+        SEASIDE_ADDRESS: ${SEASIDE_ADDRESS_ARG}
 
-  ext-router:
-    extends:
-      file: compose.base.yml
-      service: router
+  whirlpool-bridge:
+    extends: whirlpool-base
     networks:
-      sea-rout-ext:
-        ipv4_address: 10.87.42.100
-      sea-serv-ext:
-        ipv4_address: 10.42.0.100
+      sea-net:
+        ipv4_address: 10.0.0.87
 
-  echo:
-    extends:
-      file: compose.base.yml
-      service: echo
-    build:
-      args:
-        NETWORK_GATEWAY: 10.42.0.100
-    networks:
-      sea-serv-ext:
-        ipv4_address: 10.42.0.42
+  whirlpool-host:
+    extends: whirlpool-base
+    network_mode: host
 
 
 networks:
-  sea-cli-int:
+  sea-net:
     ipam:
       config:
-        - subnet: 10.82.0.0/24
-          gateway: 10.82.0.1
-  sea-rout-int:
-    ipam:
-      config:
-        - subnet: 10.87.82.0/24
-  sea-rout-ext:
-    ipam:
-      config:
-        - subnet: 10.87.42.0/24
-  sea-serv-ext:
-    ipam:
-      config:
-        - subnet: 10.42.0.0/24
+        - subnet: 10.0.0.0/24
+          gateway: 10.0.0.1
