@@ -42,12 +42,12 @@ class WhirlpoolClient(WhirlpoolViridianStub):
         context.set_alpn_protocols(["h2", "http/1.1"])
         return Channel(host, port, ssl=context)
 
-    async def authenticate(self, identifier: str, api_key: str, name: Optional[str] = None) -> Tuple[bytes, bytes, int, int]:
+    async def authenticate(self, identifier: str, api_key: str, name: Optional[str] = None) -> Tuple[bytes, bytes, int, int, str]:
         name = gethostname() if name is None else name
         logger.debug(f"User will be initiated with name '{name}' and identifier: {identifier}!")
         response = await super().authenticate(WhirlpoolAuthenticationRequest(name, identifier, api_key))
         logger.debug(f"Symmetric session token received: {response.token!r}!")
-        return response.public_key, response.token, response.typhoon_port, response.port_port
+        return response.public_key, response.token, response.typhoon_port, response.port_port, response.dns
 
     def close(self) -> None:
         self._channel.close()

@@ -85,7 +85,7 @@ async def test_receive_token(client: AlgaeClient) -> None:
     identifier = token_urlsafe()
     logger.info(f"Authenticating user {identifier}...")
     async with WhirlpoolClient(client._address, client._port, Path(environ["SEASIDE_ROOT_CERTIFICATE_AUTHORITY"])) as conn:
-        public, token, typhoon_port, port_port = await conn.authenticate(identifier, environ["SEASIDE_API_KEY_OWNER"])
+        public, token, typhoon_port, port_port, _ = await conn.authenticate(identifier, environ["SEASIDE_API_KEY_OWNER"])
         logger.info(f"Authenticating info received: public {public}, token {token}, TYPHOON port {typhoon_port}, PORT port {port_port}")
         environ["_SEASIDE_PUBLIC_KEY"] = b64encode(public).decode()
         environ["_SEASIDE_TOKEN"] = b64encode(token).decode()

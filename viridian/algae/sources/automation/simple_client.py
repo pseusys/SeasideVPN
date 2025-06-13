@@ -158,7 +158,7 @@ class AlgaeClient:
             authority = getenv("SEASIDE_ROOT_CERTIFICATE_AUTHORITY", None)
 
             async with WhirlpoolClient(self._address, self._port, Path(authority)) as conn:
-                public, token, typhoon_port, port_port = await conn.authenticate(identifier, key)
+                public, token, typhoon_port, port_port, _ = await conn.authenticate(identifier, key)
                 listener_port = typhoon_port if issubclass(self._proto_type, TyphoonClient) else port_port
 
             logger.debug(f"User {identifier} token received: {token!r}")

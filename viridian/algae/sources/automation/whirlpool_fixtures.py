@@ -44,11 +44,11 @@ async def supply_viridian(address: str, port: int, key: str, identifier: str, na
     client = WhirlpoolClient(address, port, Path(authority))
 
     logger.info(f"Authenticating user {identifier} (key {key}, name {name})...")
-    public, token, typhoon_port, port_port = await client.authenticate(identifier, key, name)
-    logger.info(f"Caerulean connection info received: public key {encodebytes(public)!r}, TYPHOON port {typhoon_port}, PORT port {port_port}")
+    public, token, typhoon_port, port_port, dns = await client.authenticate(identifier, key, name)
+    logger.info(f"Caerulean connection info received: public key {encodebytes(public)!r}, TYPHOON port {typhoon_port}, PORT port {port_port}, DNS {dns}")
 
     if silent:
-        print(create_connection_link(dict(link_type="client", address=address, public=public, port=port_port, typhoon=typhoon_port, token=token)))
+        print(create_connection_link(dict(link_type="client", address=address, public=public, port=port_port, typhoon=typhoon_port, token=token, dns=dns)))
     else:
         logger.info(f"User token received: {encodebytes(token)!r}")
 
