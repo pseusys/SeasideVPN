@@ -180,6 +180,6 @@ func (server *WhirlpoolServer) Authenticate(ctx context.Context, request *genera
 		PublicKey:   crypto.PRIVATE_KEY.PublicKey().Slice(),
 		PortPort:    server.portPort,
 		TyphoonPort: server.typhoonPort,
-		Dns:         &SUGGESTED_DNS_SERVER,
+		Dns:         SUGGESTED_DNS_SERVER,
 	}, nil
 }
