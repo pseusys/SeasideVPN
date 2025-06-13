@@ -62,7 +62,7 @@ struct Opt {
 
     /// Caerulean suggested DNS server (required, if not provided by 'link' argument!)
     #[structopt(short = "d", long, default_value = DEFAULT_DNS_ADDRESS, parse(try_from_str = parse_address))]
-    dns: Option<String>,
+    dns: Ipv4Addr,
 
     /// Connection link, will be used instead of other arguments if specified
     #[structopt(short = "l", long)]
@@ -104,13 +104,13 @@ fn init_logging() {
 }
 
 
-fn process_link<'a>(link: Option<String>) -> DynResult<(Option<String>, Option<ByteBuffer<'a>>, Option<u16>, Option<u16>, Option<ByteBuffer<'a>>)> {
+fn process_link<'a>(link: Option<String>) -> DynResult<(Option<String>, Option<ByteBuffer<'a>>, Option<u16>, Option<u16>, Option<ByteBuffer<'a>>, Option<String>)> {
     match link {
         Some(res) => {
-            let (a, p, pp, pt, t) = parse_client_link(res)?;
-            Ok((Some(a), Some(p), pp, pt, Some(t)))
+            let (a, p, pp, pt, t, d) = parse_client_link(res)?;
+            Ok((Some(a), Some(p), pp, pt, Some(t), d))
         },
-        None => Ok((None, None, None, None, None))
+        None => Ok((None, None, None, None, None, None))
     }
 }
 

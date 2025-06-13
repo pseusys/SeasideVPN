@@ -37,7 +37,7 @@ jobs:
           allow_forks: false
           name: algae-executable-.+
           name_is_regexp: true
-  
+
       - name: Download Caerulean Whirlpool Artifact 🌌
         uses: dawidd6/action-download-artifact@v6
         with:
@@ -86,7 +86,7 @@ jobs:
       - name: Install Node Dependencies 🔮
         working-directory: .github/scripts
         run: npm install
-      
+
       - name: Setup Python 3.11 🐍
         uses: actions/setup-python@v5
         with:

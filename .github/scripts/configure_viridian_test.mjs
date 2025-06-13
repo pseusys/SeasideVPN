@@ -15,15 +15,12 @@ const RESET = "\x1b[0m";
 const DOCKER_COMPOSE_TIMEOUT = 15;
 // Echo server network for VPN access.
 const DOCKER_COMPOSE_NETWORK = "sea-net";
-// Seaside container for VPN access.
-const DOCKER_COMPOSE_CONTAINER = "whirlpool";
 // Seaside container and image name for server container in hosted network.
 const DOCKER_COMPOSE_HOST_CONTAINER = "whirlpool-host";
 // Seaside container and image name for server container in bridged network.
 const DOCKER_COMPOSE_BRIDGE_CONTAINER = "whirlpool-bridge";
 // Path to the Docker compose configuration file in `viridian/algae` directory.
 const DOCKER_COMPOSE_PATH = join(dirname(import.meta.dirname), "..", "viridian", "algae", "docker", "compose.standalone.yml");
-
 
 function print(message, silent = false) {
 	if (!silent) console.log(message);
@@ -85,7 +82,9 @@ function runCommandForSystem(linuxCommand = undefined, windowsCommand = undefine
 function optionallyConvertPathToWSL(path) {
 	switch (platform) {
 		case "win32":
-			return runCommand(`wsl wslpath -a ${path.replaceAll("\\", "\\\\")}`).stdout.toString().trim();
+			return runCommand(`wsl wslpath -a ${path.replaceAll("\\", "\\\\")}`)
+				.stdout.toString()
+				.trim();
 		default:
 			return path;
 	}
@@ -136,7 +135,7 @@ function parseDockerComposeFile(silent) {
 	} else {
 		print("Reading Docker compose file...", silent);
 		const composeDict = parse(readFileSync(DOCKER_COMPOSE_PATH).toString());
-		const whirlpoolIP = composeDict["services"][DOCKER_COMPOSE_CONTAINER]["networks"][DOCKER_COMPOSE_NETWORK]["ipv4_address"].trim();+
+		const whirlpoolIP = composeDict["services"][DOCKER_COMPOSE_BRIDGE_CONTAINER]["networks"][DOCKER_COMPOSE_NETWORK]["ipv4_address"].trim();
 		print(`Extracted whirlpool IP from compose file: ${whirlpoolIP}`, silent);
 		return whirlpoolIP;
 	}
@@ -153,19 +152,13 @@ function parseDockerComposeFile(silent) {
  */
 function setupRouting(unreachable, silent) {
 	print(`Disabling access to ${unreachable} address...`, silent);
-	runCommandForSystem(
-		`iptables -A OUTPUT --dst ${unreachable}/32 -j DROP`,
-		`New-NetFirewallRule -DisplayName "seaside-test-block-unreachable" -Direction Outbound -RemoteAddress ${unreachable} -Action Block -Profile Any -Enabled True`
-	);
+	runCommandForSystem(`iptables -A OUTPUT --dst ${unreachable}/32 -j DROP`, `New-NetFirewallRule -DisplayName "seaside-test-block-unreachable" -Direction Outbound -RemoteAddress ${unreachable} -Action Block -Profile Any -Enabled True`);
 	print(`Accessing ${unreachable} is no longer possible!`, silent);
 }
 
 function resetRouting(unreachable, silent) {
 	print(`Enabling access to ${unreachable} address...`, silent);
-	runCommandForSystem(
-		`sudo iptables -D OUTPUT -d ${unreachable}/32 -j DROP`,
-		`Remove-NetFirewallRule -DisplayName "seaside-test-block-unreachable"`
-	);
+	runCommandForSystem(`sudo iptables -D OUTPUT -d ${unreachable}/32 -j DROP`, `Remove-NetFirewallRule -DisplayName "seaside-test-block-unreachable"`);
 	print(`Accessing ${unreachable} is possible again!`, silent);
 }
 
@@ -179,7 +172,7 @@ async function launchWhirlpool(whirlpool, silent) {
 	runCommandForSystem(
 		`docker compose -f ${DOCKER_COMPOSE_PATH} up --build --detach ${DOCKER_COMPOSE_BRIDGE_CONTAINER}`,
 		`wsl -u root docker compose -f ${optionallyConvertPathToWSL(DOCKER_COMPOSE_PATH)} up --build --detach ${DOCKER_COMPOSE_HOST_CONTAINER}`,
-		environment = {"SEASIDE_ADDRESS_ARG": whirlpool}
+		(environment = { SEASIDE_ADDRESS_ARG: whirlpool })
 	);
 	print("Waiting whirlpool to initiate...", silent);
 	await sleep(DOCKER_COMPOSE_TIMEOUT);
@@ -192,10 +185,7 @@ async function launchWhirlpool(whirlpool, silent) {
  */
 async function killWhirlpool(silent) {
 	print("Killing whirlpool process...", silent);
-	runCommandForSystem(
-		`docker compose -f ${DOCKER_COMPOSE_PATH} down`,
-		`wsl -u root docker compose -f ${optionallyConvertPathToWSL(DOCKER_COMPOSE_PATH)} down`
-	);
+	runCommandForSystem(`docker compose -f ${DOCKER_COMPOSE_PATH} down`, `wsl -u root docker compose -f ${optionallyConvertPathToWSL(DOCKER_COMPOSE_PATH)} down`);
 	print("Whirlpool process killed!", silent);
 }
 
@@ -209,7 +199,7 @@ const whirlpoolIP = parseDockerComposeFile(args.silent);
 if (!args.reset) {
 	await launchWhirlpool(whirlpoolIP, args.silent);
 	setupRouting(args.target, args.silent);
-	print(whirlpoolIP, !args.silent)
+	print(whirlpoolIP, !args.silent);
 } else {
 	resetRouting(args.target, args.silent);
 	await killWhirlpool(args.silent);
