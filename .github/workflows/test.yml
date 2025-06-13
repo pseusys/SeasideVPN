@@ -47,7 +47,7 @@ jobs:
     name: Test Viridian Algae Quick
     runs-on: ubuntu-latest
     env:
-      TEST_COMMAND: curl -I --fail https://example.com
+      TEST_COMMAND: curl -I --fail https://1.1.1.1
 
     steps:
       - name: Checkout 🛎️
@@ -57,6 +57,7 @@ jobs:
         id: setup-test-server
         uses: ./.github/actions/setup-server
         with:
+          target: 1.1.1.1
           test-command: ${{ env.TEST_COMMAND }}
 
       - name: Test Viridian Algae PORT (standalone) 🧪
