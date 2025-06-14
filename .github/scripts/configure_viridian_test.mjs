@@ -165,16 +165,16 @@ function getOutputConnection(unreachable) {
 function setupRouting(unreachable, iface, address, silent) {
 	print(`Disabling access to ${unreachable} address...`, silent);
 	runCommandForSystem(
-		`tc qdisc add dev ${iface} root handle 1: prio && tc filter add dev ${iface} protocol ip parent 1: prio 1 u32 match ip src ${address} match ip dst ${unreachable} flowid :1 action drop`,
+		`iptables -t mangle -A OUTPUT -o ${iface} -s ${address} -d ${unreachable} -j DROP`,
 		`New-NetFirewallRule -DisplayName "seaside-test-block-unreachable" -Direction Outbound -LocalAddress ${address} -RemoteAddress ${unreachable} -Action Block -Profile Any -Enabled True`
 	);
 	print(`Accessing ${unreachable} is no longer possible!`, silent);
 }
 
-function resetRouting(unreachable, iface, silent) {
+function resetRouting(unreachable, iface, address, silent) {
 	print(`Enabling access to ${unreachable} address...`, silent);
 	runCommandForSystem(
-		`tc qdisc del dev ${iface} root`,
+		`iptables -t mangle -D OUTPUT -o ${iface} -s ${address} -d ${unreachable} -j DROP`,
 		`Remove-NetFirewallRule -DisplayName "seaside-test-block-unreachable"`
 	);
 	print(`Accessing ${unreachable} is possible again!`, silent);
@@ -190,7 +190,7 @@ async function launchWhirlpool(whirlpool, silent) {
 	let composePath = DOCKER_COMPOSE_PATH;
 	if (platform == "win32") composePath = convertPathToWSL(composePath);
 	runCommandForSystem(
-		`docker compose -f ${composePath} up --build --detach ${DOCKER_COMPOSE_BRIDGE_CONTAINER}`,
+		`echo ${SEASIDE_ADDRESS_ARG} && docker compose -f ${composePath} up --build --detach ${DOCKER_COMPOSE_BRIDGE_CONTAINER}`,
 		`wsl -u root docker compose -f ${composePath} up --build --detach ${DOCKER_COMPOSE_HOST_CONTAINER}`,
 		undefined,
 		{ "SEASIDE_ADDRESS_ARG": whirlpool }
@@ -225,6 +225,6 @@ if (!args.reset) {
 	setupRouting(args.target, iface, address, args.silent);
 	print(whirlpoolIP, !args.silent);
 } else {
-	resetRouting(args.target, iface, args.silent);
+	resetRouting(args.target, iface, address, args.silent);
 	await killWhirlpool(args.silent);
 }
