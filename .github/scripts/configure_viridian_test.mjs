@@ -217,7 +217,7 @@ async function killWhirlpool(silent) {
 // Viridian client determines the default route as the route to the caerulean address, so the router address is considered to be the default one.
 const args = parseArguments();
 const whirlpoolIP = getWhirlpoolIP(args.silent);
-const { iface, address } = getOutputConnection(args.silent);
+const { iface, address } = getOutputConnection(args.target);
 if (!args.reset) {
 	await launchWhirlpool(whirlpoolIP, args.silent);
 	setupRouting(args.target, iface, address, args.silent);
