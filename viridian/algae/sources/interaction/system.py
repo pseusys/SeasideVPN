@@ -186,7 +186,7 @@ class Tunnel(AbstractAsyncContextManager):
         self._descriptor, self._tunnel_dev = _SystemUtils._create_tunnel(name)
         logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} created")
 
-        self._iptables_rules = [_SystemUtils._create_allowing_rule(str(self._def_iface), seaside_adr_str, def_iface_name), _SystemUtils._create_allowing_rule(None, f"{new_dns}/32", None)]
+        self._iptables_rules = [_SystemUtils._create_allowing_rule(f"{self._def_iface.ip}/32", seaside_adr_str, def_iface_name), _SystemUtils._create_allowing_rule(None, f"{new_dns}/32", None)]
         logger.info(f"Allowed packets to {Fore.BLUE}caerulean{Fore.RESET} and to {Fore.BLUE}DNS{Fore.RESET}")
 
         result_capture_interfaces = list(set(list() if capture_iface is None else capture_iface) - set(list() if exempt_iface is None else exempt_iface))
