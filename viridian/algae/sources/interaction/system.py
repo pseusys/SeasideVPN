@@ -199,7 +199,7 @@ class Tunnel(AbstractAsyncContextManager):
         logger.info(f"Allowed packets to {Fore.BLUE}caerulean{Fore.RESET} and to {Fore.BLUE}DNS{Fore.RESET}")
 
         result_capture_interfaces = list(set(list() if capture_iface is None else capture_iface) - set(list() if exempt_iface is None else exempt_iface))
-        if (capture_iface is None or len(capture_iface) == 0) and (capture_ranges is None or len(capture_ranges) == 0) and (capture_addresses is None or len(capture_iface) == 0):
+        if (capture_iface is None or len(capture_iface) == 0) and (capture_ranges is None or len(capture_ranges) == 0) and (capture_addresses is None or len(capture_addresses) == 0):
             result_capture_interfaces += [def_iface_name]
         for interface in result_capture_interfaces:
             iface, iface_name, _ = _SystemUtils._get_interface_info(label=interface)
