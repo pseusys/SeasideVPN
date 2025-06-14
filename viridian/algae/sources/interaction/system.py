@@ -118,22 +118,22 @@ class _SystemUtils:
         cls._RESOLV_CONF_PATH.write_text(resolv_conf_data)
 
     @classmethod
-    def _create_allowing_rule(cls, def_subnet: Optional[str], seaside_address: str, default_interface: Optional[str]) -> str:
+    def _create_allowing_rule(cls, def_subnet: Optional[str], seaside_address: str, default_interface: Optional[str], negative: bool = False) -> str:
         rule = str()
         if def_subnet is not None:
             rule = f"{rule} -s {def_subnet}"
         if default_interface is not None:
             rule = f"{rule} -o {default_interface}"
-        rule = f"{rule} -d {seaside_address}"
+        rule = f"{rule} {'!' if negative else ''} -d {seaside_address}"
         rule = f"{rule} -j ACCEPT"
         return rule
 
     @classmethod
-    def _create_marking_rule(cls, default_interface: Optional[str], def_prefixlen: str, sva_code: int) -> str:
+    def _create_marking_rule(cls, default_interface: Optional[str], def_prefixlen: str, sva_code: int, negative: bool = False) -> str:
         rule = str()
         if default_interface is not None:
             rule = f"{rule} -o {default_interface}"
-        rule = f"{rule} -d {def_prefixlen}"
+        rule = f"{rule} {'!' if negative else ''} -d {def_prefixlen}"
         rule = f"{rule} -j MARK --set-mark {hex(sva_code)}"
         return rule
 
@@ -194,7 +194,7 @@ class Tunnel(AbstractAsyncContextManager):
             result_capture_interfaces += [def_iface_name]
         for interface in result_capture_interfaces:
             iface, iface_name, _ = _SystemUtils._get_interface_info(label=interface)
-            self._iptables_rules += [_SystemUtils._create_marking_rule(iface_name, iface.with_prefixlen, sva_code), _SystemUtils._create_allowing_rule(None, iface.with_prefixlen, iface_name)]
+            self._iptables_rules += [_SystemUtils._create_marking_rule(iface_name, iface.with_prefixlen, sva_code, True), _SystemUtils._create_allowing_rule(None, iface.with_prefixlen, iface_name, True)]
         logger.info(f"Capturing packets from interfaces: {Fore.BLUE}{result_capture_interfaces}{Fore.RESET}")
 
         capture_ranges = (list() if capture_ranges is None else capture_ranges) + (list() if capture_addresses is None else [f"{address}/32" for address in capture_addresses])

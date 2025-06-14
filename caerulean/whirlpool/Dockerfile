@@ -72,6 +72,7 @@ HEALTHCHECK --interval=1m --timeout=1s --retries=3 --start-period=10s --start-in
 FROM default AS default-certified
 
 ARG SEASIDE_ADDRESS
+ENV SEASIDE_ADDRESS=$SEASIDE_ADDRESS
 
 ENV SEASIDE_CERTIFICATE_PATH=/seaside/caerulean/certificates/caerulean
 
