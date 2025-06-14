@@ -190,7 +190,7 @@ async function launchWhirlpool(whirlpool, silent) {
 	let composePath = DOCKER_COMPOSE_PATH;
 	if (platform == "win32") composePath = convertPathToWSL(composePath);
 	runCommandForSystem(
-		`echo ${SEASIDE_ADDRESS_ARG} && docker compose -f ${composePath} up --build --detach ${DOCKER_COMPOSE_BRIDGE_CONTAINER}`,
+		`echo $SEASIDE_ADDRESS_ARG && docker compose -f ${composePath} up --build --detach ${DOCKER_COMPOSE_BRIDGE_CONTAINER}`,
 		`wsl -u root docker compose -f ${composePath} up --build --detach ${DOCKER_COMPOSE_HOST_CONTAINER}`,
 		undefined,
 		{ "SEASIDE_ADDRESS_ARG": whirlpool }
