@@ -142,12 +142,14 @@ function getWhirlpoolIP(silent) {
 
 function getOutputConnection(unreachable) {
 	if (platform == "win32") {
-		throw Error("Not implemented!");
+		const route = getOutput(`(Find-NetRoute -RemoteIPAddress $WSL_IP | Select-Object -First 1 | ForEach-Object { "$($_.IPAddress) $($_.InterfaceAlias)" })`);
+		const match = route.match(/^(\d{1,3}(?:\.\d{1,3}){3})\s+(.+)$/);
+		return { iface: match[2], address: match[1] };
 	} else {
 		const route = getOutput(`ip route get ${unreachable}`);
 		const iface = route.match(/\bdev\s+(\S+)/)[1];
 		const address = route.match(/\bsrc\s+([0-9.]+)/)[1];
-		return { iface, address }
+		return { iface, address };
 	}
 }
 
@@ -191,7 +193,7 @@ async function launchWhirlpool(whirlpool, silent) {
 		`docker compose -f ${composePath} up --build --detach ${DOCKER_COMPOSE_BRIDGE_CONTAINER}`,
 		`wsl -u root docker compose -f ${composePath} up --build --detach ${DOCKER_COMPOSE_HOST_CONTAINER}`,
 		undefined,
-		{ SEASIDE_ADDRESS_ARG: whirlpool }
+		{ "SEASIDE_ADDRESS_ARG": whirlpool }
 	);
 	print("Waiting whirlpool to initiate...", silent);
 	await sleep(DOCKER_COMPOSE_TIMEOUT);
