@@ -64,7 +64,7 @@ jobs:
       - name: Test Viridian Algae PORT (standalone) 🧪
         id: test-viridian-algae-port
         working-directory: viridian/algae
-        run: sudo -E env "PATH=$PATH" poetry poe client -s port -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-addresses ${{ env.TARGET_ADDRESS }} -e "sh -c 'iptables -t mangle -S && iptables -t filter -S'"
+        run: sudo -E env "PATH=$PATH" poetry poe client -s port -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-addresses ${{ env.TARGET_ADDRESS }} -e "${{ env.TEST_COMMAND }}"
 
       - name: Test Viridian Algae TYPHOON (standalone) 🧪
         id: test-viridian-algae-typhoon
@@ -72,7 +72,6 @@ jobs:
         run: sudo -E env "PATH=$PATH" poetry poe client -s typhoon -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-addresses ${{ env.TARGET_ADDRESS }} -e "${{ env.TEST_COMMAND }}"
 
       - name: Print Whirlpool Logs
-        if: failure()
         working-directory: viridian/algae
         run: docker compose -f docker/compose.standalone.yml logs whirlpool-bridge
 
