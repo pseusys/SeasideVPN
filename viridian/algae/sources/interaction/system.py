@@ -199,7 +199,8 @@ class Tunnel(AbstractAsyncContextManager):
         logger.info(f"Allowed packets to {Fore.BLUE}caerulean{Fore.RESET} and to {Fore.BLUE}DNS{Fore.RESET}")
 
         result_capture_interfaces = list(set(list() if capture_iface is None else capture_iface) - set(list() if exempt_iface is None else exempt_iface))
-        result_capture_interfaces = [def_iface_name] if len(capture_iface) + len(capture_ranges) + len(capture_addresses) == 0 else result_capture_interfaces
+        if (capture_iface is None or len(capture_iface) == 0) and (capture_ranges is None or len(capture_ranges) == 0) and (capture_addresses is None or len(capture_iface) == 0):
+            result_capture_interfaces += [def_iface_name]
         for interface in result_capture_interfaces:
             iface, iface_name, _ = _SystemUtils._get_interface_info(label=interface)
             self._iptables_rules += [_SystemUtils._create_marking_rule(iface_name, iface.with_prefixlen, sva_code), _SystemUtils._create_marking_allowing_rule(iface_name, iface.with_prefixlen)]
