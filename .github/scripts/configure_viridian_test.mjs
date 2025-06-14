@@ -42,14 +42,15 @@ function printHelpMessage() {
  * @param {string} command the command to execute.
  * @returns {ChildProcess} child process spawned by the command.
  */
-function runCommand(command, environment) {
-	const child = spawnSync(command, { shell: true, encoding: "utf-8", env: environment });
+function runCommand(command, environment = {}) {
+	const childEnv = { ...process.env, ...environment };
+	const child = spawnSync(command, { shell: true, encoding: "utf-8", env: childEnv });
 	if (child.error) throw Error(`Command execution error: ${child.error.message}`);
 	else if (child.status !== 0) throw Error(`Command failed with error code: ${child.status}\n${child.stderr.toString()}`);
 	else return child;
 }
 
-function getOutput(command, environment) {
+function getOutput(command, environment = {}) {
 	return runCommand(command, environment).stdout.toString().trim();
 }
 
@@ -64,7 +65,7 @@ function getOutput(command, environment) {
  * @param {string | undefined} macosCommand command for MacOS.
  * @returns {ChildProcess} child process spawned by the command.
  */
-function runCommandForSystem(linuxCommand = undefined, windowsCommand = undefined, macosCommand = undefined, environment = Object()) {
+function runCommandForSystem(linuxCommand = undefined, windowsCommand = undefined, macosCommand = undefined, environment = {}) {
 	switch (platform) {
 		case "darwin":
 			if (macosCommand !== undefined) return runCommand(macosCommand, environment);
