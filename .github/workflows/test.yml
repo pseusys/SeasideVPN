@@ -71,6 +71,11 @@ jobs:
         working-directory: viridian/algae
         run: sudo -E env "PATH=$PATH" poetry poe client -s typhoon -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-addresses ${{ env.TARGET_ADDRESS }} -e "${{ env.TEST_COMMAND }}"
 
+      - name: Print Whirlpool Logs
+        if: failure()
+        working-directory: viridian/algae
+        run: docker compose -f docker/compose.standalone.yml logs whirlpool-bridge
+
   viridian-reef-test:
     name: Test Viridian Reef
     runs-on: ${{ format('{0}-latest', matrix.os) }}
