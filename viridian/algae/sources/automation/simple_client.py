@@ -70,10 +70,7 @@ parser.add_argument("-e", "--command", default=None, help="Command to execute an
 
 class AlgaeClient:
     def __init__(self, address: str, port: int, dns: IPv4Address = _DEFAULT_CURRENT_DNS, protocol: Optional[Union[Literal["typhoon"], Literal["port"]]] = None, capture_iface: Optional[List[str]] = None, capture_ranges: Optional[List[str]] = None, capture_addresses: Optional[List[str]] = None, exempt_iface: Optional[List[str]] = None, exempt_ranges: Optional[List[str]] = None, exempt_addresses: Optional[List[str]] = None, local_address: Optional[IPv4Address] = None):
-        try:
-            self._address = str(IPv4Address(address))
-        except AddressValueError:
-            self._address = gethostbyname(address)
+        self._address = address
         self._port = port
 
         if protocol is None or protocol == "port":
@@ -148,26 +145,9 @@ class AlgaeClient:
             if connection is not None:
                 await connection.close()
 
-    async def start(self, command: str, key: Optional[str] = None, token: Optional[bytes] = None, public: Optional[bytes] = None) -> None:
-        if token is None or public is None:
-            if key is None:
-                raise RuntimeError("All the connection parameters (key, token, public) are None - there is no known way to connect!")
-
-            identifier = token_urlsafe()
-            logger.info(f"Authenticating user {identifier}...")
-            authority = getenv("SEASIDE_ROOT_CERTIFICATE_AUTHORITY", None)
-
-            async with WhirlpoolClient(self._address, self._port, Path(authority)) as conn:
-                public, token, typhoon_port, port_port, _ = await conn.authenticate(identifier, key)
-                listener_port = typhoon_port if issubclass(self._proto_type, TyphoonClient) else port_port
-
-            logger.debug(f"User {identifier} token received: {token!r}")
-        else:
-            logger.debug(f"Proceeding with user token: {token!r}")
-            listener_port = self._port
-
+    async def start(self, command: str, port: Optional[str] = None, token: Optional[bytes] = None, public: Optional[bytes] = None) -> None:
         logger.info(f"Executing command: {command}")
-        async with self._tunnel as tunnel_fd, self._start_vpn_loop(token, public, listener_port, tunnel_fd):
+        async with self._tunnel as tunnel_fd, self._start_vpn_loop(token, public, port, tunnel_fd):
             proc = await create_subprocess_shell(command, stdout=PIPE, stderr=PIPE)
             stdout, stderr = await proc.communicate()
             retcode = proc.returncode
@@ -211,14 +191,37 @@ async def main(args: Sequence[str] = argv[1:]) -> None:
     key = arguments.pop("key")
     token = arguments.pop("token")
     public = arguments.pop("public")
-    client = AlgaeClient(**arguments)
 
+    try:
+        arguments["address"] = str(IPv4Address(arguments["address"]))
+    except AddressValueError:
+        arguments["address"] = gethostbyname(arguments["address"])
+
+    if token is None or public is None:
+        if key is None:
+            raise RuntimeError("All the connection parameters (key, token, public) are None - there is no known way to connect!")
+
+        identifier = token_urlsafe()
+        logger.info(f"Authenticating user {identifier}...")
+        authority = getenv("SEASIDE_ROOT_CERTIFICATE_AUTHORITY", None)
+
+        async with WhirlpoolClient(arguments["address"], arguments["port"], Path(authority)) as conn:
+            public, token, typhoon_port, port_port, dns = await conn.authenticate(identifier, key)
+            listener_port = typhoon_port if arguments["protocol"] == "typhoon" else port_port
+            arguments["dns"] = IPv4Address(dns)
+
+        logger.debug(f"User {identifier} token received: {token!r}")
+    else:
+        logger.debug(f"Proceeding with user token: {token!r}")
+        listener_port = arguments["port"]
+
+    client = AlgaeClient(**arguments)
     logger.debug("Setting up interruption handlers for client...")
     loop.add_signal_handler(SIGTERM, lambda: create_task(client.interrupt(True)))
     loop.add_signal_handler(SIGINT, lambda: create_task(client.interrupt(True)))
 
     logger.info(f"Running client for command: {command}")
-    await client.start(command, key, token, public)
+    await client.start(command, listener_port, token, public)
 
     logger.info("Done running command, shutting client down!")
     await client.interrupt(False)
