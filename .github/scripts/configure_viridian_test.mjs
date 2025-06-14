@@ -153,6 +153,7 @@ function setupRouting(unreachable, silent) {
 	print(`Disabling access to ${unreachable} address...`, silent);
 	let iface = String();
 	if (platform == "linux") iface = getOutput(`ip route get ${unreachable}`).match(/\bdev\s+(\S+)/)[1];
+	throw Error(`tc qdisc add dev ${iface} handle ffff: ingress && tc filter add dev ${iface} protocol ip parent ffff: u32 match ip dst ${unreachable} action drop`);
 	runCommandForSystem(
 		`tc qdisc add dev ${iface} handle ffff: ingress && tc filter add dev ${iface} protocol ip parent ffff: u32 match ip dst ${unreachable} action drop`,
 		`New-NetFirewallRule -DisplayName "seaside-test-block-unreachable" -Direction Outbound -RemoteAddress ${unreachable} -Action Block -Profile Any -Enabled True`
