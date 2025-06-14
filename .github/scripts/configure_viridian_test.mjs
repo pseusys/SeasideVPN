@@ -158,7 +158,7 @@ function setupRouting(unreachable, silent) {
 
 function resetRouting(unreachable, silent) {
 	print(`Enabling access to ${unreachable} address...`, silent);
-	runCommandForSystem(`sudo iptables -D OUTPUT -d ${unreachable}/32 -j DROP`, `Remove-NetFirewallRule -DisplayName "seaside-test-block-unreachable"`);
+	runCommandForSystem(`sudo iptables -D OUTPUT --dst ${unreachable}/32 -j DROP`, `Remove-NetFirewallRule -DisplayName "seaside-test-block-unreachable"`);
 	print(`Accessing ${unreachable} is possible again!`, silent);
 }
 
@@ -199,7 +199,7 @@ const args = parseArguments();
 const whirlpoolIP = parseDockerComposeFile(args.silent);
 if (!args.reset) {
 	await launchWhirlpool(whirlpoolIP, args.silent);
-	setupRouting(args.target, args.silent);
+	//setupRouting(args.target, args.silent);
 	print(whirlpoolIP, !args.silent);
 } else {
 	resetRouting(args.target, args.silent);
