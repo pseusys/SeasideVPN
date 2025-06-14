@@ -1,6 +1,7 @@
 from asyncio import FIRST_COMPLETED, CancelledError, Future, sleep, wait
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from contextlib import suppress
+from ipaddress import IPv4Address
 from logging import Formatter, Logger, StreamHandler, getLogger
 from os import getenv
 from secrets import randbelow
@@ -106,7 +107,7 @@ WhirlpoolConnectionLinkDict = TypedDict(
         "port": Optional[int],
         "typhoon": Optional[int],
         "token": bytes,
-        "dns": Optional[str]
+        "dns": Optional[IPv4Address]
     },
 )
 
@@ -153,7 +154,7 @@ def parse_connection_link(link: str) -> Union[SurfaceConnectionLinkDict, Whirlpo
         result["port"] = _extract_from_query(query_params, "port", int, True)
         result["typhoon"] = _extract_from_query(query_params, "typhoon", int, True)
         result["token"] = _extract_from_query(query_params, "token", urlsafe_b64decode_nopad)
-        result["dns"] = _extract_from_query(query_params, "dns", str, True)
+        result["dns"] = _extract_from_query(query_params, "dns", IPv4Address, True)
     else:
         raise RuntimeError(f"Unknown connection link node type scheme: {link_type}")
     return result
