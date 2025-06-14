@@ -72,7 +72,6 @@ HEALTHCHECK --interval=1m --timeout=1s --retries=3 --start-period=10s --start-in
 FROM default AS default-certified
 
 ARG SEASIDE_ADDRESS
-ENV SEASIDE_ADDRESS=$SEASIDE_ADDRESS
 
 ENV SEASIDE_CERTIFICATE_PATH=/seaside/caerulean/certificates/caerulean
 
@@ -88,7 +87,7 @@ ENTRYPOINT ["sh", "-c", "cp -r /tmp/certificates ./ && ./whirlpool.run"]
 FROM default-certified AS default-routed
 
 ARG NETWORK_GATEWAY
-ENV NETWORK_GATEWAY=$NETWORK_GATEWAY
+ENV ARG_NETWORK_GATEWAY=$NETWORK_GATEWAY
 
 # Setup default route IP and run viridian algae with command.
-ENTRYPOINT ["sh", "-c", "ip route replace default via $NETWORK_GATEWAY && cp -r /tmp/certificates ./ && ./whirlpool.run"]
+ENTRYPOINT ["sh", "-c", "ip route replace default via $ARG_NETWORK_GATEWAY && cp -r /tmp/certificates ./ && ./whirlpool.run"]
