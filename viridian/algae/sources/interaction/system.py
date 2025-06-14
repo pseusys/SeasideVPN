@@ -133,17 +133,8 @@ class _SystemUtils:
         rule = str()
         if default_interface is not None:
             rule = f"{rule} -o {default_interface}"
-        rule = f"{rule} ! -d {def_prefixlen}"
+        rule = f"{rule} -d {def_prefixlen}"
         rule = f"{rule} -j MARK --set-mark {hex(sva_code)}"
-        return rule
-
-    @classmethod
-    def _create_marking_allowing_rule(cls, default_interface: Optional[str], def_prefixlen: str) -> str:
-        rule = str()
-        if default_interface is not None:
-            rule = f"{rule} -o {default_interface}"
-        rule = f"{rule} ! -d {def_prefixlen}"
-        rule = f"{rule} -j ACCEPT"
         return rule
 
     @classmethod
@@ -203,7 +194,7 @@ class Tunnel(AbstractAsyncContextManager):
             result_capture_interfaces += [def_iface_name]
         for interface in result_capture_interfaces:
             iface, iface_name, _ = _SystemUtils._get_interface_info(label=interface)
-            self._iptables_rules += [_SystemUtils._create_marking_rule(iface_name, iface.with_prefixlen, sva_code), _SystemUtils._create_marking_allowing_rule(iface_name, iface.with_prefixlen)]
+            self._iptables_rules += [_SystemUtils._create_marking_rule(iface_name, iface.with_prefixlen, sva_code), _SystemUtils._create_allowing_rule(None, iface.with_prefixlen, iface_name)]
         logger.info(f"Capturing packets from interfaces: {Fore.BLUE}{result_capture_interfaces}{Fore.RESET}")
 
         capture_ranges = (list() if capture_ranges is None else capture_ranges) + (list() if capture_addresses is None else [f"{address}/32" for address in capture_addresses])
@@ -211,12 +202,12 @@ class Tunnel(AbstractAsyncContextManager):
 
         result_capture_ranges = list(set(capture_ranges) - set(exempt_ranges))
         for range in result_capture_ranges:
-            self._iptables_rules += [_SystemUtils._create_marking_rule(None, range, sva_code), _SystemUtils._create_marking_allowing_rule(None, range)]
+            self._iptables_rules += [_SystemUtils._create_marking_rule(None, range, sva_code), _SystemUtils._create_allowing_rule(None, range, None)]
         logger.info(f"Capturing packets from ranges: {Fore.BLUE}{result_capture_ranges}{Fore.RESET}")
 
         result_exempt_ranges = list(set(exempt_ranges) - set(capture_ranges))
         for range in result_exempt_ranges:
-            self._iptables_rules += [_SystemUtils._create_marking_allowing_rule(None, range)]
+            self._iptables_rules += [_SystemUtils._create_allowing_rule(None, range, None)]
         logger.info(f"Letting through packets from ranges: {Fore.BLUE}{result_exempt_ranges}{Fore.RESET}")
         logger.info(f"Packet capturing rules {Fore.GREEN}created{Fore.RESET}")
 
