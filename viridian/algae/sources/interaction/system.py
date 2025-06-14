@@ -190,7 +190,7 @@ class Tunnel(AbstractAsyncContextManager):
         self._operational = False
 
         self._resolv_conf_data, new_dns = _SystemUtils._set_dns_servers(dns)
-        logger.info(f"Set DNS server to {Fore.BLUE}{new_dns}{Fore.RESET} set")
+        logger.info(f"Set DNS server to {Fore.BLUE}{new_dns}{Fore.RESET}")
 
         self._descriptor, self._tunnel_dev = _SystemUtils._create_tunnel(name)
         logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} created")
