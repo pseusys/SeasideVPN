@@ -49,6 +49,10 @@ function runCommand(command, environment) {
 	else return child;
 }
 
+function getOutput(command, environment) {
+	return runCommand(command, environment).stdout.toString().trim();
+}
+
 /**
  * Execute different console commands for different operation systems.
  * Transform all paths so that separators are consistent with the selected platform.
@@ -79,15 +83,10 @@ function runCommandForSystem(linuxCommand = undefined, windowsCommand = undefine
  * @param {string} path path ro convert.
  * @returns {string} converted path.
  */
-function optionallyConvertPathToWSL(path) {
-	switch (platform) {
-		case "win32":
-			return runCommand(`wsl wslpath -a ${path.replaceAll("\\", "\\\\")}`)
-				.stdout.toString()
-				.trim();
-		default:
-			return path;
-	}
+function convertPathToWSL(path) {
+	return runCommand(`wsl wslpath -a ${path.replaceAll("\\", "\\\\")}`)
+		.stdout.toString()
+		.trim();
 }
 
 /**
@@ -129,7 +128,7 @@ function parseArguments() {
 function parseDockerComposeFile(silent) {
 	if (platform == "win32") {
 		print("Reading system configurations...", silent);
-		const WSLIP = runCommand("hostname -I").stdout.toString().trim().split(" ")[0].trim();
+		const WSLIP = getOutput("hostname -I").split(" ")[0].trim();
 		print(`Extracted whirlpool IP from WSL configuration: ${WSLIP}`, silent);
 		return WSLIP;
 	} else {
@@ -152,13 +151,23 @@ function parseDockerComposeFile(silent) {
  */
 function setupRouting(unreachable, silent) {
 	print(`Disabling access to ${unreachable} address...`, silent);
-	runCommandForSystem(`iptables -A OUTPUT --dst ${unreachable}/32 -j DROP`, `New-NetFirewallRule -DisplayName "seaside-test-block-unreachable" -Direction Outbound -RemoteAddress ${unreachable} -Action Block -Profile Any -Enabled True`);
+	let iface = String();
+	if (platform == "linux") iface = getOutput(`ip route get ${unreachable}`).match(/\bdev\s+(\S+)/)[1];
+	runCommandForSystem(
+		`tc qdisc add dev ${iface} handle ffff: ingress && tc filter add dev ${iface} protocol ip parent ffff: u32 match ip dst ${unreachable} action drop`,
+		`New-NetFirewallRule -DisplayName "seaside-test-block-unreachable" -Direction Outbound -RemoteAddress ${unreachable} -Action Block -Profile Any -Enabled True`
+	);
 	print(`Accessing ${unreachable} is no longer possible!`, silent);
 }
 
 function resetRouting(unreachable, silent) {
 	print(`Enabling access to ${unreachable} address...`, silent);
-	runCommandForSystem(`sudo iptables -D OUTPUT --dst ${unreachable}/32 -j DROP`, `Remove-NetFirewallRule -DisplayName "seaside-test-block-unreachable"`);
+	let iface = String();
+	if (platform == "linux") iface = getOutput(`ip route get ${unreachable}`).match(/\bdev\s+(\S+)/)[1];
+	runCommandForSystem(
+		`tc qdisc del dev ${iface} ingress`,
+		`Remove-NetFirewallRule -DisplayName "seaside-test-block-unreachable"`
+	);
 	print(`Accessing ${unreachable} is possible again!`, silent);
 }
 
@@ -169,9 +178,11 @@ function resetRouting(unreachable, silent) {
  */
 async function launchWhirlpool(whirlpool, silent) {
 	print("Spawning whirlpool process...", silent);
+	let composePath = DOCKER_COMPOSE_PATH;
+	if (platform == "win32") composePath = convertPathToWSL(composePath);
 	runCommandForSystem(
-		`docker compose -f ${DOCKER_COMPOSE_PATH} up --build --detach ${DOCKER_COMPOSE_BRIDGE_CONTAINER}`,
-		`wsl -u root docker compose -f ${optionallyConvertPathToWSL(DOCKER_COMPOSE_PATH)} up --build --detach ${DOCKER_COMPOSE_HOST_CONTAINER}`,
+		`docker compose -f ${composePath} up --build --detach ${DOCKER_COMPOSE_BRIDGE_CONTAINER}`,
+		`wsl -u root docker compose -f ${composePath} up --build --detach ${DOCKER_COMPOSE_HOST_CONTAINER}`,
 		undefined,
 		{ SEASIDE_ADDRESS_ARG: whirlpool }
 	);
@@ -186,7 +197,9 @@ async function launchWhirlpool(whirlpool, silent) {
  */
 async function killWhirlpool(silent) {
 	print("Killing whirlpool process...", silent);
-	runCommandForSystem(`docker compose -f ${DOCKER_COMPOSE_PATH} down`, `wsl -u root docker compose -f ${optionallyConvertPathToWSL(DOCKER_COMPOSE_PATH)} down`);
+	let composePath = DOCKER_COMPOSE_PATH;
+	if (platform == "win32") composePath = convertPathToWSL(composePath);
+	runCommandForSystem(`docker compose -f ${composePath} down`, `wsl -u root docker compose -f ${composePath} down`);
 	print("Whirlpool process killed!", silent);
 }
 
@@ -199,7 +212,7 @@ const args = parseArguments();
 const whirlpoolIP = parseDockerComposeFile(args.silent);
 if (!args.reset) {
 	await launchWhirlpool(whirlpoolIP, args.silent);
-	//setupRouting(args.target, args.silent);
+	setupRouting(args.target, args.silent);
 	print(whirlpoolIP, !args.silent);
 } else {
 	resetRouting(args.target, args.silent);
