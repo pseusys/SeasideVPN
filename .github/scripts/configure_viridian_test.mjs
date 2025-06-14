@@ -194,7 +194,7 @@ async function launchWhirlpool(whirlpool, silent) {
 		`docker compose -f ${composePath} up --build --detach ${DOCKER_COMPOSE_BRIDGE_CONTAINER}`,
 		`wsl -u root docker compose -f ${composePath} up --build --detach ${DOCKER_COMPOSE_HOST_CONTAINER}`,
 		undefined,
-		{ "SEASIDE_ADDRESS": whirlpool }
+		{ "SEASIDE_HOST_ADDRESS": whirlpool }
 	);
 	print("Waiting whirlpool to initiate...", silent);
 	await sleep(DOCKER_COMPOSE_TIMEOUT);
