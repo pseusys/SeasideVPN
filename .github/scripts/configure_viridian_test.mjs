@@ -125,7 +125,7 @@ function parseArguments() {
  * Extract gateway container IP, whirlpool container IP, whirlpool container network, echo container IP and echo container network.
  * @returns {object} containing keys: `gatewayIP`, `whirlpoolNetwork`, `whirlpoolIP`, `echoIP`, `echoNetwork`.
  */
-function parseDockerComposeFile(silent) {
+function getWhirlpoolIP(silent) {
 	if (platform == "win32") {
 		print("Reading system configurations...", silent);
 		const WSLIP = getOutput("hostname -I").split(" ")[0].trim();
@@ -140,6 +140,17 @@ function parseDockerComposeFile(silent) {
 	}
 }
 
+function getOutputConnection(unreachable) {
+	if (platform == "win32") {
+		throw Error("Not implemented!");
+	} else {
+		const route = getOutput(`ip route get ${unreachable}`);
+		const iface = route.match(/\bdev\s+(\S+)/)[1];
+		const address = route.match(/\bsrc\s+([0-9.]+)/)[1];
+		return { iface, address }
+	}
+}
+
 /**
  * Extract and remove system route to the given network and replace it with a route via given gateway.
  * After that, print the resulting routes.
@@ -149,23 +160,19 @@ function parseDockerComposeFile(silent) {
  * @param {string} unreachableNetwork network that will become unreachable (directly).
  * @param {string | null} name the given name for the unreachable IP and network.
  */
-function setupRouting(unreachable, silent) {
+function setupRouting(unreachable, iface, address, silent) {
 	print(`Disabling access to ${unreachable} address...`, silent);
-	let iface = String();
-	if (platform == "linux") iface = getOutput(`ip route get ${unreachable}`).match(/\bdev\s+(\S+)/)[1];
 	runCommandForSystem(
-		`tc qdisc add dev ${iface} root handle 1: prio && tc filter add dev ${iface} protocol ip parent 1: prio 1 u32 match ip dst ${unreachable} flowid :1 action drop`,
-		`New-NetFirewallRule -DisplayName "seaside-test-block-unreachable" -Direction Outbound -RemoteAddress ${unreachable} -Action Block -Profile Any -Enabled True`
+		`tc qdisc add dev ${iface} root handle 1: prio && tc filter add dev ${iface} protocol ip parent 1: prio 1 u32 match ip src ${address} match ip dst ${unreachable} flowid :1 action drop`,
+		`New-NetFirewallRule -DisplayName "seaside-test-block-unreachable" -Direction Outbound -LocalAddress ${address} -RemoteAddress ${unreachable} -Action Block -Profile Any -Enabled True`
 	);
 	print(`Accessing ${unreachable} is no longer possible!`, silent);
 }
 
-function resetRouting(unreachable, silent) {
+function resetRouting(unreachable, iface, silent) {
 	print(`Enabling access to ${unreachable} address...`, silent);
-	let iface = String();
-	if (platform == "linux") iface = getOutput(`ip route get ${unreachable}`).match(/\bdev\s+(\S+)/)[1];
 	runCommandForSystem(
-		`tc qdisc del dev ${iface} ingress`,
+		`tc qdisc del dev ${iface} root`,
 		`Remove-NetFirewallRule -DisplayName "seaside-test-block-unreachable"`
 	);
 	print(`Accessing ${unreachable} is possible again!`, silent);
@@ -209,12 +216,13 @@ async function killWhirlpool(silent) {
 // Since, in fact, the only meaningful targets are whirlpool and echo docker containers, routes to them are changed instead of the default one.
 // Viridian client determines the default route as the route to the caerulean address, so the router address is considered to be the default one.
 const args = parseArguments();
-const whirlpoolIP = parseDockerComposeFile(args.silent);
+const whirlpoolIP = getWhirlpoolIP(args.silent);
+const { iface, address } = getOutputConnection(args.silent);
 if (!args.reset) {
 	await launchWhirlpool(whirlpoolIP, args.silent);
-	setupRouting(args.target, args.silent);
+	setupRouting(args.target, iface, address, args.silent);
 	print(whirlpoolIP, !args.silent);
 } else {
-	resetRouting(args.target, args.silent);
+	resetRouting(args.target, iface, args.silent);
 	await killWhirlpool(args.silent);
 }
