@@ -75,6 +75,8 @@ ARG SEASIDE_ADDRESS
 
 ENV SEASIDE_CERTIFICATE_PATH=/seaside/caerulean/certificates/caerulean
 
+RUN echo "Seaside address: $SEASIDE_ADDRESS" && exit 1
+
 RUN apk add --no-cache openssl
 RUN mkdir -p /tmp/certificates/caerulean && mkdir -p /tmp/certificates/viridian && cd /tmp/certificates \
     && openssl req -digest -newkey rsa:2048 -sha256 -nodes -keyout caerulean/cert.key -out caerulean/cert.csr -subj "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPN" -addext "subjectAltName = IP:${SEASIDE_ADDRESS}" -addext keyUsage=critical,digitalSignature,nonRepudiation -addext extendedKeyUsage=serverAuth \

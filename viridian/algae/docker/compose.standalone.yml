@@ -9,8 +9,6 @@ services:
       target: default-certified
       args:
         SEASIDE_ADDRESS: ${SEASIDE_HOST_ADDRESS}
-    environment:
-      SEASIDE_ADDRESS: ${SEASIDE_HOST_ADDRESS}
 
   whirlpool-bridge:
     extends: whirlpool-base
