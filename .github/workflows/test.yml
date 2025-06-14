@@ -47,7 +47,8 @@ jobs:
     name: Test Viridian Algae Quick
     runs-on: ubuntu-latest
     env:
-      TEST_COMMAND: sudo sh -c 'iptables -t filter -S && iptables -t mangle -S' # curl -sS -I --fail --max-time 15 https://1.1.1.1
+      TARGET_ADDRESS: 1.1.1.1
+      TEST_COMMAND: curl -sS -I --fail --max-time 15 https://1.1.1.1
 
     steps:
       - name: Checkout 🛎️
@@ -57,18 +58,18 @@ jobs:
         id: setup-test-server
         uses: ./.github/actions/setup-server
         with:
-          target: 1.1.1.1
-  #        test-command: ${{ env.TEST_COMMAND }}
+          target: ${{ env.TARGET_ADDRESS }}
+          test-command: ${{ env.TEST_COMMAND }}
 
       - name: Test Viridian Algae PORT (standalone) 🧪
         id: test-viridian-algae-port
         working-directory: viridian/algae
-        run: sudo -E env "PATH=$PATH" poetry poe client -s port -l "${{ steps.setup-test-server.outputs.connection-link }}" -e "${{ env.TEST_COMMAND }}"
+        run: sudo -E env "PATH=$PATH" poetry poe client -s port -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-addresses ${{ env.TARGET_ADDRESS }} -e "${{ env.TEST_COMMAND }}"
 
       - name: Test Viridian Algae TYPHOON (standalone) 🧪
         id: test-viridian-algae-typhoon
         working-directory: viridian/algae
-        run: sudo -E env "PATH=$PATH" poetry poe client -s typhoon -l "${{ steps.setup-test-server.outputs.connection-link }}" -e "${{ env.TEST_COMMAND }}"
+        run: sudo -E env "PATH=$PATH" poetry poe client -s typhoon -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-addresses ${{ env.TARGET_ADDRESS }} -e "${{ env.TEST_COMMAND }}"
 
   viridian-reef-test:
     name: Test Viridian Reef
