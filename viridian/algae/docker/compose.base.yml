@@ -16,9 +16,6 @@ services:
     environment:
       RUNNING_IN_CI: ${RUNNING_IN_CI:-0}
       SEASIDE_ROOT_CERTIFICATE_AUTHORITY: /seaside/viridian/ca/rootCA.crt
-    dns:
-      - 1.1.1.1
-      - 8.8.8.8
     sysctls:
       - net.ipv6.conf.all.disable_ipv6=1
     volumes:

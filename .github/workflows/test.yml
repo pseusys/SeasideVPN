@@ -47,7 +47,7 @@ jobs:
     name: Test Viridian Algae Quick
     runs-on: ubuntu-latest
     env:
-      TEST_COMMAND: sudo iptables -S # curl -sS -I --fail --max-time 15 https://1.1.1.1
+      TEST_COMMAND: sudo sh -c 'iptables -t filter -S && iptables -t mangle -S' # curl -sS -I --fail --max-time 15 https://1.1.1.1
 
     steps:
       - name: Checkout 🛎️
