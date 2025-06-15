@@ -118,22 +118,24 @@ class _SystemUtils:
         cls._RESOLV_CONF_PATH.write_text(resolv_conf_data)
 
     @classmethod
-    def _create_allowing_rule(cls, def_subnet: Optional[str], seaside_address: str, default_interface: Optional[str], negative: bool = False) -> str:
+    def _create_allowing_rule(cls, source_subnet: Optional[str], destination_subnet: Optional[str], output_interface: Optional[str], negative_destination: bool = False) -> str:
         rule = str()
-        if def_subnet is not None:
-            rule = f"{rule} -s {def_subnet}"
-        if default_interface is not None:
-            rule = f"{rule} -o {default_interface}"
-        rule = f"{rule} {'!' if negative else ''} -d {seaside_address}"
+        if source_subnet is not None:
+            rule = f"{rule} -s {source_subnet}"
+        if output_interface is not None:
+            rule = f"{rule} -o {output_interface}"
+        if destination_subnet is not None:
+            rule = f"{rule} {'!' if negative_destination else ''} -d {destination_subnet}"
         rule = f"{rule} -j ACCEPT"
         return rule
 
     @classmethod
-    def _create_marking_rule(cls, default_interface: Optional[str], def_prefixlen: str, sva_code: int, negative: bool = False) -> str:
+    def _create_marking_rule(cls, destination_subnet: Optional[str], output_interface: Optional[str], sva_code: int, negative_destination: bool = False) -> str:
         rule = str()
-        if default_interface is not None:
-            rule = f"{rule} -o {default_interface}"
-        rule = f"{rule} {'!' if negative else ''} -d {def_prefixlen}"
+        if output_interface is not None:
+            rule = f"{rule} -o {output_interface}"
+        if destination_subnet is not None:
+            rule = f"{rule} {'!' if negative_destination else ''} -d {destination_subnet}"
         rule = f"{rule} -j MARK --set-mark {hex(sva_code)}"
         return rule
 
@@ -186,15 +188,14 @@ class Tunnel(AbstractAsyncContextManager):
         self._descriptor, self._tunnel_dev = _SystemUtils._create_tunnel(name)
         logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} created")
 
-        self._iptables_rules = [_SystemUtils._create_allowing_rule(f"{self._def_iface.ip}/32", seaside_adr_str, def_iface_name), _SystemUtils._create_allowing_rule(None, f"{new_dns}/32", None)]
+        self._iptables_rules = [_SystemUtils._create_allowing_rule(None, f"{new_dns}/32", None), _SystemUtils._create_allowing_rule(f"{self._def_iface.ip}/32", seaside_adr_str, def_iface_name)]
         logger.info(f"Allowed packets to {Fore.BLUE}caerulean{Fore.RESET} and to {Fore.BLUE}DNS{Fore.RESET}")
 
         result_capture_interfaces = list() if capture_iface is None else capture_iface
         if (capture_iface is None or len(capture_iface) == 0) and (capture_ranges is None or len(capture_ranges) == 0) and (capture_addresses is None or len(capture_addresses) == 0):
             result_capture_interfaces += [def_iface_name]
         for interface in result_capture_interfaces:
-            iface, iface_name, _ = _SystemUtils._get_interface_info(label=interface)
-            self._iptables_rules += [_SystemUtils._create_marking_rule(iface_name, iface.with_prefixlen, sva_code, True), _SystemUtils._create_allowing_rule(None, iface.with_prefixlen, iface_name, True)]
+            self._iptables_rules += [_SystemUtils._create_marking_rule(None, interface, sva_code, True), _SystemUtils._create_allowing_rule(None, None, interface, True)]
         logger.info(f"Capturing packets from interfaces: {Fore.BLUE}{result_capture_interfaces}{Fore.RESET}")
 
         capture_ranges = (list() if capture_ranges is None else capture_ranges) + (list() if capture_addresses is None else [f"{address}/32" for address in capture_addresses])
@@ -202,7 +203,7 @@ class Tunnel(AbstractAsyncContextManager):
 
         result_capture_ranges = list(set(capture_ranges) - set(exempt_ranges))
         for range in result_capture_ranges:
-            self._iptables_rules += [_SystemUtils._create_marking_rule(None, range, sva_code), _SystemUtils._create_allowing_rule(None, range, None)]
+            self._iptables_rules += [_SystemUtils._create_marking_rule(range, None, sva_code), _SystemUtils._create_allowing_rule(None, range, None)]
         logger.info(f"Capturing packets from ranges: {Fore.BLUE}{result_capture_ranges}{Fore.RESET}")
 
         result_exempt_ranges = list(set(exempt_ranges) - set(capture_ranges))
