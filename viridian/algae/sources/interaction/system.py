@@ -155,7 +155,7 @@ class Tunnel(AbstractAsyncContextManager):
     It also creates and removes iptables rules for packet forwarding.
     """
 
-    def __init__(self, name: str, address: IPv4Address, netmask: IPv4Address, sva_code: int, seaside_address: IPv4Address, dns: IPv4Address, capture_iface: Optional[List[str]] = None, capture_ranges: Optional[List[str]] = None, capture_addresses: Optional[List[str]] = None, exempt_iface: Optional[List[str]] = None, exempt_ranges: Optional[List[str]] = None, exempt_addresses: Optional[List[str]] = None, local_address: Optional[IPv4Address] = None):
+    def __init__(self, name: str, address: IPv4Address, netmask: IPv4Address, sva_code: int, seaside_address: IPv4Address, dns: IPv4Address, capture_iface: Optional[List[str]] = None, capture_ranges: Optional[List[str]] = None, capture_addresses: Optional[List[str]] = None, exempt_ranges: Optional[List[str]] = None, exempt_addresses: Optional[List[str]] = None, local_address: Optional[IPv4Address] = None):
         """
         Tunnel constructor.
         :param self: instance of Tunnel.
@@ -189,7 +189,7 @@ class Tunnel(AbstractAsyncContextManager):
         self._iptables_rules = [_SystemUtils._create_allowing_rule(f"{self._def_iface.ip}/32", seaside_adr_str, def_iface_name), _SystemUtils._create_allowing_rule(None, f"{new_dns}/32", None)]
         logger.info(f"Allowed packets to {Fore.BLUE}caerulean{Fore.RESET} and to {Fore.BLUE}DNS{Fore.RESET}")
 
-        result_capture_interfaces = list(set(list() if capture_iface is None else capture_iface) - set(list() if exempt_iface is None else exempt_iface))
+        result_capture_interfaces = list() if capture_iface is None else capture_iface
         if (capture_iface is None or len(capture_iface) == 0) and (capture_ranges is None or len(capture_ranges) == 0) and (capture_addresses is None or len(capture_addresses) == 0):
             result_capture_interfaces += [def_iface_name]
         for interface in result_capture_interfaces:
