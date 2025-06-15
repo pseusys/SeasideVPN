@@ -38,7 +38,7 @@ fn parse_bytes<'a>(string: String) -> DynResult<ByteBuffer<'a>> {
 
 
 #[derive(StructOpt, Debug)]
-#[structopt()]
+#[structopt(rename_all = "kebab-case")]
 struct Opt {
     /// Caerulean remote IP address (default: [`DEFAULT_CAERULEAN_ADDRESS`])
     #[structopt(short = "a", long, default_value = DEFAULT_CAERULEAN_ADDRESS, parse(try_from_str = parse_address))]
@@ -68,23 +68,20 @@ struct Opt {
     #[structopt(short = "l", long)]
     link: Option<String>,
 
-    #[structopt(long = "capture-iface")]
-    capture_iface: Option<String>,
+    #[structopt(long)]
+    capture_iface: Vec<String>,
 
-    #[structopt(long = "exempt-iface")]
-    exempt_iface: Option<String>,
+    #[structopt(long)]
+    capture_ranges: Vec<String>,
 
-    #[structopt(long = "capture-ranges")]
-    capture_ranges: Option<String>,
+    #[structopt(long)]
+    exempt_ranges: Vec<String>,
 
-    #[structopt(long = "exempt-ranges")]
-    exempt_ranges: Option<String>,
+    #[structopt(long)]
+    capture_addresses: Vec<String>,
 
-    #[structopt(long = "capture-addresses")]
-    capture_addresses: Option<String>,
-
-    #[structopt(long = "exempt-addresses")]
-    exempt_addresses: Option<String>,
+    #[structopt(long)]
+    exempt_addresses: Vec<String>,
 
     /// Install VPN connection, run command and exit after command is finished
     #[structopt(short = "e", long)]
@@ -163,7 +160,7 @@ async fn main() -> DynResult<()> {
 
     info!("Creating reef client...");
     debug!("Parameters for reef client: address {address}, port {port}, protocol {protocol:?}, token length {}, public key length {}, dns {dns}", token.len(), public.len());
-    let mut constructor = Viridian::new(address, port, token, public, protocol).await?;
+    let mut constructor = Viridian::new(address, port, token, public, protocol, Some(dns), Some(opt.capture_iface), Some(opt.capture_ranges), Some(opt.exempt_ranges), Some(opt.capture_addresses), Some(opt.exempt_addresses)).await?;
 
     info!("Starting reef Viridian...");
     constructor.start(opt.command).await?;

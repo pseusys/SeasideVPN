@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 use neli::consts::nl::{NlType, NlmF, NlmFFlags};
-use neli::consts::rtnl::{Arphrd, IfaFFlags, IffFlags, RtAddrFamily, RtScope, RtTable, Rta, Rtm, RtmF, RtmFFlags, Rtn, Rtprot};
+use neli::consts::rtnl::{Arphrd, Ifa, IfaFFlags, IffFlags, RtAddrFamily, RtScope, RtTable, Rta, RtaType, Rtm, RtmF, RtmFFlags, Rtn, Rtprot};
 use neli::consts::socket::NlFamily;
 use neli::err::NlError;
 use neli::nl::{NlPayload, Nlmsghdr};
@@ -16,6 +16,12 @@ use crate::DynResult;
 
 // TODO: remove whenever neli-0.7.0 is out!
 fn copy_rtattr(attribute: &Rtattr<Rta, Buffer>) -> Rtattr<Rta, Buffer> {
+    let buffer = Buffer::from(attribute.rta_payload.as_ref());
+    Rtattr::new(Some(attribute.rta_len), attribute.rta_type, buffer).expect("Error serializing payload!")
+}
+
+// TODO: remove whenever neli-0.7.0 is out!
+fn copy_ifattr(attribute: &Rtattr<Ifa, Buffer>) -> Rtattr<Ifa, Buffer> {
     let buffer = Buffer::from(attribute.rta_payload.as_ref());
     Rtattr::new(Some(attribute.rta_len), attribute.rta_type, buffer).expect("Error serializing payload!")
 }
@@ -87,7 +93,7 @@ pub fn create_socket() -> DynResult<NlSocketHandle> {
     Ok(NlSocketHandle::connect(NlFamily::Route, None, &[])?)
 }
 
-pub fn create_attr<P: Size + ToBytes>(attr_type: Rta, buffer: P) -> DynResult<Rtattr<Rta, Buffer>> {
+pub fn create_attr<T: RtaType, P: Size + ToBytes>(attr_type: T, buffer: P) -> DynResult<Rtattr<T, Buffer>> {
     Ok(Rtattr::new(None, attr_type, buffer)?)
 }
 
@@ -124,8 +130,12 @@ pub fn create_clear_cache_message(nl_type: Rtm) -> DynResult<Nlmsghdr<Rtm, Rtmsg
     Ok(header)
 }
 
-pub fn create_address_message(interface: i32, nl_type: Rtm) -> Nlmsghdr<Rtm, Ifaddrmsg> {
-    let message = Ifaddrmsg {ifa_family: RtAddrFamily::Inet, ifa_flags: IfaFFlags::empty(), ifa_index: interface, ifa_prefixlen: 0, ifa_scope: RtScope::Host.into(), rtattrs: RtBuffer::new()};
+pub fn create_address_message(interface: i32, nl_type: Rtm, args: &[Rtattr<Ifa, Buffer>]) -> Nlmsghdr<Rtm, Ifaddrmsg> {
+    let mut rtbuff = RtBuffer::new();
+    for arg in args {
+        rtbuff.push(copy_ifattr(arg));
+    }
+    let message = Ifaddrmsg {ifa_family: RtAddrFamily::Inet, ifa_flags: IfaFFlags::empty(), ifa_index: interface, ifa_prefixlen: 0, ifa_scope: RtScope::Host.into(), rtattrs: rtbuff};
     create_header(nl_type, true, message)
 }
 

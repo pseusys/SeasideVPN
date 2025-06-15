@@ -195,7 +195,8 @@ class Tunnel(AbstractAsyncContextManager):
         if (capture_iface is None or len(capture_iface) == 0) and (capture_ranges is None or len(capture_ranges) == 0) and (capture_addresses is None or len(capture_addresses) == 0):
             result_capture_interfaces += [def_iface_name]
         for interface in result_capture_interfaces:
-            self._iptables_rules += [_SystemUtils._create_marking_rule(None, interface, sva_code, True), _SystemUtils._create_allowing_rule(None, None, interface, True)]
+            iface, _, _ = _SystemUtils._get_interface_info(label=interface)
+            self._iptables_rules += [_SystemUtils._create_marking_rule(iface.with_netmask, interface, sva_code, True), _SystemUtils._create_allowing_rule(None, iface.with_netmask, interface, True)]
         logger.info(f"Capturing packets from interfaces: {Fore.BLUE}{result_capture_interfaces}{Fore.RESET}")
 
         capture_ranges = (list() if capture_ranges is None else capture_ranges) + (list() if capture_addresses is None else [f"{address}/32" for address in capture_addresses])

@@ -9,7 +9,7 @@ use regex::Regex;
 use simple_error::bail;
 use tokio::test;
 
-use super::{create_tunnel, disable_firewall, disable_routing, enable_firewall, enable_routing, get_address_device, get_default_interface, restore_svr_table, save_svr_table};
+use super::{create_tunnel, disable_routing, enable_routing, get_address_device, get_default_interface, restore_svr_table, save_svr_table};
 use super::super::DynResult;
 
 
@@ -222,63 +222,6 @@ async fn test_enable_disable_routing() {
     assert!(routing_fwmark.is_none(), "Rule still exists!");
 }
 
-
-#[test(flavor = "multi_thread")]
-async fn test_enable_disable_firewall() {
-    let svr_idx = 6;
-    let external_address = Ipv4Addr::new(8, 8, 8, 8);
-    let seaside_address = Ipv4Addr::new(10, 0, 0, 10);
-    let default_device = get_route_device_info(external_address).expect("Error finding default route!");
-    let (default_address, default_cidr) = match show_address_info(&default_device) {
-        Ok((_, _, Some(address), Some(cidr))) => (address, cidr),
-        Ok((_, _, None, _)) | Ok((_, _, _, None)) | Err(_) => panic!("Error finding default IP address and CIDR!")
-    };
-    let default_net = Ipv4Net::new(default_address, default_cidr as u8).expect("Error parsing network address!");
-    let sia_regex = Regex::new(r"ACCEPT[^\S\n]+(?:all|0)[^\n]+?(?<interface>\S+)[^\S\n]+(?<source>\d+\.\d+\.\d+\.\d+)[^\S\n]+(?<destination>\d+\.\d+\.\d+\.\d+)").expect("Error compiling iptables SIA regex!");
-    let sim_regex = Regex::new(r"MARK[^\S\n]+(?:all|0)[^\n]+?(?<interface>\S+)[^\S\n]+(?<source>\d+\.\d+\.\d+\.\d+/\d+)[^\S\n]+!(?<destination>\d+\.\d+\.\d+\.\d+/\d+)[^\S\n]+MARK set (?<mark>\S+)").expect("Error compiling iptables SIM regex!");
-    let sc_regex = Regex::new(r"ACCEPT[^\S\n]+(?:all|0)[^\n]+?(?<interface>\S+)[^\S\n]+(?<source>\d+\.\d+\.\d+\.\d+/\d+)[^\S\n]+!(?<destination>\d+\.\d+\.\d+\.\d+/\d+)").expect("Error compiling iptables SC regex!");
-    let sia = format!("-o {default_device} ! --dst {default_net} -j ACCEPT");
-    let sim = format!("-o {default_device} ! --dst {default_net} -j MARK --set-mark {svr_idx}");
-    let sc = format!("-o {default_device} --src {default_address} --dst {seaside_address} -j ACCEPT");
-    let rules = vec![sia, sim, sc];
-
-    enable_firewall(&rules).expect("Error enabling firewall!");
-
-    for chain in ["OUTPUT", "FORWARD"] {
-        let (iptables_out, _) = run_command("iptables", ["-L", chain, "-v", "-n", "-t", "mangle"]).expect("Error getting 'iptables' data!");
-
-        let sia_match = sia_regex.captures(iptables_out.as_str()).expect("Error finding SIA rule in 'iptables' output!");
-        assert_eq!(default_device, &sia_match["interface"], "SIA rule interface name doesn't match!");
-        assert_eq!(default_address.to_string(), &sia_match["source"], "SIA rule source address doesn't match!");
-        assert_eq!(seaside_address.to_string(), &sia_match["destination"], "SIA rule destination address doesn't match!");
-
-        let sim_match = sim_regex.captures(iptables_out.as_str()).expect("Error finding SIM rule in 'iptables' output!");
-        assert_eq!(default_device, &sim_match["interface"], "SIA rule interface name doesn't match!");
-        assert_eq!("0.0.0.0/0", &sim_match["source"], "SIA rule source address doesn't match!");
-        assert_eq!(default_net.trunc().to_string(), &sim_match["destination"], "SIA rule destination address doesn't match!");
-        assert_eq!(format!("0x{:x}", svr_idx), &sim_match["mark"], "SIA rule mark value doesn't match!");
-
-        let sc_match = sc_regex.captures(iptables_out.as_str()).expect("Error finding SC rule in 'iptables' output!");
-        assert_eq!(default_device, &sc_match["interface"], "SIA rule interface name doesn't match!");
-        assert_eq!("0.0.0.0/0", &sc_match["source"], "SIA rule source address doesn't match!");
-        assert_eq!(default_net.trunc().to_string(), &sc_match["destination"], "SIA rule destination address doesn't match!");
-    }
-
-    disable_firewall(&rules).expect("Error disabling firewall!");
-
-    for chain in ["OUTPUT", "FORWARD"] {
-        let (iptables_out, _) = run_command("iptables", ["-L", chain, "-v", "-n", "-t", "mangle"]).expect("Error getting 'iptables' data!");
-
-        let sia_match = sia_regex.captures(iptables_out.as_str());
-        assert!(sia_match.is_none(), "SIA rule found in 'iptables'!");
-
-        let sim_match = sim_regex.captures(iptables_out.as_str());
-        assert!(sim_match.is_none(), "SIM rule found in 'iptables'!");
-
-        let sc_match = sc_regex.captures(iptables_out.as_str());
-        assert!(sc_match.is_none(), "SC rule found in 'iptables'!");
-    }
-}
 
 /*
 #[test(flavor = "multi_thread")]

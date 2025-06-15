@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::net::Ipv4Addr;
 use std::process::ExitStatus;
 
@@ -44,7 +45,7 @@ pub struct Viridian<'a> {
 }
 
 impl<'a> Viridian<'a> {
-    pub async fn new(address: Ipv4Addr, port: u16, token: ByteBuffer<'a>, key: ByteBuffer<'a>, protocol: ProtocolType) -> DynResult<Viridian<'a>> {
+    pub async fn new(address: Ipv4Addr, port: u16, token: ByteBuffer<'a>, key: ByteBuffer<'a>, protocol: ProtocolType, dns: Option<Ipv4Addr>, capture_iface: Option<Vec<String>>, capture_ranges: Option<Vec<String>>, exempt_ranges: Option<Vec<String>>, capture_addresses: Option<Vec<String>>, exempt_addresses: Option<Vec<String>>) -> DynResult<Viridian<'a>> {
         let tunnel_name = parse_str_env("SEASIDE_TUNNEL_NAME", Some(DEFAULT_TUNNEL_NAME));
         let tunnel_address = parse_env("SEASIDE_TUNNEL_ADDRESS", Some(DEFAULT_TUNNEL_ADDRESS));
         let tunnel_netmask = parse_env("SEASIDE_TUNNEL_NETMASK", Some(DEFAULT_TUNNEL_NETMASK));
@@ -55,8 +56,37 @@ impl<'a> Viridian<'a> {
             bail!("Tunnel address {tunnel_address} is reserved in tunnel network {tunnel_network}!");
         }
 
+        let capture_iface_set = if let Some(ifaces) = capture_iface{
+            HashSet::from_iter(ifaces)
+        } else {
+            HashSet::new()
+        };
+
+        let mut capture_ranges_pre = if let Some(ranges) = capture_ranges {
+            HashSet::from_iter(ranges)
+        } else {
+            HashSet::new()
+        };
+
+        if let Some(addresses) = capture_addresses {
+            capture_ranges_pre.extend(addresses.iter().map(|a| format!("{a}/32")));
+        }
+
+        let mut exempt_ranges_pre = if let Some(ranges) = exempt_ranges {
+            HashSet::from_iter(ranges)
+        } else {
+            HashSet::new()
+        };
+
+        if let Some(addresses) = exempt_addresses {
+            exempt_ranges_pre.extend(addresses.iter().map(|a| format!("{a}/32")));
+        }
+
+        let capture_ranges_set = capture_ranges_pre.difference(&exempt_ranges_pre).cloned().collect();
+        let exempt_ranges_set = exempt_ranges_pre.difference(&capture_ranges_pre).cloned().collect();
+
         debug!("Creating tunnel with seaside address {address}, tunnel name {tunnel_name}, tunnel network {tunnel_address}/{tunnel_netmask}, SVR index {svr_index}...");
-        let tunnel = Tunnel::new(address, &tunnel_name, tunnel_network, svr_index)?;
+        let tunnel = Tunnel::new(address, &tunnel_name, tunnel_network, svr_index, dns, capture_iface_set, capture_ranges_set, exempt_ranges_set)?;
         Ok(Viridian { key, token, address, port, tunnel, client_type: protocol })
     }
 

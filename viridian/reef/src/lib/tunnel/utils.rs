@@ -2,8 +2,9 @@
 #[path = "../../../tests/tunnel/utils.rs"]
 mod test_utils;
 
-use std::ffi::CStr;
+use std::ffi::{CStr, CString};
 use std::net::Ipv4Addr;
+use std::str::FromStr;
 
 use crate::DynResult;
 
@@ -18,4 +19,8 @@ pub fn bytes_to_ip_address(buffer: &[u8]) -> DynResult<Ipv4Addr> {
 
 pub fn bytes_to_string(buffer: &[u8]) -> DynResult<String> {
     Ok(CStr::from_bytes_until_nul(buffer)?.to_str()?.to_string())
+}
+
+pub fn string_to_bytes<'a>(buffer: &'a str) -> DynResult<CString> {
+    Ok(CString::from_str(buffer)?)
 }

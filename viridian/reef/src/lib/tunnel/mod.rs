@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::{net::Ipv4Addr, sync::Arc};
 
 use ipnet::Ipv4Net;
@@ -39,8 +40,8 @@ pub struct Tunnel {
 }
 
 impl Tunnel {
-    pub fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_network: Ipv4Net, svr_index: u8) -> DynResult<Self> {
-        Ok(Self { tunnel: Arc::new(TunnelInternal::new(seaside_address, tunnel_name, tunnel_network, svr_index)?) })
+    pub fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_network: Ipv4Net, svr_index: u8, dns: Option<Ipv4Addr>, capture_iface: HashSet<String>, capture_ranges: HashSet<String>, exempt_ranges: HashSet<String>) -> DynResult<Self> {
+        Ok(Self { tunnel: Arc::new(TunnelInternal::new(seaside_address, tunnel_name, tunnel_network, svr_index, dns, capture_iface, capture_ranges, exempt_ranges)?) })
     }
 
     pub fn default_interface(&self) -> (Ipv4Addr, u8) {
