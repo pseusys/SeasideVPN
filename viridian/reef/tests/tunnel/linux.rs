@@ -9,7 +9,7 @@ use regex::Regex;
 use simple_error::bail;
 use tokio::test;
 
-use super::{create_tunnel, disable_routing, enable_routing, get_address_device, get_default_interface, restore_svr_table, save_svr_table};
+use super::{create_tunnel, disable_routing, enable_routing, get_address_device, get_default_interface_by_remote_address, restore_svr_table, save_svr_table};
 use super::super::DynResult;
 
 
@@ -111,7 +111,7 @@ async fn test_get_default_interface() {
     let expected_device = get_route_device_info(external_address).expect("Error reading default interface device name!");
     let (_, expected_mtu, expected_address, expected_cidr) = show_address_info(&expected_device).expect("Error reading default route IP!");
 
-    let (default_address, default_cidr, default_name, default_mtu) = get_default_interface(external_address).expect("Error getting default address!");
+    let (default_address, default_cidr, default_name, default_mtu) = get_default_interface_by_remote_address(external_address).expect("Error getting default address!");
 
     assert_eq!(default_name, expected_device, "Default device name doesn't match!");
     assert!(expected_mtu.is_some_and(|v| v == default_mtu), "Default MTU doesn't match!");
