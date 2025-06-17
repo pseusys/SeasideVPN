@@ -1,12 +1,15 @@
 use std::collections::HashSet;
+use std::ffi::c_void;
 use std::mem::replace;
 use std::net::Ipv4Addr;
+use std::ptr::null_mut;
 use std::sync::Arc;
 
 use etherparse::IpHeaders;
 use ipnet::Ipv4Net;
 use log::{debug, error, info, warn};
 use simple_error::bail;
+use tun::{create_as_async, AsyncDevice, Configuration};
 use tokio::task::JoinHandle;
 use windivert::layer::NetworkLayer;
 use windivert::packet::WinDivertPacket;
@@ -14,8 +17,7 @@ use windivert::{CloseAction, WinDivert};
 use windivert::prelude::{WinDivertFlags, WinDivertShutdownMode};
 use windows::Win32::Foundation::{ERROR_BUFFER_OVERFLOW, ERROR_SUCCESS, WIN32_ERROR};
 use windows::Win32::NetworkManagement::IpHelper::{GetAdaptersAddresses, GetBestRoute, GAA_FLAG_INCLUDE_PREFIX, MIB_IPFORWARDROW, IP_ADAPTER_ADDRESSES_LH};
-use tun::{create_as_async, AsyncDevice, Configuration};
-use windows::Win32::Networking::WinSock::AF_INET;
+use windows::Win32::Networking::WinSock::{AF_INET, IN_ADDR, inet_addr};
 
 use super::{bytes_to_ip_address, TunnelInternal};
 use crate::bytes::{get_buffer, ByteBuffer};
@@ -108,6 +110,47 @@ fn get_interface_index(interface_name: &str) -> DynResult<u32> {
     }
 
     bail!("No interfaces found for interface with name {interface_name}!")
+}
+
+
+fn set_dns_address(interface_index: u32, dns_address: Ipv4Addr) -> Result<()> {
+    let dns_addr = inet_addr(PCSTR(dns_ip.as_ptr()));
+    if dns_addr == u32::MAX {
+        bail!("Invalid DNS IP address");
+    }
+
+    let dns_server = NLDNS_SERVER_ADDRESS {
+        Version: NL_DNS_SERVER_ADDRESS_VERSION_1,
+        Length: std::mem::size_of::<NLDNS_SERVER_ADDRESS>() as u16,
+        Anonymous: NLDNS_SERVER_ADDRESS_0 {
+            DnsServer: IN_ADDR { S_un: windows::Win32::Networking::WinSock::IN_ADDR_0 { S_addr: dns_addr } },
+        },
+    };
+
+    let dns_settings = DNS_INTERFACE_SETTINGS {
+        Version: DNS_INTERFACE_SETTINGS_VERSION1,
+        Flags: DNS_SETTING_NAMESERVER | DNS_SETTING_DEFAULT_NAME,
+        Anonymous: DNS_INTERFACE_SETTINGS_0 {
+            SettingV1: DNS_INTERFACE_SETTINGS_0_0 {
+                NameServer: PWSTR::null(),
+                SearchList: PWSTR::null(),
+                RegistrationEnabled: FALSE.into(),
+                RegisterAdapterName: FALSE.into(),
+                EnableLLMNR: FALSE.into(),
+                QueryAdapterName: FALSE.into(),
+                ProfileNameServer: PWSTR::null(),
+                Domain: PWSTR::null(),
+                NameServerList: &dns_server as *const _ as *mut c_void,
+                NameServerCount: 1,
+            },
+        },
+    };
+
+    let result = SetInterfaceDnsSettings(interface_index, &dns_settings);
+    if result != NO_ERROR {
+        bail!("SetInterfaceDnsSettings failed: {}", result);
+    }
+    Ok(())
 }
 
 
@@ -206,6 +249,9 @@ impl TunnelInternal {
         debug!("Creating tunnel device: address {}, netmask {}...", tunnel_network.addr(), tunnel_network.netmask());
         let tunnel_device = create_tunnel(tunnel_name, tunnel_network.addr(), tunnel_network.netmask(), default_mtu as u16)?;
         let tunnel_index = get_interface_index(tunnel_name)?;
+
+        debug!("Setting DNS address to {dns}...");
+        set_dns_address(dns)?;
 
         debug!("Setting up routing...");
         let (divert, handle) = enable_routing(default_interface, default_address, default_cidr, tunnel_index)?;
