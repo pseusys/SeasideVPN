@@ -27,8 +27,6 @@ pub use utils::*;
 
 
 struct TunnelInternal {
-    def_ip: Ipv4Addr,
-    def_cidr: u8,
     tun_device: AsyncDevice,
 
     _internal: PlatformInternalConfig
@@ -40,12 +38,8 @@ pub struct Tunnel {
 }
 
 impl Tunnel {
-    pub fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_network: Ipv4Net, svr_index: u8, dns: Option<Ipv4Addr>, capture_iface: HashSet<String>, capture_ranges: HashSet<String>, exempt_ranges: HashSet<String>) -> DynResult<Self> {
-        Ok(Self { tunnel: Arc::new(TunnelInternal::new(seaside_address, tunnel_name, tunnel_network, svr_index, dns, capture_iface, capture_ranges, exempt_ranges)?) })
-    }
-
-    pub fn default_interface(&self) -> (Ipv4Addr, u8) {
-        (self.tunnel.def_ip, self.tunnel.def_cidr)
+    pub fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_network: Ipv4Net, svr_index: u8, dns: Option<Ipv4Addr>, capture_iface: HashSet<String>, capture_ranges: HashSet<String>, exempt_ranges: HashSet<String>, local_address: Option<Ipv4Addr>) -> DynResult<Self> {
+        Ok(Self { tunnel: Arc::new(TunnelInternal::new(seaside_address, tunnel_name, tunnel_network, svr_index, dns, capture_iface, capture_ranges, exempt_ranges, local_address)?) })
     }
 }
 

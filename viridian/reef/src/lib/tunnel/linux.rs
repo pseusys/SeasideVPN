@@ -19,11 +19,12 @@ use tun::{create_as_async, AsyncDevice, Configuration};
 
 use super::nl_utils::{copy_rtmsg, create_address_message, create_attr, create_clear_cache_message, create_header, create_interface_message, create_routing_message, create_rtmsg, create_socket, send_netlink_message, send_netlink_stream};
 use super::{bytes_to_int, bytes_to_ip_address, bytes_to_string, string_to_bytes, TunnelInternal};
+use crate::utils::parse_env;
 use crate::DynResult;
 
 
 const FRA_MASK: Rta = Rta::UnrecognizedConst(10);
-const RESOLV_CONF_PATH: &str = "/etc/resolv.conf";
+const DEFAULT_RESOLV_CONF_PATH: &str = "/etc/resolv.conf";
 
 
 fn get_default_address_and_device(socket: &mut NlSocketHandle, target: Ipv4Addr) -> DynResult<(Ipv4Addr, i32)> {
@@ -33,6 +34,19 @@ fn get_default_address_and_device(socket: &mut NlSocketHandle, target: Ipv4Addr)
     let default_ip = answer.rtattrs.iter().find(|a| a.rta_type == Rta::Prefsrc).and_then(|a| bytes_to_ip_address(a.rta_payload.as_ref()).ok());
     let default_dev = answer.rtattrs.iter().find(|a| a.rta_type == Rta::Oif).and_then(|a| bytes_to_int(a.rta_payload.as_ref()).ok());
     Ok((require_with!(default_ip, "Default IP address was not found!"), require_with!(default_dev, "Default network interface was not found!")))
+}
+
+fn get_device_by_local_address(socket: &mut NlSocketHandle, target: Ipv4Addr) -> DynResult<i32> {
+    let mut default_dev: Option<i32> = None;
+    let message = create_address_message(0, Rtm::Getaddr, &[]);
+    send_netlink_stream(socket, message, |hdr| {
+        let default_address = hdr.rtattrs.iter().find(|a| a.rta_type == Ifa::Address).and_then(|a| bytes_to_ip_address(a.rta_payload.as_ref()).ok());
+        if default_address.as_ref().is_some_and(|n| n == &target) {
+            default_dev = Some(hdr.ifa_index);
+        }
+        Ok(())
+    })?;
+    Ok(require_with!(default_dev, "Default network interface was not found!"))
 }
 
 fn get_device_name_and_cidr(socket: &mut NlSocketHandle, device: i32) -> DynResult<(String, u8)> {
@@ -84,7 +98,17 @@ fn get_address_device(network: Ipv4Net) -> DynResult<i32> {
     Ok(require_with!(tunnel_dev, "Tunnel device number was not resolved!"))
 }
 
-fn get_default_interface(seaside_address: Ipv4Addr) -> DynResult<(Ipv4Addr, u8, String, i32)> {
+fn get_default_interface_by_local_address(local_address: Ipv4Addr) -> DynResult<(Ipv4Addr, u8, String, i32)> {
+    let mut socket = create_socket()?;
+
+    let default_dev = get_device_by_local_address(&mut socket, local_address)?;
+    let (default_name, default_cidr) = get_device_name_and_cidr(&mut socket, default_dev)?;
+    let default_mtu = get_device_mtu(&mut socket, default_dev)?;
+
+    Ok((local_address, default_cidr, default_name, default_mtu))
+}
+
+fn get_default_interface_by_remote_address(seaside_address: Ipv4Addr) -> DynResult<(Ipv4Addr, u8, String, i32)> {
     let mut socket = create_socket()?;
 
     let (default_ip, default_dev) = get_default_address_and_device(&mut socket, seaside_address)?;
@@ -108,14 +132,14 @@ fn create_tunnel(name: &str, address: Ipv4Addr, netmask: Ipv4Addr, mtu: u16) -> 
 }
 
 
-fn set_dns_server(dns_server: Option<Ipv4Addr>) -> DynResult<(String, Option<String>)> {
-    let resolv_conf_data = read_to_string(RESOLV_CONF_PATH)?;
+fn set_dns_server(resolv_path: &str, dns_server: Option<Ipv4Addr>) -> DynResult<(String, Option<String>)> {
+    let resolv_conf_data = read_to_string(resolv_path)?;
     let resolv_conf_lines: Vec<&str> = resolv_conf_data.lines().collect();
 
     if let Some(server) = dns_server {
         let filtered: Vec<&str> = resolv_conf_lines.into_iter().filter(|l| !l.trim_start().starts_with("nameserver")).collect();
         let new_contents = format!("{}\nnameserver {}", filtered.join("\n"), server);
-        write(RESOLV_CONF_PATH, new_contents)?;
+        write(resolv_path, new_contents)?;
         Ok((resolv_conf_data, Some(server.to_string())))
     } else {
         let existing_dns = resolv_conf_lines.iter().find(|l| l.trim_start().starts_with("nameserver")).map(|l| l.trim_start().trim_start_matches("nameserver").trim().to_string());
@@ -123,8 +147,8 @@ fn set_dns_server(dns_server: Option<Ipv4Addr>) -> DynResult<(String, Option<Str
     }
 }
 
-fn reset_dns_server(resolv_conf_data: &str) -> DynResult<()> {
-    write(RESOLV_CONF_PATH, resolv_conf_data)?;
+fn reset_dns_server(resolv_path: &str, resolv_conf_data: &str) -> DynResult<()> {
+    write(resolv_path, resolv_conf_data)?;
     Ok(())
 }
 
@@ -231,6 +255,7 @@ fn disable_firewall(firewall_rules: &Vec<String>) -> Result<(), Box<dyn Error>> 
 
 pub struct PlatformInternalConfig {
     resolv_conf: String,
+    resolv_path: String,
     svr_data: Vec<Rtmsg>,
     route_message: Rtmsg,
     rule_message: Rtmsg,
@@ -238,9 +263,13 @@ pub struct PlatformInternalConfig {
 }
 
 impl TunnelInternal {
-    pub fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_network: Ipv4Net, svr_index: u8, dns: Option<Ipv4Addr>, mut capture_iface: HashSet<String>, capture_ranges: HashSet<String>, exempt_ranges: HashSet<String>) -> DynResult<Self> {
+    pub fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_network: Ipv4Net, svr_index: u8, dns: Option<Ipv4Addr>, mut capture_iface: HashSet<String>, capture_ranges: HashSet<String>, exempt_ranges: HashSet<String>, local_address: Option<Ipv4Addr>) -> DynResult<Self> {
         debug!("Checking system default network properties...");
-        let (default_address, default_cidr, default_name, default_mtu) = get_default_interface(seaside_address)?;
+        let (default_address, default_cidr, default_name, default_mtu) = if let Some(address) = local_address {
+            get_default_interface_by_local_address(address)?
+        } else {
+            get_default_interface_by_remote_address(seaside_address)?
+        };
         debug!("Default network properties received: address {default_address}, CIDR {default_cidr}, name {default_name}, MTU {default_mtu}");
 
         if capture_iface.is_empty() && capture_ranges.is_empty() {
@@ -252,9 +281,10 @@ impl TunnelInternal {
         let tunnel_device = create_tunnel(tunnel_name, tunnel_network.addr(), tunnel_network.netmask(), default_mtu as u16)?;
         let tunnel_index = get_address_device(tunnel_network)?;
 
-        debug!("Resetting DNS server in '{RESOLV_CONF_PATH}' file...");
-        let (resolv_conf, new_dns) = set_dns_server(dns)?;
-        debug!("New DNS server will be: {new_dns:?}");
+        let resolv_path = parse_env("SEASIDE_REOLV_CONF_PATH", Some(DEFAULT_RESOLV_CONF_PATH.to_string()));
+        debug!("Resetting DNS server in '{resolv_path}' file...");
+        let (resolv_conf, new_dns) = set_dns_server(&resolv_path, dns)?;
+        debug!("New DNS server will be: {new_dns:?})");
 
         debug!("Clearing seaside-viridian-reef routing table {svr_index}...");
         let svr_data = save_svr_table(svr_index)?;
@@ -270,8 +300,8 @@ impl TunnelInternal {
             Err(err) => bail!("Error enabling firewall: {err}"),
         };
 
-        let internal = PlatformInternalConfig {resolv_conf, svr_data, route_message, rule_message, firewall_table};
-        Ok(Self {def_ip: default_address, def_cidr: default_cidr, tun_device: tunnel_device, _internal: internal})
+        let internal = PlatformInternalConfig {resolv_conf, resolv_path, svr_data, route_message, rule_message, firewall_table};
+        Ok(Self {tun_device: tunnel_device, _internal: internal})
     }
 }
 
@@ -287,7 +317,7 @@ impl Drop for PlatformInternalConfig {
         debug!("Restoring seaside-viridian-reef routing table...");
         restore_svr_table(&mut self.svr_data).inspect_err(|e| error!("Error restoring seaside-viridian-reef routing table: {e}"));
 
-        debug!("Restore '{RESOLV_CONF_PATH}' file...");
-        reset_dns_server(&self.resolv_conf).inspect_err(|e| error!("Error restoring routing '{RESOLV_CONF_PATH}' file: {e}"));
+        debug!("Restore '{}' file...", self.resolv_path);
+        reset_dns_server(&self.resolv_path, &self.resolv_conf).inspect_err(|e| error!("Error restoring routing '{}' file: {e}", self.resolv_path));
     }
 }

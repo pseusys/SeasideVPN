@@ -41,11 +41,12 @@ pub struct Viridian<'a> {
     address: Ipv4Addr,
     port: u16,
     tunnel: Tunnel,
-    client_type: ProtocolType
+    client_type: ProtocolType,
+    local_address: Option<Ipv4Addr>
 }
 
 impl<'a> Viridian<'a> {
-    pub async fn new(address: Ipv4Addr, port: u16, token: ByteBuffer<'a>, key: ByteBuffer<'a>, protocol: ProtocolType, dns: Option<Ipv4Addr>, capture_iface: Option<Vec<String>>, capture_ranges: Option<Vec<String>>, exempt_ranges: Option<Vec<String>>, capture_addresses: Option<Vec<String>>, exempt_addresses: Option<Vec<String>>) -> DynResult<Viridian<'a>> {
+    pub async fn new(address: Ipv4Addr, port: u16, token: ByteBuffer<'a>, key: ByteBuffer<'a>, protocol: ProtocolType, dns: Option<Ipv4Addr>, capture_iface: Option<Vec<String>>, capture_ranges: Option<Vec<String>>, exempt_ranges: Option<Vec<String>>, capture_addresses: Option<Vec<String>>, exempt_addresses: Option<Vec<String>>, local_address: Option<Ipv4Addr>) -> DynResult<Viridian<'a>> {
         let tunnel_name = parse_str_env("SEASIDE_TUNNEL_NAME", Some(DEFAULT_TUNNEL_NAME));
         let tunnel_address = parse_env("SEASIDE_TUNNEL_ADDRESS", Some(DEFAULT_TUNNEL_ADDRESS));
         let tunnel_netmask = parse_env("SEASIDE_TUNNEL_NETMASK", Some(DEFAULT_TUNNEL_NETMASK));
@@ -86,8 +87,8 @@ impl<'a> Viridian<'a> {
         let exempt_ranges_set = exempt_ranges_pre.difference(&capture_ranges_pre).cloned().collect();
 
         debug!("Creating tunnel with seaside address {address}, tunnel name {tunnel_name}, tunnel network {tunnel_address}/{tunnel_netmask}, SVR index {svr_index}...");
-        let tunnel = Tunnel::new(address, &tunnel_name, tunnel_network, svr_index, dns, capture_iface_set, capture_ranges_set, exempt_ranges_set)?;
-        Ok(Viridian { key, token, address, port, tunnel, client_type: protocol })
+        let tunnel = Tunnel::new(address, &tunnel_name, tunnel_network, svr_index, dns, capture_iface_set, capture_ranges_set, exempt_ranges_set, local_address)?;
+        Ok(Viridian { key, token, address, port, tunnel, client_type: protocol, local_address })
     }
 
     async fn run_vpn_command(&self, command: Option<String>) -> DynResult<ExitStatus> {
@@ -109,7 +110,7 @@ impl<'a> Viridian<'a> {
         }
 
         debug!("Creating protocol client handle...");
-        let (mut send_handle, mut receive_handle, termination) = create_handle(&self.client_type, self.tunnel.clone(), self.tunnel.clone(), self.key.clone(), self.token.clone(), self.address, self.port, Some(self.tunnel.default_interface().0)).await?;
+        let (mut send_handle, mut receive_handle, termination) = create_handle(&self.client_type, self.tunnel.clone(), self.tunnel.clone(), self.key.clone(), self.token.clone(), self.address, self.port, self.local_address).await?;
 
         debug!("Running DNS probe to check for globally available DNS servers...");
         if lookup_host("example.com").await.is_err() {

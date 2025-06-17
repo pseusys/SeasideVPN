@@ -1,7 +1,7 @@
 from contextlib import AbstractAsyncContextManager
 from fcntl import ioctl
 from ipaddress import IPv4Address, IPv4Interface, IPv4Network
-from os import O_RDWR, getegid, geteuid, open
+from os import O_RDWR, getegid, getenv, geteuid, open
 from pathlib import Path
 from struct import pack
 from subprocess import run
@@ -42,7 +42,7 @@ class _SystemUtils:
     _UNIX_IFNAMSIZ = 16
 
     # Path to 'resolv.conf' file.
-    _RESOLV_CONF_PATH = Path("/etc/resolv.conf")
+    _RESOLV_CONF_PATH = Path(getenv("SEASIDE_REOLV_CONF_PATH", "/etc/resolv.conf"))
 
     # Unspecified IP address.
     _EMPTY_IP_ADDRESS = IPv4Address("0.0.0.0")
