@@ -30,6 +30,7 @@ use windows::*;
 
 
 const DEFAULT_TUNNEL_NAME: &str = "seatun";
+const DEFAULT_DNS_ADDRESS: Ipv4Addr = Ipv4Addr::new(0, 0, 0, 0);
 const DEFAULT_TUNNEL_ADDRESS: Ipv4Addr = Ipv4Addr::new(192, 168, 0, 82);
 const DEFAULT_TUNNEL_NETMASK: Ipv4Addr = Ipv4Addr::new(255, 255, 255, 0);
 const DEFAULT_SVR_INDEX: u8 = 82;
@@ -46,7 +47,7 @@ pub struct Viridian<'a> {
 }
 
 impl<'a> Viridian<'a> {
-    pub async fn new(address: Ipv4Addr, port: u16, token: ByteBuffer<'a>, key: ByteBuffer<'a>, protocol: ProtocolType, dns: Option<Ipv4Addr>, capture_iface: Option<Vec<String>>, capture_ranges: Option<Vec<String>>, exempt_ranges: Option<Vec<String>>, capture_addresses: Option<Vec<String>>, exempt_addresses: Option<Vec<String>>, local_address: Option<Ipv4Addr>) -> DynResult<Viridian<'a>> {
+    pub async fn new(address: Ipv4Addr, port: u16, token: ByteBuffer<'a>, key: ByteBuffer<'a>, protocol: ProtocolType, mut dns: Option<Ipv4Addr>, capture_iface: Option<Vec<String>>, capture_ranges: Option<Vec<String>>, exempt_ranges: Option<Vec<String>>, capture_addresses: Option<Vec<String>>, exempt_addresses: Option<Vec<String>>, local_address: Option<Ipv4Addr>) -> DynResult<Viridian<'a>> {
         let tunnel_name = parse_str_env("SEASIDE_TUNNEL_NAME", Some(DEFAULT_TUNNEL_NAME));
         let tunnel_address = parse_env("SEASIDE_TUNNEL_ADDRESS", Some(DEFAULT_TUNNEL_ADDRESS));
         let tunnel_netmask = parse_env("SEASIDE_TUNNEL_NETMASK", Some(DEFAULT_TUNNEL_NETMASK));
@@ -55,6 +56,10 @@ impl<'a> Viridian<'a> {
         let tunnel_network = Ipv4Net::with_netmask(tunnel_address, tunnel_netmask)?;
         if tunnel_address == tunnel_network.network() || tunnel_address == tunnel_network.broadcast() {
             bail!("Tunnel address {tunnel_address} is reserved in tunnel network {tunnel_network}!");
+        }
+
+        if dns.is_some_and(|a| a == DEFAULT_DNS_ADDRESS) {
+            dns = None;
         }
 
         let capture_iface_set = if let Some(ifaces) = capture_iface{

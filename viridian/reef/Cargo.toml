@@ -32,8 +32,8 @@ url = "^2.5.4"
 x25519-dalek = { version = "^2.0.1", features = ["static_secrets"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-neli = "^0.6.4"
 iptables = "^0.5.1"
+neli = "^0.6.4"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 etherparse = { version = "^0.18.0" }

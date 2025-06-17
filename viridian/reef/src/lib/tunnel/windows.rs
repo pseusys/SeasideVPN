@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::mem::replace;
 use std::net::Ipv4Addr;
 use std::sync::Arc;
@@ -24,8 +25,8 @@ use crate::{run_coroutine_in_thread, run_coroutine_sync, DynResult};
 const ZERO_IP_ADDRESS: Ipv4Addr = Ipv4Addr::new(0, 0, 0, 0);
 
 
-fn get_default_interface(destination_ip: &Ipv4Addr) -> DynResult<(Ipv4Addr, u32)> {
-    let dest_ip = (*destination_ip).into();
+fn get_default_interface_by_remote_address(destination_ip: Ipv4Addr) -> DynResult<(Ipv4Addr, u32)> {
+    let dest_ip = destination_ip.into();
     let src_ip = ZERO_IP_ADDRESS.into();
 
     let mut route: MIB_IPFORWARDROW = MIB_IPFORWARDROW::default();
@@ -38,6 +39,10 @@ fn get_default_interface(destination_ip: &Ipv4Addr) -> DynResult<(Ipv4Addr, u32)
     } else {
         bail!("Default route for ip {destination_ip} failed with error {}!", result)
     }
+}
+
+fn get_default_interface_by_local_address(destination_ip: Ipv4Addr) -> DynResult<(Ipv4Addr, u32)> {
+    todo!()
 }
 
 fn get_interface_details(interface_index: u32) -> DynResult<(Ipv4Addr, u8, u32)> {
@@ -183,11 +188,20 @@ pub struct PlatformInternalConfig {
 }
 
 impl TunnelInternal {
-    pub fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_network: Ipv4Net, _: u8) -> DynResult<TunnelInternal> {
+    pub fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_network: Ipv4Net, _: u8, dns: Option<Ipv4Addr>, mut capture_iface: HashSet<String>, capture_ranges: HashSet<String>, exempt_ranges: HashSet<String>, local_address: Option<Ipv4Addr>) -> DynResult<TunnelInternal> {
         debug!("Checking system default network properties...");
-        let (default_gateway, default_interface) = get_default_interface(&seaside_address)?;
+        let (default_gateway, default_interface) = if let Some(address) = local_address {
+            get_default_interface_by_local_address(address)?
+        } else {
+            get_default_interface_by_remote_address(seaside_address)?
+        };
         let (default_address, default_cidr, default_mtu) = get_interface_details(default_interface)?;
         debug!("Default network properties received: address {default_address}, CIDR {default_cidr}, MTU {default_mtu}, gateway {default_gateway}");
+
+        if capture_iface.is_empty() && capture_ranges.is_empty() {
+            debug!("The default interface added to capture: {default_interface}");
+            capture_iface.insert(default_interface.to_string());
+        }
 
         debug!("Creating tunnel device: address {}, netmask {}...", tunnel_network.addr(), tunnel_network.netmask());
         let tunnel_device = create_tunnel(tunnel_name, tunnel_network.addr(), tunnel_network.netmask(), default_mtu as u16)?;
@@ -197,7 +211,7 @@ impl TunnelInternal {
         let (divert, handle) = enable_routing(default_interface, default_address, default_cidr, tunnel_index)?;
 
         let internal = PlatformInternalConfig {divert, handle: Some(handle)};
-        Ok(TunnelInternal {def_ip: default_address, def_cidr: default_cidr, tun_device: tunnel_device, _internal: internal})
+        Ok(TunnelInternal {tun_device: tunnel_device, _internal: internal})
     }
 }
 
