@@ -56,6 +56,7 @@ runs:
       with:
         path: viridian/algae/docker
         filenames: test.conf.env
+        quiet: true
 
     - name: Get Connection Link
       id: get-server-connection-link

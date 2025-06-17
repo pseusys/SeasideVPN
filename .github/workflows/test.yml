@@ -75,17 +75,18 @@ jobs:
     name: Test Viridian Reef
     runs-on: ${{ format('{0}-latest', matrix.os) }}
     env:
-      SUDO: ${{ matrix.os == 'ubuntu' && 'sudo -E env "PATH=$PATH"' || '' }}
-      TEST_TIMEOUT: 15.0
-      LOCAL_ADDRESS: 10.82.0.1
-      SEASIDE_ADDRESS: 10.87.82.87
-      ECHO_ADDRESS: 10.42.0.42
-      RUNNER_COMMAND: cargo run --features cli-exec --bin cli --manifest-path ../reef/Cargo.toml
-      TEST_COMMAND: poetry run pytest --log-cli-level=INFO tests/test_local.py
+      TARGET_ADDRESS: 1.1.1.1
+      SEASIDE_LOG_LEVEL: reeflib=DEBUG,INFO
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu, windows]
+        include:
+          - os: ubuntu
+            sudo: sudo -E env "PATH=$PATH"
+            test: curl -sS -I --fail --max-time 15 https://1.1.1.1
+          - os: windows
+            sudo:
+            test: Invoke-WebRequest -Uri "https://1.1.1.1" -Method Head -TimeoutSec 15 -ErrorAction Stop
 
     steps:
       - name: Checkout 🛎️
@@ -98,23 +99,12 @@ jobs:
           distribution: Ubuntu-24.04
           set-as-default: true
 
-      - name: Post-Configure WSL
-        if: runner.os == 'Windows'
-        run: exit 1
-
-      - name: Install NodeJS 🪢
-        uses: actions/setup-node@v4.1.0
+      - name: Setup VPN Server
+        id: setup-test-server
+        uses: ./.github/actions/setup-server
         with:
-          node-version: 22
-
-      - name: Install Node Dependencies 🔮
-        working-directory: .github/scripts
-        run: npm install
-
-      - name: Setup Python 3.11 🐍
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+          target: ${{ env.TARGET_ADDRESS }}
+          test-command: ${{ matrix.test }}
 
       - name: Setup Rust 🦀
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -124,63 +114,19 @@ jobs:
           cache-workspaces: viridian/reef
           override: true
 
-      - name: Install Dependencies 🔮
-        working-directory: viridian/algae
-        run: |
-          pip3 install poetry poethepoet[poetry_plugin]
-          poetry install --extras "devel"
-
       - name: Test Viridian Reef (unit) 🧪
         working-directory: viridian/reef
-        run: ${{ env.SUDO }} cargo test --package SeasideVPN-Reef --lib -- --nocapture --show-output
-
-      - name: Start Background Server
-        id: start-background-server
-        working-directory: .github/scripts
-        run: ${{ env.SUDO }} npm run configure-viridian-test
-
-      - name: Load .ENV File
-        uses: aarcangeli/load-dotenv@v1
-        with:
-          path: viridian/algae/docker
-          filenames: test.conf.env
-
-      - name: Get Connection Link
-        working-directory: viridian/algae
-        env:
-          SEASIDE_ROOT_CERTIFICATE_AUTHORITY: ${{ github.workspace }}/viridian/algae/certificates/viridian/rootCA.crt
-          SEASIDE_LOG_LEVEL: ERROR
-        run: |
-          LINK=$(poetry poe -q fixture -a "${{ env.SEASIDE_ADDRESS }}" -p "${{ env.SEASIDE_API_PORT }}" -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian -s)
-          echo "WHIRLPOOL_LINK=$LINK" >> $GITHUB_ENV
-
-      - name: Test Echo Server Access (no VPN)
-        working-directory: viridian/algae
-        run: eval "${{ env.TEST_COMMAND }}" && exit 1 || true
+        run: ${{ matrix.sudo }} cargo test --package SeasideVPN-Reef --lib -- --nocapture --show-output
 
       - name: Test Viridian Reef PORT (integration) 🧪
         id: test-viridian-reef-port
-        working-directory: viridian/algae
-        env:
-          SEASIDE_LOG_LEVEL: reeflib=DEBUG,INFO
-        run: ${{ env.SUDO }} ${{ env.RUNNER_COMMAND }} -- -s port -l "${{ env.WHIRLPOOL_LINK }}" -e "${{ env.TEST_COMMAND }}"
+        working-directory: viridian/reef
+        run: ${{ matrix.sudo }} cargo run --features cli-exec --bin cli -- -s port -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-addresses ${{ env.TARGET_ADDRESS }} -e "${{ matrix.test }}"
 
       - name: Test Viridian Reef TYPHOON (integration) 🧪
         id: test-viridian-reef-typhoon
-        working-directory: viridian/algae
-        env:
-          SEASIDE_LOG_LEVEL: reeflib=DEBUG,INFO
-        run: ${{ env.SUDO }} ${{ env.RUNNER_COMMAND }} -- -s typhoon -l "${{ env.WHIRLPOOL_LINK }}" -e "${{ env.TEST_COMMAND }}"
-
-      - name: Print Whirlpool Logs
-        if: failure() && (steps.test-viridian-reef-port.outcome == 'failure' || steps.test-viridian-reef-typhoon.outcome == 'failure')
-        working-directory: viridian/algae
-        run: docker compose -f docker/compose.standalone.yml logs whirlpool
-
-      - name: Terminate Background Server
-        if: always() && steps.start-background-server.outcome == 'success'
-        working-directory: .github/scripts
-        run: ${{ env.SUDO }} npm run configure-viridian-test -- -r
+        working-directory: viridian/reef
+        run: ${{ matrix.sudo }} cargo run --features cli-exec --bin cli -- -s typhoon -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-addresses ${{ env.TARGET_ADDRESS }} -e "${{ matrix.test }}"
 
   caerulean-whirlpool-test:
     name: Test Caerulean Whirlpool
