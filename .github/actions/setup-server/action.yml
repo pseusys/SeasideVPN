@@ -18,6 +18,17 @@ runs:
   using: composite
 
   steps:
+    - name: Setup WSL
+      if: runner.os == 'Windows'
+      uses: Vampire/setup-wsl@v5
+      with:
+        distribution: Ubuntu-24.04
+        set-as-default: true
+
+    - name: Configure WSL
+      if: runner.os == 'Windows'
+      run: wsl -u root sh -c "curl -fsSL https://get.docker.com | sh"
+
     - name: Install NodeJS 🪢
       uses: actions/setup-node@v4.1.0
       with:

@@ -77,34 +77,16 @@ jobs:
     env:
       TARGET_ADDRESS: 1.1.1.1
       SEASIDE_LOG_LEVEL: reeflib=DEBUG,INFO
+      SUDO: ${{ matrix.os == 'ubuntu' && 'sudo -E env "PATH=$PATH"' || '' }}
+      TEST: ${{ matrix.os == 'ubuntu' && 'curl -sS -I --fail --max-time 15 https://1.1.1.1' || 'Invoke-WebRequest -Uri "https://1.1.1.1" -Method Head -TimeoutSec 15 -ErrorAction Stop' }}
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: ubuntu
-            sudo: sudo -E env "PATH=$PATH"
-            test: curl -sS -I --fail --max-time 15 https://1.1.1.1
-          - os: windows
-            sudo:
-            test: Invoke-WebRequest -Uri "https://1.1.1.1" -Method Head -TimeoutSec 15 -ErrorAction Stop
+        os: [ubuntu, windows]
 
     steps:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
-
-      - name: Setup WSL
-        if: runner.os == 'Windows'
-        uses: Vampire/setup-wsl@v5
-        with:
-          distribution: Ubuntu-24.04
-          set-as-default: true
-
-      - name: Setup VPN Server
-        id: setup-test-server
-        uses: ./.github/actions/setup-server
-        with:
-          target: ${{ env.TARGET_ADDRESS }}
-          test-command: ${{ matrix.test }}
 
       - name: Setup Rust 🦀
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -116,17 +98,24 @@ jobs:
 
       - name: Test Viridian Reef (unit) 🧪
         working-directory: viridian/reef
-        run: ${{ matrix.sudo }} cargo test --package SeasideVPN-Reef --lib -- --nocapture --show-output
+        run: ${{ env.SUDO }} cargo test --package SeasideVPN-Reef --lib -- --nocapture --show-output
+
+      - name: Setup VPN Server
+        id: setup-test-server
+        uses: ./.github/actions/setup-server
+        with:
+          target: ${{ env.TARGET_ADDRESS }}
+          test-command: ${{ env.TEST }}
 
       - name: Test Viridian Reef PORT (integration) 🧪
         id: test-viridian-reef-port
         working-directory: viridian/reef
-        run: ${{ matrix.sudo }} cargo run --features cli-exec --bin cli -- -s port -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-addresses ${{ env.TARGET_ADDRESS }} -e "${{ matrix.test }}"
+        run: ${{ env.SUDO }} cargo run --features cli-exec --bin cli -- -s port -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-addresses ${{ env.TARGET_ADDRESS }} -e "${{ env.TEST }}"
 
       - name: Test Viridian Reef TYPHOON (integration) 🧪
         id: test-viridian-reef-typhoon
         working-directory: viridian/reef
-        run: ${{ matrix.sudo }} cargo run --features cli-exec --bin cli -- -s typhoon -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-addresses ${{ env.TARGET_ADDRESS }} -e "${{ matrix.test }}"
+        run: ${{ env.SUDO }} cargo run --features cli-exec --bin cli -- -s typhoon -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-addresses ${{ env.TARGET_ADDRESS }} -e "${{ env.TEST }}"
 
   caerulean-whirlpool-test:
     name: Test Caerulean Whirlpool
