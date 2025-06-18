@@ -28,7 +28,7 @@ runs:
     - name: Configure WSL
       if: runner.os == 'Windows'
       shell: bash
-      run: wsl -u root sh -c "curl -fsSL https://get.docker.com | sh"
+      run: wsl -u root sh -c "curl -fsSL https://get.docker.com | sh" > /dev/null 2>&1
 
     - name: Install NodeJS 🪢
       uses: actions/setup-node@v4.1.0
@@ -49,7 +49,7 @@ runs:
       working-directory: viridian/algae
       shell: bash
       run: |
-        pip3 install poetry poethepoet[poetry_plugin] > /dev/null 2>&1
+        pip3 install poetry poethepoet[poetry_plugin]
         poetry install --extras "client devel" > /dev/null 2>&1
 
     - name: Resolve Target
