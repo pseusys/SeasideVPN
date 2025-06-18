@@ -43,8 +43,46 @@ fn get_default_interface_by_remote_address(destination_ip: Ipv4Addr) -> DynResul
     }
 }
 
-fn get_default_interface_by_local_address(destination_ip: Ipv4Addr) -> DynResult<(Ipv4Addr, u32)> {
-    todo!()
+fn get_default_interface_by_local_address(local_ip: Ipv4Addr) -> DynResult<u32> {
+    let mut buffer_size: u32 = 0;
+
+    let result = unsafe { GetAdaptersAddresses(AF_INET.0 as u32, GAA_FLAG_INCLUDE_PREFIX, None, None, &mut buffer_size) };
+    if WIN32_ERROR(result) != ERROR_BUFFER_OVERFLOW {
+        bail!("Empty call to 'GetAdaptersAddresses' resulted with error {result}!");
+    }
+
+    let mut buffer: Vec<u8> = vec![0; buffer_size as usize];
+    let adapter_addresses = buffer.as_mut_ptr() as *mut IP_ADAPTER_ADDRESSES_LH;
+
+    let result = unsafe { GetAdaptersAddresses(AF_INET.0 as u32, GAA_FLAG_INCLUDE_PREFIX, None, Some(adapter_addresses), &mut buffer_size) };
+    if WIN32_ERROR(result) != ERROR_SUCCESS {
+        bail!("Call to 'GetAdaptersAddresses' resulted with error {result}!");
+    }
+
+    let mut current_adapter = adapter_addresses;
+    while !current_adapter.is_null() {
+        let adapter = unsafe { *current_adapter };
+        let mut unicast_ptr = unsafe { *adapter.FirstUnicastAddress };
+
+        while !unicast_ptr.is_null() {
+            let sockaddr = unsafe { *unicast.Address.lpSockaddr };
+
+            if sockaddr.sa_family == AF_INET as u16 {
+                let sockaddr_in: &SOCKADDR_IN = &*(unicast.Address.lpSockaddr as *const SOCKADDR_IN);
+                let addr = Ipv4Addr::from(u32::from_be(sockaddr_in.sin_addr.S_un.S_addr));
+
+                if addr == local_ip {
+                    return Ok((addr, adapter.IfIndex));
+                }
+            }
+
+            unicast_ptr = unicast.Next;
+        }
+
+        current_adapter = adapter.Next;
+    }
+
+    bail!("No IP addresses found for interface with index {interface_index}!")
 }
 
 fn get_interface_details(interface_index: u32) -> DynResult<(Ipv4Net, u32)> {
@@ -268,7 +306,7 @@ impl TunnelInternal {
     pub fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_network: Ipv4Net, _: u8, dns: Option<Ipv4Addr>, mut capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, local_address: Option<Ipv4Addr>) -> DynResult<TunnelInternal> {
         debug!("Checking system default network properties...");
         let (default_gateway, default_interface) = if let Some(address) = local_address {
-            get_default_interface_by_local_address(address)?
+            (address, get_default_interface_by_local_address(address)?)
         } else {
             get_default_interface_by_remote_address(seaside_address)?
         };

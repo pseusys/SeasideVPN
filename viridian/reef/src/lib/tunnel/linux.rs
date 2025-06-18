@@ -98,14 +98,14 @@ fn get_address_device(network: Ipv4Net) -> DynResult<i32> {
     Ok(require_with!(tunnel_dev, "Tunnel device number was not resolved!"))
 }
 
-fn get_default_interface_by_local_address(local_address: Ipv4Addr) -> DynResult<(Ipv4Addr, u8, String, i32)> {
+fn get_default_interface_by_local_address(local_address: Ipv4Addr) -> DynResult<(u8, String, i32)> {
     let mut socket = create_socket()?;
 
     let default_dev = get_device_by_local_address(&mut socket, local_address)?;
     let (default_name, default_cidr) = get_device_name_and_cidr(&mut socket, default_dev)?;
     let default_mtu = get_device_mtu(&mut socket, default_dev)?;
 
-    Ok((local_address, default_cidr, default_name, default_mtu))
+    Ok((default_cidr, default_name, default_mtu))
 }
 
 fn get_default_interface_by_remote_address(seaside_address: Ipv4Addr) -> DynResult<(Ipv4Addr, u8, String, i32)> {
@@ -211,7 +211,7 @@ fn disable_routing(route_message: &Rtmsg, rule_message: &Rtmsg) -> DynResult<()>
     Ok(())
 }
 
-fn create_firewall_rules(default_name: &str, default_network: &Ipv4Net, seaside_address: &Ipv4Addr, dns: Option<String>, capture_iface: HashSet<String>, capture_ranges: HashSet<String>, exempt_ranges: HashSet<String>, svr_idx: u8) -> DynResult<Vec<String>> {
+fn create_firewall_rules(default_name: &str, default_network: &Ipv4Net, seaside_address: &Ipv4Addr, dns: Option<String>, capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, svr_idx: u8) -> DynResult<Vec<String>> {
     let mut rules = Vec::new();
     for range in exempt_ranges {
         rules.push(format!("-d {range} -j ACCEPT"));
@@ -263,10 +263,11 @@ pub struct PlatformInternalConfig {
 }
 
 impl TunnelInternal {
-    pub fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_network: Ipv4Net, svr_index: u8, dns: Option<Ipv4Addr>, mut capture_iface: HashSet<String>, capture_ranges: HashSet<String>, exempt_ranges: HashSet<String>, local_address: Option<Ipv4Addr>) -> DynResult<Self> {
+    pub fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_network: Ipv4Net, svr_index: u8, dns: Option<Ipv4Addr>, mut capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, local_address: Option<Ipv4Addr>) -> DynResult<Self> {
         debug!("Checking system default network properties...");
         let (default_address, default_cidr, default_name, default_mtu) = if let Some(address) = local_address {
-            get_default_interface_by_local_address(address)?
+            let (default_cidr, default_name, default_mtu) = get_default_interface_by_local_address(address)?;
+            (address, default_cidr, default_name, default_mtu)
         } else {
             get_default_interface_by_remote_address(seaside_address)?
         };
