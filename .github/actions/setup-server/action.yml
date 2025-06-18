@@ -17,6 +17,10 @@ outputs:
 runs:
   using: composite
 
+  defaults:
+    run:
+      shell: bash
+
   steps:
     - name: Setup WSL
       if: runner.os == 'Windows'
@@ -36,7 +40,6 @@ runs:
 
     - name: Install Node Dependencies 🔮
       working-directory: .github/scripts
-      shell: bash
       run: npm install > /dev/null 2>&1
 
     - name: Setup Python 3.11 🐍
@@ -46,20 +49,17 @@ runs:
 
     - name: Install Dependencies 🔮
       working-directory: viridian/algae
-      shell: bash
       run: |
         pip3 install poetry poethepoet[poetry_plugin] > /dev/null 2>&1
         poetry install --extras "client devel" > /dev/null 2>&1
 
     - name: Resolve Target
       id: resolve-target
-      shell: bash
       run: echo "target-ip=$(node ${{ github.action_path }}/resolve-target.js ${{ inputs.target }})" >> $GITHUB_OUTPUT
 
     - name: Start Background Server
       id: start-background-server
       working-directory: .github/scripts
-      shell: bash
       run: echo "server-ip=$(sudo node configure_viridian_test.mjs -t ${{ steps.resolve-target.outputs.target-ip }} -s)" >> $GITHUB_OUTPUT
 
     - name: Load .ENV File
@@ -72,7 +72,6 @@ runs:
     - name: Get Connection Link
       id: get-server-connection-link
       working-directory: viridian/algae
-      shell: bash
       env:
         SEASIDE_ADDRESS: ${{ steps.start-background-server.outputs.server-ip }}
         SEASIDE_ROOT_CERTIFICATE_AUTHORITY: ${{ github.workspace }}/viridian/algae/certificates/viridian/rootCA.crt
@@ -82,5 +81,4 @@ runs:
     - name: Test Echo Server Access (no VPN)
       if: ${{ inputs.test-command != '' }}
       working-directory: viridian/algae
-      shell: bash
       run: eval "${{ inputs.test-command }}" && exit 1 || true
