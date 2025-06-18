@@ -1,9 +1,9 @@
 use std::collections::HashSet;
-use std::net::Ipv4Addr;
+use std::net::{AddrParseError, Ipv4Addr};
 use std::process::ExitStatus;
 
 use futures::stream::{FuturesUnordered, StreamExt};
-use ipnet::Ipv4Net;
+use ipnet::{Ipv4Net, PrefixLenError};
 use log::{debug, error, info};
 use simple_error::{bail, require_with, SimpleError};
 use tokio::net::lookup_host;
@@ -69,23 +69,29 @@ impl<'a> Viridian<'a> {
         };
 
         let mut capture_ranges_pre = if let Some(ranges) = capture_ranges {
-            HashSet::from_iter(ranges)
+            let networks: Result<Vec<Ipv4Net>, ipnet::AddrParseError> = ranges.iter().map(|a| a.parse()).collect();
+            HashSet::from_iter(networks?)
         } else {
             HashSet::new()
         };
 
         if let Some(addresses) = capture_addresses {
-            capture_ranges_pre.extend(addresses.iter().map(|a| format!("{a}/32")));
+            let addr_networks: Result<Vec<Ipv4Addr>, AddrParseError> = addresses.iter().map(|a| a.parse()).collect();
+            let networks: Result<Vec<Ipv4Net>, PrefixLenError> = addr_networks?.iter().map(|a| Ipv4Net::new(a.clone(), 32)).collect();
+            capture_ranges_pre.extend(networks?);
         }
 
         let mut exempt_ranges_pre = if let Some(ranges) = exempt_ranges {
-            HashSet::from_iter(ranges)
+            let networks: Result<Vec<Ipv4Net>, ipnet::AddrParseError> = ranges.iter().map(|a| a.parse::<Ipv4Net>()).collect();
+            HashSet::from_iter(networks?)
         } else {
             HashSet::new()
         };
 
         if let Some(addresses) = exempt_addresses {
-            exempt_ranges_pre.extend(addresses.iter().map(|a| format!("{a}/32")));
+            let addr_networks: Result<Vec<Ipv4Addr>, AddrParseError> = addresses.iter().map(|a| a.parse()).collect();
+            let networks: Result<Vec<Ipv4Net>, PrefixLenError> = addr_networks?.iter().map(|a| Ipv4Net::new(a.clone(), 32)).collect();
+            exempt_ranges_pre.extend(networks?);
         }
 
         let capture_ranges_set = capture_ranges_pre.difference(&exempt_ranges_pre).cloned().collect();

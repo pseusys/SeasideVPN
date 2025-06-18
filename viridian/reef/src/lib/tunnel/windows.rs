@@ -1,11 +1,10 @@
-use std::collections::HashSet;
-use std::ffi::c_void;
+use std::collections::{HashMap, HashSet};
 use std::mem::replace;
 use std::net::Ipv4Addr;
-use std::ptr::null_mut;
+use std::num::ParseIntError;
+use std::slice::from_raw_parts;
 use std::sync::Arc;
 
-use etherparse::IpHeaders;
 use ipnet::Ipv4Net;
 use log::{debug, error, info, warn};
 use simple_error::bail;
@@ -15,11 +14,12 @@ use windivert::layer::NetworkLayer;
 use windivert::packet::WinDivertPacket;
 use windivert::{CloseAction, WinDivert};
 use windivert::prelude::{WinDivertFlags, WinDivertShutdownMode};
-use windows::Win32::Foundation::{ERROR_BUFFER_OVERFLOW, ERROR_SUCCESS, WIN32_ERROR};
-use windows::Win32::NetworkManagement::IpHelper::{GetAdaptersAddresses, GetBestRoute, GAA_FLAG_INCLUDE_PREFIX, MIB_IPFORWARDROW, IP_ADAPTER_ADDRESSES_LH};
-use windows::Win32::Networking::WinSock::{AF_INET, IN_ADDR, inet_addr};
+use windows::core::{GUID, PWSTR};
+use windows::Win32::Foundation::{ERROR_BUFFER_OVERFLOW, ERROR_SUCCESS, NO_ERROR, WIN32_ERROR};
+use windows::Win32::NetworkManagement::IpHelper::{DNS_INTERFACE_SETTINGS, DNS_SETTING_NAMESERVER, DNS_INTERFACE_SETTINGS_VERSION1, GetAdaptersAddresses, GetBestRoute, GetInterfaceDnsSettings, SetInterfaceDnsSettings, GAA_FLAG_INCLUDE_PREFIX, IP_ADAPTER_ADDRESSES_LH, MIB_IPFORWARDROW};
+use windows::Win32::Networking::WinSock::AF_INET;
 
-use super::{bytes_to_ip_address, TunnelInternal};
+use super::TunnelInternal;
 use crate::bytes::{get_buffer, ByteBuffer};
 use crate::{run_coroutine_in_thread, run_coroutine_sync, DynResult};
 
@@ -47,7 +47,7 @@ fn get_default_interface_by_local_address(destination_ip: Ipv4Addr) -> DynResult
     todo!()
 }
 
-fn get_interface_details(interface_index: u32) -> DynResult<(Ipv4Addr, u8, u32)> {
+fn get_interface_details(interface_index: u32) -> DynResult<(Ipv4Net, u32)> {
     let mut buffer_size: u32 = 0;
 
     let result = unsafe { GetAdaptersAddresses(AF_INET.0 as u32, GAA_FLAG_INCLUDE_PREFIX, None, None, &mut buffer_size) };
@@ -73,7 +73,7 @@ fn get_interface_details(interface_index: u32) -> DynResult<(Ipv4Addr, u8, u32)>
             let ip_bytes = unsafe { &*(&socket_bytes[2..6] as *const _ as *const [u8]) };
             let ip_addr = Ipv4Addr::from(*<&[u8; 4]>::try_from(ip_bytes)?);
             let prefix_len = unicast_addr.OnLinkPrefixLength;
-            return Ok((ip_addr, prefix_len, adapter.Mtu));
+            return Ok((Ipv4Net::new(ip_addr, prefix_len)?, adapter.Mtu));
         }
 
         current_adapter = adapter.Next;
@@ -113,42 +113,67 @@ fn get_interface_index(interface_name: &str) -> DynResult<u32> {
 }
 
 
-fn set_dns_address(interface_index: u32, dns_address: Ipv4Addr) -> Result<()> {
-    let dns_addr = inet_addr(PCSTR(dns_ip.as_ptr()));
-    if dns_addr == u32::MAX {
-        bail!("Invalid DNS IP address");
+fn set_dns_addresses(interface_indexes: Vec<u32>, dns_address: Option<Ipv4Addr>) -> DynResult<(Vec<Ipv4Addr>, HashMap<GUID, Ipv4Addr>)> {
+    let mut dns_servers = HashMap::new();
+    let mut dns_settings = DNS_INTERFACE_SETTINGS {
+        Version: DNS_INTERFACE_SETTINGS_VERSION1,
+        Flags: DNS_SETTING_NAMESERVER as u64,
+        ..Default::default()
+    };
+
+    let interface_number = interface_indexes.len();
+    for idx in interface_indexes {
+        let interface_id = GUID::from(u128::from(idx));
+        let result = unsafe { GetInterfaceDnsSettings(interface_id, &mut dns_settings as *mut _) };
+        if result != NO_ERROR {
+            bail!("GetInterfaceDnsSettings failed: {}", result.0);
+        }
+
+        let string_buffer = unsafe { from_raw_parts(dns_settings.NameServer.as_ptr(), dns_settings.NameServer.len()) };
+        let server = String::from_utf16_lossy(string_buffer).parse()?;
+        dns_servers.insert(interface_id, server);
     }
 
-    let dns_server = NLDNS_SERVER_ADDRESS {
-        Version: NL_DNS_SERVER_ADDRESS_VERSION_1,
-        Length: std::mem::size_of::<NLDNS_SERVER_ADDRESS>() as u16,
-        Anonymous: NLDNS_SERVER_ADDRESS_0 {
-            DnsServer: IN_ADDR { S_un: windows::Win32::Networking::WinSock::IN_ADDR_0 { S_addr: dns_addr } },
-        },
-    };
+    if let Some(address) = dns_address {
+        let mut server_address = address.to_string().encode_utf16().collect::<Vec<u16>>();
+        server_address.push(0);
 
-    let dns_settings = DNS_INTERFACE_SETTINGS {
-        Version: DNS_INTERFACE_SETTINGS_VERSION1,
-        Flags: DNS_SETTING_NAMESERVER | DNS_SETTING_DEFAULT_NAME,
-        Anonymous: DNS_INTERFACE_SETTINGS_0 {
-            SettingV1: DNS_INTERFACE_SETTINGS_0_0 {
-                NameServer: PWSTR::null(),
-                SearchList: PWSTR::null(),
-                RegistrationEnabled: FALSE.into(),
-                RegisterAdapterName: FALSE.into(),
-                EnableLLMNR: FALSE.into(),
-                QueryAdapterName: FALSE.into(),
-                ProfileNameServer: PWSTR::null(),
-                Domain: PWSTR::null(),
-                NameServerList: &dns_server as *const _ as *mut c_void,
-                NameServerCount: 1,
-            },
-        },
-    };
+        let dns_settings = DNS_INTERFACE_SETTINGS {
+            Version: DNS_INTERFACE_SETTINGS_VERSION1,
+            Flags: DNS_SETTING_NAMESERVER as u64,
+            NameServer: PWSTR(server_address.as_mut_ptr()),
+            ..Default::default()
+        };
 
-    let result = SetInterfaceDnsSettings(interface_index, &dns_settings);
-    if result != NO_ERROR {
-        bail!("SetInterfaceDnsSettings failed: {}", result);
+        for idx in dns_servers.keys() {
+            let result = unsafe { SetInterfaceDnsSettings(idx.clone(), &dns_settings) };
+            if result != NO_ERROR {
+                bail!("SetInterfaceDnsSettings failed: {}", result.0);
+            }
+        }
+
+        Ok((vec![address; interface_number], dns_servers))
+    } else {
+        Ok((dns_servers.values().map(|a| a.clone()).collect(), dns_servers))
+    }
+}
+
+fn reset_dns_addresses(dns_data: &HashMap<GUID, Ipv4Addr>) -> DynResult<()> {
+    for (idx, address) in dns_data {
+        let mut server_address = address.to_string().encode_utf16().collect::<Vec<u16>>();
+        server_address.push(0);
+
+        let dns_settings = DNS_INTERFACE_SETTINGS {
+            Version: DNS_INTERFACE_SETTINGS_VERSION1,
+            Flags: DNS_SETTING_NAMESERVER as u64,
+            NameServer: PWSTR(server_address.as_mut_ptr()),
+            ..Default::default()
+        };
+
+        let result = unsafe { SetInterfaceDnsSettings(idx.clone(), &dns_settings) };
+        if result != NO_ERROR {
+            bail!("SetInterfaceDnsSettings failed: {}", result.0);
+        }
     }
     Ok(())
 }
@@ -156,7 +181,7 @@ fn set_dns_address(interface_index: u32, dns_address: Ipv4Addr) -> Result<()> {
 
 trait RecvProcess {
     async fn receive<'a>(&self, buffer: ByteBuffer<'a>) -> DynResult<WinDivertPacket<'a, NetworkLayer>>;
-    async fn packet_process_loop(&self, default_network: &Ipv4Net, tunnel_cidr: u32) -> DynResult<()>;
+    async fn packet_process_loop(&self, tunnel_cidr: u32) -> DynResult<()>;
 }
 
 impl RecvProcess for Arc<WinDivert<NetworkLayer>> {
@@ -171,7 +196,7 @@ impl RecvProcess for Arc<WinDivert<NetworkLayer>> {
         }
     }
 
-    async fn packet_process_loop(&self, default_network: &Ipv4Net, tunnel_index: u32) -> DynResult<()> {
+    async fn packet_process_loop(&self, tunnel_index: u32) -> DynResult<()> {
         loop {
             let buffer = get_buffer(None).await;
             let mut packet = match self.receive(buffer).await {
@@ -181,21 +206,7 @@ impl RecvProcess for Arc<WinDivert<NetworkLayer>> {
                     continue;
                 },
             };
-            if let Ok((IpHeaders::Ipv4(ipv4, _), _)) = IpHeaders::from_ipv4_slice(&packet.data) {
-                let source_address = match bytes_to_ip_address(&ipv4.source) {
-                    Ok(res) => res,
-                    Err(err) => {
-                        warn!("Error parsing source IP address bytes: {err}!");
-                        continue;
-                    }
-                };
-                if !default_network.contains(&source_address) {
-                    packet.address.set_interface_index(tunnel_index);
-                }
-            } else {
-                warn!("Error parsing packet!");
-                continue;
-            }
+            packet.address.set_interface_index(tunnel_index);
             if let Err(err) = self.send(&packet) {
                 warn!("Error sending packet: {err}!");
             }
@@ -203,14 +214,36 @@ impl RecvProcess for Arc<WinDivert<NetworkLayer>> {
     }
 }
 
-fn enable_routing(default_index: u32, default_address: Ipv4Addr, default_cidr: u8, tunnel_index: u32) -> DynResult<(Arc<WinDivert<NetworkLayer>>, JoinHandle<DynResult<()>>)> {
-    let filter = format!("ip and outbound and ifIdx == {default_index}");
+fn enable_routing(seaside_address: Ipv4Addr, default_index: u32, default_network: Ipv4Net, tunnel_index: u32, dns_addresses: Vec<Ipv4Addr>, capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>) -> DynResult<(Arc<WinDivert<NetworkLayer>>, JoinHandle<DynResult<()>>)> {
+    let mut exempt_filter = exempt_ranges.iter().map(|i| format!("not (remoteAddr >= {} and remoteAddr <= {})", i.network(), i.broadcast())).collect::<Vec<String>>().join(" and ");
+    if exempt_filter.is_empty() {
+        exempt_filter = String::from("true");
+    }
+
+    let mut capture_range_filter = capture_ranges.iter().map(|i| format!("(remoteAddr >= {} and remoteAddr <= {})", i.network(), i.broadcast())).collect::<Vec<String>>().join(" or ");
+    if capture_range_filter.is_empty() {
+        capture_range_filter = String::from("false");
+    }
+
+    let capture_iface_result: DynResult<Vec<String>> = capture_iface.iter().map(|i| {
+        let net_idx = i.parse().map_err(|e| Box::new(e))?;
+        let (network, _) = get_interface_details(net_idx)?;
+        Ok(format!("((ifIdx == {i}) and not (remoteAddr >= {} and remoteAddr <= {}))", network.network(), network.broadcast()))
+    }).collect();
+    let mut capture_iface_filter = capture_iface_result?.join(" or ");
+    if capture_iface_filter.is_empty() {
+        capture_iface_filter = String::from("false");
+    }
+
+    let dns_filter = dns_addresses.iter().map(|i| format!("remoteAddr != {i}")).collect::<Vec<String>>().join(" and ");
+    let caerulean_filter = format!("not ((ifIdx == {default_index}) and (localAddress == {}) and (remoteAddress == {})", default_network.addr(), seaside_address);
+
+    let filter = format!("ip and outbound and ({exempt_filter}) and ({capture_range_filter} or {capture_iface_filter}) and ({dns_filter}) and ({caerulean_filter})");
     let divert = WinDivert::network(filter, 0, WinDivertFlags::new())?;
 
-    let default_network = Ipv4Net::new(default_address, default_cidr)?;
     let divert_arc = Arc::new(divert);
     let divert_clone = divert_arc.clone();
-    let handle = run_coroutine_in_thread!(divert_clone.packet_process_loop(&default_network, tunnel_index));
+    let handle = run_coroutine_in_thread!(divert_clone.packet_process_loop(tunnel_index));
     Ok((divert_arc, handle))
 }
 
@@ -227,19 +260,20 @@ fn create_tunnel(name: &str, address: Ipv4Addr, netmask: Ipv4Addr, mtu: u16) -> 
 
 pub struct PlatformInternalConfig {
     divert: Arc<WinDivert<NetworkLayer>>,
-    handle: Option<JoinHandle<DynResult<()>>>
+    handle: Option<JoinHandle<DynResult<()>>>,
+    dns_data: HashMap<GUID, Ipv4Addr>
 }
 
 impl TunnelInternal {
-    pub fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_network: Ipv4Net, _: u8, dns: Option<Ipv4Addr>, mut capture_iface: HashSet<String>, capture_ranges: HashSet<String>, exempt_ranges: HashSet<String>, local_address: Option<Ipv4Addr>) -> DynResult<TunnelInternal> {
+    pub fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_network: Ipv4Net, _: u8, dns: Option<Ipv4Addr>, mut capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, local_address: Option<Ipv4Addr>) -> DynResult<TunnelInternal> {
         debug!("Checking system default network properties...");
         let (default_gateway, default_interface) = if let Some(address) = local_address {
             get_default_interface_by_local_address(address)?
         } else {
             get_default_interface_by_remote_address(seaside_address)?
         };
-        let (default_address, default_cidr, default_mtu) = get_interface_details(default_interface)?;
-        debug!("Default network properties received: address {default_address}, CIDR {default_cidr}, MTU {default_mtu}, gateway {default_gateway}");
+        let (default_network, default_mtu) = get_interface_details(default_interface)?;
+        debug!("Default network properties received: network {default_network}, MTU {default_mtu}, gateway {default_gateway}");
 
         if capture_iface.is_empty() && capture_ranges.is_empty() {
             debug!("The default interface added to capture: {default_interface}");
@@ -250,13 +284,15 @@ impl TunnelInternal {
         let tunnel_device = create_tunnel(tunnel_name, tunnel_network.addr(), tunnel_network.netmask(), default_mtu as u16)?;
         let tunnel_index = get_interface_index(tunnel_name)?;
 
-        debug!("Setting DNS address to {dns}...");
-        set_dns_address(dns)?;
+        debug!("Setting DNS address to {dns:?}...");
+        let interfaces: Result<Vec<u32>, ParseIntError> = capture_iface.iter().map(|s| s.parse()).collect();
+        let (dns_addresses, dns_data) = set_dns_addresses(interfaces?, dns)?;
+        debug!("The DNS server for interfaces were set to: {dns_addresses:?}");
 
         debug!("Setting up routing...");
-        let (divert, handle) = enable_routing(default_interface, default_address, default_cidr, tunnel_index)?;
+        let (divert, handle) = enable_routing(seaside_address, default_interface, default_network, tunnel_index, dns_addresses, capture_iface, capture_ranges, exempt_ranges)?;
 
-        let internal = PlatformInternalConfig {divert, handle: Some(handle)};
+        let internal = PlatformInternalConfig {divert, handle: Some(handle), dns_data};
         Ok(TunnelInternal {tun_device: tunnel_device, _internal: internal})
     }
 }
@@ -279,6 +315,9 @@ impl Drop for PlatformInternalConfig {
                 let result = thread.await.expect("WinDivert thread termination error!");
                 result.inspect_err(|r| info!("WinDivert thread terminated with: {r}"));
             }
+
+            debug!("Reverting DNS servers...");
+            reset_dns_addresses(&self.dns_data).inspect_err(|e| error!("Error resetting DNS addresses: {}", e));
         });
     }
 }

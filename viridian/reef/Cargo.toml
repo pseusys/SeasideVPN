@@ -36,7 +36,6 @@ iptables = "^0.5.1"
 neli = "^0.6.4"
 
 [target.'cfg(target_os = "windows")'.dependencies]
-etherparse = { version = "^0.18.0" }
 windivert = { version = "^0.6.0", features = ["static"] }
 windows = { version = "^0.58.0", features = ["Win32_Foundation", "Win32_NetworkManagement_IpHelper", "Win32_Networking_WinSock", "Win32_NetworkManagement_Ndis"] }
 
