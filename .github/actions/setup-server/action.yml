@@ -24,6 +24,9 @@ runs:
       with:
         distribution: Ubuntu-24.04
         set-as-default: true
+        additional-packages:
+          podman
+          podman-compose
 
     - name: Configure WSL
       if: runner.os == 'Windows'
@@ -64,11 +67,7 @@ runs:
       shell: bash
       env:
         SUDO: ${{ runner.os == 'Linux' && 'sudo -E env "PATH=$PATH"' || '' }}
-      run: |  # echo "server-ip=$(${{ env.SUDO }} node configure_viridian_test.mjs -t ${{ steps.resolve-target.outputs.target-ip }} -s)" >> $GITHUB_OUTPUT
-        ${{ env.SUDO }} node configure_viridian_test.mjs -t ${{ steps.resolve-target.outputs.target-ip }} || true
-        wsl -u root journalctl -u docker
-        wsl -u root docker start whirlpool-standalone
-        echo "server-ip=aaa" >> $GITHUB_OUTPUT
+      run: echo "server-ip=$(${{ env.SUDO }} node configure_viridian_test.mjs -t ${{ steps.resolve-target.outputs.target-ip }} -s)" >> $GITHUB_OUTPUT
 
     - name: Load .ENV File
       uses: aarcangeli/load-dotenv@v1

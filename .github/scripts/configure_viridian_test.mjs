@@ -193,33 +193,13 @@ async function launchWhirlpool(whirlpool, silent) {
 	print("Spawning whirlpool process...", silent);
 	let composePath = DOCKER_COMPOSE_PATH;
 	if (platform == "win32") composePath = convertPathToWSL(composePath);
-	const a = runCommandForSystem(`docker compose -f ${composePath} up --build --detach ${DOCKER_COMPOSE_BRIDGE_CONTAINER}`, `wsl -u root docker compose -f ${composePath} up --build --detach ${DOCKER_COMPOSE_HOST_CONTAINER}`, undefined, {
-		SEASIDE_HOST_ADDRESS: whirlpool
-	});
-	print("Waiting whirlpool to initiate...", silent);
-	print(`STDOUT:\n${a.stdout.toString().trim()}\n\nSTDERR:${a.stderr.toString().trim()}`, silent);
-	await sleep(DOCKER_COMPOSE_TIMEOUT);
-	const c = runCommandForSystem(`true`, `wsl -u root sh -c "docker compose -f ${composePath} ps --all && docker compose -f ${composePath} logs whirlpool-host && docker compose -f ${composePath} top whirlpool-host && ss -tulnp && docker inspect whirlpool-standalone && docker stats whirlpool-standalone"`);
-	print(c.stdout.toString().trim(), silent);
-	print("Whirlpool started!", silent);
-}
-
-/**
- * Launch Docker compose project in the background.
- * Wait for some time to check if it started successfully and throw an error if it did.
- * @param {string} path Docker Compose standalone project file path.
-async function launchWhirlpool(whirlpool, silent) {
-	print("Spawning whirlpool process...", silent);
-	let composePath = DOCKER_COMPOSE_PATH;
-	if (platform == "win32") composePath = convertPathToWSL(composePath);
-	runCommandForSystem(`docker compose -f ${composePath} up --build --detach ${DOCKER_COMPOSE_BRIDGE_CONTAINER}`, `wsl -u root docker compose -f ${composePath} up --build --detach ${DOCKER_COMPOSE_HOST_CONTAINER}`, undefined, {
+	runCommandForSystem(`docker compose -f ${composePath} up --build --detach ${DOCKER_COMPOSE_BRIDGE_CONTAINER}`, `wsl -u root podman compose -f ${composePath} up --build --detach ${DOCKER_COMPOSE_HOST_CONTAINER}`, undefined, {
 		SEASIDE_HOST_ADDRESS: whirlpool
 	});
 	print("Waiting whirlpool to initiate...", silent);
 	await sleep(DOCKER_COMPOSE_TIMEOUT);
 	print("Whirlpool started!", silent);
 }
- */
 
 /**
  * Kill Docker compose process (with docker compose) running in the background.
@@ -229,23 +209,10 @@ async function killWhirlpool(silent) {
 	print("Killing whirlpool process...", silent);
 	let composePath = DOCKER_COMPOSE_PATH;
 	if (platform == "win32") composePath = convertPathToWSL(composePath);
-	const c = runCommandForSystem(`docker compose -f ${composePath} down`, `wsl -u root docker compose -f ${composePath} logs whirlpool-host`);
+	const c = runCommandForSystem(`docker compose -f ${composePath} down`, `wsl -u root podman compose -f ${composePath} logs whirlpool-host`);
 	console.log(c.stdout.toString().trim());
 	print("Whirlpool process killed!", silent);
 }
-
-/**
- * Kill Docker compose process (with docker compose) running in the background.
- * @param {string} path Docker Compose standalone project file path.
-
-async function killWhirlpool(silent) {
-	print("Killing whirlpool process...", silent);
-	let composePath = DOCKER_COMPOSE_PATH;
-	if (platform == "win32") composePath = convertPathToWSL(composePath);
-	runCommandForSystem(`docker compose -f ${composePath} down`, `wsl -u root docker compose -f ${composePath} down`);
-	print("Whirlpool process killed!", silent);
-}
- */
 
 // Script body:
 
