@@ -49,10 +49,9 @@ def bundle() -> None:
     setup = ALGAE_ROOT / "setup"
     entrypoint = "setup.main:main"
     install_cache = "$TEMP/seaside_install_cache"
+    pycache = str((setup / "__pycache__").relative_to(ALGAE_ROOT))
     installer_name = str(ALGAE_ROOT / (argv[1] if len(argv) > 1 else _INSTALLER_NAME))
-
-    rmtree(setup / "__pycache__", ignore_errors=True)
-    create_app(str(setup), output=installer_name, main=entrypoint, compressed=True, lazy_install=True, unzip_path=install_cache, pip_args=dependencies)
+    create_app(str(setup), output=installer_name, main=entrypoint, compressed=True, lazy_install=True, unzip_path=install_cache, pip_args=dependencies, rm_patterns=pycache)
 
 
 def clean() -> None:
