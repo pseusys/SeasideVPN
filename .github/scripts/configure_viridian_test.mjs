@@ -12,7 +12,7 @@ const BLUE = "\x1b[34m";
 const RESET = "\x1b[0m";
 
 // Timeout for Docker compose to initialize (and stop completely in case of an error).
-const DOCKER_COMPOSE_TIMEOUT = 15;
+const DOCKER_COMPOSE_TIMEOUT = 45;
 // Echo server network for VPN access.
 const DOCKER_COMPOSE_NETWORK = "sea-net";
 // Seaside container and image name for server container in hosted network.
