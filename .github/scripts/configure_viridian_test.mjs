@@ -209,7 +209,8 @@ async function killWhirlpool(silent) {
 	print("Killing whirlpool process...", silent);
 	let composePath = DOCKER_COMPOSE_PATH;
 	if (platform == "win32") composePath = convertPathToWSL(composePath);
-	runCommandForSystem(`docker compose -f ${composePath} down`, `wsl -u root docker compose -f ${composePath} down`);
+	const c = runCommandForSystem(`docker compose -f ${composePath} down`, `wsl -u root docker compose -f ${composePath} logs whirlpool`);
+	print(c.stdout.toString().trim(), silent);
 	print("Whirlpool process killed!", silent);
 }
 
