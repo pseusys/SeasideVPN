@@ -193,12 +193,13 @@ async function launchWhirlpool(whirlpool, silent) {
 	print("Spawning whirlpool process...", silent);
 	let composePath = DOCKER_COMPOSE_PATH;
 	if (platform == "win32") composePath = convertPathToWSL(composePath);
-	runCommandForSystem(`docker compose -f ${composePath} up --build --detach ${DOCKER_COMPOSE_BRIDGE_CONTAINER}`, `wsl -u root docker compose -f ${composePath} up --build --detach ${DOCKER_COMPOSE_HOST_CONTAINER}`, undefined, {
+	const a = runCommandForSystem(`docker compose -f ${composePath} up --build --detach ${DOCKER_COMPOSE_BRIDGE_CONTAINER}`, `wsl -u root docker compose -f ${composePath} up --build --detach ${DOCKER_COMPOSE_HOST_CONTAINER}`, undefined, {
 		SEASIDE_HOST_ADDRESS: whirlpool
 	});
 	print("Waiting whirlpool to initiate...", silent);
+	print(`STDOUT:\n${c.stdout.toString().trim()}\n\nSTDERR:${c.stderr.toString().trim()}`, silent);
 	await sleep(DOCKER_COMPOSE_TIMEOUT);
-	const c = runCommandForSystem(`true`, `wsl -u root sh -c "docker ps && docker top whirlpool-standalone && docker logs whirlpool-standalone && ss -tulnp"`);
+	const c = runCommandForSystem(`true`, `wsl -u root sh -c "docker compose -f ${composePath} ps --all && docker ps && docker top whirlpool-standalone && docker logs whirlpool-standalone && ss -tulnp"`);
 	print(c.stdout.toString().trim(), silent);
 	print("Whirlpool started!", silent);
 }
