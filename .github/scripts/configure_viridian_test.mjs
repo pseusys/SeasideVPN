@@ -197,7 +197,7 @@ async function launchWhirlpool(whirlpool, silent) {
 		SEASIDE_HOST_ADDRESS: whirlpool
 	});
 	print("Waiting whirlpool to initiate...", silent);
-	print(`STDOUT:\n${c.stdout.toString().trim()}\n\nSTDERR:${c.stderr.toString().trim()}`, silent);
+	print(`STDOUT:\n${a.stdout.toString().trim()}\n\nSTDERR:${c.stderr.toString().trim()}`, silent);
 	await sleep(DOCKER_COMPOSE_TIMEOUT);
 	const c = runCommandForSystem(`true`, `wsl -u root sh -c "docker compose -f ${composePath} ps --all && docker ps && docker top whirlpool-standalone && docker logs whirlpool-standalone && ss -tulnp"`);
 	print(c.stdout.toString().trim(), silent);
