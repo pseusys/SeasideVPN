@@ -63,7 +63,7 @@ runs:
       working-directory: .github/scripts
       shell: bash
       env:
-        SUDO: ${{ matrix.os == 'ubuntu' && 'sudo -E env "PATH=$PATH"' || '' }}
+        SUDO: ${{ runner.os == 'Linux' && 'sudo -E env "PATH=$PATH"' || '' }}
       run: echo "server-ip=$(${{ env.SUDO }} node configure_viridian_test.mjs -t ${{ steps.resolve-target.outputs.target-ip }} -s)" >> $GITHUB_OUTPUT
 
     - name: Load .ENV File
