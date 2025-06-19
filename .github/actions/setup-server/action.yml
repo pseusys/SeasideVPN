@@ -49,8 +49,8 @@ runs:
       working-directory: viridian/algae
       shell: bash
       run: |
-        pip3 install poetry poethepoet[poetry_plugin]
-        poetry install --extras "client devel"
+        pip3 install poetry poethepoet[poetry_plugin]==0.34.0 > /dev/null 2>&1
+        poetry install --extras "client devel" > /dev/null 2>&1
 
     - name: Resolve Target
       id: resolve-target
