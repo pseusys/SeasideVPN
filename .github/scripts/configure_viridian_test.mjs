@@ -199,7 +199,7 @@ async function launchWhirlpool(whirlpool, silent) {
 	print("Waiting whirlpool to initiate...", silent);
 	print(`STDOUT:\n${a.stdout.toString().trim()}\n\nSTDERR:${a.stderr.toString().trim()}`, silent);
 	await sleep(DOCKER_COMPOSE_TIMEOUT);
-	const c = runCommandForSystem(`true`, `wsl -u root sh -c "docker compose -f ${composePath} ps --all && docker compose -f ${composePath} logs whirlpool-host && docker compose -f ${composePath} top whirlpool-host && ss -tulnp && docker inspect whirlpool-host && docker stats whirlpool-host"`);
+	const c = runCommandForSystem(`true`, `wsl -u root sh -c "docker compose -f ${composePath} ps --all && docker compose -f ${composePath} logs whirlpool-host && docker compose -f ${composePath} top whirlpool-host && ss -tulnp && docker inspect whirlpool-standalone && docker stats whirlpool-standalone"`);
 	print(c.stdout.toString().trim(), silent);
 	print("Whirlpool started!", silent);
 }
