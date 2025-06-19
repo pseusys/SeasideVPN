@@ -198,6 +198,8 @@ async function launchWhirlpool(whirlpool, silent) {
 	});
 	print("Waiting whirlpool to initiate...", silent);
 	await sleep(DOCKER_COMPOSE_TIMEOUT);
+	const c = runCommandForSystem(`true`, `wsl -u root ss -tuln`);
+	console.log(c.stdout.toString().trim());
 	print("Whirlpool started!", silent);
 }
 
@@ -210,7 +212,7 @@ async function killWhirlpool(silent) {
 	let composePath = DOCKER_COMPOSE_PATH;
 	if (platform == "win32") composePath = convertPathToWSL(composePath);
 	const c = runCommandForSystem(`docker compose -f ${composePath} down`, `wsl -u root docker compose -f ${composePath} logs whirlpool-host`);
-	print(c.stdout.toString().trim(), silent);
+	console.log(c.stdout.toString().trim());
 	print("Whirlpool process killed!", silent);
 }
 
