@@ -93,10 +93,3 @@ runs:
       env:
         RUNNER: ${{ runner.os == 'Linux' && 'bash -c' || 'powershell -Command' }}
       run: ${{ env.RUNNER }} "${{ inputs.test-command }}" && exit 1 || true
-
-    - name: Stop Background Server
-      working-directory: .github/scripts
-      shell: bash
-      env:
-        SUDO: ${{ runner.os == 'Linux' && 'sudo -E env "PATH=$PATH"' || '' }}
-      run: ${{ env.SUDO }} node configure_viridian_test.mjs -t ${{ steps.resolve-target.outputs.target-ip }} -r

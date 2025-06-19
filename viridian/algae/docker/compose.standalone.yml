@@ -21,6 +21,12 @@ services:
   whirlpool-host:
     extends: whirlpool-base
     network_mode: host
+    healthcheck:
+      test: ["CMD", "netstat -tulpn | grep -q \":$SEASIDE_CTRLPORT\""]
+      interval: 10s
+      timeout: 1s
+      retries: 3
+      start-period: 15s
 
 
 networks:
