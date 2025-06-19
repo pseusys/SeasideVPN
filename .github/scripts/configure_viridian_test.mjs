@@ -43,7 +43,9 @@ function printHelpMessage() {
  * @returns {ChildProcess} child process spawned by the command.
  */
 function runCommand(command, environment = {}) {
-	const childEnv = { ...process.env, ...environment };
+	let childEnv = { ...process.env, ...environment };
+	let envKeys = Object.keys(environment).map(key => `${key}/u`);
+	childEnv["WSLENV"] = `${process.env.WSLENV}:${envKeys.join(":")}`;
 	const child = spawnSync(command, { shell: platform == "win32" ? "powershell" : true, encoding: "utf-8", env: childEnv });
 	if (child.error) throw Error(`Command execution error: ${child.error.message}`);
 	else if (child.status !== 0) throw Error(`Command failed: "${command}" (env: ${JSON.stringify(environment)})\nCommand failed with error code: ${child.status}\n\nSTDOUT:\n${child.stdout.toString()}\n\nSTDERR:\n${child.stderr.toString()}`);
