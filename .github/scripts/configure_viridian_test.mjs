@@ -198,7 +198,7 @@ async function launchWhirlpool(whirlpool, silent) {
 	});
 	print("Waiting whirlpool to initiate...", silent);
 	await sleep(DOCKER_COMPOSE_TIMEOUT);
-	const c = runCommandForSystem(`true`, `wsl -u root sh -c "docker top whirlpool-standalone && docker logs whirlpool-standalone && ss -tulnp"`);
+	const c = runCommandForSystem(`true`, `wsl -u root sh -c "docker ps && docker top whirlpool-standalone && docker logs whirlpool-standalone && ss -tulnp"`);
 	print(c.stdout.toString().trim(), silent);
 	print("Whirlpool started!", silent);
 }
