@@ -50,7 +50,7 @@ runs:
       shell: bash
       run: |
         pip3 install poetry poethepoet[poetry_plugin]
-        poetry install --extras "client devel" > /dev/null 2>&1
+        poetry install --extras "client devel"
 
     - name: Resolve Target
       id: resolve-target
