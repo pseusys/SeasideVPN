@@ -19,6 +19,7 @@ services:
   whirlpool-host:
     extends: whirlpool-base
     network_mode: host
+    sysctls: []
 
 
 networks:

@@ -48,7 +48,7 @@ function runCommand(command, environment = {}) {
 	if (platform == "win32") {
 		shell = "powershell";
 		let envKeys = Object.keys(environment).map((key) => `${key}/u`);
-		childEnv.WSLENV = `${process.env.WSLENV}:${envKeys.join(":")}`;
+		childEnv.WSLENV = `${process.env.WSLENV ?? ""}:${envKeys.join(":")}`;
 	}
 	const child = spawnSync(command, { shell, encoding: "utf-8", env: { ...process.env, ...childEnv } });
 	if (child.error) throw Error(`Command execution error: ${child.error.message}`);
