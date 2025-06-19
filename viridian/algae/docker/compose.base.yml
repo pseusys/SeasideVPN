@@ -21,7 +21,8 @@ services:
     volumes:
       - ../certificates/viridian:/seaside/viridian/ca:rw
 
-  whirlpool:
+  # In 'host' network mode, the 'sysctls' setting is unavailable, so it is required to provide a mean to extend 'whirlpool' without 'sysctls'.
+  whirlpool-base:
     privileged: true
     init: true
     build:
@@ -32,10 +33,14 @@ services:
       - test.conf.env
     environment:
       RUNNING_IN_CI: ${RUNNING_IN_CI:-0}
-    sysctls:
-      - net.ipv6.conf.all.disable_ipv6=1
     volumes:
       - ../certificates:/seaside/caerulean/certificates:rw
+
+  whirlpool:
+    extends:
+      service: whirlpool-base
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=1
 
   echo:
     privileged: true

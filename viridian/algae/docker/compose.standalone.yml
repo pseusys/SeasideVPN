@@ -4,7 +4,7 @@ services:
     container_name: whirlpool-standalone
     extends:
       file: compose.base.yml
-      service: whirlpool
+      service: whirlpool-base
     build:
       target: default-certified
       args:
@@ -12,6 +12,8 @@ services:
 
   whirlpool-bridge:
     extends: whirlpool-base
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=1
     networks:
       sea-net:
         ipv4_address: 10.0.0.87
@@ -19,7 +21,6 @@ services:
   whirlpool-host:
     extends: whirlpool-base
     network_mode: host
-    sysctls: {}
 
 
 networks:
