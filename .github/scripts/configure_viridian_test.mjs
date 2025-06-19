@@ -43,12 +43,16 @@ function printHelpMessage() {
  * @returns {ChildProcess} child process spawned by the command.
  */
 function runCommand(command, environment = {}) {
-	let childEnv = { ...process.env, ...environment };
-	let envKeys = Object.keys(environment).map(key => `${key}/u`);
-	childEnv["WSLENV"] = `${process.env.WSLENV}:${envKeys.join(":")}`;
-	const child = spawnSync(command, { shell: platform == "win32" ? "powershell" : true, encoding: "utf-8", env: childEnv });
+	let shell = true;
+	let childEnv = { ...environment };
+	if (platform == "win32") {
+		shell = "powershell";
+		let envKeys = Object.keys(environment).map((key) => `${key}/u`);
+		childEnv.WSLENV = `${process.env.WSLENV}:${envKeys.join(":")}`;
+	}
+	const child = spawnSync(command, { shell, encoding: "utf-8", env: { ...process.env, ...childEnv } });
 	if (child.error) throw Error(`Command execution error: ${child.error.message}`);
-	else if (child.status !== 0) throw Error(`Command failed: "${command}" (env: ${JSON.stringify(environment)})\nCommand failed with error code: ${child.status}\n\nSTDOUT:\n${child.stdout.toString()}\n\nSTDERR:\n${child.stderr.toString()}`);
+	else if (child.status !== 0) throw Error(`Command failed: "${command}" (env: ${JSON.stringify(childEnv)})\nCommand failed with error code: ${child.status}\n\nSTDOUT:\n${child.stdout.toString()}\n\nSTDERR:\n${child.stderr.toString()}`);
 	else return child;
 }
 
@@ -176,10 +180,7 @@ function setupRouting(unreachable, iface, address, silent) {
 
 function resetRouting(unreachable, iface, address, silent) {
 	print(`Enabling access to ${unreachable} address...`, silent);
-	runCommandForSystem(
-		`iptables -t mangle -D OUTPUT -o ${iface} -s ${address} -d ${unreachable} -j DROP`,
-		`Remove-NetFirewallRule -DisplayName "seaside-test-block-unreachable"`
-	);
+	runCommandForSystem(`iptables -t mangle -D OUTPUT -o ${iface} -s ${address} -d ${unreachable} -j DROP`, `Remove-NetFirewallRule -DisplayName "seaside-test-block-unreachable"`);
 	print(`Accessing ${unreachable} is possible again!`, silent);
 }
 
@@ -192,12 +193,9 @@ async function launchWhirlpool(whirlpool, silent) {
 	print("Spawning whirlpool process...", silent);
 	let composePath = DOCKER_COMPOSE_PATH;
 	if (platform == "win32") composePath = convertPathToWSL(composePath);
-	runCommandForSystem(
-		`docker compose -f ${composePath} up --build --detach ${DOCKER_COMPOSE_BRIDGE_CONTAINER}`,
-		`wsl -u root docker compose -f ${composePath} up --build --detach ${DOCKER_COMPOSE_HOST_CONTAINER}`,
-		undefined,
-		{ SEASIDE_HOST_ADDRESS: whirlpool }
-	);
+	runCommandForSystem(`docker compose -f ${composePath} up --build --detach ${DOCKER_COMPOSE_BRIDGE_CONTAINER}`, `wsl -u root docker compose -f ${composePath} up --build --detach ${DOCKER_COMPOSE_HOST_CONTAINER}`, undefined, {
+		SEASIDE_HOST_ADDRESS: whirlpool
+	});
 	print("Waiting whirlpool to initiate...", silent);
 	await sleep(DOCKER_COMPOSE_TIMEOUT);
 	print("Whirlpool started!", silent);
