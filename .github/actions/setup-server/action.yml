@@ -65,7 +65,9 @@ runs:
       env:
         SUDO: ${{ runner.os == 'Linux' && 'sudo -E env "PATH=$PATH"' || '' }}
       run: |  # echo "server-ip=$(${{ env.SUDO }} node configure_viridian_test.mjs -t ${{ steps.resolve-target.outputs.target-ip }} -s)" >> $GITHUB_OUTPUT
-        ${{ env.SUDO }} node configure_viridian_test.mjs -t ${{ steps.resolve-target.outputs.target-ip }}
+        ${{ env.SUDO }} node configure_viridian_test.mjs -t ${{ steps.resolve-target.outputs.target-ip }} || true
+        wsl -u root journalctl -u docker
+        wsl -u root docker start whirlpool-host
         echo "server-ip=aaa" >> $GITHUB_OUTPUT
 
     - name: Load .ENV File
