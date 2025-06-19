@@ -143,7 +143,7 @@ function getWhirlpoolIP(silent) {
 
 function getOutputConnection(unreachable) {
 	if (platform == "win32") {
-		const route = getOutput(`(Find-NetRoute -RemoteIPAddress $WSL_IP | Select-Object -First 1 | ForEach-Object { "$($_.IPAddress) $($_.InterfaceAlias)" })`);
+		const route = getOutput(`(Find-NetRoute -RemoteIPAddress ${unreachable} | Select-Object -First 1 | ForEach-Object { "$($_.IPAddress) $($_.InterfaceAlias)" })`);
 		const match = route.match(/^(\d{1,3}(?:\.\d{1,3}){3})\s+(.+)$/);
 		return { iface: match[2], address: match[1] };
 	} else {
