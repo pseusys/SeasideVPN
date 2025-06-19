@@ -46,7 +46,7 @@ function runCommand(command, environment = {}) {
 	const childEnv = { ...process.env, ...environment };
 	const child = spawnSync(command, { shell: platform == "win32" ? "powershell" : true, encoding: "utf-8", env: childEnv });
 	if (child.error) throw Error(`Command execution error: ${child.error.message}`);
-	else if (child.status !== 0) throw Error(`Command failed: "${command}" (env: ${environment})\nCommand failed with error code: ${child.status}\n\nSTDOUT:\n${child.stdout.toString()}\n\nSTDERR:\n${child.stderr.toString()}`);
+	else if (child.status !== 0) throw Error(`Command failed: "${command}" (env: ${JSON.stringify(environment)})\nCommand failed with error code: ${child.status}\n\nSTDOUT:\n${child.stdout.toString()}\n\nSTDERR:\n${child.stderr.toString()}`);
 	else return child;
 }
 
@@ -194,7 +194,7 @@ async function launchWhirlpool(whirlpool, silent) {
 		`docker compose -f ${composePath} up --build --detach ${DOCKER_COMPOSE_BRIDGE_CONTAINER}`,
 		`wsl -u root docker compose -f ${composePath} up --build --detach ${DOCKER_COMPOSE_HOST_CONTAINER}`,
 		undefined,
-		{ "SEASIDE_HOST_ADDRESS": whirlpool }
+		{ SEASIDE_HOST_ADDRESS: whirlpool }
 	);
 	print("Waiting whirlpool to initiate...", silent);
 	await sleep(DOCKER_COMPOSE_TIMEOUT);
