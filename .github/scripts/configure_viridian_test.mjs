@@ -129,7 +129,7 @@ function parseArguments() {
 function getWhirlpoolIP(silent) {
 	if (platform == "win32") {
 		print("Reading system configurations...", silent);
-		const WSLIP = getOutput("hostname -I").split(" ")[0].trim();
+		const WSLIP = getOutput("wsl hostname -I").split(" ")[0].trim();
 		print(`Extracted whirlpool IP from WSL configuration: ${WSLIP}`, silent);
 		return WSLIP;
 	} else {
