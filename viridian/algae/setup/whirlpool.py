@@ -284,8 +284,8 @@ class WhirlpoolInstaller(Installer):
     def print_info(self, hide: bool) -> None:
         """Print configuration of the node that will be applied upon running."""
         underscored = code_to_chars(4)
-        owner_payload = "***" if hide else self._args["payload_owner"]
-        host_name = f"{self._args['internal_address']}:{self._args['control_port']}"
+        owner_payload = "***" if hide else self._args["api_key_owner"]
+        host_name = f"{self._args['internal_address']}:{self._args['api_port']}"
         print("\n\n>> ================================================ >>")
         print(f"{Style.BRIGHT}{Fore.GREEN}Seaside Whirlpool node version {_VERSION} successfully configured!{Style.RESET_ALL}")
         print(f"The node address is: {Fore.GREEN}{host_name}{Style.RESET_ALL}")
