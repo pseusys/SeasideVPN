@@ -20,11 +20,11 @@ const DOCKER_COMPOSE_HOST_CONTAINER = "whirlpool-host";
 // Seaside container and image name for server container in bridged network.
 const DOCKER_COMPOSE_BRIDGE_CONTAINER = "whirlpool-bridge";
 // Path to the Docker compose configuration file.
-const DOCKER_COMPOSE_PATH = join(dirname(import.meta.dirname), "compose.standalone.yml");
+const DOCKER_COMPOSE_PATH = join(import.meta.dirname, "compose.yml");
 
-const CAERULEAN_WHIRLPOOL_ROOT = join(dirname(import.meta.dirname), "..", "..", "..", "caerulean", "whirlpool");
+const CAERULEAN_WHIRLPOOL_ROOT = join(import.meta.dirname, "..", "..", "..", "caerulean", "whirlpool");
 
-const VIRIDIAN_ALGAE_ROOT = join(dirname(import.meta.dirname), "..", "..", "..", "viridian", "algae");
+const VIRIDIAN_ALGAE_ROOT = join(import.meta.dirname, "..", "..", "..", "viridian", "algae");
 
 const INSTALLER_PATH = join(VIRIDIAN_ALGAE_ROOT, "install.pyz");
 
