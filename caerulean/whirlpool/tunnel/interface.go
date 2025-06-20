@@ -25,7 +25,7 @@ func (conf *TunnelConfig) openInterface(extIP string) error {
 		if err != nil {
 			return fmt.Errorf("error resolving network addresses: %v", err)
 		}
-		conf.mtu = uint32(tunnelInterface.MTU)
+		conf.mtu = int32(tunnelInterface.MTU)
 	}
 	tunnelMTU := strconv.FormatInt(int64(conf.mtu), 10)
 

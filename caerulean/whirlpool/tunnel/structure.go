@@ -58,7 +58,7 @@ type TunnelConfig struct {
 	icmpPacketPACKETLimitRules []string
 
 	// Tunnel MTU.
-	mtu uint32
+	mtu int32
 
 	// Tunnel name.
 	name string
@@ -80,7 +80,7 @@ func Preserve() (*TunnelConfig, error) {
 	vpnDataKbyteLimitRule := readLimit("SEASIDE_VPN_DATA_LIMIT", "%dkb/s", maxTotal, burstMultiplier)
 	controlPacketLimitRule := readLimit("SEASIDE_CONTROL_PACKET_LIMIT", "%d/sec", maxTotal, burstMultiplier)
 	icmpPacketPACKETLimitRules := readLimit("SEASIDE_ICMP_PACKET_LIMIT", "%d/sec", maxTotal, burstMultiplier)
-	mtu := uint32(utils.GetIntEnv("SEASIDE_TUNNEL_MTU", DEFAULT_TUNNEL_MTU, 32))
+	mtu := int32(utils.GetIntEnv("SEASIDE_TUNNEL_MTU", DEFAULT_TUNNEL_MTU, 32))
 	name := utils.GetEnv("SEASIDE_TUNNEL_NAME", DEFAULT_TUNNEL_NAME)
 
 	conf := TunnelConfig{
