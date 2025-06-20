@@ -69,6 +69,9 @@ runs:
       run: |
         echo "server-ip=$(${{ env.SUDO }} node actions/setup-server/configure_viridian_test.mjs -t ${{ steps.resolve-target.outputs.target-ip }} -s)" >> $GITHUB_OUTPUT
         wsl -u root ss -tulpn
+        wsl -u ls
+        wsl -u root cat safe.log
+        wsl -u root cat danger.log
 
     - name: Get Connection Link
       id: get-server-connection-link

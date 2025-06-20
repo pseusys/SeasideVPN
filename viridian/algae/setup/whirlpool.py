@@ -135,12 +135,13 @@ class WhirlpoolInstaller(Installer):
         return environment
 
     def refresh_certificates(self) -> None:
+        cert_path = Path(self._args["certificates_path"])
         self._logger.debug("Generating certificates...")
         generate_certificates(self._args["internal_address"], remove_existing=True)
-        self._logger.debug("Copying certificates to the caerulean root...")
+        self._logger.debug(f"Copying certificates to the certificate path '{cert_path}'...")
         caerulean_certs = GENERATE_CERTIFICATES_PATH / "caerulean"
-        copy(caerulean_certs / "cert.key", GENERATE_CERTIFICATES_PATH)
-        copy(caerulean_certs / "cert.crt", GENERATE_CERTIFICATES_PATH)
+        copy(caerulean_certs / "cert.key", cert_path)
+        copy(caerulean_certs / "cert.crt", cert_path)
         self._logger.debug("Certificates ready!")
 
     def _configure_server(self) -> None:
