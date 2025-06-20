@@ -71,7 +71,7 @@ runs:
         wsl -u root ss -tulpn
         wsl -u root ls .
         wsl -u root cat ./conf.env
-        wsl -u root sh -c "set -a && . ./conf.env && ./whirlpool.run && disown -r"
+        wsl -u root sh -c "set -a && . ./conf.env && nohup ./whirlpool.run &"
         wsl -u root ss -tulpn
 
     - name: Get Connection Link
