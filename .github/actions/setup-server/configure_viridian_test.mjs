@@ -94,9 +94,13 @@ function runCommandForSystem(linuxCommand = undefined, windowsCommand = undefine
  * @returns {string} converted path.
  */
 function convertPathToWSL(path) {
-	return runCommand(`wsl wslpath -a ${path.replaceAll("\\", "\\\\")}`)
-		.stdout.toString()
-		.trim();
+	if (platform == "win32") {
+		return runCommand(`wsl wslpath -a ${path.replaceAll("\\", "\\\\")}`)
+			.stdout.toString()
+			.trim();
+	} else {
+		return path;
+	}
 }
 
 /**
