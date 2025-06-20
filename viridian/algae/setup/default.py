@@ -1,5 +1,5 @@
 from argparse import Action, ArgumentParser, Namespace
-from base64 import urlsafe_b64encode
+from base64 import b64encode
 from ipaddress import AddressValueError, IPv4Address
 from logging import NOTSET, _nameToLevel
 from random import randint
@@ -22,7 +22,7 @@ def bytes_value(default_length: int, base64: bool = False) -> Callable[[str], st
         if len(value) > 0:
             return value
         elif base64:
-            return urlsafe_b64encode(token_bytes(default_length)).decode("ascii")
+            return b64encode(token_bytes(default_length)).decode("ascii")
         else:
             return token_urlsafe(default_length)
 
