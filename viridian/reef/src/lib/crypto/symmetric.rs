@@ -18,6 +18,7 @@ pub const NONCE_LEN: usize = 24;
 pub const MAC_LEN: usize = 16;
 
 
+#[derive(Clone)]
 pub struct Symmetric {
     cipher: XChaCha20Poly1305,
 }
@@ -59,11 +60,5 @@ impl Symmetric {
             Ok(_) => Ok(ciphertext),
             Err(err) => bail!("Error encrypting plaintext: {err}")
         }
-    }
-}
-
-impl Clone for Symmetric {
-    fn clone(&self) -> Self {
-        Self { cipher: self.cipher.clone() }
     }
 }
