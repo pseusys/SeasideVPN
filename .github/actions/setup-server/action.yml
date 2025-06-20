@@ -31,7 +31,7 @@ runs:
         node-version: 22
 
     - name: Install Node Dependencies 🔮
-      working-directory: .github/scripts
+      working-directory: .github
       shell: bash
       run: npm install > /dev/null 2>&1
 
@@ -49,9 +49,9 @@ runs:
 
     - name: Resolve Target
       id: resolve-target
-      working-directory: ${{ github.action_path }}
+      working-directory: .github
       shell: bash
-      run: echo "target-ip=$(node resolve-target.js ${{ inputs.target }})" >> $GITHUB_OUTPUT
+      run: echo "target-ip=$(node actions/setup-server/resolve-target.js ${{ inputs.target }})" >> $GITHUB_OUTPUT
 
     - name: Load .ENV File
       uses: aarcangeli/load-dotenv@v1
@@ -62,11 +62,11 @@ runs:
 
     - name: Start Background Server
       id: start-background-server
-      working-directory: ${{ github.action_path }}
+      working-directory: .github
       shell: bash
       env:
         SUDO: ${{ runner.os == 'Linux' && 'sudo -E env "PATH=$PATH"' || '' }}
-      run: echo "server-ip=$(${{ env.SUDO }} node configure_viridian_test.mjs -t ${{ steps.resolve-target.outputs.target-ip }} -s)" >> $GITHUB_OUTPUT
+      run: echo "server-ip=$(${{ env.SUDO }} node actions/setup-server/configure_viridian_test.mjs -t ${{ steps.resolve-target.outputs.target-ip }} -s)" >> $GITHUB_OUTPUT
 
     - name: Get Connection Link
       id: get-server-connection-link

@@ -5,8 +5,8 @@
 	"type": "module",
 	"scripts": {
 		"deploy-whirlpool-beget": "node deploy_whirlpool_beget.mjs",
-		"lint-scripts": "npx prettier '../**/*.*js' --check",
-		"format-scripts": "npx prettier '../**/*.*js' --write"
+		"lint-scripts": "npx prettier './**/*.*js' --check",
+		"format-scripts": "npx prettier './**/*.*js' --write"
 	},
 	"repository": {
 		"type": "git",

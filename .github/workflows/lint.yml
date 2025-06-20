@@ -12,7 +12,7 @@ env:
 
 jobs:
   scripts-lint:
-    name: Lint Shell Scripts Everywhere
+    name: Lint Scripts Everywhere
     runs-on: ubuntu-latest
 
     steps:
