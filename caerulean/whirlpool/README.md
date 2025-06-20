@@ -128,12 +128,11 @@ The whirlpool executable is sensitive to the following environmental variables:
 
 - `SEASIDE_ADDRESS`: **Internal** whirlpool address, should be used for viridians to connect and send VPN packets to, should be _public_.
 - `SEASIDE_EXTERNAL`: **External** whirlpool address, will be used to forward viridian packets to outer internet and receive responses, can be _private_ (or same as `SEASIDE_ADDRESS`).
-- `SEASIDE_CTRLPORT`: Control port for gRPC viridian connections.
+- `SEASIDE_API_PORT`: Control port for gRPC viridian connections.
 - `SEASIDE_CERTIFICATE_PATH`: Path for storing logs, two files will be created there: `danger.log` and `safe.log`.
 - `SEASIDE_LOG_PATH`: Path for storing certificates, two files should be present there: `cert.crt` and `key.crt`.
 - `SEASIDE_PAYLOAD_OWNER`: Authentication payload for node administrators, they have priority in connection limits.
 - `SEASIDE_PAYLOAD_VIRIDIAN`: Authentication payload for viridians for direct connection.
-- `SEASIDE_MAXIMUM_NEXTIN`: Maximum nextIn delay after that a user will be deleted.
 - `SEASIDE_MAX_VIRIDIANS`: Maximum amount of viridians (non-privileged) that can be connected simultaneously (should be positive integer or zero).
 - `SEASIDE_MAX_ADMINS`: Maximum amount of owners (privileged) that can be connected simultaneously (in addition to normal viridians, should be positive integer or zero).
 - `SEASIDE_BURST_LIMIT_MULTIPLIER`: Burst multiplier for all the limits below (should be positive integer).
@@ -142,9 +141,6 @@ The whirlpool executable is sensitive to the following environmental variables:
 - `SEASIDE_ICMP_PACKET_LIMIT`: Limit for ICMP packets (ping), packets per viridian per second (should be positive integer, if not - no limit will be applied).
 - `SEASIDE_TUNNEL_MTU`: Whirlpool internal tunnel MTU number (should be positive integer, if not - will be set same to internal whirlpool address MTU).
 - `SEASIDE_TUNNEL_NAME`: Whirlpool internal tunnel interface name (should be an ASCII string, not be longer than 15 characters).
-- `SEASIDE_WAITING_OVERTIME`: Additional time that whirlpool will wait for the next control packet before deleting viridian and interrupting its connection (should be positive number).
-- `SEASIDE_FIRST_HEALTHCHECK_DELAY`: Amount of time that whirlpool will wait for the first control packet before deleting viridian and interrupting its connection (should be positive number).
-- `SEASIDE_MAXIMUM_NEXTIN`: Maximum nextIn delay after that a user will be deleted.
 - `SEASIDE_LOG_LEVEL`:  Output verbosity logging level, can be "error", "warning", "info", "debug" (default: `DEBUG`).
 
 Note: connection made _prior_ whirlpool launch will not be interrupted or limited, `SSH` connection (towards port 22) are not limited as well.

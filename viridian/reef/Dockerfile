@@ -50,10 +50,10 @@ VOLUME /seaside/viridian/ca
 
 ENV SEASIDE_PAYLOAD_VIRIDIAN=
 ENV SEASIDE_ADDRESS=
-ENV SEASIDE_CTRLPORT=
+ENV SEASIDE_API_PORT=
 
 ENV TEST_COMMAND="pytest --log-cli-level=INFO tests/test_local.py"
-ENV RUN_COMMAND="./cli -a \$SEASIDE_ADDRESS -c \$SEASIDE_CTRLPORT -k ... -t ... -p \$SEASIDE_PAYLOAD_VIRIDIAN -e \"\$TEST_COMMAND\""
+ENV RUN_COMMAND="./cli -a \$SEASIDE_ADDRESS -c \$SEASIDE_API_PORT -k ... -t ... -p \$SEASIDE_PAYLOAD_VIRIDIAN -e \"\$TEST_COMMAND\""
 ENTRYPOINT ["sh", "-c", "ip route replace default via \"$ARG_NETWORK_GATEWAY\" && eval \"$RUN_COMMAND\""]
 
 HEALTHCHECK --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s CMD ls /sys/class/net | grep tun0

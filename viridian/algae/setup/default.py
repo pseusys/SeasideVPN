@@ -1,15 +1,16 @@
 from argparse import Action, ArgumentParser, Namespace
+from base64 import urlsafe_b64encode
 from ipaddress import AddressValueError, IPv4Address
 from logging import NOTSET, _nameToLevel
 from random import randint
-from secrets import token_urlsafe
+from secrets import token_urlsafe, token_bytes
 from socket import gethostbyname, gethostname
 from typing import Any, Callable, List, Optional, Union
 
 DEFAULT_GENERATED_VALUE = str()
 
 
-def payload_value(default_length: int) -> Callable[[str], str]:
+def bytes_value(default_length: int, base64: bool = False) -> Callable[[str], str]:
     """
     Return the given string or generate one.
     Random string will be generated using stdlib `secrets` module and encoded safe for URLs.
@@ -18,7 +19,12 @@ def payload_value(default_length: int) -> Callable[[str], str]:
     """
 
     def internal(value: str) -> str:
-        return token_urlsafe(default_length) if len(value) == 0 else value
+        if len(value) > 0:
+            return value
+        elif base64:
+            return urlsafe_b64encode(token_bytes(default_length))
+        else:
+            return token_urlsafe(default_length)
 
     return internal
 

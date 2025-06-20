@@ -37,17 +37,13 @@ RUN apk add --no-cache iptables
 COPY --from=builder /seaside/caerulean/whirlpool.run ./
 
 # Setup environmental variables.
-ENV SEASIDE_CTRLPORT=8587
+ENV SEASIDE_API_PORT=8587
 
 ENV SEASIDE_CERTIFICATE_PATH=certificates
 ENV SEASIDE_LOG_PATH=logs
 
 ENV SEASIDE_MAX_VIRIDIANS=10
 ENV SEASIDE_MAX_ADMINS=5
-
-ENV SEASIDE_WAITING_OVERTIME=15
-ENV SEASIDE_FIRST_HEALTHCHECK_DELAY=3
-ENV SEASIDE_MAXIMUM_NEXTIN=15
 
 ENV SEASIDE_TUNNEL_MTU=1500
 ENV SEASIDE_TUNNEL_NAME=seatun
@@ -62,11 +58,11 @@ ENV SEASIDE_LOG_LEVEL=WARNING
 VOLUME /seaside/caerulean/certificates
 
 # Expose ports and set entrypoint.
-EXPOSE $SEASIDE_CTRLPORT/tcp
+EXPOSE $SEASIDE_API_PORT/tcp
 ENTRYPOINT ["./whirlpool.run"]
 
 # Establish healthcheck: netstat on seaside port.
-HEALTHCHECK --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s CMD netstat -tulpn | grep -q ":$SEASIDE_CTRLPORT"
+HEALTHCHECK --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s CMD netstat -tulpn | grep -q ":$SEASIDE_API_PORT"
 
 
 FROM default AS default-certified
