@@ -13,7 +13,7 @@ from semver import Version
 
 from .base import Installer
 from .certificates import GENERATE_CERTIFICATES_PATH, generate_certificates
-from .default import DEFAULT_GENERATED_VALUE, local_ip, logging_level, bytes_value, port_number
+from .default import DEFAULT_GENERATED_VALUE, current_dns, local_ip, logging_level, bytes_value, port_number
 from .specific import check_install_packages, check_package, get_arch
 from .utils import run_command
 
@@ -88,7 +88,7 @@ class WhirlpoolInstaller(Installer):
         parser.add_argument("--port-port", type=port_number(_MIN_PORT_VALUE, _MAX_PORT_VALUE), default=DEFAULT_GENERATED_VALUE, help=f"Seaside control port number (default: random, between {_MIN_PORT_VALUE} and {_MAX_PORT_VALUE})")
         parser.add_argument("--typhoon-port", type=port_number(_MIN_PORT_VALUE, _MAX_PORT_VALUE), default=DEFAULT_GENERATED_VALUE, help=f"Seaside control port number (default: random, between {_MIN_PORT_VALUE} and {_MAX_PORT_VALUE})")
         parser.add_argument("--certificates-path", type=str, default=_DEFAULT_CERTIFICATES_PATH, help=f"Path for storing certificates, two files should be present there, 'cert.crt' and 'key.crt' (default: {_DEFAULT_CERTIFICATES_PATH})")
-        parser.add_argument("--suggested-dns", type=str, default=_DEFAULT_SUGGESTED_DNS, help=f"Path for storing certificates, two files should be present there, 'cert.crt' and 'key.crt' (default: {_DEFAULT_CERTIFICATES_PATH})")
+        parser.add_argument("--suggested-dns", type=current_dns(_DEFAULT_SUGGESTED_DNS), default=DEFAULT_GENERATED_VALUE, help=f"Path for storing certificates, two files should be present there, 'cert.crt' and 'key.crt' (default: {_DEFAULT_CERTIFICATES_PATH})")
         parser.add_argument("--max-viridians", type=int, default=_DEFAULT_MAX_VIRIDIANS, help=f"Maximum network viridian number (default: {_DEFAULT_MAX_VIRIDIANS})")
         parser.add_argument("--max-admins", type=int, default=_DEFAULT_MAX_ADMINS, help=f"Maximum privileged viridian number (default: {_DEFAULT_MAX_ADMINS})")
         parser.add_argument("--tunnel-mtu", type=int, default=_DEFAULT_TUNNEL_MTU, help=f"VPN tunnel interface MTU (default: {_DEFAULT_TUNNEL_MTU})")

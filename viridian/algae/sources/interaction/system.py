@@ -42,7 +42,7 @@ class _SystemUtils:
     _UNIX_IFNAMSIZ = 16
 
     # Path to 'resolv.conf' file.
-    _RESOLV_CONF_PATH = Path(getenv("SEASIDE_REOLV_CONF_PATH", "/etc/resolv.conf"))
+    _RESOLV_CONF_PATH = Path(getenv("SEASIDE_RESOLV_CONF_PATH", "/etc/resolv.conf"))
 
     # Unspecified IP address.
     _EMPTY_IP_ADDRESS = IPv4Address("0.0.0.0")

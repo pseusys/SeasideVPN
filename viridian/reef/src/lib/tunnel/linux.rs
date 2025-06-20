@@ -282,7 +282,7 @@ impl TunnelInternal {
         let tunnel_device = create_tunnel(tunnel_name, tunnel_network.addr(), tunnel_network.netmask(), default_mtu as u16)?;
         let tunnel_index = get_address_device(tunnel_network)?;
 
-        let resolv_path = parse_env("SEASIDE_REOLV_CONF_PATH", Some(DEFAULT_RESOLV_CONF_PATH.to_string()));
+        let resolv_path = parse_env("SEASIDE_RESOLV_CONF_PATH", Some(DEFAULT_RESOLV_CONF_PATH.to_string()));
         debug!("Resetting DNS server in '{resolv_path}' file...");
         let (resolv_conf, new_dns) = set_dns_server(&resolv_path, dns)?;
         debug!("New DNS server will be: {new_dns:?})");

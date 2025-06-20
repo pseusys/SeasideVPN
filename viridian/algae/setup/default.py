@@ -2,12 +2,28 @@ from argparse import Action, ArgumentParser, Namespace
 from base64 import b64encode
 from ipaddress import AddressValueError, IPv4Address
 from logging import NOTSET, _nameToLevel
+from pathlib import Path
 from random import randint
+from re import MULTILINE, search
 from secrets import token_urlsafe, token_bytes
 from socket import gethostbyname, gethostname
 from typing import Any, Callable, List, Optional, Union
 
 DEFAULT_GENERATED_VALUE = str()
+
+_RESOLV_CONF_PATH = Path("/etc/resolv.conf")
+
+
+def current_dns(default_dns: str) -> Callable[[str], str]:
+    def internal(value: str) -> str:
+        if len(value) > 0:
+            result = value
+        else:
+            match = search(r"^nameserver\s+(?P<dns>\S+)", _RESOLV_CONF_PATH.read_text(), MULTILINE)
+            result = default_dns if match is None else match.group("dns")
+        return str(IPv4Address(result))
+    
+    return internal
 
 
 def bytes_value(default_length: int, base64: bool = False) -> Callable[[str], str]:
