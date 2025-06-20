@@ -22,7 +22,7 @@ def bytes_value(default_length: int, base64: bool = False) -> Callable[[str], st
         if len(value) > 0:
             return value
         elif base64:
-            return urlsafe_b64encode(token_bytes(default_length))
+            return urlsafe_b64encode(token_bytes(default_length)).decode("ascii")
         else:
             return token_urlsafe(default_length)
 
