@@ -16,14 +16,13 @@
 # JavaScript:
 
 ## Node modules:
-.github/scripts/node_modules
+.github/node_modules
 
 ## Dependency lock file:
-.github/scripts/package-lock.json
+.github/package-lock.json
 
 ## Testing utilities files:
-.github/scripts/.setup_test_cache
-.github/scripts/certificates
+.github/certificates
 
 
 
