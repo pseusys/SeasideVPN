@@ -1,5 +1,5 @@
 services:
-  whirlpool-base:
+  whirlpool:
     image: whirlpool-standalone
     container_name: whirlpool-standalone
     extends:

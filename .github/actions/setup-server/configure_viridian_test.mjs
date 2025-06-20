@@ -15,10 +15,8 @@ const RESET = "\x1b[0m";
 const DOCKER_COMPOSE_TIMEOUT = 45;
 // Echo server network for VPN access.
 const DOCKER_COMPOSE_NETWORK = "sea-net";
-// Seaside container and image name for server container in hosted network.
-const DOCKER_COMPOSE_HOST_CONTAINER = "whirlpool-host";
 // Seaside container and image name for server container in bridged network.
-const DOCKER_COMPOSE_BRIDGE_CONTAINER = "whirlpool-bridge";
+const DOCKER_COMPOSE_CONTAINER = "whirlpool";
 // Path to the Docker compose configuration file.
 const DOCKER_COMPOSE_PATH = join(import.meta.dirname, "compose.yml");
 
@@ -141,7 +139,7 @@ function getWhirlpoolIP(silent) {
 	} else {
 		print("Reading Docker compose file...", silent);
 		const composeDict = parse(readFileSync(DOCKER_COMPOSE_PATH).toString());
-		const whirlpoolIP = composeDict["services"][DOCKER_COMPOSE_BRIDGE_CONTAINER]["networks"][DOCKER_COMPOSE_NETWORK]["ipv4_address"].trim();
+		const whirlpoolIP = composeDict["services"][DOCKER_COMPOSE_CONTAINER]["networks"][DOCKER_COMPOSE_NETWORK]["ipv4_address"].trim();
 		print(`Extracted whirlpool IP from compose file: ${whirlpoolIP}`, silent);
 		return whirlpoolIP;
 	}
@@ -191,11 +189,11 @@ function resetRouting(unreachable, iface, address, silent) {
  */
 async function launchWhirlpool(whirlpool, silent) {
 	print("Preparing whirlpool executable...", silent);
-	runCommandForSystem(`docker compose -f ${DOCKER_COMPOSE_PATH} build ${DOCKER_COMPOSE_BRIDGE_CONTAINER}`, `poetry poe -C ${VIRIDIAN_ALGAE_ROOT} bundle`, undefined, {
+	runCommandForSystem(`docker compose -f ${DOCKER_COMPOSE_PATH} build ${DOCKER_COMPOSE_CONTAINER}`, `poetry poe -C ${VIRIDIAN_ALGAE_ROOT} bundle`, undefined, {
 		SEASIDE_HOST_ADDRESS: whirlpool
 	});
 	print("Spawning whirlpool process...", silent);
-	runCommandForSystem(`docker compose -f ${DOCKER_COMPOSE_PATH} up --detach ${DOCKER_COMPOSE_BRIDGE_CONTAINER}`, `wsl -u root python ${convertPathToWSL(INSTALLER_PATH)} -g -o -a back whirlpool -l "${convertPathToWSL(CAERULEAN_WHIRLPOOL_ROOT)}" -r compile -v "${process.env.SEASIDE_API_KEY_ADMIN}" -a ${whirlpool} -e ${whirlpool} -p ${process.env.SEASIDE_API_PORT}`, undefined, {
+	runCommandForSystem(`docker compose -f ${DOCKER_COMPOSE_PATH} up --detach ${DOCKER_COMPOSE_CONTAINER}`, `wsl -u root python ${convertPathToWSL(INSTALLER_PATH)} -g -o -a back whirlpool -l "${convertPathToWSL(CAERULEAN_WHIRLPOOL_ROOT)}" -r compile -v "${process.env.SEASIDE_API_KEY_ADMIN}" -a ${whirlpool} -e ${whirlpool} -p ${process.env.SEASIDE_API_PORT}`, undefined, {
 		SEASIDE_HOST_ADDRESS: whirlpool, 
 	});
 	print("Waiting whirlpool to initiate...", silent);
