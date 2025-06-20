@@ -45,7 +45,7 @@ runs:
       shell: bash
       run: |
         pip3 install poetry poethepoet[poetry_plugin]==0.34.0 > /dev/null 2>&1
-        poetry install --extras "client devel" > /dev/null 2>&1
+        poetry install --extras "client devel bundle" > /dev/null 2>&1
 
     - name: Resolve Target
       id: resolve-target
@@ -74,7 +74,7 @@ runs:
       shell: bash
       env:
         SEASIDE_ADDRESS: ${{ steps.start-background-server.outputs.server-ip }}
-        SEASIDE_ROOT_CERTIFICATE_AUTHORITY: ${{ github.workspace }}/viridian/algae/certificates/viridian/rootCA.crt
+        SEASIDE_ROOT_CERTIFICATE_AUTHORITY: ${{ github.workspace }}/.github/certificates/viridian/rootCA.crt
         SEASIDE_LOG_LEVEL: ERROR
       run: echo "connection-link=$(poetry poe -q fixture -a "${{ env.SEASIDE_ADDRESS }}" -p "${{ env.SEASIDE_API_PORT }}" -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian -s)" >> $GITHUB_OUTPUT
 

@@ -49,6 +49,7 @@ viridian/algae/*.pyz
 
 ## Test files:
 viridian/algae/certificates/
+.github/certificates/
 
 
 
