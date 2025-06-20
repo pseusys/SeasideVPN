@@ -128,7 +128,7 @@ def generate_certificates(address: Union[IPv4Address, str], cert_path: Path = GE
     """
     logger = Logging.logger_for(__name__)
 
-    if not remove_existing and check_certificates():
+    if not remove_existing and check_certificates(cert_path):
         logger.debug("Certificate files exist and recreation not requested, proceeding with doing nothing...")
         return
 
