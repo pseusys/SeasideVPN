@@ -71,6 +71,7 @@ class WhirlpoolInstaller(Installer):
     def create_parser(cls, subparser: "_SubParsersAction[ArgumentParser]") -> None:
         parser = subparser.add_parser(_PARSER_NAME, help="Install whirlpool caerulean")
         parser.add_argument("-s", "--source-tag", default=_DEFAULT_SOURCE_TAG, help=f"GitHub branch name for code pulling (will be used only with '--distribution-type={_DT_COMPILE}' and has no effect otherwise, default: {_DEFAULT_SOURCE_TAG})")
+        parser.add_argument("-l", "--local-path", type=Path, help=f"Local path to whirlpool project root (will be used only with '--distribution-type={_DT_COMPILE}' and has no effect otherwise, will be preferred over '--source-tag' if defined)")
         parser.add_argument("-d", "--docker-label", default=_DEFAULT_DOCKER_LABEL, help=f"Docker image label (will be used only with '--distribution-type={_DT_DOCKER}' and has no effect otherwise, default: {_DEFAULT_DOCKER_LABEL})")
         parser.add_argument("-b", "--binary-name", default=_DEFAULT_BINARY_NAME, help=f"Pre-compiled binary type (will be used only with '--distribution-type={_DT_BINARY}' and has no effect otherwise, default: {_DEFAULT_BINARY_NAME})")
         parser.add_argument("-r", "--distribution-type", choices=(_DT_COMPILE, _DT_DOCKER, _DT_BINARY), default=_DEFAULT_DISTRIBUTION_TYPE, help=f"Distribution type to run ('{_DT_COMPILE}' for compiling from source, '{_DT_DOCKER}' for running in Docker, '{_DT_BINARY}' for running a binary, default: {_DEFAULT_DISTRIBUTION_TYPE})")
@@ -208,22 +209,28 @@ class WhirlpoolInstaller(Installer):
         """Download source code from GitHub to ./SeasideVPN directory and build the whirlpool executable."""
         check_install_packages("git", "make", "tar", "wget", "build-essential")
         exepath = Path("whirlpool.run")
-        seapath = Path("SeasideVPN")
         go_env = environ.copy()
         go_env["PATH"] = f"{str(go_path)}:{environ['PATH']}" if go_path is not None else environ["PATH"]
         self._logger.debug(f"PATH prepared for caerulean building: {go_env['PATH']}")
-        self._logger.debug("Cloning SeasideVPN repository...")
-        run_command(f"git clone -n --branch {self._args['source_tag']} --depth=1 --filter=tree:0 --recurse-submodules {_SEASIDE_REPO}")
-        self._logger.debug("Performing a sparse checkout and retrieving submodules...")
-        run_command("git sparse-checkout set --no-cone caerulean/whirlpool vessels && git checkout && git submodule update --recursive", cwd=seapath)
+        if self._args["local_path"] is not None:
+            seapath, tempppath = Path(self._args["local_path"]), None
+            self._logger.debug(f"Using caerulean from local path '{self._args['local_path']}'...")
+        else:
+            tempppath = Path("SeasideVPN")
+            self._logger.debug("Cloning SeasideVPN repository...")
+            run_command(f"git clone -n --branch {self._args['source_tag']} --depth=1 --filter=tree:0 --recurse-submodules {_SEASIDE_REPO}")
+            self._logger.debug("Performing a sparse checkout and retrieving submodules...")
+            run_command("git sparse-checkout set --no-cone caerulean/whirlpool vessels && git checkout && git submodule update --recursive", cwd=tempppath)
+            seapath = tempppath / "caerulean" / "whirlpool"
         self._logger.debug("Building whirlpool...")
-        run_command("make build", cwd=seapath / "caerulean" / "whirlpool", env=go_env)
+        run_command("make build", cwd=seapath, env=go_env)
         self._logger.debug("Moving executable...")
-        move(seapath / "caerulean" / "whirlpool" / "build" / "whirlpool.run", exepath)
+        move(seapath / "build" / "whirlpool.run", exepath)
         self._logger.debug("Marking executable as executable...")
         self._mark_binary_as_executable(exepath)
-        self._logger.debug("Deleting build files...")
-        rmtree(seapath)
+        if tempppath is not None:
+            self._logger.debug("Deleting build files...")
+            rmtree(seapath)
 
     def _pull_docker_image(self) -> None:
         """Pull whirlpool image from GitHub Docker image registry."""

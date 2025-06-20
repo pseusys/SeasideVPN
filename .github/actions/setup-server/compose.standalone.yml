@@ -3,29 +3,15 @@ services:
     image: whirlpool-standalone
     container_name: whirlpool-standalone
     extends:
-      file: compose.base.yml
-      service: whirlpool-base
+      file: ../../../viridian/algae/docker/compose.base.yml
+      service: whirlpool
     build:
       target: default-certified
       args:
         SEASIDE_ADDRESS: ${SEASIDE_HOST_ADDRESS}
-
-  whirlpool-bridge:
-    extends: whirlpool-base
-    sysctls:
-      - net.ipv6.conf.all.disable_ipv6=1
     networks:
       sea-net:
         ipv4_address: 10.0.0.87
-
-  whirlpool-host:
-    extends: whirlpool-base
-    network_mode: host
-    healthcheck:
-      test: ["CMD", "netstat -tulpn | grep -q \":$$SEASIDE_CTRLPORT\""]
-      interval: 10s
-      timeout: 1s
-      retries: 3
 
 
 networks:

@@ -24,14 +24,6 @@ runs:
       with:
         distribution: Ubuntu-24.04
         set-as-default: true
-        additional-packages:
-          podman
-          podman-compose
-
-    - name: Configure WSL
-      if: runner.os == 'Windows'
-      shell: bash
-      run: wsl -u root sh -c "curl -fsSL https://get.docker.com | sh" > /dev/null 2>&1
 
     - name: Install NodeJS 🪢
       uses: actions/setup-node@v4.1.0
@@ -61,20 +53,20 @@ runs:
       shell: bash
       run: echo "target-ip=$(node resolve-target.js ${{ inputs.target }})" >> $GITHUB_OUTPUT
 
-    - name: Start Background Server
-      id: start-background-server
-      working-directory: .github/scripts
-      shell: bash
-      env:
-        SUDO: ${{ runner.os == 'Linux' && 'sudo -E env "PATH=$PATH"' || '' }}
-      run: echo "server-ip=$(${{ env.SUDO }} node configure_viridian_test.mjs -t ${{ steps.resolve-target.outputs.target-ip }} -s)" >> $GITHUB_OUTPUT
-
     - name: Load .ENV File
       uses: aarcangeli/load-dotenv@v1
       with:
         path: viridian/algae/docker
         filenames: test.conf.env
         quiet: true
+
+    - name: Start Background Server
+      id: start-background-server
+      working-directory: ${{ github.action_path }}
+      shell: bash
+      env:
+        SUDO: ${{ runner.os == 'Linux' && 'sudo -E env "PATH=$PATH"' || '' }}
+      run: echo "server-ip=$(${{ env.SUDO }} node configure_viridian_test.mjs -t ${{ steps.resolve-target.outputs.target-ip }} -s)" >> $GITHUB_OUTPUT
 
     - name: Get Connection Link
       id: get-server-connection-link

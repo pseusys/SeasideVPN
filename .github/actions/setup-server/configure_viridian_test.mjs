@@ -6,7 +6,7 @@ import { platform } from "process";
 
 import { parse } from "yaml";
 
-import { sleep } from "./script_utils.mjs";
+import { sleep } from "../../scripts/script_utils.mjs";
 
 const BLUE = "\x1b[34m";
 const RESET = "\x1b[0m";
@@ -19,8 +19,14 @@ const DOCKER_COMPOSE_NETWORK = "sea-net";
 const DOCKER_COMPOSE_HOST_CONTAINER = "whirlpool-host";
 // Seaside container and image name for server container in bridged network.
 const DOCKER_COMPOSE_BRIDGE_CONTAINER = "whirlpool-bridge";
-// Path to the Docker compose configuration file in `viridian/algae` directory.
-const DOCKER_COMPOSE_PATH = join(dirname(import.meta.dirname), "..", "viridian", "algae", "docker", "compose.standalone.yml");
+// Path to the Docker compose configuration file.
+const DOCKER_COMPOSE_PATH = join(dirname(import.meta.dirname), "compose.standalone.yml");
+
+const CAERULEAN_WHIRLPOOL_ROOT = join(dirname(import.meta.dirname), "..", "..", "..", "caerulean", "whirlpool");
+
+const VIRIDIAN_ALGAE_ROOT = join(dirname(import.meta.dirname), "..", "..", "..", "viridian", "algae");
+
+const INSTALLER_PATH = join(VIRIDIAN_ALGAE_ROOT, "install.pyz");
 
 function print(message, silent = false) {
 	if (!silent) console.log(message);
@@ -31,7 +37,6 @@ function print(message, silent = false) {
  */
 function printHelpMessage() {
 	console.log(`${BOLD}Host preparation for testing script usage${RESET}:`);
-	console.log(`\t${BLUE}-r --reset${RESET}: Revert all the changes, stop processes and restore system routes.`);
 	console.log(`\t${BLUE}-h --help${RESET}: Print this message again and exit.`);
 	process.exit(0);
 }
@@ -102,11 +107,6 @@ function convertPathToWSL(path) {
  */
 function parseArguments() {
 	const options = {
-		reset: {
-			type: "boolean",
-			short: "r",
-			default: false
-		},
 		silent: {
 			type: "boolean",
 			short: "s",
@@ -190,28 +190,17 @@ function resetRouting(unreachable, iface, address, silent) {
  * @param {string} path Docker Compose standalone project file path.
  */
 async function launchWhirlpool(whirlpool, silent) {
-	print("Spawning whirlpool process...", silent);
-	let composePath = DOCKER_COMPOSE_PATH;
-	if (platform == "win32") composePath = convertPathToWSL(composePath);
-	runCommandForSystem(`docker compose -f ${composePath} up --build --detach ${DOCKER_COMPOSE_BRIDGE_CONTAINER}`, `wsl -u root podman compose -f ${composePath} up --build --detach ${DOCKER_COMPOSE_HOST_CONTAINER}`, undefined, {
+	print("Preparing whirlpool executable...", silent);
+	runCommandForSystem(`docker compose -f ${DOCKER_COMPOSE_PATH} build ${DOCKER_COMPOSE_BRIDGE_CONTAINER}`, `poetry poe -C ${VIRIDIAN_ALGAE_ROOT} bundle`, undefined, {
 		SEASIDE_HOST_ADDRESS: whirlpool
+	});
+	print("Spawning whirlpool process...", silent);
+	runCommandForSystem(`docker compose -f ${DOCKER_COMPOSE_PATH} up --detach ${DOCKER_COMPOSE_BRIDGE_CONTAINER}`, `wsl -u root python ${convertPathToWSL(INSTALLER_PATH)} -g -o -a back whirlpool -l "${convertPathToWSL(CAERULEAN_WHIRLPOOL_ROOT)}" -r compile -v "${process.env.SEASIDE_API_KEY_ADMIN}" -a ${whirlpool} -e ${whirlpool} -p ${process.env.SEASIDE_API_PORT}`, undefined, {
+		SEASIDE_HOST_ADDRESS: whirlpool, 
 	});
 	print("Waiting whirlpool to initiate...", silent);
 	await sleep(DOCKER_COMPOSE_TIMEOUT);
 	print("Whirlpool started!", silent);
-}
-
-/**
- * Kill Docker compose process (with docker compose) running in the background.
- * @param {string} path Docker Compose standalone project file path.
- */
-async function killWhirlpool(silent) {
-	print("Killing whirlpool process...", silent);
-	let composePath = DOCKER_COMPOSE_PATH;
-	if (platform == "win32") composePath = convertPathToWSL(composePath);
-	const c = runCommandForSystem(`docker compose -f ${composePath} down`, `wsl -u root podman compose -f ${composePath} logs whirlpool-host`);
-	console.log(c.stdout.toString().trim());
-	print("Whirlpool process killed!", silent);
 }
 
 // Script body:
@@ -222,11 +211,6 @@ async function killWhirlpool(silent) {
 const args = parseArguments();
 const whirlpoolIP = getWhirlpoolIP(args.silent);
 const { iface, address } = getOutputConnection(args.target);
-if (!args.reset) {
-	await launchWhirlpool(whirlpoolIP, args.silent);
-	setupRouting(args.target, iface, address, args.silent);
-	print(whirlpoolIP, !args.silent);
-} else {
-	resetRouting(args.target, iface, address, args.silent);
-	await killWhirlpool(args.silent);
-}
+await launchWhirlpool(whirlpoolIP, args.silent);
+setupRouting(args.target, iface, address, args.silent);
+print(whirlpoolIP, !args.silent);
