@@ -71,7 +71,8 @@ runs:
         wsl -u root ss -tulpn
         wsl -u root ls .
         wsl -u root cat ./conf.env
-        wsl -u root sh -c "set -a && . ./conf.env && ./whirlpool.run"
+        wsl -u root sh -c "set -a && . ./conf.env && ./whirlpool.run && disown -r"
+        wsl -u root ss -tulpn
 
     - name: Get Connection Link
       id: get-server-connection-link
@@ -79,7 +80,7 @@ runs:
       shell: bash
       env:
         SEASIDE_ADDRESS: ${{ steps.start-background-server.outputs.server-ip }}
-        SEASIDE_ROOT_CERTIFICATE_AUTHORITY: ${{ runner.os == 'Linux' && 'certificates/viridian/rootCA.crt' || '../../.github/certificates/viridian/rootCA.crt' }}
+        SEASIDE_ROOT_CERTIFICATE_AUTHORITY: ${{ runner.os == 'Linux' && 'certificates/viridian/rootCA.crt' || '../../.github/certificates/viridian/rootCA.crt' }}  # TODO: revert
         SEASIDE_LOG_LEVEL: ERROR
       run: echo "connection-link=$(poetry poe -q fixture -a "${{ env.SEASIDE_ADDRESS }}" -p "${{ env.SEASIDE_API_PORT }}" -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian -s)" >> $GITHUB_OUTPUT
 
