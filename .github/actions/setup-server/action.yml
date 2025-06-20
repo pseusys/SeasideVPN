@@ -69,9 +69,6 @@ runs:
       run: |
         echo "server-ip=$(${{ env.SUDO }} node actions/setup-server/configure_viridian_test.mjs -t ${{ steps.resolve-target.outputs.target-ip }} -s)" >> $GITHUB_OUTPUT
         wsl -u root ss -tulpn
-        wsl -u root ls
-        wsl -u root cat safe.log
-        wsl -u root cat danger.log
         wsl -u root sh -c "set -a && . ./conf.env && sudo ./whirlpool.run"
 
     - name: Get Connection Link
