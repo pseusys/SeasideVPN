@@ -51,7 +51,7 @@ runs:
       id: resolve-target
       working-directory: .github
       shell: bash
-      run: echo "target-ip=$(node actions/setup-server/resolve-target.js ${{ inputs.target }})" >> $GITHUB_OUTPUT
+      run: echo "target-ip=$(node actions/setup-server/resolve-target.cjs ${{ inputs.target }})" >> $GITHUB_OUTPUT
 
     - name: Load .ENV File
       uses: aarcangeli/load-dotenv@v1
