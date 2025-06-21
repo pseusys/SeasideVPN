@@ -30,7 +30,7 @@ help:
 
 dependencies:
 	@ # Dowload and unpack windivert distribution
-	wget -q -O $(WINDIVERT_SOURCE).zip $(WNDIVERT_URL)
+	curl -sSL -o $(WINDIVERT_SOURCE).zip $(WNDIVERT_URL)
 	mkdir -p $(WINDIVERT_TEMP)
 	unzip -q -o $(WINDIVERT_SOURCE).zip -d $(WINDIVERT_TEMP)
 	mkdir -p $(WINDIVERT_VENDOR)
