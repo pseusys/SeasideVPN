@@ -241,7 +241,7 @@ fn enable_routing(seaside_address: Ipv4Addr, default_index: u32, default_network
     }
 
     let dns_filter = dns_addresses.iter().map(|i| format!("remoteAddr != {i}")).collect::<Vec<String>>().join(" and ");
-    let caerulean_filter = format!("not ((ifIdx == {default_index}) and (localAddress == {}) and (remoteAddress == {})", default_network.addr(), seaside_address);
+    let caerulean_filter = format!("not ((ifIdx == {default_index}) and (localAddress == {}) and (remoteAddress == {}))", default_network.addr(), seaside_address);
 
     let filter = format!("ip and outbound and ({exempt_filter}) and ({capture_range_filter} or {capture_iface_filter}) and ({dns_filter}) and ({caerulean_filter})");
     debug!("WinDivert filter will be used: {filter}");
