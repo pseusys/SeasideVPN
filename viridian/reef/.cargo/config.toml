@@ -1,0 +1,2 @@
+[env]
+WINDIVERT_PATH = { value = "windivert_binaries/x64", relative = true }

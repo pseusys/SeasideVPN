@@ -1,5 +1,9 @@
 # Reef
 
+# System achteture
+
+All the tests and executables were only build for x64 architecture.
+
 ## Take care: DNS
 
 If you use any DNS manager (as `resolvectl` on Linux), it is quite common that the only DNS servers you have configured are your local network DNS.
