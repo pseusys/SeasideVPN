@@ -18,6 +18,8 @@ use linux::*;
 #[cfg(target_os = "windows")]
 mod windows;
 #[cfg(target_os = "windows")]
+mod ptr_utils;
+#[cfg(target_os = "windows")]
 use windows::*;
 
 
