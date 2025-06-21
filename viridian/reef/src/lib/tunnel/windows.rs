@@ -190,14 +190,13 @@ impl PacketExchangeProcess for Arc<WinDivert<NetworkLayer>> {
     async fn packet_receive_loop(&self, mut receive_tunnel_queue: RemoteMutTunnelTransport) -> DynResult<()> {
         loop {
             let value = receive_tunnel_queue.receive().await?;
-            let packet = match self.recv(Some(value.recreate())) {
-                Ok(packet) => packet.into_owned(),
+            match self.recv(Some(value.recreate())) {
+                Ok(res) => receive_tunnel_queue.send(res.data.len()).await?,
                 Err(err) => {
                     warn!("Error receiving packet: {err}!");
                     continue;
                 }
             };
-            receive_tunnel_queue.send(packet.data.len()).await?;
         }
     }
 
@@ -212,9 +211,13 @@ impl PacketExchangeProcess for Arc<WinDivert<NetworkLayer>> {
                 address: address,
                 data: Cow::Borrowed(value.recreate())
             };
-            if let Err(err) = self.send(&packet) {
-                warn!("Error sending packet: {err}!");
-            }
+            match self.send(&packet) {
+                Ok(res) =>  send_tunnel_queue.send(res as usize).await?,
+                Err(err) => {
+                    warn!("Error sending packet: {err}!");
+                    continue;
+                }
+            };
         }
     }
 }
