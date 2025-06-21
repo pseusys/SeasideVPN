@@ -11,8 +11,14 @@ GREEN=\033[32m
 YELLOW=\033[33m
 RESET=\033[0m
 
-WINDIVERT_VERSION = 2.2.2
-WINDIVERT_VENDOR = windivert-bin
+WINDIVERT_VERSION=2.2.2
+WINDIVERT_VENDOR=windivert-bin
+
+WINDIVERT_TEMP=windivert-source
+WINDIVERT_SOURCE=WinDivert-$(WINDIVERT_VERSION)-A
+WNDIVERT_URL=https://github.com/basil00/WinDivert/releases/download/v$(WINDIVERT_VERSION)/$(WINDIVERT_SOURCE).zip
+
+SYS_ARCH := $(shell uname -m | grep -q '64' && echo 'x64' || echo 'x32')
 
 
 help:
@@ -24,11 +30,12 @@ help:
 
 dependencies:
 	@ # Dowload and unpack windivert distribution
-	export WNDIVERT_ARCHIVE=WinDivert-${WINDIVERT_VERSION}-A.zip
-	export WNDIVERT_URL=https://github.com/basil00/WinDivert/releases/download/v${WINDIVERT_VERSION}/${WNDIVERT_ARCHIVE}
-	curl -L -o $(WNDIVERT_ARCHIVE) $(WNDIVERT_URL)
+	wget -q -O $(WINDIVERT_SOURCE).zip $(WNDIVERT_URL)
+	mkdir -p $(WINDIVERT_TEMP)
+	unzip -q -o $(WINDIVERT_SOURCE).zip -d $(WINDIVERT_TEMP)
 	mkdir -p $(WINDIVERT_VENDOR)
-	unzip -o $(WNDIVERT_ARCHIVE) -d $(WINDIVERT_VENDOR)
+	mv $(WINDIVERT_TEMP)/$(WINDIVERT_SOURCE)/$(SYS_ARCH)/* $(WINDIVERT_VENDOR)/
+	rm -rf $(WINDIVERT_TEMP)
 .PHONY: dependencies
 
 build: dependencies
