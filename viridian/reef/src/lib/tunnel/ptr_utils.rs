@@ -42,13 +42,13 @@ impl ConstSendPtr {
 }
 
 
-struct TunnelTransport<S, R: Copy> {
+pub struct TunnelTransport<S, R: Copy> {
     sender: Sender<Option<S>>,
     receiver: Receiver<Option<R>>
 }
 
-type LocalTunnelTransport<T> = TunnelTransport<SendPtr<T>, usize>;
-type RemoteTunnelTransport<T> = TunnelTransport<usize, SendPtr<T>>;
+pub type LocalTunnelTransport<T> = TunnelTransport<SendPtr<T>, usize>;
+pub type RemoteTunnelTransport<T> = TunnelTransport<usize, SendPtr<T>>;
 
 pub type LocalMutTunnelTransport = LocalTunnelTransport<*mut u8>;
 pub type RemoteMutTunnelTransport = RemoteTunnelTransport<*mut u8>;

@@ -183,7 +183,7 @@ fn reset_dns_addresses(dns_data: &HashMap<u32, Vec<String>>) -> DynResult<()> {
 
 trait PacketExchangeProcess {
     async fn packet_receive_loop(&self, receive_tunnel_queue: RemoteMutTunnelTransport) -> DynResult<()>;
-    async fn packet_send_loop(&self, send_tunnel_queue: RemoteConstTunnelTransport) -> DynResult<()>;
+    async fn packet_send_loop(&self, send_tunnel_queue: RemoteConstTunnelTransport, default_interface: u32) -> DynResult<()>;
 }
 
 impl PacketExchangeProcess for Arc<WinDivert<NetworkLayer>> {
@@ -201,11 +201,15 @@ impl PacketExchangeProcess for Arc<WinDivert<NetworkLayer>> {
         }
     }
 
-    async fn packet_send_loop(&self, mut send_tunnel_queue: RemoteConstTunnelTransport) -> DynResult<()> {
+    async fn packet_send_loop(&self, mut send_tunnel_queue: RemoteConstTunnelTransport, default_interface: u32) -> DynResult<()> {
         loop {
             let value = send_tunnel_queue.receive().await?;
+            let mut address = unsafe { WinDivertAddress::<NetworkLayer>::new() };
+            address.set_interface_index(default_interface);
+            address.set_subinterface_index(0);
+            address.set_outbound(false);
             let packet = WinDivertPacket {
-                address: unsafe { WinDivertAddress::<NetworkLayer>::new() },
+                address: address,
                 data: Cow::Borrowed(value.recreate())
             };
             if let Err(err) = self.send(&packet) {
@@ -243,9 +247,10 @@ fn enable_routing(seaside_address: Ipv4Addr, default_index: u32, default_network
     let divert = WinDivert::network(filter, 0, WinDivertFlags::new())?;
 
     let divert_arc = Arc::new(divert);
-    let divert_clone = divert_arc.clone();
-    let receive_handle = run_coroutine_in_thread!(divert_clone.packet_receive_loop(receive_tunnel_queue));
-    let send_handle = run_coroutine_in_thread!(divert_clone.packet_send_loop(send_tunnel_queue));
+    let divert_clone_receive = divert_arc.clone();
+    let divert_clone_send = divert_arc.clone();
+    let receive_handle = run_coroutine_in_thread!(divert_clone_receive.packet_receive_loop(receive_tunnel_queue));
+    let send_handle = run_coroutine_in_thread!(divert_clone_send.packet_send_loop(send_tunnel_queue, default_index));
     Ok((divert_arc, receive_handle, send_handle))
 }
 
@@ -276,10 +281,10 @@ impl TunnelInternal {
         }
 
         debug!("Creating tunnel queue...");
-        let (in_container_sender, in_container_receiver) = channel(None);
-        let (in_data_sender, in_data_receiver) = channel(None);
-        let (out_container_sender, cout_ontainer_receiver) = channel(None);
-        let (out_data_sender, out_data_receiver) = channel(None);
+        let (receive_container_sender, receive_container_receiver) = channel(None);
+        let (receive_data_sender, receive_data_receiver) = channel(None);
+        let (send_container_sender, send_container_receiver) = channel(None);
+        let (send_data_sender, send_data_receiver) = channel(None);
 
         debug!("Setting DNS address to {dns:?}...");
         let interfaces: Result<Vec<u32>, ParseIntError> = capture_iface.iter().map(|s| s.parse()).collect();
@@ -287,13 +292,13 @@ impl TunnelInternal {
         debug!("The DNS server for interfaces were set to: {dns_addresses:?}");
 
         debug!("Setting up routing...");
-        let remote_in_transport = RemoteMutTunnelTransport::new(in_container_sender, in_data_receiver);
-        let remote_out_transport = RemoteConstTunnelTransport::new(out_container_sender, out_data_receiver);
-        let (divert, receive_handle, send_handle) = enable_routing(seaside_address, default_interface, default_network, remote_in_transport, remote_out_transport, dns_addresses, capture_iface, capture_ranges, exempt_ranges)?;
+        let remote_receive_transport = RemoteMutTunnelTransport::new(receive_container_sender, receive_data_receiver);
+        let remote_send_transport = RemoteConstTunnelTransport::new(send_container_sender, send_data_receiver);
+        let (divert, receive_handle, send_handle) = enable_routing(seaside_address, default_interface, default_network, remote_receive_transport, remote_send_transport, dns_addresses, capture_iface, capture_ranges, exempt_ranges)?;
 
-        let local_in_transport = RwLock::new(LocalMutTunnelTransport::new(in_data_sender, in_container_receiver));
-        let local_out_transport = RwLock::new(LocalConstTunnelTransport::new(out_data_sender,  cout_ontainer_receiver));
-        Ok(TunnelInternal {receive_transport: local_in_transport, send_transport: local_out_transport, divert, receive_handle: Some(receive_handle), send_handle: Some(send_handle), dns_data})
+        let local_receive_transport = RwLock::new(LocalMutTunnelTransport::new(receive_data_sender, receive_container_receiver));
+        let local_send_transport = RwLock::new(LocalConstTunnelTransport::new(send_data_sender, send_container_receiver));
+        Ok(TunnelInternal {receive_transport: local_receive_transport, send_transport: local_send_transport, divert, receive_handle: Some(receive_handle), send_handle: Some(send_handle), dns_data})
     }
 }
 
