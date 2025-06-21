@@ -142,6 +142,12 @@ jobs:
           target: ${{ env.TARGET }}
           override: true
 
+      - name: Download Dependencies
+        if: runner.os == 'Windows'
+        working-directory: viridian/reef
+        shell: bash
+        run: make dependencies
+
       - name: Build Viridian Reef 🏗️
         uses: actions-rs/cargo@v1
         env:

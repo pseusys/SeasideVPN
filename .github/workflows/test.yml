@@ -96,6 +96,12 @@ jobs:
           cache-workspaces: viridian/reef
           override: true
 
+      - name: Download Dependencies
+        if: runner.os == 'Windows'
+        working-directory: viridian/reef
+        shell: bash
+        run: make dependencies
+
       - name: Test Viridian Reef (unit) 🧪
         working-directory: viridian/reef
         run: ${{ env.SUDO }} cargo test --package SeasideVPN-Reef --lib -- --nocapture --show-output
