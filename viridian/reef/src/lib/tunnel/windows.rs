@@ -250,7 +250,7 @@ fn enable_routing(seaside_address: Ipv4Addr, default_index: u32, default_network
     }
 
     let dns_filter = dns_addresses.iter().map(|i| format!("ip.DstAddr != {i}")).collect::<Vec<String>>().join(" and ");
-    let caerulean_filter = format!("(ifIdx != {default_index}) or (ip.SrcAddr != {}) or (ip.DstAddr != {})", default_network.addr(), seaside_address);
+    let _caerulean_filter = format!("(ifIdx != {default_index}) or (ip.SrcAddr != {}) or (ip.DstAddr != {})", default_network.addr(), seaside_address);
 
     let filter = format!("ip and outbound and ({exempt_filter}) and ({capture_range_filter} or {capture_iface_filter}) and ({dns_filter}) and ({})", format!("ip.DstAddr != {}", seaside_address));
     debug!("WinDivert filter will be used: '{filter}'");
