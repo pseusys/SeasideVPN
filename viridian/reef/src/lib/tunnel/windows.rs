@@ -228,7 +228,7 @@ impl PacketExchangeProcess for Arc<WinDivert<NetworkLayer>> {
     }
 }
 
-fn enable_routing(seaside_address: Ipv4Addr, default_index: u32, default_network: Ipv4Net, receive_tunnel_queue: RemoteMutTunnelTransport, send_tunnel_queue: RemoteConstTunnelTransport, dns_addresses: Vec<Ipv4Addr>, capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>) -> DynResult<(Arc<WinDivert<NetworkLayer>>, JoinHandle<DynResult<()>>, JoinHandle<DynResult<()>>)> {
+fn enable_routing(seaside_address: Ipv4Addr, _default_index: u32, default_network: Ipv4Net, receive_tunnel_queue: RemoteMutTunnelTransport, send_tunnel_queue: RemoteConstTunnelTransport, dns_addresses: Vec<Ipv4Addr>, capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>) -> DynResult<(Arc<WinDivert<NetworkLayer>>, JoinHandle<DynResult<()>>, JoinHandle<DynResult<()>>)> {
     let mut exempt_filter = exempt_ranges.iter().map(|i| format!("(ip.DstAddr <= {} or ip.DstAddr >= {})", i.network(), i.broadcast())).collect::<Vec<String>>().join(" and ");
     if exempt_filter.is_empty() {
         exempt_filter = String::from("true");
@@ -250,7 +250,7 @@ fn enable_routing(seaside_address: Ipv4Addr, default_index: u32, default_network
     }
 
     let dns_filter = dns_addresses.iter().map(|i| format!("ip.DstAddr != {i}")).collect::<Vec<String>>().join(" and ");
-    let caerulean_filter = format!("(ifIdx != {default_index}) or (ip.SrcAddr != {}) or (ip.DstAddr != {})", default_network.addr(), seaside_address);
+    let caerulean_filter = format!("(ip.SrcAddr != {}) or (ip.DstAddr != {})", default_network.addr(), seaside_address);
 
     let filter = format!("ip and outbound and ({exempt_filter}) and ({capture_range_filter} or {capture_iface_filter}) and ({dns_filter}) and ({caerulean_filter})");
     debug!("WinDivert filter will be used: '{filter}'");

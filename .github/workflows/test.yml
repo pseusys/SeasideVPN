@@ -129,10 +129,11 @@ jobs:
           WINDIVERT_PATH: ${{ github.workspace }}/viridian/reef/windivert-bin
         run: ${{ env.SUDO }} cargo run --features cli-exec --bin cli -- -s typhoon -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-addresses ${{ env.TARGET_ADDRESS }} -e "${{ env.TEST }}"
 
-      - name: TEST STEP
+      - name: TEST STEP  # TODO: remove!
         if: runner.os == 'Windows' && failure()
         shell: bash
-        run: wsl -u root ss -tulnp
+        run: |
+          wsl -u root ss -tulnp
 
   caerulean-whirlpool-test:
     name: Test Caerulean Whirlpool
