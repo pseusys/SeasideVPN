@@ -76,7 +76,7 @@ impl<S, R: Copy> TunnelTransport<S, R> {
         let borrowed = self.receiver.borrow();
         match *borrowed {
             Some(res) => Ok(res),
-            None => bail!("Received None from tunnel send queue!")
+            None => bail!("Tunnel queue was closed!")
         }
     }
 
