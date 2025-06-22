@@ -123,11 +123,6 @@ impl<'a> Viridian<'a> {
         debug!("Creating protocol client handle...");
         let (mut send_handle, mut receive_handle, termination) = create_handle(&self.client_type, self.tunnel.clone(), self.tunnel.clone(), self.key.clone(), self.token.clone(), self.address, self.port, self.local_address).await?;
 
-        debug!("Running DNS probe to check for globally available DNS servers...");
-        if lookup_host("example.com").await.is_err() {
-            error!("WARNING! DNS probe failed! It is very likely that you have local DNS servers configured only!");
-        }
-
         debug!("Running VPN processes asynchronously...");
         let result = select! {
             res = self.run_vpn_command(command), if command.is_some() => match res {
