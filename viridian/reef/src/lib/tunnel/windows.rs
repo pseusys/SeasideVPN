@@ -339,7 +339,7 @@ impl Drop for TunnelInternal {
             let mut send_writer = self.send_transport.write().await;
             send_writer.close().await.inspect_err(|r| info!("Error closing sending tunnel queue: {r}"));
 
-            debug!("Closing handle routing (send)...");
+            debug!("Waiting for handle thread (send)...");
             let send_decay = replace(&mut self.send_handle, None);
             if let Some(thread) = send_decay {
                 let result = thread.await.expect("WinDivert thread termination error!");
