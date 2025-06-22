@@ -66,10 +66,7 @@ runs:
       shell: bash
       env:
         SUDO: ${{ runner.os == 'Linux' && 'sudo -E env "PATH=$PATH"' || '' }}
-      run: |
-        SERVER_IP=$(${{ env.SUDO }} node actions/setup-server/configure_viridian_test.mjs -t ${{ steps.resolve-target.outputs.target-ip }} -s)
-        echo "Started Whirlpool server at $SERVER_IP"
-        echo "server-ip=$SERVER_IP" >> $GITHUB_OUTPUT
+      run: echo "server-ip=$(${{ env.SUDO }} node actions/setup-server/configure_viridian_test.mjs -t ${{ steps.resolve-target.outputs.target-ip }} -s)" >> $GITHUB_OUTPUT
 
     - name: Get Connection Link
       id: get-server-connection-link
@@ -77,12 +74,9 @@ runs:
       shell: bash
       env:
         SEASIDE_ADDRESS: ${{ steps.start-background-server.outputs.server-ip }}
-        SEASIDE_ROOT_CERTIFICATE_AUTHORITY: ${{ runner.os == 'Linux' && 'certificates/viridian/rootCA.crt' || '../../.github/certificates/viridian/rootCA.crt' }}  # TODO: revert
+        SEASIDE_ROOT_CERTIFICATE_AUTHORITY: ${{ runner.os == 'Linux' && 'certificates/viridian/rootCA.crt' || '../../.github/certificates/viridian/rootCA.crt' }}
         SEASIDE_LOG_LEVEL: ERROR
-      run: |
-        CONNECTION_LINK=$(poetry poe -q fixture -a "${{ env.SEASIDE_ADDRESS }}" -p "${{ env.SEASIDE_API_PORT }}" -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian -s)
-        echo "Retrieved connection link for the Whirlpool server: $CONNECTION_LINK"
-        echo "connection-link=$CONNECTION_LINK" >> $GITHUB_OUTPUT
+      run: echo "connection-link=$(poetry poe -q fixture -a "${{ env.SEASIDE_ADDRESS }}" -p "${{ env.SEASIDE_API_PORT }}" -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian -s)" >> $GITHUB_OUTPUT
 
     - name: Test Echo Server Access (no VPN)
       if: ${{ inputs.test-command != '' }}
