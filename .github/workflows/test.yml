@@ -134,6 +134,9 @@ jobs:
         shell: bash
         run: |
           wsl -u root ss -tulnp
+          wsl -u root ls .
+          wsl -u root cat log/safe.log
+          wsl -u root cat log/danger.log
 
   caerulean-whirlpool-test:
     name: Test Caerulean Whirlpool
