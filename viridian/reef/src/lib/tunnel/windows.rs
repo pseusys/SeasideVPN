@@ -216,7 +216,7 @@ impl PacketExchangeProcess for Arc<WinDivert<NetworkLayer>> {
             };
             match self.send(&packet) {
                 Ok(res) => {
-                    debug!("Inserting a packet, length: {}", res.data.len());
+                    debug!("Inserting a packet, length: {}", res);
                     send_tunnel_queue.send(res as usize).await?
                 },
                 Err(err) => {
