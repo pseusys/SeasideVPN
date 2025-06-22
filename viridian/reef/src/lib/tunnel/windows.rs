@@ -250,9 +250,9 @@ fn enable_routing(seaside_address: Ipv4Addr, default_index: u32, default_network
     }
 
     let dns_filter = dns_addresses.iter().map(|i| format!("ip.DstAddr != {i}")).collect::<Vec<String>>().join(" and ");
-    let _caerulean_filter = format!("(ifIdx != {default_index}) or (ip.SrcAddr != {}) or (ip.DstAddr != {})", default_network.addr(), seaside_address);
+    let caerulean_filter = format!("(ifIdx != {default_index}) or (ip.SrcAddr != {}) or (ip.DstAddr != {})", default_network.addr(), seaside_address);
 
-    let filter = format!("ip and outbound and ({exempt_filter}) and ({capture_range_filter} or {capture_iface_filter}) and ({dns_filter}) and ({})", format!("ip.DstAddr != {}", seaside_address));
+    let filter = format!("ip and outbound and ({exempt_filter}) and ({capture_range_filter} or {capture_iface_filter}) and ({dns_filter}) and ({caerulean_filter})");
     debug!("WinDivert filter will be used: '{filter}'");
     let divert = WinDivert::network(filter, 0, WinDivertFlags::new())?;
 
@@ -266,6 +266,7 @@ fn enable_routing(seaside_address: Ipv4Addr, default_index: u32, default_network
 
 
 pub struct TunnelInternal {
+    pub default_address: Ipv4Addr,
     receive_transport: RwLock<LocalMutTunnelTransport>,
     send_transport: RwLock<LocalConstTunnelTransport>,
     divert: Arc<WinDivert<NetworkLayer>>,
@@ -284,6 +285,7 @@ impl TunnelInternal {
         };
         let (default_network, default_mtu) = unsafe { get_interface_details(default_interface) }?;
         debug!("Default network properties received: network {default_network}, MTU {default_mtu}, gateway {default_gateway}");
+        let default_address = default_interface.addr();
 
         if capture_iface.is_empty() && capture_ranges.is_empty() {
             debug!("The default interface added to capture: {default_interface}");
@@ -308,7 +310,7 @@ impl TunnelInternal {
 
         let local_receive_transport = RwLock::new(LocalMutTunnelTransport::new(receive_data_sender, receive_container_receiver));
         let local_send_transport = RwLock::new(LocalConstTunnelTransport::new(send_data_sender, send_container_receiver));
-        Ok(TunnelInternal {receive_transport: local_receive_transport, send_transport: local_send_transport, divert, receive_handle: Some(receive_handle), send_handle: Some(send_handle), dns_data})
+        Ok(TunnelInternal {default_address, receive_transport: local_receive_transport, send_transport: local_send_transport, divert, receive_handle: Some(receive_handle), send_handle: Some(send_handle), dns_data})
     }
 }
 

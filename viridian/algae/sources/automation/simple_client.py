@@ -71,7 +71,6 @@ class AlgaeClient:
     def __init__(self, address: str, port: int, dns: IPv4Address = _DEFAULT_CURRENT_DNS, protocol: Optional[Union[Literal["typhoon"], Literal["port"]]] = None, capture_iface: Optional[List[str]] = None, capture_ranges: Optional[List[str]] = None, capture_addresses: Optional[List[str]] = None, exempt_ranges: Optional[List[str]] = None, exempt_addresses: Optional[List[str]] = None, local_address: Optional[IPv4Address] = None):
         self._address = address
         self._port = port
-        self._local_address = local_address
 
         if protocol is None or protocol == "port":
             self._proto_type = PortClient
@@ -133,7 +132,7 @@ class AlgaeClient:
     async def _start_vpn_loop(self, token: bytes, public_key: bytes, port: int, descriptor: int) -> AsyncIterator[None]:
         connection, monitor_task = None, None
         try:
-            connection = self._proto_type(public_key, token, self._address, port, self._local_address)
+            connection = self._proto_type(public_key, token, self._address, port, self._tunnel.default_ip)
             await connection.connect()
             receiver = create_task(self._send_to_caerulean(connection, descriptor), name="sender_task")
             sender = create_task(self._receive_from_caerulean(connection, descriptor), name="receiver_task")

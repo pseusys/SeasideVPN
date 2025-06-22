@@ -42,7 +42,7 @@ pub struct Viridian<'a> {
     port: u16,
     tunnel: Tunnel,
     client_type: ProtocolType,
-    local_address: Option<Ipv4Addr>
+    local_address: Ipv4Addr
 }
 
 impl<'a> Viridian<'a> {
@@ -98,7 +98,9 @@ impl<'a> Viridian<'a> {
 
         debug!("Creating tunnel with seaside address {address}, tunnel name {tunnel_name}, tunnel network {tunnel_address}/{tunnel_netmask}, SVR index {svr_index}...");
         let tunnel = Tunnel::new(address, &tunnel_name, tunnel_network, svr_index, dns, capture_iface_set, capture_ranges_set, exempt_ranges_set, local_address)?;
-        Ok(Viridian { key, token, address, port, tunnel, client_type: protocol, local_address })
+
+        let default_ip = tunnel.default_ip();
+        Ok(Viridian { key, token, address, port, tunnel, client_type: protocol, local_address: default_ip })
     }
 
     async fn run_vpn_command(&self, command: Option<String>) -> DynResult<ExitStatus> {

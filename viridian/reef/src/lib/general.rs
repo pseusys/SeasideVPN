@@ -44,7 +44,7 @@ fn connect<TR: Reader, TW: Writer, CR: Reader, CW: Writer>(tunnel_reader: TR, tu
     (send_handle, receive_handle, termination_sender)
 }
 
-pub async fn create_handle<TR: Reader, TW: Writer>(client_type: &ProtocolType, tunnel_reader: TR, tunnel_writer: TW, key: ByteBuffer<'_>, token: ByteBuffer<'_>, address: Ipv4Addr, port: u16, local: Option<Ipv4Addr>) -> DynResult<(JoinHandle<Result<(), Box<SimpleError>>>, JoinHandle<Result<(), Box<SimpleError>>>, Sender<()>)> {
+pub async fn create_handle<TR: Reader, TW: Writer>(client_type: &ProtocolType, tunnel_reader: TR, tunnel_writer: TW, key: ByteBuffer<'_>, token: ByteBuffer<'_>, address: Ipv4Addr, port: u16, local: Ipv4Addr) -> DynResult<(JoinHandle<Result<(), Box<SimpleError>>>, JoinHandle<Result<(), Box<SimpleError>>>, Sender<()>)> {
     match client_type {
         ProtocolType::PORT => {
             let (client_reader, client_writer) = PortHandle::new(key.clone(), token.clone(), address, port, local)?.connect().await?;

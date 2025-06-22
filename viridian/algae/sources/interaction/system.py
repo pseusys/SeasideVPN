@@ -227,7 +227,7 @@ class Tunnel(AbstractAsyncContextManager):
         Default network interface IP address, found during tunnel interface setup.
         :return: IP address.
         """
-        return str(self._def_iface.ip)
+        return self._def_iface.ip
 
     @property
     def descriptor(self) -> int:

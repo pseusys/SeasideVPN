@@ -254,6 +254,7 @@ fn disable_firewall(firewall_rules: &Vec<String>) -> Result<(), Box<dyn Error>> 
 
 
 pub struct TunnelInternal {
+    pub default_address: Ipv4Addr,
     tunnel_device: AsyncDevice,
     resolv_conf: String,
     resolv_path: String,
@@ -302,7 +303,7 @@ impl TunnelInternal {
             Err(err) => bail!("Error enabling firewall: {err}"),
         };
 
-        Ok(Self {tunnel_device, resolv_conf, resolv_path, svr_data, route_message, rule_message, firewall_table})
+        Ok(Self {default_address, tunnel_device, resolv_conf, resolv_path, svr_data, route_message, rule_message, firewall_table})
     }
 }
 

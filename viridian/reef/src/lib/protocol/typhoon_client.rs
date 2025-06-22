@@ -96,13 +96,10 @@ impl <'a> TyphoonHandle<'a> {
     }
 
     #[allow(refining_impl_trait)]
-    pub fn new(key: ByteBuffer<'_>, token: ByteBuffer<'a>, address: Ipv4Addr, port: u16, local: Option<Ipv4Addr>) -> DynResult<Self> {
+    pub fn new(key: ByteBuffer<'_>, token: ByteBuffer<'a>, address: Ipv4Addr, port: u16, local: Ipv4Addr) -> DynResult<Self> {
         debug!("Creating TYPHOON protocol handle...");
         let peer_address = SocketAddr::new(IpAddr::V4(address), port);
-        let local_address = match local {
-            Some(ip) => SocketAddr::new(IpAddr::V4(ip), 0),
-            None => SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 0),
-        };
+        let local_address = SocketAddr::new(IpAddr::V4(local), 0);
         debug!("Handle set up to connect {local_address} (local) to {peer_address} (caerulean)!");
         Ok(TyphoonHandle {
             peer_address: peer_address,
