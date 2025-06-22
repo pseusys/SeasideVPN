@@ -198,7 +198,7 @@ async function launchWhirlpool(whirlpool, silent) {
 	});
 	print("Spawning whirlpool process...", silent);
 	runCommandForSystem(`docker compose -f ${DOCKER_COMPOSE_PATH} up --detach ${DOCKER_COMPOSE_CONTAINER}`, `wsl -u root python3 ${convertPathToWSL(INSTALLER_PATH)} -g -o -a back whirlpool -l "${convertPathToWSL(CAERULEAN_WHIRLPOOL_ROOT)}" -r compile -v "${process.env.SEASIDE_API_KEY_ADMIN}" -a ${whirlpool} -e ${whirlpool} -i ${process.env.SEASIDE_API_PORT}`, undefined, {
-		SEASIDE_HOST_ADDRESS: whirlpool, 
+		SEASIDE_HOST_ADDRESS: whirlpool
 	});
 	print("Waiting whirlpool to initiate...", silent);
 	await sleep(DOCKER_COMPOSE_TIMEOUT);
