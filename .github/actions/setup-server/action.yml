@@ -77,7 +77,7 @@ runs:
       shell: bash
       env:
         SEASIDE_ADDRESS: ${{ steps.start-background-server.outputs.server-ip }}
-        SEASIDE_ROOT_CERTIFICATE_AUTHORITY: certificates/viridian/rootCA.crt
+        SEASIDE_ROOT_CERTIFICATE_AUTHORITY: ${{ runner.os == 'Linux' && 'certificates/viridian/rootCA.crt' || '../../.github/certificates/viridian/rootCA.crt' }}  # TODO: revert
         SEASIDE_LOG_LEVEL: ERROR
       run: |
         CONNECTION_LINK=$(poetry poe -q fixture -a "${{ env.SEASIDE_ADDRESS }}" -p "${{ env.SEASIDE_API_PORT }}" -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian -s)

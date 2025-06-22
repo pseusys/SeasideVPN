@@ -24,8 +24,6 @@ const CAERULEAN_WHIRLPOOL_ROOT = join(import.meta.dirname, "..", "..", "..", "ca
 
 const VIRIDIAN_ALGAE_ROOT = join(import.meta.dirname, "..", "..", "..", "viridian", "algae");
 
-const CERTIFICATES_ROOT = join(VIRIDIAN_ALGAE_ROOT, "certificates");
-
 const INSTALLER_PATH = join(VIRIDIAN_ALGAE_ROOT, "install.pyz");
 
 function print(message, silent = false) {
@@ -199,7 +197,7 @@ async function launchWhirlpool(whirlpool, silent) {
 		SEASIDE_HOST_ADDRESS: whirlpool
 	});
 	print("Spawning whirlpool process...", silent);
-	runCommandForSystem(`docker compose -f ${DOCKER_COMPOSE_PATH} up --detach ${DOCKER_COMPOSE_CONTAINER}`, `wsl -u root python3 ${convertPathToWSL(INSTALLER_PATH)} -g -o -a back whirlpool -l "${convertPathToWSL(CAERULEAN_WHIRLPOOL_ROOT)}" -r compile -v "${process.env.SEASIDE_API_KEY_ADMIN}" -a ${whirlpool} -e ${whirlpool} -i ${process.env.SEASIDE_API_PORT} --certificates-path ${convertPathToWSL(CERTIFICATES_ROOT)}`, undefined, {
+	runCommandForSystem(`docker compose -f ${DOCKER_COMPOSE_PATH} up --detach ${DOCKER_COMPOSE_CONTAINER}`, `wsl -u root python3 ${convertPathToWSL(INSTALLER_PATH)} -g -o -a back whirlpool -l "${convertPathToWSL(CAERULEAN_WHIRLPOOL_ROOT)}" -r compile -v "${process.env.SEASIDE_API_KEY_ADMIN}" -a ${whirlpool} -e ${whirlpool} -i ${process.env.SEASIDE_API_PORT}`, undefined, {
 		SEASIDE_HOST_ADDRESS: whirlpool, 
 	});
 	print("Waiting whirlpool to initiate...", silent);
