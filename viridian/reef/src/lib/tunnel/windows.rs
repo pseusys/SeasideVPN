@@ -285,7 +285,7 @@ impl TunnelInternal {
         };
         let (default_network, default_mtu) = unsafe { get_interface_details(default_interface) }?;
         debug!("Default network properties received: network {default_network}, MTU {default_mtu}, gateway {default_gateway}");
-        let default_address = default_interface.addr();
+        let default_address = default_network.addr();
 
         if capture_iface.is_empty() && capture_ranges.is_empty() {
             debug!("The default interface added to capture: {default_interface}");
