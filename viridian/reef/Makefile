@@ -30,12 +30,14 @@ help:
 
 dependencies:
 	@ # Dowload and unpack windivert distribution
+ifeq ($(OS),Windows_NT)
 	curl -sSL -o $(WINDIVERT_SOURCE).zip $(WNDIVERT_URL)
 	mkdir -p $(WINDIVERT_TEMP)
 	unzip -q -o $(WINDIVERT_SOURCE).zip -d $(WINDIVERT_TEMP)
 	mkdir -p $(WINDIVERT_VENDOR)
 	mv $(WINDIVERT_TEMP)/$(WINDIVERT_SOURCE)/$(SYS_ARCH)/* $(WINDIVERT_VENDOR)/
 	rm -rf $(WINDIVERT_TEMP)
+endif
 .PHONY: dependencies
 
 build: dependencies
