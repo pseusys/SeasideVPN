@@ -191,7 +191,10 @@ impl PacketExchangeProcess for Arc<WinDivert<NetworkLayer>> {
         loop {
             let value = receive_tunnel_queue.receive().await?;
             match self.recv(Some(value.recreate())) {
-                Ok(res) => receive_tunnel_queue.send(res.data.len()).await?,
+                Ok(res) => {
+                    debug!("Capturing a packet, length: {}", res.data.len());
+                    receive_tunnel_queue.send(res.data.len()).await?
+                },
                 Err(err) => {
                     warn!("Error receiving packet: {err}!");
                     continue;
@@ -212,7 +215,10 @@ impl PacketExchangeProcess for Arc<WinDivert<NetworkLayer>> {
                 data: Cow::Borrowed(value.recreate())
             };
             match self.send(&packet) {
-                Ok(res) =>  send_tunnel_queue.send(res as usize).await?,
+                Ok(res) => {
+                    debug!("Inserting a packet, length: {}", res.data.len());
+                    send_tunnel_queue.send(res as usize).await?
+                },
                 Err(err) => {
                     warn!("Error sending packet: {err}!");
                     continue;
