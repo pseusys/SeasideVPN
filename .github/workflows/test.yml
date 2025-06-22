@@ -131,6 +131,7 @@ jobs:
 
       - name: TEST STEP  # TODO: remove!
         if: runner.os == 'Windows' && failure()
+        working-directory: .github
         shell: bash
         run: |
           wsl -u root ss -tulnp
