@@ -152,6 +152,7 @@ jobs:
         uses: actions-rs/cargo@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WINDIVERT_PATH: ${{ github.workspace }}/viridian/reef/windivert-bin
         with:
           command: build
           use-cross: true

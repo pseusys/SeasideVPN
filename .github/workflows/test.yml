@@ -104,6 +104,8 @@ jobs:
 
       - name: Test Viridian Reef (unit) 🧪
         working-directory: viridian/reef
+        env:
+          WINDIVERT_PATH: ${{ github.workspace }}/viridian/reef/windivert-bin
         run: ${{ env.SUDO }} cargo test --package SeasideVPN-Reef --lib -- --nocapture --show-output
 
       - name: Setup VPN Server
@@ -116,11 +118,15 @@ jobs:
       - name: Test Viridian Reef PORT (integration) 🧪
         id: test-viridian-reef-port
         working-directory: viridian/reef
+        env:
+          WINDIVERT_PATH: ${{ github.workspace }}/viridian/reef/windivert-bin
         run: ${{ env.SUDO }} cargo run --features cli-exec --bin cli -- -s port -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-addresses ${{ env.TARGET_ADDRESS }} -e "${{ env.TEST }}"
 
       - name: Test Viridian Reef TYPHOON (integration) 🧪
         id: test-viridian-reef-typhoon
         working-directory: viridian/reef
+        env:
+          WINDIVERT_PATH: ${{ github.workspace }}/viridian/reef/windivert-bin
         run: ${{ env.SUDO }} cargo run --features cli-exec --bin cli -- -s typhoon -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-addresses ${{ env.TARGET_ADDRESS }} -e "${{ env.TEST }}"
 
   caerulean-whirlpool-test:
