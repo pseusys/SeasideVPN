@@ -4,9 +4,8 @@ use std::process::ExitStatus;
 
 use futures::stream::{FuturesUnordered, StreamExt};
 use ipnet::{Ipv4Net, PrefixLenError};
-use log::{debug, error, info};
+use log::{debug, info};
 use simple_error::{bail, require_with, SimpleError};
-use tokio::net::lookup_host;
 use tokio::process::Command;
 use tokio::{select, try_join};
 
