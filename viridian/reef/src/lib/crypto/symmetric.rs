@@ -24,10 +24,10 @@ pub struct Symmetric {
 }
 
 impl Symmetric {
-    pub fn new(key: &ByteBuffer) -> DynResult<Symmetric> {
+    pub fn new(key: &ByteBuffer) -> DynResult<Self> {
         let private_bytes = <[u8; KEY_LEN]>::try_from(&key.slice()[..])?;
         let cipher = XChaCha20Poly1305::new(Key::from_slice(&private_bytes));
-        Ok(Symmetric { 
+        Ok(Self { 
             cipher
         })
     }

@@ -30,7 +30,7 @@ use crate::{run_coroutine_in_thread, run_coroutine_sync, DynResult};
 const ZERO_IP_ADDRESS: Ipv4Addr = Ipv4Addr::new(0, 0, 0, 0);
 
 
-unsafe fn get_default_interface_by_remote_address(destination_ip: Ipv4Addr) -> DynResult<(Ipv4Addr, u32)> {
+unsafe fn get_default_interface_by_remote_address(destination_ip: Ipv4Addr) -> DynResult<u32> {
     let dest_ip = destination_ip.into();
     let src_ip = ZERO_IP_ADDRESS.into();
 
@@ -38,9 +38,7 @@ unsafe fn get_default_interface_by_remote_address(destination_ip: Ipv4Addr) -> D
     let result = GetBestRoute(dest_ip, src_ip, &mut route);
 
     if WIN32_ERROR(result) == ERROR_SUCCESS {
-        let default_gateway = Ipv4Addr::from(route.dwForwardNextHop);
-        let defult_interface = route.dwForwardIfIndex;
-        Ok((default_gateway, defult_interface))
+        Ok(route.dwForwardIfIndex)
     } else {
         bail!("Default route for ip {destination_ip} failed with error {}!", result)
     }
@@ -276,15 +274,15 @@ pub struct TunnelInternal {
 }
 
 impl TunnelInternal {
-    pub fn new(seaside_address: Ipv4Addr, _: &str, _: Ipv4Net, _: u8, dns: Option<Ipv4Addr>, mut capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, local_address: Option<Ipv4Addr>) -> DynResult<TunnelInternal> {
+    pub fn new(seaside_address: Ipv4Addr, _: &str, _: Ipv4Net, _: u8, dns: Option<Ipv4Addr>, mut capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, local_address: Option<Ipv4Addr>) -> DynResult<Self> {
         debug!("Checking system default network properties...");
-        let (default_gateway, default_interface) = if let Some(address) = local_address {
-            (address, unsafe { get_default_interface_by_local_address(address) }?)
+        let default_interface = if let Some(address) = local_address {
+            unsafe { get_default_interface_by_local_address(address) }?
         } else {
             unsafe { get_default_interface_by_remote_address(seaside_address) }?
         };
         let (default_network, default_mtu) = unsafe { get_interface_details(default_interface) }?;
-        debug!("Default network properties received: network {default_network}, MTU {default_mtu}, gateway {default_gateway}");
+        debug!("Default network properties received: network {default_network}, MTU {default_mtu}");
         let default_address = default_network.addr();
 
         if capture_iface.is_empty() && capture_ranges.is_empty() {
@@ -308,9 +306,10 @@ impl TunnelInternal {
         let remote_send_transport = RemoteConstTunnelTransport::new(send_container_sender, send_data_receiver);
         let (divert, receive_handle, send_handle) = enable_routing(seaside_address, default_interface, default_network, remote_receive_transport, remote_send_transport, dns_addresses, capture_iface, capture_ranges, exempt_ranges)?;
 
+        debug!("Creating tunnel handle...");
         let local_receive_transport = RwLock::new(LocalMutTunnelTransport::new(receive_data_sender, receive_container_receiver));
         let local_send_transport = RwLock::new(LocalConstTunnelTransport::new(send_data_sender, send_container_receiver));
-        Ok(TunnelInternal {default_address, receive_transport: local_receive_transport, send_transport: local_send_transport, divert, receive_handle: Some(receive_handle), send_handle: Some(send_handle), dns_data})
+        Ok(Self {default_address, receive_transport: local_receive_transport, send_transport: local_send_transport, divert, receive_handle: Some(receive_handle), send_handle: Some(send_handle), dns_data})
     }
 }
 

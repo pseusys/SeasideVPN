@@ -29,11 +29,11 @@ pub struct Asymmetric {
 }
 
 impl Asymmetric {
-    pub fn new(key: &ByteBuffer) -> DynResult<Asymmetric> {
+    pub fn new(key: &ByteBuffer) -> DynResult<Self> {
         let asymmetric_key = key.slice();
         let private_bytes = <[u8; PUBLIC_KEY_SIZE]>::try_from(&asymmetric_key[..PUBLIC_KEY_SIZE])?;
         let seed_key = <[u8; SEED_SIZE]>::try_from(&asymmetric_key[PUBLIC_KEY_SIZE..])?;
-        Ok(Asymmetric {
+        Ok(Self {
             public_key: PublicKey::from(private_bytes),
             seed_key,
         })

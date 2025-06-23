@@ -57,7 +57,7 @@ impl<'a> PortHandle<'a> {
         let peer_address = SocketAddr::new(IpAddr::V4(address), port);
         let local_address = SocketAddr::new(IpAddr::V4(local), 0);
         debug!("Handle set up to connect {local_address} (local) to {peer_address} (caerulean)!");
-        Ok(PortHandle {
+        Ok(Self {
             peer_address,
             asymmetric: Asymmetric::new(&key)?,
             local: local_address,

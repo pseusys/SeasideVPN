@@ -303,6 +303,7 @@ impl TunnelInternal {
             Err(err) => bail!("Error enabling firewall: {err}"),
         };
 
+        debug!("Creating tunnel handle...");
         Ok(Self {default_address, tunnel_device, resolv_conf, resolv_path, svr_data, route_message, rule_message, firewall_table})
     }
 }

@@ -64,7 +64,7 @@ pub struct BytePool {
     pool: Mutex<Vec<Vec<u8>>>
 }
 
-impl <'a>BytePool {
+impl<'a> BytePool {
     pub fn new(before_cap: usize, size: usize, after_cap: usize, initial: usize) -> Self {
         let capacity = before_cap + size + after_cap;
         BytePool {

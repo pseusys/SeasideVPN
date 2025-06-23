@@ -101,7 +101,7 @@ impl <'a> TyphoonHandle<'a> {
         let peer_address = SocketAddr::new(IpAddr::V4(address), port);
         let local_address = SocketAddr::new(IpAddr::V4(local), 0);
         debug!("Handle set up to connect {local_address} (local) to {peer_address} (caerulean)!");
-        Ok(TyphoonHandle {
+        Ok(Self {
             peer_address: peer_address,
             asymmetric: Asymmetric::new(&key)?,
             local: local_address,
