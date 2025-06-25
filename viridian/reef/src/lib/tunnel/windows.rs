@@ -362,6 +362,25 @@ impl TunnelInternal {
         let (divert, receive_handle, send_handle) = enable_routing(seaside_address, default_interface, default_network, remote_receive_transport, remote_send_transport, dns_addresses, capture_iface, capture_ranges, exempt_ranges)?;
 
         let _: () = {  // TODO: REMOVE!!!
+            log::debug!("TEST BLOCK pre-5 STARTED");
+            let dns_address = "8.8.4.4".parse()?;
+            let peer_address = std::net::SocketAddr::new(std::net::IpAddr::V4(dns_address), 80);
+            let socket = socket2::Socket::new(socket2::Domain::IPV4, socket2::Type::STREAM, Some(socket2::Protocol::TCP))?.into();
+            let connection_socket = tokio::net::TcpSocket::from_std_stream(socket);
+
+            if let Some(adr) = local_address {
+                let local_address = std::net::SocketAddr::new(std::net::IpAddr::V4(adr), 0);
+                log::debug!("Binding connection client to {}...", local_address);
+                connection_socket.bind(local_address)?;
+            }
+
+            log::debug!("Connecting to listener at {}", peer_address);
+            let connection_stream = run_coroutine_sync!(async { connection_socket.connect(peer_address).await })?;
+            log::debug!("Current user address: {}", connection_stream.local_addr()?);
+            log::debug!("TEST BLOCK pre-5 ENDED");
+        };
+
+        let _: () = {  // TODO: REMOVE!!!
             log::debug!("TEST BLOCK 5 STARTED");
             let peer_address = std::net::SocketAddr::new(std::net::IpAddr::V4(seaside_address), seaside_port);
             let socket = socket2::Socket::new(socket2::Domain::IPV4, socket2::Type::STREAM, Some(socket2::Protocol::TCP))?.into();
