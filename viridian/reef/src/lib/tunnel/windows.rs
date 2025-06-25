@@ -363,7 +363,7 @@ impl TunnelInternal {
 
         let _: () = {  // TODO: REMOVE!!!
             log::debug!("TEST BLOCK pre-5 STARTED");
-            let dns_address = "8.8.4.4".parse()?;
+            let dns_address = "23.192.228.84".parse()?;
             let peer_address = std::net::SocketAddr::new(std::net::IpAddr::V4(dns_address), 80);
             let socket = socket2::Socket::new(socket2::Domain::IPV4, socket2::Type::STREAM, Some(socket2::Protocol::TCP))?.into();
             let connection_socket = tokio::net::TcpSocket::from_std_stream(socket);
