@@ -164,11 +164,11 @@ async fn main() -> DynResult<()> {
 
 
     if let Some(adr) = opt.local_address {
-        let peer_address = SocketAddr::new(IpAddr::V4(address), port);
-        let local_address = SocketAddr::new(IpAddr::V4(adr), 0);
+        let peer_address = socket2::SocketAddr::new(IpAddr::V4(address), port);
+        let local_address = socket2::SocketAddr::new(IpAddr::V4(adr), 0);
 
         let socket = socket2::Socket::new(socket2::Domain::IPV4, socket2::Type::STREAM, Some(socket2::Protocol::TCP))?;
-        let connection_socket = socket2::TcpSocket::from_std_stream(socket);
+        let connection_socket = tokio::net::TcpSocket::from_std_stream(socket);
 
         debug!("Binding connection client to {}...", local_address);
         connection_socket.bind(local_address)?;
