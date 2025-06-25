@@ -275,6 +275,25 @@ pub struct TunnelInternal {
 
 impl TunnelInternal {
     pub fn new(seaside_address: Ipv4Addr, _: &str, _: Ipv4Net, _: u8, dns: Option<Ipv4Addr>, mut capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, local_address: Option<Ipv4Addr>) -> DynResult<Self> {
+
+        let _: () = {  // TODO: REMOVE!!!
+            log::debug!("TEST BLOCK 2 STARTED");
+            let peer_address = std::net::SocketAddr::new(IpAddr::V4(address), port);
+            let socket = socket2::Socket::new(socket2::Domain::IPV4, socket2::Type::STREAM, Some(socket2::Protocol::TCP))?.into();
+            let connection_socket = tokio::net::TcpSocket::from_std_stream(socket);
+
+            if let Some(adr) = opt.local_address {
+                let local_address = std::net::SocketAddr::new(IpAddr::V4(adr), 0);
+                log::debug!("Binding connection client to {}...", local_address);
+                connection_socket.bind(local_address)?;
+            }
+
+            log::debug!("Connecting to listener at {}", peer_address);
+            let connection_stream = run_coroutine_sync!(async { connection_socket.connect(peer_address).await? });
+            log::debug!("Current user address: {}", connection_stream.local_addr()?);
+            log::debug!("TEST BLOCK 2 ENDED");
+        };
+
         debug!("Checking system default network properties...");
         let default_interface = if let Some(address) = local_address {
             unsafe { get_default_interface_by_local_address(address) }?
@@ -284,6 +303,24 @@ impl TunnelInternal {
         let (default_network, default_mtu) = unsafe { get_interface_details(default_interface) }?;
         debug!("Default network properties received: network {default_network}, MTU {default_mtu}");
         let default_address = default_network.addr();
+
+        let _: () = {  // TODO: REMOVE!!!
+            log::debug!("TEST BLOCK 3 STARTED");
+            let peer_address = std::net::SocketAddr::new(IpAddr::V4(address), port);
+            let socket = socket2::Socket::new(socket2::Domain::IPV4, socket2::Type::STREAM, Some(socket2::Protocol::TCP))?.into();
+            let connection_socket = tokio::net::TcpSocket::from_std_stream(socket);
+
+            if let Some(adr) = opt.local_address {
+                let local_address = std::net::SocketAddr::new(IpAddr::V4(adr), 0);
+                log::debug!("Binding connection client to {}...", local_address);
+                connection_socket.bind(local_address)?;
+            }
+
+            log::debug!("Connecting to listener at {}", peer_address);
+            let connection_stream = run_coroutine_sync!(async { connection_socket.connect(peer_address).await? });
+            log::debug!("Current user address: {}", connection_stream.local_addr()?);
+            log::debug!("TEST BLOCK 3 ENDED");
+        };
 
         if capture_iface.is_empty() && capture_ranges.is_empty() {
             debug!("The default interface added to capture: {default_interface}");
@@ -301,10 +338,46 @@ impl TunnelInternal {
         let (dns_addresses, dns_data) = set_dns_addresses(HashSet::from_iter(interfaces?), dns)?;
         debug!("The DNS server for interfaces were set to: {dns_addresses:?}");
 
+        let _: () = {  // TODO: REMOVE!!!
+            log::debug!("TEST BLOCK 4 STARTED");
+            let peer_address = std::net::SocketAddr::new(IpAddr::V4(address), port);
+            let socket = socket2::Socket::new(socket2::Domain::IPV4, socket2::Type::STREAM, Some(socket2::Protocol::TCP))?.into();
+            let connection_socket = tokio::net::TcpSocket::from_std_stream(socket);
+
+            if let Some(adr) = opt.local_address {
+                let local_address = std::net::SocketAddr::new(IpAddr::V4(adr), 0);
+                log::debug!("Binding connection client to {}...", local_address);
+                connection_socket.bind(local_address)?;
+            }
+
+            log::debug!("Connecting to listener at {}", peer_address);
+            let connection_stream = run_coroutine_sync!(async { connection_socket.connect(peer_address).await? });
+            log::debug!("Current user address: {}", connection_stream.local_addr()?);
+            log::debug!("TEST BLOCK 4 ENDED");
+        };
+
         debug!("Setting up routing...");
         let remote_receive_transport = RemoteMutTunnelTransport::new(receive_container_sender, receive_data_receiver);
         let remote_send_transport = RemoteConstTunnelTransport::new(send_container_sender, send_data_receiver);
         let (divert, receive_handle, send_handle) = enable_routing(seaside_address, default_interface, default_network, remote_receive_transport, remote_send_transport, dns_addresses, capture_iface, capture_ranges, exempt_ranges)?;
+
+        let _: () = {  // TODO: REMOVE!!!
+            log::debug!("TEST BLOCK 5 STARTED");
+            let peer_address = std::net::SocketAddr::new(IpAddr::V4(address), port);
+            let socket = socket2::Socket::new(socket2::Domain::IPV4, socket2::Type::STREAM, Some(socket2::Protocol::TCP))?.into();
+            let connection_socket = tokio::net::TcpSocket::from_std_stream(socket);
+
+            if let Some(adr) = opt.local_address {
+                let local_address = std::net::SocketAddr::new(IpAddr::V4(adr), 0);
+                log::debug!("Binding connection client to {}...", local_address);
+                connection_socket.bind(local_address)?;
+            }
+
+            log::debug!("Connecting to listener at {}", peer_address);
+            let connection_stream = run_coroutine_sync!(async { connection_socket.connect(peer_address).await? });
+            log::debug!("Current user address: {}", connection_stream.local_addr()?);
+            log::debug!("TEST BLOCK 5 ENDED");
+        };
 
         debug!("Creating tunnel handle...");
         let local_receive_transport = RwLock::new(LocalMutTunnelTransport::new(receive_data_sender, receive_container_receiver));
