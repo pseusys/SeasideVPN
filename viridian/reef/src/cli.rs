@@ -174,7 +174,7 @@ async fn main() -> DynResult<()> {
         connection_socket.bind(local_address)?;
 
         debug!("Connecting to listener at {}", address);
-        let mut connection_stream = connection_socket.connect(peer_address).await?;
+        let connection_stream = connection_socket.connect(peer_address).await?;
         debug!("Current user address: {}", connection_stream.local_addr()?);
     }
 
