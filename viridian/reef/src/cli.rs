@@ -165,12 +165,12 @@ async fn main() -> DynResult<()> {
 
     let _: () = {  // TODO: REMOVE!!!
         log::debug!("TEST BLOCK 1 STARTED");
-        let peer_address = std::net::SocketAddr::new(IpAddr::V4(address), port);
+        let peer_address = std::net::SocketAddr::new(std::net::IpAddr::V4(address), port);
         let socket = socket2::Socket::new(socket2::Domain::IPV4, socket2::Type::STREAM, Some(socket2::Protocol::TCP))?.into();
         let connection_socket = tokio::net::TcpSocket::from_std_stream(socket);
 
         if let Some(adr) = opt.local_address {
-            let local_address = std::net::SocketAddr::new(IpAddr::V4(adr), 0);
+            let local_address = std::net::SocketAddr::new(std::net::IpAddr::V4(adr), 0);
             log::debug!("Binding connection client to {}...", local_address);
             connection_socket.bind(local_address)?;
         }

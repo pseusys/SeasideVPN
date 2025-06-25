@@ -274,22 +274,22 @@ pub struct TunnelInternal {
 }
 
 impl TunnelInternal {
-    pub fn new(seaside_address: Ipv4Addr, _: &str, _: Ipv4Net, _: u8, dns: Option<Ipv4Addr>, mut capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, local_address: Option<Ipv4Addr>) -> DynResult<Self> {
+    pub fn new(seaside_address: Ipv4Addr, seaside_port: u16, _: &str, _: Ipv4Net, _: u8, dns: Option<Ipv4Addr>, mut capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, local_address: Option<Ipv4Addr>) -> DynResult<Self> {
 
         let _: () = {  // TODO: REMOVE!!!
             log::debug!("TEST BLOCK 2 STARTED");
-            let peer_address = std::net::SocketAddr::new(IpAddr::V4(address), port);
+            let peer_address = std::net::SocketAddr::new(std::net::IpAddr::V4(seaside_address), seaside_port);
             let socket = socket2::Socket::new(socket2::Domain::IPV4, socket2::Type::STREAM, Some(socket2::Protocol::TCP))?.into();
             let connection_socket = tokio::net::TcpSocket::from_std_stream(socket);
 
-            if let Some(adr) = opt.local_address {
-                let local_address = std::net::SocketAddr::new(IpAddr::V4(adr), 0);
+            if let Some(adr) = local_address {
+                let local_address = std::net::SocketAddr::new(std::net::IpAddr::V4(adr), 0);
                 log::debug!("Binding connection client to {}...", local_address);
                 connection_socket.bind(local_address)?;
             }
 
             log::debug!("Connecting to listener at {}", peer_address);
-            let connection_stream = run_coroutine_sync!(async { connection_socket.connect(peer_address).await? });
+            let connection_stream = run_coroutine_sync!(async { connection_socket.connect(peer_address).await })?;
             log::debug!("Current user address: {}", connection_stream.local_addr()?);
             log::debug!("TEST BLOCK 2 ENDED");
         };
@@ -306,18 +306,18 @@ impl TunnelInternal {
 
         let _: () = {  // TODO: REMOVE!!!
             log::debug!("TEST BLOCK 3 STARTED");
-            let peer_address = std::net::SocketAddr::new(IpAddr::V4(address), port);
+            let peer_address = std::net::SocketAddr::new(std::net::IpAddr::V4(seaside_address), seaside_port);
             let socket = socket2::Socket::new(socket2::Domain::IPV4, socket2::Type::STREAM, Some(socket2::Protocol::TCP))?.into();
             let connection_socket = tokio::net::TcpSocket::from_std_stream(socket);
 
-            if let Some(adr) = opt.local_address {
-                let local_address = std::net::SocketAddr::new(IpAddr::V4(adr), 0);
+            if let Some(adr) = local_address {
+                let local_address = std::net::SocketAddr::new(std::net::IpAddr::V4(adr), 0);
                 log::debug!("Binding connection client to {}...", local_address);
                 connection_socket.bind(local_address)?;
             }
 
             log::debug!("Connecting to listener at {}", peer_address);
-            let connection_stream = run_coroutine_sync!(async { connection_socket.connect(peer_address).await? });
+            let connection_stream = run_coroutine_sync!(async { connection_socket.connect(peer_address).await })?;
             log::debug!("Current user address: {}", connection_stream.local_addr()?);
             log::debug!("TEST BLOCK 3 ENDED");
         };
@@ -340,18 +340,18 @@ impl TunnelInternal {
 
         let _: () = {  // TODO: REMOVE!!!
             log::debug!("TEST BLOCK 4 STARTED");
-            let peer_address = std::net::SocketAddr::new(IpAddr::V4(address), port);
+            let peer_address = std::net::SocketAddr::new(std::net::IpAddr::V4(seaside_address), seaside_port);
             let socket = socket2::Socket::new(socket2::Domain::IPV4, socket2::Type::STREAM, Some(socket2::Protocol::TCP))?.into();
             let connection_socket = tokio::net::TcpSocket::from_std_stream(socket);
 
-            if let Some(adr) = opt.local_address {
-                let local_address = std::net::SocketAddr::new(IpAddr::V4(adr), 0);
+            if let Some(adr) = local_address {
+                let local_address = std::net::SocketAddr::new(std::net::IpAddr::V4(adr), 0);
                 log::debug!("Binding connection client to {}...", local_address);
                 connection_socket.bind(local_address)?;
             }
 
             log::debug!("Connecting to listener at {}", peer_address);
-            let connection_stream = run_coroutine_sync!(async { connection_socket.connect(peer_address).await? });
+            let connection_stream = run_coroutine_sync!(async { connection_socket.connect(peer_address).await })?;
             log::debug!("Current user address: {}", connection_stream.local_addr()?);
             log::debug!("TEST BLOCK 4 ENDED");
         };
@@ -363,18 +363,18 @@ impl TunnelInternal {
 
         let _: () = {  // TODO: REMOVE!!!
             log::debug!("TEST BLOCK 5 STARTED");
-            let peer_address = std::net::SocketAddr::new(IpAddr::V4(address), port);
+            let peer_address = std::net::SocketAddr::new(std::net::IpAddr::V4(seaside_address), seaside_port);
             let socket = socket2::Socket::new(socket2::Domain::IPV4, socket2::Type::STREAM, Some(socket2::Protocol::TCP))?.into();
             let connection_socket = tokio::net::TcpSocket::from_std_stream(socket);
 
-            if let Some(adr) = opt.local_address {
-                let local_address = std::net::SocketAddr::new(IpAddr::V4(adr), 0);
+            if let Some(adr) = local_address {
+                let local_address = std::net::SocketAddr::new(std::net::IpAddr::V4(adr), 0);
                 log::debug!("Binding connection client to {}...", local_address);
                 connection_socket.bind(local_address)?;
             }
 
             log::debug!("Connecting to listener at {}", peer_address);
-            let connection_stream = run_coroutine_sync!(async { connection_socket.connect(peer_address).await? });
+            let connection_stream = run_coroutine_sync!(async { connection_socket.connect(peer_address).await })?;
             log::debug!("Current user address: {}", connection_stream.local_addr()?);
             log::debug!("TEST BLOCK 5 ENDED");
         };

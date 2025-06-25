@@ -265,7 +265,7 @@ pub struct TunnelInternal {
 }
 
 impl TunnelInternal {
-    pub fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_network: Ipv4Net, svr_index: u8, dns: Option<Ipv4Addr>, mut capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, local_address: Option<Ipv4Addr>) -> DynResult<Self> {
+    pub fn new(seaside_address: Ipv4Addr, _: u16, tunnel_name: &str, tunnel_network: Ipv4Net, svr_index: u8, dns: Option<Ipv4Addr>, mut capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, local_address: Option<Ipv4Addr>) -> DynResult<Self> {
         debug!("Checking system default network properties...");
         let (default_address, default_cidr, default_name, default_mtu) = if let Some(address) = local_address {
             let (default_cidr, default_name, default_mtu) = get_default_interface_by_local_address(address)?;
