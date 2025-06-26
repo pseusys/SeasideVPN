@@ -39,11 +39,18 @@ function printHelpMessage() {
 	process.exit(0);
 }
 
+function executeCommand(command, shell, environment) {
+	const child = spawnSync(command, { shell, encoding: "utf-8", env: { ...process.env, ...environment } });
+	if (child.error) throw Error(`Command execution error: ${child.error.message}`);
+	else if (child.status !== 0) throw Error(`Command failed: "${command}" (env: ${JSON.stringify(environment)})\nCommand failed with error code: ${child.status}\n\nSTDOUT:\n${child.stdout.toString()}\n\nSTDERR:\n${child.stderr.toString()}`);
+	else return child;
+}
+
 /**
  * Execute a console command.
  * Throw an error if command failed to start or returned non-zero code.
- * @param {string} command the command to execute.
- * @returns {ChildProcess} child process spawned by the command.
+ * @param {string | Array<string>} command the command to execute.
+ * @returns {ChildProcess | undefined} child process spawned by the command.
  */
 function runCommand(command, environment = {}) {
 	let shell = true;
@@ -53,10 +60,8 @@ function runCommand(command, environment = {}) {
 		let envKeys = Object.keys(environment).map((key) => `${key}/u`);
 		childEnv.WSLENV = `${process.env.WSLENV ?? ""}:${envKeys.join(":")}`;
 	}
-	const child = spawnSync(command, { shell, encoding: "utf-8", env: { ...process.env, ...childEnv } });
-	if (child.error) throw Error(`Command execution error: ${child.error.message}`);
-	else if (child.status !== 0) throw Error(`Command failed: "${command}" (env: ${JSON.stringify(childEnv)})\nCommand failed with error code: ${child.status}\n\nSTDOUT:\n${child.stdout.toString()}\n\nSTDERR:\n${child.stderr.toString()}`);
-	else return child;
+	if (Array.isArray(command)) command.forEach(v => executeCommand(v, shell, childEnv));
+	else return executeCommand(command, shell, childEnv);
 }
 
 function getOutput(command, environment = {}) {
@@ -175,7 +180,7 @@ function setupRouting(unreachable, iface, address, silent) {
 	print(`Disabling access to ${unreachable} address...`, silent);
 	runCommandForSystem(
 		`iptables -t mangle -A OUTPUT -o ${iface} -s ${address} -d ${unreachable} -j DROP`,
-		`powershell -Command 'New-NetFirewallRule -DisplayName "seaside-test-block-unreachable" -Direction Outbound -LocalAddress ${address} -RemoteAddress ${unreachable} -Action Block -Profile Any -Enabled True && New-NetFirewallRule -DisplayName "seaside-test-allow-unreachable" -Direction Outbound -Service "vmcompute" -RemoteAddress ${unreachable} -Action Allow -Profile Any -Enabled True'`
+		[`New-NetFirewallRule -DisplayName "seaside-test-block-unreachable" -Direction Outbound -LocalAddress ${address} -RemoteAddress ${unreachable} -Action Block -Profile Any -Enabled True`, `New-NetFirewallRule -DisplayName "seaside-test-allow-unreachable" -Direction Outbound -Service "vmcompute" -RemoteAddress ${unreachable} -Action Allow -Profile Any -Enabled True`]
 	);
 	print(`Accessing ${unreachable} is no longer possible!`, silent);
 }
