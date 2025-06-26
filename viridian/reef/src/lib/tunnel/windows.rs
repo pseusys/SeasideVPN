@@ -233,7 +233,7 @@ fn enable_routing(seaside_address: Ipv4Addr, default_index: u32, default_network
         exempt_filter = String::from("true");
     }
 
-    let mut capture_range_filter = capture_ranges.iter().map(|i| format!("(ip.DstAddr < {} or ip.DstAddr > {})", i.network(), i.broadcast())).collect::<Vec<String>>().join(" or ");
+    let mut capture_range_filter = capture_ranges.iter().map(|i| format!("(ip.DstAddr > {} and ip.DstAddr < {})", i.network(), i.broadcast())).collect::<Vec<String>>().join(" or ");
     if capture_range_filter.is_empty() {
         capture_range_filter = String::from("false");
     }
