@@ -146,6 +146,10 @@ jobs:
           wsl -u root ip addr show
           wsl -u root echo "PROCESSES AND PORTS:"
           wsl -u root ss -tulnp
+          wsl -u root echo "WSL FIREWALL (FILTER):"
+          wsl -u root iptables -t filter -Lvn --line-numbers
+          wsl -u root echo "WSL FIREWALL (NAT):"
+          wsl -u root iptables -t nat -Lvn --line-numbers
           wsl -u root echo "SAFE LOGS:"
           wsl -u root sh -c "cat ./.github/log/safe.log || true"
           wsl -u root echo "DANGER LOGS:"
