@@ -128,7 +128,7 @@ jobs:
         working-directory: viridian/reef
         env:
           WINDIVERT_PATH: ${{ github.workspace }}/viridian/reef/windivert-bin
-        run: ${{ env.SUDO }} cargo run --features cli-exec --bin cli -- -s port -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-addresses ${{ env.TARGET_ADDRESS }} --exempt-addresses ${{ env.SPECIAL_ADDRESS }} -e "${{ env.TEST }}"
+        run: ${{ env.SUDO }} cargo run --features cli-exec --bin cli -- -s port -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-addresses ${{ env.TARGET_ADDRESS }} --exempt-addresses ${{ env.SPECIAL_ADDRESS }} -e "Test-NetConnection -ComputerName 1.1.1.1 -Port 443"
 
       - name: Test Viridian Reef TYPHOON (integration) 🧪
         id: test-viridian-reef-typhoon
