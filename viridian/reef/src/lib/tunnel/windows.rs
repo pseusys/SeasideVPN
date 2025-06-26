@@ -228,12 +228,12 @@ impl PacketExchangeProcess for Arc<WinDivert<NetworkLayer>> {
 }
 
 fn enable_routing(seaside_address: Ipv4Addr, default_index: u32, default_network: Ipv4Net, receive_tunnel_queue: RemoteMutTunnelTransport, send_tunnel_queue: RemoteConstTunnelTransport, dns_addresses: Vec<Ipv4Addr>, capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>) -> DynResult<(Arc<WinDivert<NetworkLayer>>, JoinHandle<DynResult<()>>, JoinHandle<DynResult<()>>)> {
-    let mut exempt_filter = exempt_ranges.iter().map(|i| format!("(ip.DstAddr <= {} or ip.DstAddr >= {})", i.network(), i.broadcast())).collect::<Vec<String>>().join(" and ");
+    let mut exempt_filter = exempt_ranges.iter().map(|i| format!("(ip.DstAddr < {} or ip.DstAddr > {})", i.network(), i.broadcast())).collect::<Vec<String>>().join(" and ");
     if exempt_filter.is_empty() {
         exempt_filter = String::from("true");
     }
 
-    let mut capture_range_filter = capture_ranges.iter().map(|i| format!("(ip.DstAddr <= {} or ip.DstAddr >= {})", i.network(), i.broadcast())).collect::<Vec<String>>().join(" or ");
+    let mut capture_range_filter = capture_ranges.iter().map(|i| format!("(ip.DstAddr < {} or ip.DstAddr > {})", i.network(), i.broadcast())).collect::<Vec<String>>().join(" or ");
     if capture_range_filter.is_empty() {
         capture_range_filter = String::from("false");
     }
@@ -241,7 +241,7 @@ fn enable_routing(seaside_address: Ipv4Addr, default_index: u32, default_network
     let capture_iface_result: DynResult<Vec<String>> = capture_iface.iter().map(|i| {
         let net_idx = i.parse().map_err(|e| Box::new(e))?;
         let (network, _) = unsafe { get_interface_details(net_idx) }?;
-        Ok(format!("((ifIdx == {i}) and (ip.DstAddr <= {} or ip.DstAddr >= {}))", network.network(), network.broadcast()))
+        Ok(format!("((ifIdx == {i}) and (ip.DstAddr < {} or ip.DstAddr > {}))", network.network(), network.broadcast()))
     }).collect();
     let mut capture_iface_filter = capture_iface_result?.join(" or ");
     if capture_iface_filter.is_empty() {
