@@ -132,7 +132,9 @@ jobs:
       - name: TEST STEP  # TODO: remove!
         if: runner.os == 'Windows' && failure()
         shell: bash
-        run: wsl -u root ss -tulnp
+        run: |
+          ipconfig
+          wsl -u root ss -tulnp
 
   caerulean-whirlpool-test:
     name: Test Caerulean Whirlpool
