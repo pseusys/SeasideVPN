@@ -111,6 +111,22 @@ impl<'a> Viridian<'a> {
     }
 
     pub async fn start(&mut self, command: Option<String>) -> DynResult<()> {
+        let _: () = {  // TODO: REMOVE!!!
+            log::debug!("TEST BLOCK 6 STARTED");
+            let peer_address = std::net::SocketAddr::new(std::net::IpAddr::V4(self.address), self.port);
+            let socket = socket2::Socket::new(socket2::Domain::IPV4, socket2::Type::STREAM, Some(socket2::Protocol::TCP))?.into();
+            let connection_socket = tokio::net::TcpSocket::from_std_stream(socket);
+
+            let local_address = std::net::SocketAddr::new(std::net::IpAddr::V4(self.local_address), 0);
+            log::debug!("Binding connection client to {}...", local_address);
+            connection_socket.bind(local_address)?;
+
+            log::debug!("Connecting to listener at {}", peer_address);
+            let connection_stream = connection_socket.connect(peer_address).await?;
+            log::debug!("Current user address: {}", connection_stream.local_addr()?);
+            log::debug!("TEST BLOCK 6 ENDED");
+        };
+
         debug!("Creating signal handlers...");
         let signals = create_signal_handlers()?;
         let mut handlers = FuturesUnordered::new();
@@ -120,6 +136,22 @@ impl<'a> Viridian<'a> {
                 info!("Received {name} signal!");
             });
         }
+
+        let _: () = {  // TODO: REMOVE!!!
+            log::debug!("TEST BLOCK 7 STARTED");
+            let peer_address = std::net::SocketAddr::new(std::net::IpAddr::V4(self.address), self.port);
+            let socket = socket2::Socket::new(socket2::Domain::IPV4, socket2::Type::STREAM, Some(socket2::Protocol::TCP))?.into();
+            let connection_socket = tokio::net::TcpSocket::from_std_stream(socket);
+
+            let local_address = std::net::SocketAddr::new(std::net::IpAddr::V4(self.local_address), 0);
+            log::debug!("Binding connection client to {}...", local_address);
+            connection_socket.bind(local_address)?;
+
+            log::debug!("Connecting to listener at {}", peer_address);
+            let connection_stream = connection_socket.connect(peer_address).await?;
+            log::debug!("Current user address: {}", connection_stream.local_addr()?);
+            log::debug!("TEST BLOCK 7 ENDED");
+        };
 
         debug!("Creating protocol client handle...");
         let (mut send_handle, mut receive_handle, termination) = create_handle(&self.client_type, self.tunnel.clone(), self.tunnel.clone(), self.key.clone(), self.token.clone(), self.address, self.port, self.local_address).await?;
