@@ -428,8 +428,9 @@ impl Drop for TyphoonClient {
                     result.inspect_err(|r| info!("Inner TYPHOON thread terminated with: {r}"));
                 }
             });
-            debug!("Sending termination packet to caerulean...");
+            debug!("Preparing termination packet to caerulean...");
             let packet = build_any_term(&mut self.symmetric).await.expect("Couldn't build termination packet!");
+            debug!("Termination packet of size {} sending...", packet.len());
             self.internal.socket.send(&packet.slice()).await.inspect_err(|e| warn!("Couldn't send termination packet: {e}"));
         });
     }

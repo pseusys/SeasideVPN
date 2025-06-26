@@ -96,7 +96,8 @@ pub async fn build_any_term<'a>(cipher: &mut Symmetric) -> DynResult<ByteBuffer<
     let header: AnyOtherHeader = (ProtocolFlag::TERM as u8, tail_len as u16);
     encode_into_slice(header, &mut buffer.slice_mut(), ENCODE_CONF)?;
 
-    Ok(cipher.encrypt(buffer, None)?)
+    let message = buffer.expand_end(tail_len);
+    Ok(cipher.encrypt(message, None)?)
 }
 
 pub async fn parse_server_init(cipher: &mut Symmetric, packet: ByteBuffer<'_>, expected_packet_number: u32) -> DynResult<(u16, u32)> {

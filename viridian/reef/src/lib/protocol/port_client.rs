@@ -155,7 +155,9 @@ impl Drop for PortClientWriter {
     #[allow(unused_must_use)]
     fn drop(&mut self) {
         run_coroutine_sync!(async {
+            debug!("Preparing termination packet to caerulean...");
             let packet = build_any_term(&mut self.symmetric).await.expect("Couldn't build termination packet!");
+            debug!("Termination packet of size {} sending...", packet.len());
             self.socket.write_all(&packet.slice()).await.inspect_err(|e| warn!("Couldn't send termination packet: {e}"));
         });
     }
