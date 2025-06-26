@@ -137,7 +137,7 @@ jobs:
         run: ${{ env.SUDO }} cargo run --features cli-exec --bin cli -- -s typhoon -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-addresses ${{ env.TARGET_ADDRESS }} -e "${{ env.TEST }}"
 
       - name: TEST STEP  # TODO: remove!
-        if: runner.os == 'Windows' && failure()
+        if: runner.os == 'Windows' && always()
         shell: bash
         run: |
           wsl -u root echo "LOCAL IP ADDRESSES:"
@@ -148,6 +148,11 @@ jobs:
           wsl -u root sh -c "cat ./.github/log/safe.log || true"
           wsl -u root echo "DANGER LOGS:"
           wsl -u root sh -c "cat ./.github/log/danger.log || true"
+
+      - name: TEST STEP  # TODO: remove!
+        if: runner.os == 'Linux' && always()
+        shell: bash
+        run: docker compose -f ${{ github.workspace }}/.github/actions/setup-server/compose.yml logs
 
   caerulean-whirlpool-test:
     name: Test Caerulean Whirlpool

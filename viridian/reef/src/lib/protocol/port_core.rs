@@ -95,7 +95,7 @@ pub async fn build_any_term<'a>(cipher: &mut Symmetric) -> DynResult<ByteBuffer<
     let encrypted_header = cipher.encrypt(buffer, None)?;
 
     let packet = encrypted_header.expand_end(tail_len);
-    rand.fill_bytes(&mut packet.slice_start_mut(buffer_size));
+    rand.fill_bytes(&mut packet.slice_start_mut(packet.len() - tail_len));
     Ok(packet)
 }
 
