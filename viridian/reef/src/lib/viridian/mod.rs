@@ -105,9 +105,7 @@ impl<'a> Viridian<'a> {
 
     async fn run_vpn_command(&self, command: Option<String>) -> DynResult<ExitStatus> {
         let cmd = require_with!(command, "Command should not be None!");
-        info!("Executing command '{cmd}'...");
-        let args = cmd.split_whitespace().collect::<Vec<_>>();
-        Ok(Command::new(args[0]).args(&args[1..]).kill_on_drop(true).status().await?)
+        Ok(Command::new(DEFAULT_SHELL).arg(DEFAULT_ARG).arg(cmd).kill_on_drop(true).status().await?)
     }
 
     pub async fn start(&mut self, command: Option<String>) -> DynResult<()> {
@@ -120,18 +118,6 @@ impl<'a> Viridian<'a> {
                 info!("Received {name} signal!");
             });
         }
-
-        let _: () = {  // TODO: REMOVE!!!
-            log::debug!("TEST BLOCK STARTED");
-            let peer_address = std::net::SocketAddr::new(std::net::IpAddr::V4(self.address), self.port);
-            let socket = socket2::Socket::new(socket2::Domain::IPV4, socket2::Type::STREAM, Some(socket2::Protocol::TCP))?.into();
-            let connection_socket = tokio::net::TcpSocket::from_std_stream(socket);
-
-            log::debug!("Connecting to listener at {}", peer_address);
-            let connection_stream = connection_socket.connect(peer_address).await?;
-            log::debug!("Current user address: {}", connection_stream.local_addr()?);
-            log::debug!("TEST BLOCK ENDED");
-        };
 
         debug!("Creating protocol client handle...");
         let (mut send_handle, mut receive_handle, termination) = create_handle(&self.client_type, self.tunnel.clone(), self.tunnel.clone(), self.key.clone(), self.token.clone(), self.address, self.port, self.local_address).await?;

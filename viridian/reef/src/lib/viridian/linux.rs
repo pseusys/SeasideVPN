@@ -3,6 +3,10 @@ use tokio::signal::unix::{Signal, SignalKind, signal};
 use crate::DynResult;
 
 
+pub const DEFAULT_SHELL: &str = "sh";
+pub const DEFAULT_ARG: &str = "-c";
+
+
 pub fn create_signal_handlers() -> DynResult<Vec<(Signal, String)>> {
     let terminate_name = "SIGTERM".to_string();
     let signal_terminate = signal(SignalKind::terminate())?;

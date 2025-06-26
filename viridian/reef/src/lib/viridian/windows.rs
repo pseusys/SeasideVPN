@@ -3,6 +3,10 @@ use tokio::signal::windows::{ctrl_break, ctrl_c, ctrl_close, ctrl_shutdown, Ctrl
 use crate::DynResult;
 
 
+pub const DEFAULT_SHELL: &str = "powershell";
+pub const DEFAULT_ARG: &str = "-Command";
+
+
 pub enum Signal {
     CtrlC(CtrlC),
     CtrlBreak(CtrlBreak),
