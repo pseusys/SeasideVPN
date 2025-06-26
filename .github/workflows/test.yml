@@ -116,7 +116,7 @@ jobs:
           test-command: ${{ env.TEST }}
 
       - name: TEST STEP  # TODO: remove!
-        if: runner.os == 'Windows' && failure()
+        if: runner.os == 'Windows'
         shell: bash
         run: |
           powershell -Command "Invoke-WebRequest -Uri https://1.1.1.1 -Method Head -TimeoutSec 15 -ErrorAction SilentlyContinue"
@@ -145,9 +145,9 @@ jobs:
           wsl -u root echo "PROCESSES AND PORTS:"
           wsl -u root ss -tulnp
           wsl -u root echo "SAFE LOGS:"
-          wsl -u root cat ./.github/log/safe.log
+          wsl -u root sh -c "cat ./.github/log/safe.log || true"
           wsl -u root echo "DANGER LOGS:"
-          wsl -u root cat ./.github/log/danger.log
+          wsl -u root sh -c "cat ./.github/log/danger.log || true"
 
   caerulean-whirlpool-test:
     name: Test Caerulean Whirlpool
