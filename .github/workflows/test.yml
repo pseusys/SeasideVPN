@@ -118,7 +118,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          ${{ env.WINDIVERT_PATH }}/netdump "true" 1024 > facets.txt 2>&1
+          nohup ${{ env.WINDIVERT_PATH }}/netdump "true" 1024 > facets.txt 2>&1 &
           powershell -Command "try { Invoke-WebRequest -Uri https://1.1.1.1 -Method Head -TimeoutSec 15 -ErrorAction Stop } catch { Write-Host 'Request failed on Windows!' }"
           wsl -u root bash -c "curl -sS -I --fail --max-time 15 https://1.1.1.1 || echo 'Request failed on WSL!'"
 
