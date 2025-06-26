@@ -28,7 +28,7 @@ async fn worker_task(mut reader: impl Reader, mut writer: impl Writer, mut termi
                 Err(_) => bail!("Terminating worker task with error!")
             }
         };
-        debug!("Captured {} bytes {}! -> {:?}", packet.len(), message, packet.slice());
+        debug!("Captured {} bytes {}! -> {:?}", packet.len(), message, packet.slice());  // TODO: remove logging!!
         match writer.write_bytes(packet).await {
             Err(res) => bail!("Error writing to socket: {res}!"),
             Ok(res) => debug!("Sent {res} bytes {}!", message)
