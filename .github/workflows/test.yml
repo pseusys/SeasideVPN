@@ -79,7 +79,7 @@ jobs:
       SPECIAL_ADDRESS: 168.63.129.16
       SEASIDE_LOG_LEVEL: reeflib=DEBUG,INFO
       SUDO: ${{ matrix.os == 'ubuntu' && 'sudo -E env "PATH=$PATH"' || '' }}
-      TEST: ${{ matrix.os == 'ubuntu' && 'curl -sS -I --fail --max-time 15 https://1.1.1.1' || 'Invoke-WebRequest -Uri https://1.1.1.1 -Method Head -TimeoutSec 75 -ErrorAction Stop' }}
+      TEST: ${{ matrix.os == 'ubuntu' && 'curl -sS -I --fail --max-time 15 https://1.1.1.1' || 'sh -c "curl -sS -I --fail --max-time 15 https://1.1.1.1"' }}
     strategy:
       fail-fast: false
       matrix:
@@ -120,7 +120,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          powershell -Command "try { Invoke-WebRequest -Uri https://1.1.1.1 -Method Head -TimeoutSec 15 -ErrorAction Stop } catch { Write-Host 'Request failed on Windows!' }"
+          bash -c "curl -sS -I --fail --max-time 15 https://1.1.1.1" || echo 'Request failed on Windows!'
           wsl -u root bash -c "curl -sS -I --fail --max-time 15 https://1.1.1.1 || echo 'Request failed on WSL!'"
 
       - name: Test Viridian Reef PORT (integration) 🧪
