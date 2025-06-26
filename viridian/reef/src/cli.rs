@@ -161,28 +161,6 @@ async fn main() -> DynResult<()> {
         None => opt.dns
     };
 
-
-
-    let _: () = {  // TODO: REMOVE!!!
-        log::debug!("TEST BLOCK 1 STARTED");
-        let peer_address = std::net::SocketAddr::new(std::net::IpAddr::V4(address), port);
-        let socket = socket2::Socket::new(socket2::Domain::IPV4, socket2::Type::STREAM, Some(socket2::Protocol::TCP))?.into();
-        let connection_socket = tokio::net::TcpSocket::from_std_stream(socket);
-
-        if let Some(adr) = opt.local_address {
-            let local_address = std::net::SocketAddr::new(std::net::IpAddr::V4(adr), 0);
-            log::debug!("Binding connection client to {}...", local_address);
-            connection_socket.bind(local_address)?;
-        }
-
-        log::debug!("Connecting to listener at {}", peer_address);
-        let connection_stream = connection_socket.connect(peer_address).await?;
-        log::debug!("Current user address: {}", connection_stream.local_addr()?);
-        log::debug!("TEST BLOCK 1 ENDED");
-    };
-
-
-
     info!("Creating reef client...");
     debug!("Parameters for reef client: address {address}, port {port}, protocol {protocol:?}, token length {}, public key length {}, dns {dns}", token.len(), public.len());
     let mut constructor = Viridian::new(address, port, token, public, protocol, Some(dns), Some(opt.capture_iface), Some(opt.capture_ranges), Some(opt.exempt_ranges), Some(opt.capture_addresses), Some(opt.exempt_addresses), opt.local_address).await?;

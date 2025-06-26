@@ -111,18 +111,6 @@ impl<'a> Viridian<'a> {
     }
 
     pub async fn start(&mut self, command: Option<String>) -> DynResult<()> {
-        let _: () = {  // TODO: REMOVE!!!
-            log::debug!("TEST BLOCK 6 STARTED");
-            let peer_address = std::net::SocketAddr::new(std::net::IpAddr::V4(self.address), self.port);
-            let socket = socket2::Socket::new(socket2::Domain::IPV4, socket2::Type::STREAM, Some(socket2::Protocol::TCP))?.into();
-            let connection_socket = tokio::net::TcpSocket::from_std_stream(socket);
-
-            log::debug!("Connecting to listener at {}", peer_address);
-            let connection_stream = connection_socket.connect(peer_address).await?;
-            log::debug!("Current user address: {}", connection_stream.local_addr()?);
-            log::debug!("TEST BLOCK 6 ENDED");
-        };
-
         debug!("Creating signal handlers...");
         let signals = create_signal_handlers()?;
         let mut handlers = FuturesUnordered::new();
@@ -134,7 +122,7 @@ impl<'a> Viridian<'a> {
         }
 
         let _: () = {  // TODO: REMOVE!!!
-            log::debug!("TEST BLOCK 7 STARTED");
+            log::debug!("TEST BLOCK STARTED");
             let peer_address = std::net::SocketAddr::new(std::net::IpAddr::V4(self.address), self.port);
             let socket = socket2::Socket::new(socket2::Domain::IPV4, socket2::Type::STREAM, Some(socket2::Protocol::TCP))?.into();
             let connection_socket = tokio::net::TcpSocket::from_std_stream(socket);
@@ -142,7 +130,7 @@ impl<'a> Viridian<'a> {
             log::debug!("Connecting to listener at {}", peer_address);
             let connection_stream = connection_socket.connect(peer_address).await?;
             log::debug!("Current user address: {}", connection_stream.local_addr()?);
-            log::debug!("TEST BLOCK 7 ENDED");
+            log::debug!("TEST BLOCK ENDED");
         };
 
         debug!("Creating protocol client handle...");
