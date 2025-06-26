@@ -76,7 +76,6 @@ jobs:
     runs-on: ${{ format('{0}-latest', matrix.os) }}
     env:
       TARGET_ADDRESS: 1.1.1.1
-      SPECIAL_ADDRESS: 168.63.129.16
       SEASIDE_LOG_LEVEL: reeflib=DEBUG,INFO
       SUDO: ${{ matrix.os == 'ubuntu' && 'sudo -E env "PATH=$PATH"' || '' }}
       TEST: ${{ matrix.os == 'ubuntu' && 'curl -sS -I --fail --max-time 15 https://1.1.1.1' || 'Invoke-WebRequest -Uri https://1.1.1.1 -Method Head -TimeoutSec 75 -ErrorAction Stop' }}
@@ -128,14 +127,14 @@ jobs:
         working-directory: viridian/reef
         env:
           WINDIVERT_PATH: ${{ github.workspace }}/viridian/reef/windivert-bin
-        run: ${{ env.SUDO }} cargo run --features cli-exec --bin cli -- -s port -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-addresses ${{ env.TARGET_ADDRESS }} --exempt-addresses ${{ env.SPECIAL_ADDRESS }} -e "${{ env.TEST }}"
+        run: ${{ env.SUDO }} cargo run --features cli-exec --bin cli -- -s port -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-addresses ${{ env.TARGET_ADDRESS }} -e "${{ env.TEST }}"
 
       - name: Test Viridian Reef TYPHOON (integration) 🧪
         id: test-viridian-reef-typhoon
         working-directory: viridian/reef
         env:
           WINDIVERT_PATH: ${{ github.workspace }}/viridian/reef/windivert-bin
-        run: ${{ env.SUDO }} cargo run --features cli-exec --bin cli -- -s typhoon -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-addresses ${{ env.TARGET_ADDRESS }} --exempt-addresses ${{ env.SPECIAL_ADDRESS }} -e "${{ env.TEST }}"
+        run: ${{ env.SUDO }} cargo run --features cli-exec --bin cli -- -s typhoon -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-addresses ${{ env.TARGET_ADDRESS }} -e "${{ env.TEST }}"
 
       - name: TEST STEP  # TODO: remove!
         if: runner.os == 'Windows' && always()
