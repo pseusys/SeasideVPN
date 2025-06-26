@@ -117,10 +117,6 @@ impl<'a> Viridian<'a> {
             let socket = socket2::Socket::new(socket2::Domain::IPV4, socket2::Type::STREAM, Some(socket2::Protocol::TCP))?.into();
             let connection_socket = tokio::net::TcpSocket::from_std_stream(socket);
 
-            let local_address = std::net::SocketAddr::new(std::net::IpAddr::V4(self.local_address), 0);
-            log::debug!("Binding connection client to {}...", local_address);
-            connection_socket.bind(local_address)?;
-
             log::debug!("Connecting to listener at {}", peer_address);
             let connection_stream = connection_socket.connect(peer_address).await?;
             log::debug!("Current user address: {}", connection_stream.local_addr()?);
@@ -142,10 +138,6 @@ impl<'a> Viridian<'a> {
             let peer_address = std::net::SocketAddr::new(std::net::IpAddr::V4(self.address), self.port);
             let socket = socket2::Socket::new(socket2::Domain::IPV4, socket2::Type::STREAM, Some(socket2::Protocol::TCP))?.into();
             let connection_socket = tokio::net::TcpSocket::from_std_stream(socket);
-
-            let local_address = std::net::SocketAddr::new(std::net::IpAddr::V4(self.local_address), 0);
-            log::debug!("Binding connection client to {}...", local_address);
-            connection_socket.bind(local_address)?;
 
             log::debug!("Connecting to listener at {}", peer_address);
             let connection_stream = connection_socket.connect(peer_address).await?;
