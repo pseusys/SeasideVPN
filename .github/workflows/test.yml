@@ -142,6 +142,8 @@ jobs:
         run: |
           wsl -u root echo "LOCAL IP ADDRESSES:"
           ipconfig
+          wsl -u root echo "WSL IP ADDRESSES:"
+          wsl -u root ip addr show
           wsl -u root echo "PROCESSES AND PORTS:"
           wsl -u root ss -tulnp
           wsl -u root echo "SAFE LOGS:"

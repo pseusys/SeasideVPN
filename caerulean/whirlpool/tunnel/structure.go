@@ -118,6 +118,8 @@ func (conf *TunnelConfig) Open() (err error) {
 		return fmt.Errorf("error parsing tunnel network address (%s): %v", tunnelNetwork, err)
 	}
 
+	// TODO: check if the tunnel network has enough addresses!
+
 	// Create and open TUN device
 	configuration := water.Config{DeviceType: water.TUN}
 	configuration.Name = conf.name
