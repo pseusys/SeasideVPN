@@ -77,6 +77,7 @@ jobs:
     env:
       TARGET_ADDRESS: 1.1.1.1
       SEASIDE_LOG_LEVEL: reeflib=DEBUG,INFO
+      WINDIVERT_PATH: ${{ github.workspace }}/viridian/reef/windivert-bin
       SUDO: ${{ matrix.os == 'ubuntu' && 'sudo -E env "PATH=$PATH"' || '' }}
       TEST: ${{ matrix.os == 'ubuntu' && 'curl -sS -I --fail --max-time 15 https://1.1.1.1' || 'Invoke-WebRequest -Uri https://1.1.1.1 -Method Head -TimeoutSec 75 -ErrorAction Stop' }}
     strategy:
@@ -104,8 +105,6 @@ jobs:
 
       - name: Test Viridian Reef (unit) 🧪
         working-directory: viridian/reef
-        env:
-          WINDIVERT_PATH: ${{ github.workspace }}/viridian/reef/windivert-bin
         run: ${{ env.SUDO }} cargo test --package SeasideVPN-Reef --lib -- --nocapture --show-output
 
       - name: Setup VPN Server
@@ -119,40 +118,39 @@ jobs:
         if: runner.os == 'Windows'
         shell: bash
         run: |
+          ${{ env.WINDIVERT_PATH }}/netdump "true" 1024 > facets.txt 2>&1
           powershell -Command "try { Invoke-WebRequest -Uri https://1.1.1.1 -Method Head -TimeoutSec 15 -ErrorAction Stop } catch { Write-Host 'Request failed on Windows!' }"
           wsl -u root bash -c "curl -sS -I --fail --max-time 15 https://1.1.1.1 || echo 'Request failed on WSL!'"
 
       - name: Test Viridian Reef PORT (integration) 🧪
         id: test-viridian-reef-port
         working-directory: viridian/reef
-        env:
-          WINDIVERT_PATH: ${{ github.workspace }}/viridian/reef/windivert-bin
         run: ${{ env.SUDO }} cargo run --features cli-exec --bin cli -- -s port -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-addresses ${{ env.TARGET_ADDRESS }} -e "${{ env.TEST }}"
 
       - name: Test Viridian Reef TYPHOON (integration) 🧪
         id: test-viridian-reef-typhoon
         working-directory: viridian/reef
-        env:
-          WINDIVERT_PATH: ${{ github.workspace }}/viridian/reef/windivert-bin
         run: ${{ env.SUDO }} cargo run --features cli-exec --bin cli -- -s typhoon -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-addresses ${{ env.TARGET_ADDRESS }} -e "${{ env.TEST }}"
 
       - name: TEST STEP  # TODO: remove!
         if: runner.os == 'Windows' && always()
         shell: bash
         run: |
-          wsl -u root echo "LOCAL IP ADDRESSES:"
+          echo "LOCAL TRAFFIC:"
+          cat facets.txt
+          echo "LOCAL IP ADDRESSES:"
           ipconfig
-          wsl -u root echo "WSL IP ADDRESSES:"
+          echo "WSL IP ADDRESSES:"
           wsl -u root ip addr show
-          wsl -u root echo "PROCESSES AND PORTS:"
+          echo "PROCESSES AND PORTS:"
           wsl -u root ss -tulnp
-          wsl -u root echo "WSL FIREWALL (FILTER):"
+          echo "WSL FIREWALL (FILTER):"
           wsl -u root iptables -L -v -n --line-numbers
-          wsl -u root echo "WSL FIREWALL (NAT):"
+          echo "WSL FIREWALL (NAT):"
           wsl -u root iptables -t nat -L -v -n --line-numbers
-          wsl -u root echo "SAFE LOGS:"
+          echo "SAFE LOGS:"
           wsl -u root sh -c "cat ./.github/log/safe.log || true"
-          wsl -u root echo "DANGER LOGS:"
+          echo "DANGER LOGS:"
           wsl -u root sh -c "cat ./.github/log/danger.log || true"
 
       - name: TEST STEP  # TODO: remove!
