@@ -151,7 +151,7 @@ function getWhirlpoolIP(silent) {
 
 function getOutputConnection(unreachable) {
 	if (platform == "win32") {
-		const route = getOutput(`(Find-NetRoute -RemoteIPAddress ${unreachable} | Select-Object -First 1 | ForEach-Object { "$($_.IPAddress) $($_.InterfaceAlias)" })`);
+		const route = getOutput(`Find-NetRoute -RemoteIPAddress ${unreachable} | Select-Object -First 1 | ForEach-Object { "$($_.IPAddress) $($_.InterfaceAlias)" }`);
 		const match = route.match(/^(\d{1,3}(?:\.\d{1,3}){3})\s+(.+)$/);
 		return { iface: match[2], address: match[1] };
 	} else {
@@ -178,12 +178,6 @@ function setupRouting(unreachable, iface, address, silent) {
 		`New-NetFirewallRule -DisplayName "seaside-test-block-unreachable" -Direction Outbound -LocalAddress ${address} -RemoteAddress ${unreachable} -Action Block -Profile Any -Enabled True`
 	);
 	print(`Accessing ${unreachable} is no longer possible!`, silent);
-}
-
-function resetRouting(unreachable, iface, address, silent) {
-	print(`Enabling access to ${unreachable} address...`, silent);
-	runCommandForSystem(`iptables -t mangle -D OUTPUT -o ${iface} -s ${address} -d ${unreachable} -j DROP`, `Remove-NetFirewallRule -DisplayName "seaside-test-block-unreachable"`);
-	print(`Accessing ${unreachable} is possible again!`, silent);
 }
 
 /**

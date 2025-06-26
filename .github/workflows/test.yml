@@ -135,6 +135,7 @@ jobs:
         run: |
           ipconfig
           wsl -u root ss -tulnp
+          wsl -u root find . -type f -name "danger.log"
 
   caerulean-whirlpool-test:
     name: Test Caerulean Whirlpool
