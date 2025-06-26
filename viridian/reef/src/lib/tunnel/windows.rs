@@ -27,6 +27,7 @@ use crate::tunnel::Tunnelling;
 use crate::{run_coroutine_in_thread, run_coroutine_sync, DynResult};
 
 
+const HIGH_DIVERT_PRIORITY: i16 = -256;
 const ZERO_IP_ADDRESS: Ipv4Addr = Ipv4Addr::new(0, 0, 0, 0);
 
 
@@ -252,7 +253,7 @@ fn enable_routing(seaside_address: Ipv4Addr, default_index: u32, default_network
 
     let filter = format!("ip and outbound and ({exempt_filter}) and ({capture_range_filter} or {capture_iface_filter}) and ({dns_filter}) and ({caerulean_filter})");
     debug!("WinDivert filter will be used: '{filter}'");
-    let divert = WinDivert::network(filter, 0, WinDivertFlags::new())?;
+    let divert = WinDivert::network(filter, HIGH_DIVERT_PRIORITY, WinDivertFlags::new())?;
 
     let divert_arc = Arc::new(divert);
     let divert_clone_receive = divert_arc.clone();
