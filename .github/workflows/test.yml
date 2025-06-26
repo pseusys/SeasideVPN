@@ -119,7 +119,7 @@ jobs:
         if: runner.os == 'Windows' && failure()
         shell: bash
         run: |
-          powershell -Command "Invoke-WebRequest -Uri https://1.1.1.1 -Method Head -TimeoutSec 15 -ErrorAction Stop"
+          powershell -Command "Invoke-WebRequest -Uri https://1.1.1.1 -Method Head -TimeoutSec 15 -ErrorAction SilentlyContinue"
           wsl -u root bash -c "curl -sS -I --fail --max-time 15 https://1.1.1.1"
 
       - name: Test Viridian Reef PORT (integration) 🧪

@@ -175,7 +175,7 @@ function setupRouting(unreachable, iface, address, silent) {
 	print(`Disabling access to ${unreachable} address...`, silent);
 	runCommandForSystem(
 		`iptables -t mangle -A OUTPUT -o ${iface} -s ${address} -d ${unreachable} -j DROP`,
-		`New-NetFirewallRule -DisplayName "seaside-test-block-unreachable" -Direction Outbound -LocalAddress ${address} -RemoteAddress ${unreachable} -Action Block -Profile Any -Enabled True && New-NetFirewallRule -DisplayName "seaside-test-allow-unreachable" -Direction Outbound -Service "vmcompute" -RemoteAddress ${unreachable} -Action Allow -Profile Any -Enabled True`
+		`powershell -Command 'New-NetFirewallRule -DisplayName "seaside-test-block-unreachable" -Direction Outbound -LocalAddress ${address} -RemoteAddress ${unreachable} -Action Block -Profile Any -Enabled True && New-NetFirewallRule -DisplayName "seaside-test-allow-unreachable" -Direction Outbound -Service "vmcompute" -RemoteAddress ${unreachable} -Action Allow -Profile Any -Enabled True'`
 	);
 	print(`Accessing ${unreachable} is no longer possible!`, silent);
 }
