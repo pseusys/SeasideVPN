@@ -72,6 +72,7 @@ pub async fn build_any_data<'a>(cipher: &mut Symmetric, data: ByteBuffer<'a>) ->
     let header_size = get_type_size::<AnyOtherHeader>()?;
     let header_buffer = encrypted_data.expand_start(header_size + MAC_LEN).rebuffer_end(header_size);
     encode_into_slice(&header, &mut header_buffer.slice_mut(), ENCODE_CONF)?;
+    log::error!("HEADER SLICE: {:?}", header_buffer.slice());
     let encrypted_header = cipher.encrypt(header_buffer, None)?;
     let encrypted_header_with_body = encrypted_header.expand_end(encrypted_data_len);
 
