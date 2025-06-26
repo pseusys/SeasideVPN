@@ -72,8 +72,11 @@ pub async fn build_any_data<'a>(cipher: &mut Symmetric, data: ByteBuffer<'a>) ->
     let header_size = get_type_size::<AnyOtherHeader>()?;
     let header_buffer = encrypted_data.expand_start(header_size + MAC_LEN).rebuffer_end(header_size);
     encode_into_slice(&header, &mut header_buffer.slice_mut(), ENCODE_CONF)?;
+    log::error!("Packet header slice created: {:?}", header_buffer.slice());
     let encrypted_header = cipher.encrypt(header_buffer, None)?;
+    log::error!("Packet header slice encrypted: {:?} bytes", encrypted_header.len());
     let encrypted_header_with_body = encrypted_header.expand_end(encrypted_data_len);
+    log::error!("Packet data slice ready: {:?} bytes", encrypted_header_with_body.len());
 
     let packet = encrypted_header_with_body.expand_end(tail_len);
     rand.fill_bytes(&mut packet.slice_start_mut(packet.len() - tail_len));
