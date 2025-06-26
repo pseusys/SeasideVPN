@@ -27,7 +27,7 @@ use crate::tunnel::Tunnelling;
 use crate::{run_coroutine_in_thread, run_coroutine_sync, DynResult};
 
 
-const DIVERT_PRIORITY: i16 = 0;
+const DIVERT_PRIORITY: i16 = 30000;
 const ZERO_IP_ADDRESS: Ipv4Addr = Ipv4Addr::new(0, 0, 0, 0);
 
 
