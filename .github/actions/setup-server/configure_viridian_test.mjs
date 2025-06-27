@@ -191,7 +191,7 @@ function setupRouting(unreachable, lower_port, higher_port, iface, address, sile
 	print(`Disabling access to ${unreachable} address...`, silent);
 	runCommandForSystem(
 		`iptables -t mangle -A OUTPUT -o ${iface} -s ${address} -d ${unreachable} -p tcp --sport ${lower_port}:${higher_port} -j DROP`,
-		`Start-Process -FilePath "${convertPathToWindows(process.env.WINDIVERT_PATH)}\\\\netdump" -ArgumentList "ip and outbound and (ifIdx == ${iface}) and ((tcp.SrcPort >= ${lower_port}) and (tcp.SrcPort <= ${higher_port})) and (ip.SrcAddr == ${address}) and (ip.DstAddr == ${unreachable})", "64" -RedirectStandardOutput "${convertPathToWindows(process.env.WINDIVERT_PATH)}\\\\blocklist.txt"`
+		`Start-Process -FilePath "${convertPathToWindows(process.env.WINDIVERT_PATH)}\\\\netdump" -ArgumentList "ip and outbound and (ifIdx == ${iface}) and ((tcp.SrcPort >= ${lower_port}) and (tcp.SrcPort <= ${higher_port})) and (ip.SrcAddr == ${address}) and (ip.DstAddr == ${unreachable})", "64" -RedirectStandardOutput ".\\\\blocklist.txt"`
 	);
 	print(`Accessing ${unreachable} is no longer possible!`, silent);
 }

@@ -88,10 +88,9 @@ runs:
 
     - name: Test Echo Server Access (no VPN)
       if: ${{ inputs.test-command != '' }}
-      working-directory: viridian/algae
       shell: bash
       env:
         RUNNER: ${{ runner.os == 'Linux' && 'bash -c' || 'powershell -Command' }}
       run: |
         ${{ env.RUNNER }} "${{ inputs.test-command }}" && true || true
-        cat ${{ env.WINDIVERT_PATH }}/blocklist.txt
+        cat .github/blocklist.txt
