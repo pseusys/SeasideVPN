@@ -45,20 +45,15 @@ function printHelpMessage() {
  * @param {string | Array<string>} command the command to execute.
  * @returns {ChildProcess | undefined} child process spawned by the command.
  */
-function runCommand(command, environment = {}) {
-	let childEnv = { ...environment };
-	if (platform == "win32") {
-		let envKeys = Object.keys(environment).map((key) => `${key}/u`);
-		childEnv.WSLENV = `${process.env.WSLENV ?? ""}:${envKeys.join(":")}`;
-	}
-	const child = spawnSync(command, { shell: true, encoding: "utf-8", env: { ...process.env, ...childEnv } });
+function runCommand(command, environment = {}, shell = true) {
+	const child = spawnSync(command, { shell, encoding: "utf-8", env: { ...process.env, ...environment } });
 	if (child.error) throw Error(`Command execution error: ${child.error.message}`);
-	else if (child.status !== 0) throw Error(`Command failed: "${command}" (env: ${JSON.stringify(childEnv)})\nCommand failed with error code: ${child.status}\n\nSTDOUT:\n${child.stdout.toString()}\n\nSTDERR:\n${child.stderr.toString()}`);
+	else if (child.status !== 0) throw Error(`Command failed: "${command}" (env: ${JSON.stringify(environment)})\nCommand failed with error code: ${child.status}\n\nSTDOUT:\n${child.stdout.toString()}\n\nSTDERR:\n${child.stderr.toString()}`);
 	else return child;
 }
 
-function getOutput(command, environment = {}) {
-	return runCommand(command, environment).stdout.toString().trim();
+function getOutput(command, environment = {}, shell = true) {
+	return runCommand(command, environment, shell).stdout.toString().trim();
 }
 
 /**
@@ -72,14 +67,14 @@ function getOutput(command, environment = {}) {
  * @param {string | undefined} macosCommand command for MacOS.
  * @returns {ChildProcess} child process spawned by the command.
  */
-function runCommandForSystem(linuxCommand = undefined, windowsCommand = undefined, macosCommand = undefined, environment = {}) {
+function runCommandForSystem(linuxCommand = undefined, windowsCommand = undefined, macosCommand = undefined, environment = {}, shell = true) {
 	switch (platform) {
 		case "darwin":
-			if (macosCommand !== undefined) return runCommand(macosCommand, environment);
+			if (macosCommand !== undefined) return runCommand(macosCommand, environment, shell);
 		case "linux":
-			if (linuxCommand !== undefined) return runCommand(linuxCommand, environment);
+			if (linuxCommand !== undefined) return runCommand(linuxCommand, environment, shell);
 		case "win32":
-			if (windowsCommand !== undefined) return runCommand(windowsCommand, environment);
+			if (windowsCommand !== undefined) return runCommand(windowsCommand, environment, shell);
 		default:
 			throw Error(`Command for platform ${platform} is not defined!`);
 	}
@@ -165,8 +160,7 @@ function getWhirlpoolIP(silent) {
 
 function getOutputConnection(unreachable) {
 	if (platform == "win32") {
-		const route = getOutput(`for /f "tokens=1,2" %%a in ('route print ^| findstr "${unreachable}"') do echo %%a %%b`);
-		throw Error(route);
+		const route = getOutput(`Find-NetRoute -RemoteIPAddress ${unreachable} | Select-Object -First 1 | ForEach-Object { "$($_.IPAddress) $($_.InterfaceIndex)" }`, {}, "powershell");
 		const match = route.match(/^(\d{1,3}(?:\.\d{1,3}){3})\s+(.+)$/);
 		return { iface: match[2], address: match[1] };
 	} else {
