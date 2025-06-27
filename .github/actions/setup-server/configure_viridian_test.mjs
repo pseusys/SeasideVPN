@@ -175,7 +175,7 @@ function setupRouting(unreachable, iface, address, silent) {
 	print(`Disabling access to ${unreachable} address...`, silent);
 	runCommandForSystem(
 		`iptables -t mangle -A OUTPUT -o ${iface} -s ${address} -d ${unreachable} -j DROP`,
-		`Start-Process -FilePath "${process.env.WINDIVERT_PATH}/netfilter" -ArgumentList "ip and outbound and (ifIdx == ${iface}) and (ip.SrcAddr == ${address}) and (ip.DstAddr == ${unreachable})", "64"`
+		`Start-Process -FilePath "${process.env.WINDIVERT_PATH}\\netfilter" -ArgumentList "ip and outbound and (ifIdx == ${iface}) and (ip.SrcAddr == ${address}) and (ip.DstAddr == ${unreachable})", "64"`
 	);
 	print(`Accessing ${unreachable} is no longer possible!`, silent);
 }
