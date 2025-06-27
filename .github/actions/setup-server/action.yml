@@ -93,5 +93,5 @@ runs:
         RUNNER: ${{ runner.os == 'Linux' && 'bash -c' || 'powershell -Command' }}
       run: |
         Start-Process -FilePath "./viridian/reef/windivert-bin/netdump" -ArgumentList "ip and outbound", "64" -RedirectStandardOutput "./.github/blocklist.txt"
-        ${{ env.RUNNER }} "${{ inputs.test-command }}" && true || true
+        ${{ env.RUNNER }} "${{ inputs.test-command }}"
         Get-Content "./facets.txt"
