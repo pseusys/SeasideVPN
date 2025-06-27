@@ -186,8 +186,9 @@ function getOutputConnection(unreachable) {
 function setupRouting(unreachable, sport, iface, address, silent) {
 	print(`Disabling access to ${unreachable} address...`, silent);
 	runCommandForSystem(
-		`iptables -t mangle -A OUTPUT -o ${iface} -s ${address} -d ${unreachable} --sport ${sport} -j DROP`,
-		`Start-Process -FilePath "${convertPathToWindows(process.env.WINDIVERT_PATH)}\\\\netfilter" -ArgumentList "ip and outbound and (ifIdx == ${iface}) and (tcp.SrcPort == ${sport}) and (ip.SrcAddr == ${address}) and (ip.DstAddr == ${unreachable})", "64"`
+		`iptables -t mangle -A OUTPUT -o ${iface} -s ${address} -d ${unreachable} -p tcp --sport ${sport} -j DROP`,
+		`${convertPathToWindows(process.env.WINDIVERT_PATH)}\\\\netfilter "ip and outbound and (ifIdx == ${iface}) and (tcp.SrcPort == ${sport}) and (ip.SrcAddr == ${address}) and (ip.DstAddr == ${unreachable})" 64`
+		//`Start-Process -FilePath "${convertPathToWindows(process.env.WINDIVERT_PATH)}\\\\netfilter" -ArgumentList "ip and outbound and (ifIdx == ${iface}) and (tcp.SrcPort == ${sport}) and (ip.SrcAddr == ${address}) and (ip.DstAddr == ${unreachable})", "64"`
 	);
 	print(`Accessing ${unreachable} is no longer possible!`, silent);
 }
