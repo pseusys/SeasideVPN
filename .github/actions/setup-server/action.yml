@@ -6,10 +6,14 @@ inputs:
     description: The IP address that will be used for testing
     required: true
     default: example.com
-  port:
-    description: The source port number that will be used for testing
+  lower_port:
+    description: The minimum source port number that will be used for testing
     required: true
-    default: 44444
+    default: 44443
+  higher_port:
+    description: The maximum source port number that will be used for testing
+    required: true
+    default: 44445
   test-command:
     description: Test command for no VPN access test
 
@@ -70,7 +74,7 @@ runs:
       shell: bash
       env:
         SUDO: ${{ runner.os == 'Linux' && 'sudo -E env "PATH=$PATH"' || '' }}
-      run: echo "server-ip=$(${{ env.SUDO }} node actions/setup-server/configure_viridian_test.mjs -p ${{ inputs.port }} -t ${{ steps.resolve-target.outputs.target-ip }} -s)" >> $GITHUB_OUTPUT
+      run: echo "server-ip=$(${{ env.SUDO }} node actions/setup-server/configure_viridian_test.mjs -l ${{ inputs.lower_port }} -h ${{ inputs.higher_port }} -t ${{ steps.resolve-target.outputs.target-ip }} -s)" >> $GITHUB_OUTPUT
 
     - name: Get Connection Link
       id: get-server-connection-link

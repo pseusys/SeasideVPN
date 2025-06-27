@@ -126,9 +126,13 @@ function parseArguments() {
 			type: "string",
 			short: "t"
 		},
-		port: {
+		lower_port: {
 			type: "string",
-			short: "p"
+			short: "l"
+		},
+		higher_port: {
+			type: "string",
+			short: "h"
 		},
 		help: {
 			type: "boolean",
@@ -183,12 +187,11 @@ function getOutputConnection(unreachable) {
  * @param {string} unreachableNetwork network that will become unreachable (directly).
  * @param {string | null} name the given name for the unreachable IP and network.
  */
-function setupRouting(unreachable, sport, iface, address, silent) {
+function setupRouting(unreachable, lower_port, higher_port, iface, address, silent) {
 	print(`Disabling access to ${unreachable} address...`, silent);
 	runCommandForSystem(
-		`iptables -t mangle -A OUTPUT -o ${iface} -s ${address} -d ${unreachable} -p tcp --sport ${sport} -j DROP`,
-		`${convertPathToWindows(process.env.WINDIVERT_PATH)}\\\\netfilter "ip and outbound and (ifIdx == ${iface}) and (tcp.SrcPort == ${sport}) and (ip.SrcAddr == ${address}) and (ip.DstAddr == ${unreachable})" 64`
-		//`Start-Process -FilePath "${convertPathToWindows(process.env.WINDIVERT_PATH)}\\\\netfilter" -ArgumentList "ip and outbound and (ifIdx == ${iface}) and (tcp.SrcPort == ${sport}) and (ip.SrcAddr == ${address}) and (ip.DstAddr == ${unreachable})", "64"`
+		`iptables -t mangle -A OUTPUT -o ${iface} -s ${address} -d ${unreachable} -p tcp --sport ${lower_port}:${higher_port} -j DROP`,
+		`Start-Process -FilePath "${convertPathToWindows(process.env.WINDIVERT_PATH)}\\\\netfilter" -ArgumentList "ip and outbound and (ifIdx == ${iface}) and ((tcp.SrcPort >= ${lower_port}) and (tcp.SrcPort <= ${higher_port})) and (ip.SrcAddr == ${address}) and (ip.DstAddr == ${unreachable})", "64"`
 	);
 	print(`Accessing ${unreachable} is no longer possible!`, silent);
 }
@@ -221,5 +224,5 @@ const args = parseArguments();
 const whirlpoolIP = getWhirlpoolIP(args.silent);
 const { iface, address } = getOutputConnection(args.target);
 await launchWhirlpool(whirlpoolIP, args.silent);
-setupRouting(args.target, args.port, iface, address, args.silent);
+setupRouting(args.target, args.lower_port, args.higher_port, iface, address, args.silent);
 print(whirlpoolIP, !args.silent);
