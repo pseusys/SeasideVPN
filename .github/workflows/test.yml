@@ -79,7 +79,7 @@ jobs:
       SEASIDE_LOG_LEVEL: reeflib=DEBUG,INFO
       WINDIVERT_PATH: ${{ github.workspace }}/viridian/reef/windivert-bin
       SUDO: ${{ matrix.os == 'ubuntu' && 'sudo -E env "PATH=$PATH"' || '' }}
-      TEST: curl -sS -I --fail --max-time 15 https://1.1.1.1
+      TEST: ${{ matrix.os == 'ubuntu' && 'curl -sS -I --fail --max-time 15 https://1.1.1.1' || '& curl -sS -I --fail --max-time 15 https://1.1.1.1' }}
     strategy:
       fail-fast: false
       matrix:
