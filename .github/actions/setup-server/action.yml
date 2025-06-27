@@ -88,10 +88,10 @@ runs:
 
     - name: Test Echo Server Access (no VPN)
       if: ${{ inputs.test-command != '' }}
-      shell: bash
+      shell: powershell
       env:
         RUNNER: ${{ runner.os == 'Linux' && 'bash -c' || 'powershell -Command' }}
       run: |
         Start-Process -FilePath "./viridian/reef/windivert-bin/netdump" -ArgumentList "ip and outbound", "64" -RedirectStandardOutput "./.github/blocklist.txt"
         ${{ env.RUNNER }} "${{ inputs.test-command }}" && true || true
-        cat ./.github/blocklist.txt
+        Get-Content "./facets.txt"
