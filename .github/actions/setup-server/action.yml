@@ -84,7 +84,4 @@ runs:
       shell: bash
       env:
         RUNNER: ${{ runner.os == 'Linux' && 'bash -c' || 'powershell -Command' }}
-      run: |
-        nohup ${{ env.WINDIVERT_PATH }}/netdump "true" 1024 > facets.txt 2>&1 &
-        ${{ env.RUNNER }} "${{ inputs.test-command }}" || true
-        cat facets.txt
+      run: ${{ env.RUNNER }} "${{ inputs.test-command }}" && exit 1 || true
