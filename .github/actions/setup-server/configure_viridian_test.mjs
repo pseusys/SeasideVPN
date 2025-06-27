@@ -45,16 +45,16 @@ function printHelpMessage() {
  * @param {string | Array<string>} command the command to execute.
  * @returns {ChildProcess | undefined} child process spawned by the command.
  */
-function runCommand(command, environment = {}) {
+function runCommand(command, environment = {}, stdio = undefined) {
 	const shell = platform == "win32" ? "powershell" : true;
-	const child = spawnSync(command, { shell, encoding: "utf-8", env: { ...process.env, ...environment } });
+	const child = spawnSync(command, { shell, encoding: "utf-8", env: { ...process.env, ...environment }, stdio });
 	if (child.error) throw Error(`Command execution error: ${child.error.message}`);
 	else if (child.status !== 0) throw Error(`Command failed: "${command}" (env: ${JSON.stringify(environment)})\nCommand failed with error code: ${child.status}\n\nSTDOUT:\n${child.stdout.toString()}\n\nSTDERR:\n${child.stderr.toString()}`);
 	else return child;
 }
 
-function getOutput(command, environment = {}) {
-	return runCommand(command, environment).stdout.toString().trim();
+function getOutput(command, environment = {}, stdio = undefined) {
+	return runCommand(command, environment, stdio).stdout.toString().trim();
 }
 
 /**
@@ -68,14 +68,14 @@ function getOutput(command, environment = {}) {
  * @param {string | undefined} macosCommand command for MacOS.
  * @returns {ChildProcess} child process spawned by the command.
  */
-function runCommandForSystem(linuxCommand = undefined, windowsCommand = undefined, macosCommand = undefined, environment = {}) {
+function runCommandForSystem(linuxCommand = undefined, windowsCommand = undefined, macosCommand = undefined, environment = {}, stdio = undefined) {
 	switch (platform) {
 		case "darwin":
-			if (macosCommand !== undefined) return runCommand(macosCommand, environment);
+			if (macosCommand !== undefined) return runCommand(macosCommand, environment, stdio);
 		case "linux":
-			if (linuxCommand !== undefined) return runCommand(linuxCommand, environment);
+			if (linuxCommand !== undefined) return runCommand(linuxCommand, environment, stdio);
 		case "win32":
-			if (windowsCommand !== undefined) return runCommand(windowsCommand, environment);
+			if (windowsCommand !== undefined) return runCommand(windowsCommand, environment, stdio);
 		default:
 			throw Error(`Command for platform ${platform} is not defined!`);
 	}
@@ -185,7 +185,10 @@ function setupRouting(unreachable, lower_port, higher_port, iface, address, sile
 	print(`Disabling access to ${unreachable} address...`, silent);
 	runCommandForSystem(
 		`iptables -t mangle -A OUTPUT -o ${iface} -s ${address} -d ${unreachable} -p tcp --sport ${lower_port}:${higher_port} -j DROP`,
-		`Start-Process -FilePath "${convertPathToWindows(process.env.WINDIVERT_PATH)}\\\\netdump" -ArgumentList '"ip and outbound and (ifIdx == ${iface}) and ((tcp.SrcPort >= ${lower_port}) and (tcp.SrcPort <= ${higher_port})) and (ip.SrcAddr == ${address}) and (ip.DstAddr == ${unreachable})" 64' -PassThru -RedirectStandardOutput ".\\\\stdout.txt" -RedirectStandardError ".\\\\stderr.txt" -NoNewWindow`
+		`Start-Process -FilePath "${convertPathToWindows(process.env.WINDIVERT_PATH)}\\\\netdump" -ArgumentList '"ip and outbound and (ifIdx == ${iface}) and ((tcp.SrcPort >= ${lower_port}) and (tcp.SrcPort <= ${higher_port})) and (ip.SrcAddr == ${address}) and (ip.DstAddr == ${unreachable})" 64' -PassThru -RedirectStandardOutput ".\\\\stdout.txt" -RedirectStandardError ".\\\\stderr.txt" -NoNewWindow`,
+		undefined,
+		{},
+		"ignore"
 	);
 	print(`Accessing ${unreachable} is no longer possible!`, silent);
 }
