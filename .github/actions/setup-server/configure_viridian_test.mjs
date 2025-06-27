@@ -126,6 +126,10 @@ function parseArguments() {
 			type: "string",
 			short: "t"
 		},
+		port: {
+			type: "string",
+			short: "p"
+		},
 		help: {
 			type: "boolean",
 			short: "h",
@@ -179,11 +183,11 @@ function getOutputConnection(unreachable) {
  * @param {string} unreachableNetwork network that will become unreachable (directly).
  * @param {string | null} name the given name for the unreachable IP and network.
  */
-function setupRouting(unreachable, iface, address, silent) {
+function setupRouting(unreachable, sport, iface, address, silent) {
 	print(`Disabling access to ${unreachable} address...`, silent);
 	runCommandForSystem(
-		`iptables -t mangle -A OUTPUT -o ${iface} -s ${address} -d ${unreachable} -j DROP`,  //  and (ifIdx == ${iface}) and (ip.SrcAddr == ${address}) and (ip.DstAddr == ${unreachable})
-		`Start-Process -FilePath "${convertPathToWindows(process.env.WINDIVERT_PATH)}\\\\netfilter" -ArgumentList "ip and outbound", "64"`
+		`iptables -t mangle -A OUTPUT -o ${iface} -s ${address} -d ${unreachable} --sport ${sport} -j DROP`,
+		`Start-Process -FilePath "${convertPathToWindows(process.env.WINDIVERT_PATH)}\\\\netfilter" -ArgumentList "ip and outbound and (ifIdx == ${iface}) and (tcp.SrcPort == ${sport}) and (ip.SrcAddr == ${address}) and (ip.DstAddr == ${unreachable})", "64"`
 	);
 	print(`Accessing ${unreachable} is no longer possible!`, silent);
 }
@@ -216,5 +220,5 @@ const args = parseArguments();
 const whirlpoolIP = getWhirlpoolIP(args.silent);
 const { iface, address } = getOutputConnection(args.target);
 await launchWhirlpool(whirlpoolIP, args.silent);
-setupRouting(args.target, iface, address, args.silent);
+setupRouting(args.target, args.port, iface, address, args.silent);
 print(whirlpoolIP, !args.silent);

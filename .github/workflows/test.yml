@@ -47,8 +47,9 @@ jobs:
     name: Test Viridian Algae Quick
     runs-on: ubuntu-latest
     env:
+      TARGET_PORT: 44444
       TARGET_ADDRESS: 1.1.1.1
-      TEST_COMMAND: curl -sS -I --fail --max-time 15 https://1.1.1.1
+      TEST_COMMAND: curl -sS -I --fail --max-time 15 --local-port 44444 https://1.1.1.1
 
     steps:
       - name: Checkout 🛎️
@@ -58,6 +59,7 @@ jobs:
         id: setup-test-server
         uses: ./.github/actions/setup-server
         with:
+          port: ${{ env.TARGET_PORT }}
           target: ${{ env.TARGET_ADDRESS }}
           test-command: ${{ env.TEST_COMMAND }}
 
@@ -75,11 +77,12 @@ jobs:
     name: Test Viridian Reef
     runs-on: ${{ format('{0}-latest', matrix.os) }}
     env:
+      TARGET_PORT: 44444
       TARGET_ADDRESS: 1.1.1.1
       SEASIDE_LOG_LEVEL: reeflib=DEBUG,INFO
       WINDIVERT_PATH: ${{ github.workspace }}/viridian/reef/windivert-bin
       SUDO: ${{ matrix.os == 'ubuntu' && 'sudo -E env "PATH=$PATH"' || '' }}
-      TEST: ${{ matrix.os == 'ubuntu' && 'curl -sS -I --fail --max-time 15 https://1.1.1.1' || '& curl -sS -I --fail --max-time 15 https://1.1.1.1' }}
+      TEST: ${{ matrix.os == 'ubuntu' && 'curl -sS -I --fail --max-time 15 --local-port 44444 https://1.1.1.1' || '& curl.exe -sS -I --fail --max-time 15 --local-port 44444 https://1.1.1.1' }}
     strategy:
       fail-fast: false
       matrix:
@@ -111,6 +114,7 @@ jobs:
         id: setup-test-server
         uses: ./.github/actions/setup-server
         with:
+          port: ${{ env.TARGET_PORT }}
           target: ${{ env.TARGET_ADDRESS }}
           test-command: ${{ env.TEST }}
 
@@ -118,7 +122,7 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           Start-Process -FilePath "${{ env.WINDIVERT_PATH }}/netdump" -ArgumentList "true", "1024" -RedirectStandardOutput "./facets.txt"
-          try { Invoke-WebRequest -Uri https://1.1.1.1 -Method Head -TimeoutSec 15 -ErrorAction Stop } catch { Write-Host 'Request failed on Windows!' }
+          try { & curl.exe -sS -I --fail --max-time 15 --local-port 44444 https://1.1.1.1 } catch { Write-Host 'Request failed on Windows!' }
           wsl -u root bash -c "curl -sS -I --fail --max-time 15 https://1.1.1.1 || echo 'Request failed on WSL!'"
           Get-Content "./facets.txt"
 
