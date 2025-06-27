@@ -45,15 +45,16 @@ function printHelpMessage() {
  * @param {string | Array<string>} command the command to execute.
  * @returns {ChildProcess | undefined} child process spawned by the command.
  */
-function runCommand(command, environment = {}, shell = true) {
+function runCommand(command, environment = {}) {
+	const shell = platform == "win32" ? "powerchell" : true;
 	const child = spawnSync(command, { shell, encoding: "utf-8", env: { ...process.env, ...environment } });
 	if (child.error) throw Error(`Command execution error: ${child.error.message}`);
 	else if (child.status !== 0) throw Error(`Command failed: "${command}" (env: ${JSON.stringify(environment)})\nCommand failed with error code: ${child.status}\n\nSTDOUT:\n${child.stdout.toString()}\n\nSTDERR:\n${child.stderr.toString()}`);
 	else return child;
 }
 
-function getOutput(command, environment = {}, shell = true) {
-	return runCommand(command, environment, shell).stdout.toString().trim();
+function getOutput(command, environment = {}) {
+	return runCommand(command, environment).stdout.toString().trim();
 }
 
 /**
@@ -67,14 +68,14 @@ function getOutput(command, environment = {}, shell = true) {
  * @param {string | undefined} macosCommand command for MacOS.
  * @returns {ChildProcess} child process spawned by the command.
  */
-function runCommandForSystem(linuxCommand = undefined, windowsCommand = undefined, macosCommand = undefined, environment = {}, shell = true) {
+function runCommandForSystem(linuxCommand = undefined, windowsCommand = undefined, macosCommand = undefined, environment = {}) {
 	switch (platform) {
 		case "darwin":
-			if (macosCommand !== undefined) return runCommand(macosCommand, environment, shell);
+			if (macosCommand !== undefined) return runCommand(macosCommand, environment);
 		case "linux":
-			if (linuxCommand !== undefined) return runCommand(linuxCommand, environment, shell);
+			if (linuxCommand !== undefined) return runCommand(linuxCommand, environment);
 		case "win32":
-			if (windowsCommand !== undefined) return runCommand(windowsCommand, environment, shell);
+			if (windowsCommand !== undefined) return runCommand(windowsCommand, environment);
 		default:
 			throw Error(`Command for platform ${platform} is not defined!`);
 	}
