@@ -91,8 +91,7 @@ runs:
       shell: powershell
       env:
         RUNNER: ${{ runner.os == 'Linux' && 'bash -c' || 'powershell -Command' }}
-      run: |
-        Start-Process -FilePath "./viridian/reef/windivert-bin/netdump" -ArgumentList '"ip and outbound" 128' -RedirectStandardOutput "./.github/passlist.txt" -NoNewWindow
+      run: |  # Start-Process -FilePath "./viridian/reef/windivert-bin/netdump" -ArgumentList '"ip and outbound" 128' -RedirectStandardOutput "./.github/passlist.txt" -NoNewWindow
         ${{ env.RUNNER }} "${{ inputs.test-command }}"
-        Get-Content "./.github/passlist.txt"
-        Get-Content "./.github/facets.txt"
+        Get-Content "./.github/stdout.txt"
+        Get-Content "./.github/stderr.txt"
