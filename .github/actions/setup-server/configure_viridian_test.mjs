@@ -87,6 +87,14 @@ function runCommandForSystem(linuxCommand = undefined, windowsCommand = undefine
 	}
 }
 
+function convertPathToWindows(path) {
+	if (platform == "win32") {
+		return path.replaceAll("\\", "\\\\");
+	} else {
+		return path;
+	}
+}
+
 /**
  * Convert given path to WSL-compatible format (using `wslpath` tool) if running on Windows.
  * Return path as it is otherwise.
@@ -95,7 +103,7 @@ function runCommandForSystem(linuxCommand = undefined, windowsCommand = undefine
  */
 function convertPathToWSL(path) {
 	if (platform == "win32") {
-		return runCommand(`wsl wslpath -a ${path.replaceAll("\\", "\\\\")}`)
+		return runCommand(`wsl wslpath -a ${convertPathToWindows(path)}`)
 			.stdout.toString()
 			.trim();
 	} else {
@@ -174,8 +182,8 @@ function getOutputConnection(unreachable) {
 function setupRouting(unreachable, iface, address, silent) {
 	print(`Disabling access to ${unreachable} address...`, silent);
 	runCommandForSystem(
-		`iptables -t mangle -A OUTPUT -o ${iface} -s ${address} -d ${unreachable} -j DROP`,
-		`Start-Process -FilePath "${process.env.WINDIVERT_PATH.replaceAll('\\', '/')}/netfilter" -ArgumentList "ip and outbound and (ifIdx == ${iface}) and (ip.SrcAddr == ${address}) and (ip.DstAddr == ${unreachable})", "64"`
+		`iptables -t mangle -A OUTPUT -o ${iface} -s ${address} -d ${unreachable} -j DROP`,  //  and (ifIdx == ${iface}) and (ip.SrcAddr == ${address}) and (ip.DstAddr == ${unreachable})
+		`Start-Process -FilePath "${convertPathToWindows(process.env.WINDIVERT_PATH)}\\\\netfilter" -ArgumentList "ip and outbound", "64"`
 	);
 	print(`Accessing ${unreachable} is no longer possible!`, silent);
 }
