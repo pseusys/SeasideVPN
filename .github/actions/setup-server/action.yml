@@ -74,9 +74,7 @@ runs:
       shell: bash
       env:
         SUDO: ${{ runner.os == 'Linux' && 'sudo -E env "PATH=$PATH"' || '' }}
-      run: |
-        ${{ env.SUDO }} node actions/setup-server/configure_viridian_test.mjs -l ${{ inputs.lower_port }} -h ${{ inputs.higher_port }} -t ${{ steps.resolve-target.outputs.target-ip }}
-        echo "server-ip=$(${{ env.SUDO }} node actions/setup-server/configure_viridian_test.mjs -l ${{ inputs.lower_port }} -h ${{ inputs.higher_port }} -t ${{ steps.resolve-target.outputs.target-ip }} -s)" >> $GITHUB_OUTPUT
+      run: echo "server-ip=$(${{ env.SUDO }} node actions/setup-server/configure_viridian_test.mjs -l ${{ inputs.lower_port }} -h ${{ inputs.higher_port }} -t ${{ steps.resolve-target.outputs.target-ip }} -s)" >> $GITHUB_OUTPUT
 
     - name: Get Connection Link
       id: get-server-connection-link
