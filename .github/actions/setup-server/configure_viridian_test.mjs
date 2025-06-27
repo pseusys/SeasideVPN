@@ -46,14 +46,12 @@ function printHelpMessage() {
  * @returns {ChildProcess | undefined} child process spawned by the command.
  */
 function runCommand(command, environment = {}) {
-	let shell = true;
 	let childEnv = { ...environment };
 	if (platform == "win32") {
-		shell = "powershell";
 		let envKeys = Object.keys(environment).map((key) => `${key}/u`);
 		childEnv.WSLENV = `${process.env.WSLENV ?? ""}:${envKeys.join(":")}`;
 	}
-	const child = spawnSync(command, { shell, encoding: "utf-8", env: { ...process.env, ...childEnv } });
+	const child = spawnSync(command, { shell: true, encoding: "utf-8", env: { ...process.env, ...childEnv } });
 	if (child.error) throw Error(`Command execution error: ${child.error.message}`);
 	else if (child.status !== 0) throw Error(`Command failed: "${command}" (env: ${JSON.stringify(childEnv)})\nCommand failed with error code: ${child.status}\n\nSTDOUT:\n${child.stdout.toString()}\n\nSTDERR:\n${child.stderr.toString()}`);
 	else return child;
@@ -167,7 +165,7 @@ function getWhirlpoolIP(silent) {
 
 function getOutputConnection(unreachable) {
 	if (platform == "win32") {
-		const route = getOutput(`Find-NetRoute -RemoteIPAddress ${unreachable} | Select-Object -First 1 | ForEach-Object { "$($_.IPAddress) $($_.InterfaceIndex)" }`);
+		const route = getOutput(`powershell -Command 'Find-NetRoute -RemoteIPAddress ${unreachable} | Select-Object -First 1 | ForEach-Object { "$($_.IPAddress) $($_.InterfaceIndex)" }'`);
 		const match = route.match(/^(\d{1,3}(?:\.\d{1,3}){3})\s+(.+)$/);
 		return { iface: match[2], address: match[1] };
 	} else {
@@ -191,7 +189,7 @@ function setupRouting(unreachable, lower_port, higher_port, iface, address, sile
 	print(`Disabling access to ${unreachable} address...`, silent);
 	runCommandForSystem(
 		`iptables -t mangle -A OUTPUT -o ${iface} -s ${address} -d ${unreachable} -p tcp --sport ${lower_port}:${higher_port} -j DROP`,
-		`Start-Process -FilePath "${convertPathToWindows(process.env.WINDIVERT_PATH)}\\\\netdump" -ArgumentList '"ip and outbound and (ifIdx == ${iface}) and ((tcp.SrcPort >= ${lower_port}) and (tcp.SrcPort <= ${higher_port})) and (ip.SrcAddr == ${address}) and (ip.DstAddr == ${unreachable})" 64' -RedirectStandardOutput ".\\\\blocklist.txt" -NoNewWindow`
+		`start /B "" "${convertPathToWindows(process.env.WINDIVERT_PATH)}\\\\netdump" "ip and outbound and (ifIdx == ${iface}) and ((tcp.SrcPort >= ${lower_port}) and (tcp.SrcPort <= ${higher_port})) and (ip.SrcAddr == ${address}) and (ip.DstAddr == ${unreachable})" 64`
 	);
 	print(`Accessing ${unreachable} is no longer possible!`, silent);
 }
