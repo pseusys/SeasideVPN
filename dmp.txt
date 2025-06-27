@@ -1,0 +1,61 @@
+Packet [Timestamp=0.1206489, Direction=outbound IfIdx=14 SubIfIdx=0 Loopback=0 Hash=0x9C2F68BF95F1524A]
+IPv4 [Version=4 HdrLength=5 TOS=512 Length=52 Id=0x3BAA Reserved=0 DF=1 MF=0 FragOff=0 TTL=128 Protocol=6 Checksum=0x0000 SrcAddr=10.1.0.124 DstAddr=1.1.1.1]
+TCP [SrcPort=50285 DstPort=443 SeqNum=3807039671 AckNum=0 HdrLength=8 Reserved1=0 Reserved2=3 Urg=0 Ack=0 Psh=0 Rst=0 Syn=1 Fin=0 Window=64240 Checksum=0x0CA5 UrgPtr=0]
+
+	450200343BAA4000800600000A01007C01010101
+	C46D01BBE2EAD0B70000000080C2FAF00CA50000
+	020405B40103030801010402
+	E..4;.@........|.....m..................
+	............
+
+Packet [Timestamp=0.1221677, Direction=inbound IfIdx=14 SubIfIdx=0 Loopback=0 Hash=0xA5622DA4F54B747D]
+IPv4 [Version=4 HdrLength=5 TOS=0 Length=52 Id=0x0000 Reserved=0 DF=1 MF=0 FragOff=0 TTL=52 Protocol=6 Checksum=0x3A46 SrcAddr=1.1.1.1 DstAddr=10.1.0.124]
+TCP [SrcPort=443 DstPort=50285 SeqNum=2922170666 AckNum=3807039672 HdrLength=8 Reserved1=0 Reserved2=0 Urg=0 Ack=1 Psh=0 Rst=0 Syn=1 Fin=0 Window=65535 Checksum=0x7159 UrgPtr=0]
+
+	450000340000400034063A46010101010A01007C
+	01BBC46DAE2CC92AE2EAD0B88012FFFF71590000
+	020405B4010104020103030D
+	E..4..@.4.:F.......|...m.,.*........qY..
+	............
+
+Packet [Timestamp=0.1222148, Direction=outbound IfIdx=14 SubIfIdx=0 Loopback=0 Hash=0x1F418AE2803A2740]
+IPv4 [Version=4 HdrLength=5 TOS=0 Length=40 Id=0x3BAB Reserved=0 DF=1 MF=0 FragOff=0 TTL=128 Protocol=6 Checksum=0x0000 SrcAddr=10.1.0.124 DstAddr=1.1.1.1]
+TCP [SrcPort=50285 DstPort=443 SeqNum=3807039672 AckNum=2922170667 HdrLength=5 Reserved1=0 Reserved2=0 Urg=0 Ack=1 Psh=0 Rst=0 Syn=0 Fin=0 Window=2053 Checksum=0x0C99 UrgPtr=0]
+
+	450000283BAB4000800600000A01007C01010101
+	C46D01BBE2EAD0B8AE2CC92B501008050C990000
+	E..(;.@........|.....m.......,.+P.......
+
+
+
+
+
+
+
+Packet [Timestamp=0.1772436, Direction=outbound IfIdx=14 SubIfIdx=0 Loopback=0 Hash=0xE3E0BC21DFFA7E33]
+IPv4 [Version=4 HdrLength=5 TOS=512 Length=52 Id=0x3BB1 Reserved=0 DF=1 MF=0 FragOff=0 TTL=128 Protocol=6 Checksum=0x0000 SrcAddr=10.1.0.124 DstAddr=1.1.1.1]
+TCP [SrcPort=50286 DstPort=443 SeqNum=1495412554 AckNum=0 HdrLength=8 Reserved1=0 Reserved2=3 Urg=0 Ack=0 Psh=0 Rst=0 Syn=1 Fin=0 Window=64240 Checksum=0x0CA5 UrgPtr=0]
+
+	450200343BB14000800600000A01007C01010101
+	C46E01BB59222F4A0000000080C2FAF00CA50000
+	020405B40103030801010402
+	E..4;.@........|.....n..Y"/J............
+	............
+
+Packet [Timestamp=0.1787238, Direction=inbound IfIdx=14 SubIfIdx=0 Loopback=0 Hash=0x5B3B4C68CC4647EA]
+IPv4 [Version=4 HdrLength=5 TOS=0 Length=52 Id=0x0000 Reserved=0 DF=1 MF=0 FragOff=0 TTL=52 Protocol=6 Checksum=0x3A46 SrcAddr=1.1.1.1 DstAddr=10.1.0.124]
+TCP [SrcPort=443 DstPort=50286 SeqNum=1910075002 AckNum=1495412555 HdrLength=8 Reserved1=0 Reserved2=0 Urg=0 Ack=1 Psh=0 Rst=0 Syn=1 Fin=0 Window=65535 Checksum=0x3392 UrgPtr=0]
+
+	450000340000400034063A46010101010A01007C
+	01BBC46E71D96E7A59222F4B8012FFFF33920000
+	020405B4010104020103030D
+	E..4..@.4.:F.......|...nq.nzY"/K....3...
+	............
+
+Packet [Timestamp=0.1787524, Direction=outbound IfIdx=14 SubIfIdx=0 Loopback=0 Hash=0x77F6C387BF5EB0DF]
+IPv4 [Version=4 HdrLength=5 TOS=0 Length=40 Id=0x3BB3 Reserved=0 DF=1 MF=0 FragOff=0 TTL=128 Protocol=6 Checksum=0x0000 SrcAddr=10.1.0.124 DstAddr=1.1.1.1]
+TCP [SrcPort=50286 DstPort=443 SeqNum=1495412555 AckNum=1910075003 HdrLength=5 Reserved1=0 Reserved2=0 Urg=0 Ack=1 Psh=0 Rst=0 Syn=0 Fin=0 Window=2053 Checksum=0x0C99 UrgPtr=0]
+
+	450000283BB34000800600000A01007C01010101
+	C46E01BB59222F4B71D96E7B501008050C990000
+	E..(;.@........|.....n..Y"/Kq.n{P.......
