@@ -91,4 +91,4 @@ runs:
       shell: bash
       env:
         RUNNER: ${{ runner.os == 'Linux' && 'bash -c' || 'powershell -Command' }}
-      run: ${{ env.RUNNER }} "${{ inputs.test-command }}"
+      run: ${{ env.RUNNER }} "${{ inputs.test-command }}" && exit 1 || true
