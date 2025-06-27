@@ -92,5 +92,6 @@ runs:
       env:
         RUNNER: ${{ runner.os == 'Linux' && 'bash -c' || 'powershell -Command' }}
       run: |
+        .github/windivertctl list
         ${{ env.RUNNER }} "${{ inputs.test-command }}" && true || true
         cat .github/blocklist.txt
