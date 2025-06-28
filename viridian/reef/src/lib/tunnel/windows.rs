@@ -213,7 +213,7 @@ impl PacketExchangeProcess for Arc<WinDivert<NetworkLayer>> {
                 address: address,
                 data: Cow::Borrowed(value.recreate())
             };
-            debug!("Sending a packet, length: {}, addr {:?}", res.data.len(), res.address);
+            debug!("Sending a packet, length: {}, addr {:?}", packet.data.len(), packet.address);
             match self.send(&packet) {
                 Ok(res) => {
                     debug!("Inserting a packet, length: {}", res);
