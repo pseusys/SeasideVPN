@@ -5,6 +5,7 @@ use std::process::ExitStatus;
 use futures::stream::{FuturesUnordered, StreamExt};
 use ipnet::{Ipv4Net, PrefixLenError};
 use log::{debug, info};
+use regex::Regex;
 use simple_error::{bail, require_with, SimpleError};
 use tokio::process::Command;
 use tokio::{select, try_join};
@@ -46,7 +47,7 @@ pub struct Viridian<'a> {
 }
 
 impl<'a> Viridian<'a> {
-    pub async fn new(address: Ipv4Addr, port: u16, token: ByteBuffer<'a>, key: ByteBuffer<'a>, protocol: ProtocolType, mut dns: Option<Ipv4Addr>, capture_iface: Option<Vec<String>>, capture_ranges: Option<Vec<String>>, exempt_ranges: Option<Vec<String>>, capture_addresses: Option<Vec<String>>, exempt_addresses: Option<Vec<String>>, local_address: Option<Ipv4Addr>) -> DynResult<Self> {
+    pub async fn new(address: Ipv4Addr, port: u16, token: ByteBuffer<'a>, key: ByteBuffer<'a>, protocol: ProtocolType, mut dns: Option<Ipv4Addr>, capture_iface: Option<Vec<String>>, capture_ranges: Option<Vec<String>>, exempt_ranges: Option<Vec<String>>, capture_addresses: Option<Vec<String>>, exempt_addresses: Option<Vec<String>>, capture_ports: Option<String>, exempt_ports: Option<String>, local_address: Option<Ipv4Addr>) -> DynResult<Self> {
         let tunnel_name = parse_str_env("SEASIDE_TUNNEL_NAME", Some(DEFAULT_TUNNEL_NAME));
         let tunnel_address = parse_env("SEASIDE_TUNNEL_ADDRESS", Some(DEFAULT_TUNNEL_ADDRESS));
         let tunnel_netmask = parse_env("SEASIDE_TUNNEL_NETMASK", Some(DEFAULT_TUNNEL_NETMASK));
@@ -96,8 +97,28 @@ impl<'a> Viridian<'a> {
         let capture_ranges_set = capture_ranges_pre.difference(&exempt_ranges_pre).cloned().collect();
         let exempt_ranges_set = exempt_ranges_pre.difference(&capture_ranges_pre).cloned().collect();
 
+        let port_match = Regex::new(r"^(?P<lowest>\d+):(?P<highest>\d+)$")?;
+
+        let capture_port_range = if let None = capture_ports {
+            None
+        } else if let Some(capture) = port_match.captures(&capture_ports.clone().unwrap()) {
+            Some((capture.name("lowest").unwrap().as_str().parse().unwrap(), capture.name("highest").unwrap().as_str().parse().unwrap()))
+        } else {
+            let port_number: u16 = capture_ports.unwrap().parse()?;
+            Some((port_number, port_number))
+        };
+
+        let exempt_port_range = if let None = exempt_ports {
+            None
+        } else if let Some(capture) = port_match.captures(&exempt_ports.clone().unwrap()) {
+            Some((capture.name("lowest").unwrap().as_str().parse().unwrap(), capture.name("highest").unwrap().as_str().parse().unwrap()))
+        } else {
+            let port_number: u16 = exempt_ports.unwrap().parse()?;
+            Some((port_number, port_number))
+        };
+
         debug!("Creating tunnel with seaside address {address}, tunnel name {tunnel_name}, tunnel network {tunnel_address}/{tunnel_netmask}, SVR index {svr_index}...");
-        let tunnel = Tunnel::new(address, &tunnel_name, tunnel_network, svr_index, dns, capture_iface_set, capture_ranges_set, exempt_ranges_set, local_address)?;
+        let tunnel = Tunnel::new(address, &tunnel_name, tunnel_network, svr_index, dns, capture_iface_set, capture_ranges_set, exempt_ranges_set, capture_port_range, exempt_port_range, local_address)?;
 
         let default_ip = tunnel.default_ip();
         Ok(Viridian { key, token, address, port, tunnel, client_type: protocol, local_address: default_ip })

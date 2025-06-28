@@ -62,13 +62,15 @@ parser.add_argument("--capture-ranges", nargs="*", help="IP address ranges to ca
 parser.add_argument("--exempt-ranges", nargs="*", help="IP address ranges to exempt, multiple allowed (default: none)")
 parser.add_argument("--capture-addresses", nargs="*", help="IP addresses to capture, multiple allowed (default: none)")
 parser.add_argument("--exempt-addresses", nargs="*", help="IP addresses to exempt, multiple allowed (default: none)")
+parser.add_argument("--capture-ports", nargs="*", help="Local ports to capture, either one decimal number or a port range, like in 'iptables' (default: none)")
+parser.add_argument("--exempt-ports", nargs="*", help="Local ports to exempt, either one decimal number or a port range, like in 'iptables' (default: none)")
 parser.add_argument("--local-address", default=None, type=IPv4Address, help="The IP address that will be used for talking to caerulean (default: the first IP address on the interface that will be used to access caerulean)")
 parser.add_argument("-v", "--version", action="version", version=f"Seaside Viridian Algae version {__version__}", help="Print algae version number and exit")
 parser.add_argument("-e", "--command", default=None, help="Command to execute and exit (required!)")
 
 
 class AlgaeClient:
-    def __init__(self, address: str, port: int, dns: IPv4Address = _DEFAULT_CURRENT_DNS, protocol: Optional[Union[Literal["typhoon"], Literal["port"]]] = None, capture_iface: Optional[List[str]] = None, capture_ranges: Optional[List[str]] = None, capture_addresses: Optional[List[str]] = None, exempt_ranges: Optional[List[str]] = None, exempt_addresses: Optional[List[str]] = None, local_address: Optional[IPv4Address] = None):
+    def __init__(self, address: str, port: int, dns: IPv4Address = _DEFAULT_CURRENT_DNS, protocol: Optional[Union[Literal["typhoon"], Literal["port"]]] = None, capture_iface: Optional[List[str]] = None, capture_ranges: Optional[List[str]] = None, capture_addresses: Optional[List[str]] = None, capture_ports: Optional[str] = None, exempt_ranges: Optional[List[str]] = None, exempt_addresses: Optional[List[str]] = None, exempt_ports: Optional[str] = None, local_address: Optional[IPv4Address] = None):
         self._address = address
         self._port = port
 
@@ -83,7 +85,7 @@ class AlgaeClient:
         tunnel_address = IPv4Address(getenv("SEASIDE_TUNNEL_ADDRESS", _DEFAULT_TUNNEL_ADDRESS))
         tunnel_netmask = IPv4Address(getenv("SEASIDE_TUNNEL_NETMASK", _DEFAULT_TUNNEL_NETMASK))
         tunnel_sva = int(getenv("SEASIDE_TUNNEL_SVA", _DEFAULT_TUNNEL_SVA))
-        self._tunnel = Tunnel(tunnel_name, tunnel_address, tunnel_netmask, tunnel_sva, IPv4Address(self._address), dns, capture_iface, capture_ranges, capture_addresses, exempt_ranges, exempt_addresses, local_address)
+        self._tunnel = Tunnel(tunnel_name, tunnel_address, tunnel_netmask, tunnel_sva, IPv4Address(self._address), dns, capture_iface, capture_ranges, capture_addresses, capture_ports, exempt_ranges, exempt_addresses, exempt_ports, local_address)
 
     async def _send_to_caerulean(self, connection: SeasideClient, tunnel: int) -> None:
         loop = get_running_loop()

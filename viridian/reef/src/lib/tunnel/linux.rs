@@ -211,10 +211,13 @@ fn disable_routing(route_message: &Rtmsg, rule_message: &Rtmsg) -> DynResult<()>
     Ok(())
 }
 
-fn create_firewall_rules(default_name: &str, default_network: &Ipv4Net, seaside_address: &Ipv4Addr, dns: Option<String>, capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, svr_idx: u8) -> DynResult<Vec<String>> {
+fn create_firewall_rules(default_name: &str, default_network: &Ipv4Net, seaside_address: &Ipv4Addr, dns: Option<String>, capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, capture_ports: Option<(u16, u16)>, exempt_ports: Option<(u16, u16)>, svr_idx: u8) -> DynResult<Vec<String>> {
     let mut rules = Vec::new();
-    for range in exempt_ranges {
-        rules.push(format!("-d {range} -j ACCEPT"));
+    if let Some((lowest, highest)) = capture_ports {
+        rules.push(format!("-p tcp --sport {lowest}:{highest} -j ACCEPT"));
+        rules.push(format!("-p tcp --sport {lowest}:{highest} -j MARK --set-mark {svr_idx}"));
+        rules.push(format!("-p udp --sport {lowest}:{highest} -j ACCEPT"));
+        rules.push(format!("-p udp --sport {lowest}:{highest} -j MARK --set-mark {svr_idx}"));
     }
     for range in capture_ranges {
         rules.push(format!("-d {range} -j ACCEPT"));
@@ -224,6 +227,13 @@ fn create_firewall_rules(default_name: &str, default_network: &Ipv4Net, seaside_
         let (address, cidr) = get_device_address_and_cidr(&iface)?;
         rules.push(format!("-o {iface} ! -d {address}/{cidr} -j ACCEPT"));
         rules.push(format!("-o {iface} ! -d {address}/{cidr} -j MARK --set-mark {svr_idx}"));
+    }
+    if let Some((lowest, highest)) = exempt_ports {
+        rules.push(format!("-p tcp --sport {lowest}:{highest} -j ACCEPT"));
+        rules.push(format!("-p udp --sport {lowest}:{highest} -j ACCEPT"));
+    }
+    for range in exempt_ranges {
+        rules.push(format!("-d {range} -j ACCEPT"));
     }
     if let Some(server) = dns {
         rules.push(format!("-d {server} -j ACCEPT"));
@@ -265,7 +275,7 @@ pub struct TunnelInternal {
 }
 
 impl TunnelInternal {
-    pub fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_network: Ipv4Net, svr_index: u8, dns: Option<Ipv4Addr>, mut capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, local_address: Option<Ipv4Addr>) -> DynResult<Self> {
+    pub fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_network: Ipv4Net, svr_index: u8, dns: Option<Ipv4Addr>, mut capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, capture_ports: Option<(u16, u16)>, exempt_ports: Option<(u16, u16)>, local_address: Option<Ipv4Addr>) -> DynResult<Self> {
         debug!("Checking system default network properties...");
         let (default_address, default_cidr, default_name, default_mtu) = if let Some(address) = local_address {
             let (default_cidr, default_name, default_mtu) = get_default_interface_by_local_address(address)?;
@@ -297,7 +307,7 @@ impl TunnelInternal {
 
         debug!("Enabling firewall...");
         let default_network = Ipv4Net::new(default_address, default_cidr)?;
-        let firewall_table = create_firewall_rules(&default_name, &default_network, &seaside_address, new_dns, capture_iface, capture_ranges, exempt_ranges, svr_index)?;
+        let firewall_table = create_firewall_rules(&default_name, &default_network, &seaside_address, new_dns, capture_iface, capture_ranges, exempt_ranges, capture_ports, exempt_ports, svr_index)?;
         match enable_firewall(&firewall_table) {
             Ok(_) => info!("Firewall enabled!"),
             Err(err) => bail!("Error enabling firewall: {err}"),

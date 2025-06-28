@@ -83,6 +83,12 @@ struct Opt {
     #[structopt(long)]
     exempt_addresses: Vec<String>,
 
+    #[structopt(long)]
+    capture_ports: Option<String>,
+
+    #[structopt(long)]
+    exempt_ports: Option<String>,
+
     #[structopt(long, parse(try_from_str = parse_address))]
     local_address: Option<Ipv4Addr>,
 
@@ -163,7 +169,7 @@ async fn main() -> DynResult<()> {
 
     info!("Creating reef client...");
     debug!("Parameters for reef client: address {address}, port {port}, protocol {protocol:?}, token length {}, public key length {}, dns {dns}", token.len(), public.len());
-    let mut constructor = Viridian::new(address, port, token, public, protocol, Some(dns), Some(opt.capture_iface), Some(opt.capture_ranges), Some(opt.exempt_ranges), Some(opt.capture_addresses), Some(opt.exempt_addresses), opt.local_address).await?;
+    let mut constructor = Viridian::new(address, port, token, public, protocol, Some(dns), Some(opt.capture_iface), Some(opt.capture_ranges), Some(opt.exempt_ranges), Some(opt.capture_addresses), Some(opt.exempt_addresses), opt.capture_ports, opt.exempt_ports, opt.local_address).await?;
 
     info!("Starting reef Viridian...");
     constructor.start(opt.command).await?;

@@ -227,11 +227,23 @@ impl PacketExchangeProcess for Arc<WinDivert<NetworkLayer>> {
     }
 }
 
-fn enable_routing(seaside_address: Ipv4Addr, default_index: u32, default_network: Ipv4Net, receive_tunnel_queue: RemoteMutTunnelTransport, send_tunnel_queue: RemoteConstTunnelTransport, dns_addresses: Vec<Ipv4Addr>, capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>) -> DynResult<(Arc<WinDivert<NetworkLayer>>, JoinHandle<DynResult<()>>, JoinHandle<DynResult<()>>)> {
-    let mut exempt_filter = exempt_ranges.iter().map(|i| format!("(ip.DstAddr < {} or ip.DstAddr > {})", i.network(), i.broadcast())).collect::<Vec<String>>().join(" and ");
-    if exempt_filter.is_empty() {
-        exempt_filter = String::from("true");
+fn enable_routing(seaside_address: Ipv4Addr, default_index: u32, default_network: Ipv4Net, receive_tunnel_queue: RemoteMutTunnelTransport, send_tunnel_queue: RemoteConstTunnelTransport, dns_addresses: Vec<Ipv4Addr>, capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, capture_ports: Option<(u16, u16)>, exempt_ports: Option<(u16, u16)>) -> DynResult<(Arc<WinDivert<NetworkLayer>>, JoinHandle<DynResult<()>>, JoinHandle<DynResult<()>>)> {
+    let mut exempt_ports_filter = if let Some(lowest, highest) = exempt_ports {
+        format!("tcp? (tcp.SrcPort < {} or tcp.SrcPort > {}): (udp.SrcPort < {} or udp.SrcPort > {})", lowest, highest, lowest, highest)
+    } else {
+        String::from("true")
+    };
+
+    let mut exempt_range_filter = exempt_ranges.iter().map(|i| format!("(ip.DstAddr < {} or ip.DstAddr > {})", i.network(), i.broadcast())).collect::<Vec<String>>().join(" and ");
+    if exempt_range_filter.is_empty() {
+        exempt_range_filter = String::from("true");
     }
+
+    let mut capture_ports_filter = if let Some(lowest, highest) = capture_ports {
+        format!("tcp? (tcp.SrcPort >= {} and tcp.SrcPort <= {}): (udp.SrcPort >= {} and udp.SrcPort <= {})", lowest, highest, lowest, highest)
+    } else {
+        String::from("false")
+    };
 
     let mut capture_range_filter = capture_ranges.iter().map(|i| format!("(ip.DstAddr >= {} and ip.DstAddr <= {})", i.network(), i.broadcast())).collect::<Vec<String>>().join(" or ");
     if capture_range_filter.is_empty() {
@@ -251,7 +263,7 @@ fn enable_routing(seaside_address: Ipv4Addr, default_index: u32, default_network
     let dns_filter = dns_addresses.iter().map(|i| format!("ip.DstAddr != {i}")).collect::<Vec<String>>().join(" and ");
     let caerulean_filter = format!("(ifIdx != {default_index}) or (ip.SrcAddr != {}) or (ip.DstAddr != {})", default_network.addr(), seaside_address);
 
-    let filter = format!("ip and outbound and ({exempt_filter}) and ({capture_range_filter} or {capture_iface_filter}) and ({dns_filter}) and ({caerulean_filter})");
+    let filter = format!("ip and outbound and ({exempt_ports_filter} and {exempt_range_filter}) and ({capture_ports_filter} or {capture_range_filter} or {capture_iface_filter}) and ({dns_filter}) and ({caerulean_filter})");
     debug!("WinDivert filter will be used: '{filter}'");
     let divert = WinDivert::network(format!("ip and outbound and (ip.DstAddr != {})", seaside_address), DIVERT_PRIORITY, WinDivertFlags::new())?;
 
@@ -275,7 +287,7 @@ pub struct TunnelInternal {
 }
 
 impl TunnelInternal {
-    pub fn new(seaside_address: Ipv4Addr, _: &str, _: Ipv4Net, _: u8, dns: Option<Ipv4Addr>, mut capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, local_address: Option<Ipv4Addr>) -> DynResult<Self> {
+    pub fn new(seaside_address: Ipv4Addr, _: &str, _: Ipv4Net, _: u8, dns: Option<Ipv4Addr>, mut capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, capture_ports: Option<(u16, u16)>, exempt_ports: Option<(u16, u16)>, local_address: Option<Ipv4Addr>) -> DynResult<Self> {
         debug!("Checking system default network properties...");
         let default_interface = if let Some(address) = local_address {
             unsafe { get_default_interface_by_local_address(address) }?
@@ -305,7 +317,7 @@ impl TunnelInternal {
         debug!("Setting up routing...");
         let remote_receive_transport = RemoteMutTunnelTransport::new(receive_container_sender, receive_data_receiver);
         let remote_send_transport = RemoteConstTunnelTransport::new(send_container_sender, send_data_receiver);
-        let (divert, receive_handle, send_handle) = enable_routing(seaside_address, default_interface, default_network, remote_receive_transport, remote_send_transport, dns_addresses, capture_iface, capture_ranges, exempt_ranges)?;
+        let (divert, receive_handle, send_handle) = enable_routing(seaside_address, default_interface, default_network, remote_receive_transport, remote_send_transport, dns_addresses, capture_iface, capture_ranges, exempt_ranges, capture_ports, exempt_ports)?;
 
         debug!("Creating tunnel handle...");
         let local_receive_transport = RwLock::new(LocalMutTunnelTransport::new(receive_data_sender, receive_container_receiver));
