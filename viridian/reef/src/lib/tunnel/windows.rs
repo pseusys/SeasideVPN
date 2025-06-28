@@ -191,7 +191,7 @@ impl PacketExchangeProcess for Arc<WinDivert<NetworkLayer>> {
             let value = receive_tunnel_queue.receive().await?;
             match self.recv(Some(value.recreate())) {
                 Ok(res) => {
-                    debug!("Capturing a packet, length: {}", res.data.len());
+                    debug!("Capturing a packet, length: {}, addr {:?}", res.data.len(), res.address);
                     receive_tunnel_queue.send(res.data.len()).await?
                 },
                 Err(err) => {
