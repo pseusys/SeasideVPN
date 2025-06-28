@@ -228,7 +228,7 @@ impl PacketExchangeProcess for Arc<WinDivert<NetworkLayer>> {
 }
 
 fn enable_routing(seaside_address: Ipv4Addr, default_index: u32, default_network: Ipv4Net, receive_tunnel_queue: RemoteMutTunnelTransport, send_tunnel_queue: RemoteConstTunnelTransport, dns_addresses: Vec<Ipv4Addr>, capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, capture_ports: Option<(u16, u16)>, exempt_ports: Option<(u16, u16)>) -> DynResult<(Arc<WinDivert<NetworkLayer>>, JoinHandle<DynResult<()>>, JoinHandle<DynResult<()>>)> {
-    let mut exempt_ports_filter = if let Some((lowest, highest)) = exempt_ports {
+    let exempt_ports_filter = if let Some((lowest, highest)) = exempt_ports {
         format!("tcp? (tcp.SrcPort < {} or tcp.SrcPort > {}): (udp.SrcPort < {} or udp.SrcPort > {})", lowest, highest, lowest, highest)
     } else {
         String::from("true")
@@ -239,7 +239,7 @@ fn enable_routing(seaside_address: Ipv4Addr, default_index: u32, default_network
         exempt_range_filter = String::from("true");
     }
 
-    let mut capture_ports_filter = if let Some((lowest, highest)) = capture_ports {
+    let capture_ports_filter = if let Some((lowest, highest)) = capture_ports {
         format!("tcp? (tcp.SrcPort >= {} and tcp.SrcPort <= {}): (udp.SrcPort >= {} and udp.SrcPort <= {})", lowest, highest, lowest, highest)
     } else {
         String::from("false")
