@@ -202,12 +202,12 @@ impl PacketExchangeProcess for Arc<WinDivert<NetworkLayer>> {
         }
     }
 
-    async fn packet_send_loop(&self, mut send_tunnel_queue: RemoteConstTunnelTransport, default_interface: u32) -> DynResult<()> {
+    async fn packet_send_loop(&self, mut send_tunnel_queue: RemoteConstTunnelTransport, _default_interface: u32) -> DynResult<()> {
         loop {
             let value = send_tunnel_queue.receive().await?;
             let mut address = unsafe { WinDivertAddress::<NetworkLayer>::new() };
-            address.set_interface_index(default_interface);
-            address.set_subinterface_index(0);
+            //address.set_interface_index(default_interface);
+            //address.set_subinterface_index(0);
             address.set_outbound(false);
             let packet = WinDivertPacket {
                 address: address,
