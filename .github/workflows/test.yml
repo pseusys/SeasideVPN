@@ -150,15 +150,6 @@ jobs:
           wsl -u root sh -c "cat ./.github/log/safe.log || true"
           echo "DANGER LOGS:"
           wsl -u root sh -c "cat ./.github/log/danger.log || true"
-          echo "STDOUT OUTPUT:"
-          wsl -u root sh -c "cat ./.github/stdout.txt || true"
-          echo "STDERR OUTPUT:"
-          wsl -u root sh -c "cat ./.github/stderr.txt || true"
-
-      - name: TEST STEP  # TODO: remove!
-        if: runner.os == 'Linux' && always()
-        shell: bash
-        run: docker compose -f ${{ github.workspace }}/.github/actions/setup-server/compose.yml logs
 
   caerulean-whirlpool-test:
     name: Test Caerulean Whirlpool
