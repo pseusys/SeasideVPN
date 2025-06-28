@@ -240,7 +240,7 @@ fn enable_routing(seaside_address: Ipv4Addr, default_index: u32, default_network
     }
 
     let capture_ports_filter = if let Some((lowest, highest)) = capture_ports {
-        format!("tcp? (tcp.SrcPort >= {} and tcp.SrcPort <= {}): (udp.SrcPort >= {} and udp.SrcPort <= {})", lowest, highest, lowest, highest)
+        format!("(tcp.SrcPort >= {} and tcp.SrcPort <= {}) or (udp.SrcPort >= {} and udp.SrcPort <= {})", lowest, highest, lowest, highest)
     } else {
         String::from("false")
     };
