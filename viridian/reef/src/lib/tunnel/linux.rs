@@ -285,7 +285,7 @@ impl TunnelInternal {
         };
         debug!("Default network properties received: address {default_address}, CIDR {default_cidr}, name {default_name}, MTU {default_mtu}");
 
-        if capture_iface.is_empty() && capture_ranges.is_empty() {
+        if capture_iface.is_empty() && capture_ranges.is_empty() && capture_ports.is_none() {
             debug!("The default interface added to capture: {default_name}");
             capture_iface.insert(default_name.clone());
         }
