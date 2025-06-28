@@ -147,8 +147,12 @@ jobs:
           echo "WSL FIREWALL (NAT):"
           wsl -u root iptables -t nat -L -v -n --line-numbers
           echo "SAFE LOGS:"
-          wsl -u root sh -c "cat ./.github/stdout.txt || true"
+          wsl -u root sh -c "cat ./.github/log/safe.log || true"
           echo "DANGER LOGS:"
+          wsl -u root sh -c "cat ./.github/log/danger.log || true"
+          echo "STDOUT OUTPUT:"
+          wsl -u root sh -c "cat "./.github/stdout.txt || true"
+          echo "STDERR OUTPUT:"
           wsl -u root sh -c "cat ./.github/stderr.txt || true"
 
       - name: TEST STEP  # TODO: remove!
