@@ -56,7 +56,7 @@ help:
 
 dependencies:
 	@ # Download and unpack dependencies
-#ifeq ($(OS),Windows_NT)
+ifeq ($(OS),Windows_NT)
 	echo "Downloading WinDivert library version $(WINDIVERT_VERSION)..."
 	curl -sSL -o $(WINDIVERT_SOURCE).zip $(WINDIVERT_URL)
 	mkdir -p $(WINDIVERT_TEMP)
@@ -72,17 +72,18 @@ dependencies:
 	mv $(WINTUN_TEMP)/wintun/bin/$(WINTUN_ARCH)/* $(WINTUN_PATH)/
 	rm -rf $(WINTUN_TEMP)
 	echo "All dependencies ready!"
-#endif
+endif
 .PHONY: dependencies
 
 runtime:
 	@ # Move dependencies next to the executable
-#ifeq ($(OS),Windows_NT)
+ifeq ($(OS),Windows_NT)
 	echo "Copying dependencies next to the executable..."
 	mkdir -p $(BINARY_PATH)
 	cp $(WINDIVERT_PATH)/*.dll $(WINDIVERT_PATH)/*.sys $(BINARY_PATH)
 	cp $(WINTUN_PATH)/*.dll $(BINARY_PATH)
-#endif
+	echo "All dependencies in place!"
+endif
 .PHONY: runtime
 
 build: dependencies

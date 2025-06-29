@@ -28,13 +28,13 @@ simple-error = "^0.3.1"
 socket2 = "^0.5.9"
 structopt = { version = "^0.3.26", optional = true }
 tokio = { version = "^1.45.0", features = ["full"] }
+tun = { version = "^0.7.1", features = ["async"] }
 url = "^2.5.4"
 x25519-dalek = { version = "^2.0.1", features = ["static_secrets"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 iptables = "^0.5.1"
 neli = "^0.6.4"
-tun = { version = "^0.7.1", features = ["async"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 serde = "^1.0.219"
