@@ -87,3 +87,6 @@ viridian/reef/certificates/
 viridian/reef/WinDivert-*.zip
 viridian/reef/windivert-bin/
 viridian/reef/windivert-source/
+viridian/reef/wintun-*.zip
+viridian/reef/wintun-bin/
+viridian/reef/wintun-source/

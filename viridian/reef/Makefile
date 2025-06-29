@@ -11,14 +11,40 @@ GREEN=\033[32m
 YELLOW=\033[33m
 RESET=\033[0m
 
+BUILD_TYPE=debug
+
 WINDIVERT_VERSION=2.2.2
 WINDIVERT_PATH=windivert-bin
+WINTUN_VERSION=0.14.1
+WINTUN_PATH=wintun-bin
+BINARY_PATH=target/$(BUILD_TYPE)/
 
 WINDIVERT_TEMP=windivert-source
 WINDIVERT_SOURCE=WinDivert-$(WINDIVERT_VERSION)-A
-WNDIVERT_URL=https://github.com/basil00/WinDivert/releases/download/v$(WINDIVERT_VERSION)/$(WINDIVERT_SOURCE).zip
+WINDIVERT_URL=https://github.com/basil00/WinDivert/releases/download/v$(WINDIVERT_VERSION)/$(WINDIVERT_SOURCE).zip
+WINTUN_TEMP=wintun-source
+WINTUN_SOURCE=wintun-$(WINTUN_VERSION)
+WINTUN_URL=https://www.wintun.net/builds/$(WINTUN_SOURCE).zip
 
-SYS_ARCH := $(shell uname -m | grep -q '64' && echo 'x64' || echo 'x32')
+
+UNAME_M := $(shell uname -m)
+
+ifeq ($(UNAME_M),x86_64)
+	WINDIVERT_ARCH := x64
+    WINTUN_ARCH := amd64
+else ifeq ($(UNAME_M),i686)
+	WINDIVERT_ARCH := x32
+    WINTUN_ARCH := x86
+else ifeq ($(UNAME_M),aarch64)
+	WINDIVERT_ARCH := x64
+    WINTUN_ARCH := arm64
+else ifeq ($(UNAME_M),armv7l)
+	WINDIVERT_ARCH := x32
+    WINTUN_ARCH := arm
+else
+    $(error Unsupported uname architecture: $(UNAME_M))
+endif
+
 
 
 help:
@@ -29,23 +55,42 @@ help:
 
 
 dependencies:
-	@ # Dowload and unpack windivert distribution
-ifeq ($(OS),Windows_NT)
-	curl -sSL -o $(WINDIVERT_SOURCE).zip $(WNDIVERT_URL)
+	@ # Download and unpack dependencies
+#ifeq ($(OS),Windows_NT)
+	echo "Downloading WinDivert library version $(WINDIVERT_VERSION)..."
+	curl -sSL -o $(WINDIVERT_SOURCE).zip $(WINDIVERT_URL)
 	mkdir -p $(WINDIVERT_TEMP)
 	unzip -q -o $(WINDIVERT_SOURCE).zip -d $(WINDIVERT_TEMP)
 	mkdir -p $(WINDIVERT_PATH)
-	mv $(WINDIVERT_TEMP)/$(WINDIVERT_SOURCE)/$(SYS_ARCH)/* $(WINDIVERT_PATH)/
+	mv $(WINDIVERT_TEMP)/$(WINDIVERT_SOURCE)/$(WINDIVERT_ARCH)/* $(WINDIVERT_PATH)/
 	rm -rf $(WINDIVERT_TEMP)
-endif
+	echo "Downloading WinTun library version $(WINTUN_VERSION)..."
+	curl -sSL -o $(WINTUN_SOURCE).zip $(WINTUN_URL)
+	mkdir -p $(WINTUN_TEMP)
+	unzip -q -o $(WINTUN_SOURCE).zip -d $(WINTUN_TEMP)
+	mkdir -p $(WINTUN_PATH)
+	mv $(WINTUN_TEMP)/wintun/bin/$(WINTUN_ARCH)/* $(WINTUN_PATH)/
+	rm -rf $(WINTUN_TEMP)
+	echo "All dependencies ready!"
+#endif
 .PHONY: dependencies
+
+runtime:
+	@ # Move dependencies next to the executable
+#ifeq ($(OS),Windows_NT)
+	echo "Copying dependencies next to the executable..."
+	mkdir -p $(BINARY_PATH)
+	cp $(WINDIVERT_PATH)/*.dll $(WINDIVERT_PATH)/*.sys $(BINARY_PATH)
+	cp $(WINTUN_PATH)/*.dll $(BINARY_PATH)
+#endif
+.PHONY: runtime
 
 build: dependencies
 	@ # Build reef locally TODO: add feature strict, checking warnings, docs, removing debug info
 	cargo build --all-features
 .PHONY: build
 
-run: build
+run: build runtime
 	@ # Run reef locally
 	cargo run --features cli-exec --bin cli
 .PHONY: run

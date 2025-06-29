@@ -289,7 +289,7 @@ impl TunnelInternal {
             debug!("The default interface added to capture: {default_name}");
             capture_iface.insert(default_name.clone());
         }
-    
+
         debug!("Creating tunnel device: address {}, netmask {}...", tunnel_network.addr(), tunnel_network.netmask());
         let tunnel_device = create_tunnel(tunnel_name, tunnel_network.addr(), tunnel_network.netmask(), default_mtu as u16)?;
         let tunnel_index = get_address_device(tunnel_network)?;

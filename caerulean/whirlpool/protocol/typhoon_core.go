@@ -7,6 +7,7 @@ import (
 	"main/crypto"
 	"main/utils"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/pseusys/betterbuf"
@@ -189,7 +190,7 @@ func parseTyphoonClientInit(cipher *crypto.Asymmetric, packet *betterbuf.Buffer)
 	header := message.RebufferEnd(TYPHOON_CLIENT_INIT_HEADER)
 	flags := header.Get(0)
 	packetNumber := binary.BigEndian.Uint32(header.Reslice(1, 5))
-	clientName := string(header.Reslice(5, 37))
+	clientName := strings.TrimRight(string(header.Reslice(5, 37)), "\x00")
 	nextIn := binary.BigEndian.Uint32(header.Reslice(37, 41))
 	tailLength := int(binary.BigEndian.Uint16(header.Reslice(41, 43)))
 
