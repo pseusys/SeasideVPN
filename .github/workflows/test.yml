@@ -107,7 +107,9 @@ jobs:
         if: runner.os == 'Windows'
         working-directory: viridian/reef
         shell: bash
-        run: make dependencies runtime
+        run: |
+          choco install curl --yes --no-progress --limit-output
+          make dependencies runtime
 
       - name: Test Viridian Reef (unit) 🧪
         working-directory: viridian/reef

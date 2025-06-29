@@ -33,11 +33,6 @@ runs:
         distribution: Ubuntu-24.04
         set-as-default: true
 
-    - name: Update CURL (Windows)
-      if: runner.os == 'Windows'
-      shell: bash
-      run: choco install curl
-
     - name: Install NodeJS 🪢
       uses: actions/setup-node@v4.1.0
       with:
