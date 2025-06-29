@@ -300,8 +300,13 @@ func (s *TyphoonServer) serveWrite(base context.Context, controlChan chan uint32
 		case packet := <-s.inputChan:
 			err := s.Write(packet, controlChan, viridianDict)
 			if err != nil {
-				errorChan <- err
-				return
+				select {
+				case <-base.Done():
+					return
+				default:
+					errorChan <- err
+					return
+				}
 			}
 		}
 	}

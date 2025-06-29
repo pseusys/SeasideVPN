@@ -241,8 +241,13 @@ func (p *PortServer) serveWrite(base context.Context, errorChan chan error) {
 		case packet := <-p.inputChan:
 			err := p.Write(packet, viridianDict)
 			if err != nil {
-				errorChan <- err
-				return
+				select {
+				case <-base.Done():
+					return
+				default:
+					errorChan <- err
+					return
+				}
 			}
 		}
 	}
