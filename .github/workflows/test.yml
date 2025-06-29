@@ -50,7 +50,7 @@ jobs:
       TARGET_ADDRESS: 1.1.1.1
       TARGET_LOWER_PORT: 44443
       TARGET_HIGHER_PORT: 44445
-      TEST_COMMAND: curl -v -I --fail --max-time 15 --local-port 44443-44445 https://1.1.1.1
+      TEST_COMMAND: curl -sS -I --fail --max-time 15 --local-port 44443-44445 https://1.1.1.1
 
     steps:
       - name: Checkout 🛎️
@@ -85,7 +85,7 @@ jobs:
       SEASIDE_LOG_LEVEL: reeflib=DEBUG,INFO
       WINDIVERT_PATH: ${{ github.workspace }}/viridian/reef/windivert-bin
       SUDO: ${{ matrix.os == 'ubuntu' && 'sudo -E env "PATH=$PATH"' || '' }}
-      TEST: ${{ matrix.os == 'ubuntu' && 'curl' || '& curl.exe' }} -v -I --fail --max-time 15 --local-port 44442-44447 https://1.1.1.1
+      TEST: ${{ matrix.os == 'ubuntu' && 'curl' || '& curl.exe' }} -sS -I --fail --max-time 15 --local-port 44442-44447 https://1.1.1.1
     strategy:
       fail-fast: false
       matrix:
