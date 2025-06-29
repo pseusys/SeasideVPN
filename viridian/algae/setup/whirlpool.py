@@ -106,7 +106,7 @@ class WhirlpoolInstaller(Installer):
     @property
     def run_command(self) -> str:
         if self._args["distribution_type"] in (_DT_COMPILE, _DT_BINARY):
-            return "set -a && . ./conf.env && nohup ./whirlpool.run &"
+            return "set -a && . ./conf.env && nohup ./whirlpool.run > output.log 2>&1 &"
         elif self._args["distribution_type"] == _DT_DOCKER:
             return f"docker run --rm --name seaside-whirlpool --env-file=conf.env --sysctl net.ipv6.conf.all.disable_ipv6=1 --network host --privileged {_SEASIDE_IMAGE}:{self._args['docker_label']}"
         else:
