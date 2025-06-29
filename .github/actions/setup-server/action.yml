@@ -35,6 +35,7 @@ runs:
 
     - name: Update CURL (Windows)
       if: runner.os == 'Windows'
+      shell: bash
       run: choco install curl
 
     - name: Install NodeJS 🪢
