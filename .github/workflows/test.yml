@@ -150,8 +150,6 @@ jobs:
           wsl -u root sh -c "cat ./.github/log/safe.log || true"
           echo "DANGER LOGS:"
           wsl -u root sh -c "cat ./.github/log/danger.log || true"
-          echo "CRITICAL LOGS:"
-          wsl -u root sh -c "cat ./.github/output.log || true"
 
   caerulean-whirlpool-test:
     name: Test Caerulean Whirlpool

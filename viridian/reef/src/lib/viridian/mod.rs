@@ -118,7 +118,7 @@ impl<'a> Viridian<'a> {
         };
 
         debug!("Creating tunnel with seaside address {address}, tunnel name {tunnel_name}, tunnel network {tunnel_address}/{tunnel_netmask}, SVR index {svr_index}...");
-        let tunnel = Tunnel::new(address, &tunnel_name, tunnel_network, svr_index, dns, capture_iface_set, capture_ranges_set, exempt_ranges_set, capture_port_range, exempt_port_range, local_address)?;
+        let tunnel = Tunnel::new(address, &tunnel_name, tunnel_network, svr_index, dns, capture_iface_set, capture_ranges_set, exempt_ranges_set, capture_port_range, exempt_port_range, local_address).await?;
 
         let default_ip = tunnel.default_ip();
         Ok(Viridian { key, token, address, port, tunnel, client_type: protocol, local_address: default_ip })

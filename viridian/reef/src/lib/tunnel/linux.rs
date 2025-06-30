@@ -275,7 +275,7 @@ pub struct TunnelInternal {
 }
 
 impl TunnelInternal {
-    pub fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_network: Ipv4Net, svr_index: u8, dns: Option<Ipv4Addr>, mut capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, capture_ports: Option<(u16, u16)>, exempt_ports: Option<(u16, u16)>, local_address: Option<Ipv4Addr>) -> DynResult<Self> {
+    pub async fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_network: Ipv4Net, svr_index: u8, dns: Option<Ipv4Addr>, mut capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, capture_ports: Option<(u16, u16)>, exempt_ports: Option<(u16, u16)>, local_address: Option<Ipv4Addr>) -> DynResult<Self> {
         debug!("Checking system default network properties...");
         let (default_address, default_cidr, default_name, default_mtu) = if let Some(address) = local_address {
             let (default_cidr, default_name, default_mtu) = get_default_interface_by_local_address(address)?;
@@ -315,16 +315,6 @@ impl TunnelInternal {
 
         debug!("Creating tunnel handle...");
         Ok(Self {default_address, tunnel_device, resolv_conf, resolv_path, svr_data, route_message, rule_message, firewall_table})
-    }
-}
-
-impl Tunnelling for TunnelInternal {
-    async fn recv(&self, buf: &mut [u8]) -> DynResult<usize> {
-        Ok(self.tunnel_device.recv(buf).await?)
-    }
-
-    async fn send(&self, buf: &[u8]) -> DynResult<usize> {
-        Ok(self.tunnel_device.send(buf).await?)
     }
 }
 

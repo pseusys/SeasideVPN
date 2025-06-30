@@ -18,8 +18,6 @@ use linux::*;
 #[cfg(target_os = "windows")]
 mod windows;
 #[cfg(target_os = "windows")]
-mod ptr_utils;
-#[cfg(target_os = "windows")]
 use windows::*;
 
 
@@ -44,8 +42,8 @@ impl Tunnel {
         self.tunnel.default_address
     }
 
-    pub fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_network: Ipv4Net, svr_index: u8, dns: Option<Ipv4Addr>, capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, capture_ports: Option<(u16, u16)>, exempt_ports: Option<(u16, u16)>, local_address: Option<Ipv4Addr>) -> DynResult<Self> {
-        Ok(Self { tunnel: Arc::new(TunnelInternal::new(seaside_address, tunnel_name, tunnel_network, svr_index, dns, capture_iface, capture_ranges, exempt_ranges, capture_ports, exempt_ports, local_address)?) })
+    pub async fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_network: Ipv4Net, svr_index: u8, dns: Option<Ipv4Addr>, capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, capture_ports: Option<(u16, u16)>, exempt_ports: Option<(u16, u16)>, local_address: Option<Ipv4Addr>) -> DynResult<Self> {
+        Ok(Self { tunnel: Arc::new(TunnelInternal::new(seaside_address, tunnel_name, tunnel_network, svr_index, dns, capture_iface, capture_ranges, exempt_ranges, capture_ports, exempt_ports, local_address).await?) })
     }
 }
 
@@ -68,3 +66,15 @@ impl Writer for Tunnel {
         }
     }
 }
+
+
+impl Tunnelling for TunnelInternal {
+    async fn recv(&self, buf: &mut [u8]) -> DynResult<usize> {
+        Ok(self.tunnel_device.recv(buf).await?)
+    }
+
+    async fn send(&self, buf: &[u8]) -> DynResult<usize> {
+        Ok(self.tunnel_device.send(buf).await?)
+    }
+}
+
