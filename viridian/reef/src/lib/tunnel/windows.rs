@@ -1,5 +1,5 @@
 use std::collections::{HashMap, HashSet};
-use std::mem::replace;
+use std::mem::{align_of, replace};
 use std::net::{AddrParseError, Ipv4Addr};
 use std::num::ParseIntError;
 use std::sync::Arc;
@@ -49,8 +49,9 @@ async unsafe fn get_default_interface<T, P: Fn(*mut IP_ADAPTER_UNICAST_ADDRESS_L
         bail!("Empty call to 'GetAdaptersAddresses' resulted with error {result}!");
     }
 
-    let buffer = get_buffer(Some(buffer_size as usize)).await;
-    let adapter_addresses = buffer.slice_mut().as_mut_ptr() as *mut IP_ADAPTER_ADDRESSES_LH;
+    let buffer = get_buffer(Some(buffer_size as usize + align_of::<u64>())).await;
+    let (_, aligned, _) = buffer.slice_mut().align_to_mut::<u64>();
+    let adapter_addresses = aligned.as_mut_ptr() as *mut IP_ADAPTER_ADDRESSES_LH;
 
     let result = GetAdaptersAddresses(AF_INET.0 as u32, GAA_FLAG_INCLUDE_PREFIX, None, Some(adapter_addresses), &mut buffer_size);
     if WIN32_ERROR(result) != ERROR_SUCCESS {

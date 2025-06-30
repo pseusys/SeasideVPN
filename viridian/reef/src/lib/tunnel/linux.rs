@@ -18,7 +18,7 @@ use simple_error::{bail, require_with};
 use tun::{create_as_async, AsyncDevice, Configuration};
 
 use super::nl_utils::{copy_rtmsg, create_address_message, create_attr, create_clear_cache_message, create_header, create_interface_message, create_routing_message, create_rtmsg, create_socket, send_netlink_message, send_netlink_stream};
-use super::{bytes_to_int, bytes_to_ip_address, bytes_to_string, string_to_bytes, Tunnelling};
+use super::{bytes_to_int, bytes_to_ip_address, bytes_to_string, string_to_bytes};
 use crate::utils::parse_env;
 use crate::DynResult;
 
@@ -265,7 +265,7 @@ fn disable_firewall(firewall_rules: &Vec<String>) -> Result<(), Box<dyn Error>> 
 
 pub struct TunnelInternal {
     pub default_address: Ipv4Addr,
-    tunnel_device: AsyncDevice,
+    pub tunnel_device: AsyncDevice,
     resolv_conf: String,
     resolv_path: String,
     svr_data: Vec<Rtmsg>,
