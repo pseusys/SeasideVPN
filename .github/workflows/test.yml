@@ -48,9 +48,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TARGET_ADDRESS: 1.1.1.1
-      TARGET_LOWER_PORT: 44443
-      TARGET_HIGHER_PORT: 44445
-      TEST_COMMAND: curl -v -I --fail --max-time 15 --local-port 44443-44445 https://1.1.1.1
+      TARGET_LOWER_PORT: 44442
+      TARGET_HIGHER_PORT: 44446
+      TEST_COMMAND: curl -v -I --fail --max-time 15 https://1.1.1.1
 
     steps:
       - name: Checkout 🛎️
@@ -63,17 +63,17 @@ jobs:
           target: ${{ env.TARGET_ADDRESS }}
           lower_port: ${{ env.TARGET_LOWER_PORT }}
           higher_port: ${{ env.TARGET_HIGHER_PORT }}
-          test-command: ${{ env.TEST_COMMAND }}
+          test-command: ${{ env.TEST_COMMAND }} --local-port 44443
 
       - name: Test Viridian Algae PORT (standalone) 🧪
         id: test-viridian-algae-port
         working-directory: viridian/algae
-        run: sudo -E env "PATH=$PATH" poetry poe client -s port -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-ports "${{ env.TARGET_LOWER_PORT }}:${{ env.TARGET_HIGHER_PORT }}" -e "${{ env.TEST_COMMAND }}"
+        run: sudo -E env "PATH=$PATH" poetry poe client -s port -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-ports "${{ env.TARGET_LOWER_PORT }}:${{ env.TARGET_HIGHER_PORT }}" -e "${{ env.TEST_COMMAND }} --local-port 44444"
 
       - name: Test Viridian Algae TYPHOON (standalone) 🧪
         id: test-viridian-algae-typhoon
         working-directory: viridian/algae
-        run: sudo -E env "PATH=$PATH" poetry poe client -s typhoon -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-ports "${{ env.TARGET_LOWER_PORT }}:${{ env.TARGET_HIGHER_PORT }}" -e "${{ env.TEST_COMMAND }}"
+        run: sudo -E env "PATH=$PATH" poetry poe client -s typhoon -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-ports "${{ env.TARGET_LOWER_PORT }}:${{ env.TARGET_HIGHER_PORT }}" -e "${{ env.TEST_COMMAND }} --local-port 44445"
 
   viridian-reef-test:
     name: Test Viridian Reef
@@ -81,11 +81,11 @@ jobs:
     env:
       TARGET_ADDRESS: 1.1.1.1
       TARGET_LOWER_PORT: 44442
-      TARGET_HIGHER_PORT: 44447
+      TARGET_HIGHER_PORT: 44446
       SEASIDE_LOG_LEVEL: reeflib=DEBUG,INFO
       WINDIVERT_PATH: ${{ github.workspace }}/viridian/reef/windivert-bin
       SUDO: ${{ matrix.os == 'ubuntu' && 'sudo -E env "PATH=$PATH"' || '' }}
-      TEST: ${{ matrix.os == 'ubuntu' && 'curl' || '& curl.exe' }} -v -I --fail --max-time 15 --local-port 44442-44447 https://1.1.1.1
+      TEST_COMMAND: ${{ matrix.os == 'ubuntu' && 'curl' || '& curl.exe' }} -v -I --fail --max-time 15 https://1.1.1.1
     strategy:
       fail-fast: false
       matrix:
@@ -107,9 +107,7 @@ jobs:
         if: runner.os == 'Windows'
         working-directory: viridian/reef
         shell: bash
-        run: |
-          choco install curl --yes --no-progress --limit-output
-          make dependencies runtime
+        run: make dependencies runtime
 
       - name: Test Viridian Reef (unit) 🧪
         working-directory: viridian/reef
@@ -122,17 +120,17 @@ jobs:
           target: ${{ env.TARGET_ADDRESS }}
           lower_port: ${{ env.TARGET_LOWER_PORT }}
           higher_port: ${{ env.TARGET_HIGHER_PORT }}
-          test-command: ${{ env.TEST }}
+          test-command: ${{ env.TEST_COMMAND }} --local-port 44443
 
       - name: Test Viridian Reef PORT (integration) 🧪
         id: test-viridian-reef-port
         working-directory: viridian/reef
-        run: ${{ env.SUDO }} cargo run --features cli-exec --bin cli -- -s port -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-ports ${{ env.TARGET_LOWER_PORT }}:${{ env.TARGET_HIGHER_PORT }} -e "${{ env.TEST }}"
+        run: ${{ env.SUDO }} cargo run --features cli-exec --bin cli -- -s port -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-ports ${{ env.TARGET_LOWER_PORT }}:${{ env.TARGET_HIGHER_PORT }} -e "${{ env.TEST_COMMAND }} --local-port 44444"
 
       - name: Test Viridian Reef TYPHOON (integration) 🧪
         id: test-viridian-reef-typhoon
         working-directory: viridian/reef
-        run: ${{ env.SUDO }} cargo run --features cli-exec --bin cli -- -s typhoon -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-ports ${{ env.TARGET_LOWER_PORT }}:${{ env.TARGET_HIGHER_PORT }} -e "${{ env.TEST }}"
+        run: ${{ env.SUDO }} cargo run --features cli-exec --bin cli -- -s typhoon -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-ports ${{ env.TARGET_LOWER_PORT }}:${{ env.TARGET_HIGHER_PORT }} -e "${{ env.TEST_COMMAND }} --local-port 44445"
 
       - name: TEST STEP  # TODO: remove!
         if: runner.os == 'Windows' && always()
