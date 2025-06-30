@@ -194,22 +194,16 @@ impl PacketExchangeProcess for Arc<WinDivert<NetworkLayer>> {
                     debug!("Captured a local packet, length: {}", res.data.len());
                     res
                 },
-                Err(err) => {
-                    warn!("Error capturing packet: {err}!");
-                    continue;
-                }
+                Err(err) => bail!("Error capturing packet: {err}!")
             };
             packet.address.set_interface_index(tunnel_interface);
             packet.address.set_subinterface_index(DEFAULT_SUBINTERFACE);
-            packet.address.set_outbound(true);
+            packet.address.set_outbound(false);
             match self.send(&packet) {
                 Ok(res) => {
                     debug!("Inserted a packet into a tunnel, length: {}", res);
                 },
-                Err(err) => {
-                    warn!("Error inserting packet into a tunnel: {err}!");
-                    continue;
-                }
+                Err(err) => bail!("Error inserting packet into a tunnel: {err}!")
             };
         }
     }
