@@ -50,7 +50,7 @@ async unsafe fn get_default_interface<T, P: Fn(*mut IP_ADAPTER_UNICAST_ADDRESS_L
     }
 
     let buffer = get_buffer(Some(buffer_size as usize + align_of::<u64>() - 1)).await;
-    let buffer_slice = buffer.slice_mut();
+    let mut buffer_slice = buffer.slice_mut();
     let (_, buffer_aligned, _) = buffer_slice.align_to_mut::<u64>();
     let adapter_addresses = buffer_aligned.as_mut_ptr() as *mut IP_ADAPTER_ADDRESSES_LH;
 
