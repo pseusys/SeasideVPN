@@ -5,7 +5,7 @@ use std::num::ParseIntError;
 use std::sync::Arc;
 
 use ipnet::Ipv4Net;
-use log::{debug, error, info, warn};
+use log::{debug, error, info};
 use serde::Deserialize;
 use simple_error::{bail, SimpleError};
 use tokio::task::JoinHandle;
