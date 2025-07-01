@@ -5,7 +5,7 @@
 For a VPN, it is equally important to transfer many packets (`DATA` packets) fast and some packets (keep-alive packets) reliably.
 Normally this issue is solved by using 2 distinct connections: 1 UDP data connection and 1 TCP (or QUIC) reliable connection.
 However, this approach is no longer relevant in the modern world, where even TLS protocol gets blocked sometimes.
-SeasideVPN solves this problem by transferring some authentication to the users via third channels (like email or messengers). 
+SeasideVPN solves this problem by transferring some authentication to the users via third channels (like email or messengers).
 TYPHOON protocol is designed to replace traditional protocols in the circumstances where presence of this initial data eliminates need for normal handshaking.
 
 In general, it the protocol is based on UDP and most of its packets are just UDP packets with a minimal header and random tail.
@@ -24,13 +24,13 @@ Three different parties are involved in the protocol:
 Here's the idea behind the protocol:
 
 1. Client already knows all the information required for connection, including:
-  - `Listener` port and address.
-  - Authentication token.
-  - Asymmetric key.
+   - `Listener` port and address.
+   - Authentication token.
+   - Asymmetric key.
 2. `Client` sends a UDP connection message to the `Listener`, it performs some configuration, spawns `Server` and sends a response message back to `Client`.
 3. `Client` starts sending VPN data to the `Server`, from time to time it also sends keep-alive (handshake) messages:
-  - If there is some data flowing, these messages are just appended to the data messages (this is called `shadowride`).
-  - If the client stays silent for a while, separate handshake messages are sent.
+   - If there is some data flowing, these messages are just appended to the data messages (this is called `shadowride`).
+   - If the client stays silent for a while, separate handshake messages are sent.
 4. One of the parties can optionally send a termination message to interrupt connection (otherwise it will just timeout once either client or server goes offline).
 
 ## Protocol initialization
@@ -44,7 +44,6 @@ User can not; it checks packet numbers and won't accept out of order
 No race condition on client or server is possible (two HDSK packets never processed simultaneously)
 
 Monocypher -> native solutions (no elligator, as it not widely implemented, not audited and also does not protect if known)
-
 
 HEADER_OVERHEAD = 64;
 

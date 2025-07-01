@@ -1,6 +1,6 @@
 # Reef
 
-# System achteture
+## System achteture
 
 All the tests and executables were only build for x64 architecture.
 

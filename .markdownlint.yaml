@@ -2,7 +2,10 @@ default: true
 extends: null
 
 MD013:  # Source line length
-  line_length: 300
+  line_length: 1024
+
+MD059:
+  prohibited_texts: []
 
 MD033:  # Inline HTML tags
   allowed_elements:
