@@ -139,8 +139,6 @@ jobs:
     steps:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
-        with:
-          submodules: true
 
       - name: Test Caerulean Whirlpool 🧪
         working-directory: caerulean/whirlpool

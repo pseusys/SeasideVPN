@@ -230,9 +230,9 @@ class WhirlpoolInstaller(Installer):
         else:
             tempppath = Path("SeasideVPN")
             self._logger.debug("Cloning SeasideVPN repository...")
-            run_command(f"git clone -n --branch {self._args['source_tag']} --depth=1 --filter=tree:0 --recurse-submodules {_SEASIDE_REPO}")
-            self._logger.debug("Performing a sparse checkout and retrieving submodules...")
-            run_command("git sparse-checkout set --no-cone caerulean/whirlpool vessels && git checkout && git submodule update --recursive", cwd=tempppath)
+            run_command(f"git clone -n --branch {self._args['source_tag']} --depth=1 --filter=tree:0  {_SEASIDE_REPO}")
+            self._logger.debug("Performing a sparse checkout...")
+            run_command("git sparse-checkout set --no-cone caerulean/whirlpool vessels && git checkout", cwd=tempppath)
             seapath = tempppath / "caerulean" / "whirlpool"
         self._logger.debug("Building whirlpool...")
         run_command("make build", cwd=seapath, env=go_env)

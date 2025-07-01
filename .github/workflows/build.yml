@@ -19,8 +19,6 @@ jobs:
     steps:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
-        with:
-          submodules: true
 
       - name: Setup Python 3.11 🐍
         uses: actions/setup-python@v5
@@ -69,8 +67,6 @@ jobs:
     steps:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
-        with:
-          submodules: true
 
       - name: Setup GCC 🐃
         working-directory: caerulean/whirlpool
