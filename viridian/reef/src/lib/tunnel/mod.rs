@@ -18,6 +18,8 @@ use linux::*;
 #[cfg(target_os = "windows")]
 mod windows;
 #[cfg(target_os = "windows")]
+mod ptr_utils;
+#[cfg(target_os = "windows")]
 use windows::*;
 
 
@@ -66,15 +68,3 @@ impl Writer for Tunnel {
         }
     }
 }
-
-
-impl Tunnelling for TunnelInternal {
-    async fn recv(&self, buf: &mut [u8]) -> DynResult<usize> {
-        Ok(self.tunnel_device.recv(buf).await?)
-    }
-
-    async fn send(&self, buf: &[u8]) -> DynResult<usize> {
-        Ok(self.tunnel_device.send(buf).await?)
-    }
-}
-

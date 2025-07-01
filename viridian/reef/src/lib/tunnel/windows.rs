@@ -1,16 +1,23 @@
+use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::mem::{align_of, replace};
 use std::net::{AddrParseError, Ipv4Addr};
 use std::num::ParseIntError;
 use std::sync::Arc;
 
+use etherparse::icmpv4::DestUnreachableHeader;
+use etherparse::{Icmpv4Header, Icmpv4Type, IpNumber, Ipv4Header, Ipv4HeaderSlice};
 use ipnet::Ipv4Net;
 use log::{debug, error, info};
 use serde::Deserialize;
 use simple_error::{bail, SimpleError};
+use tokio::sync::watch::channel;
+use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
 use tun::{create_as_async, AsyncDevice, Configuration};
+use windivert::address::WinDivertAddress;
 use windivert::layer::NetworkLayer;
+use windivert::packet::WinDivertPacket;
 use windivert::{CloseAction, WinDivert};
 use windivert::prelude::{WinDivertFlags, WinDivertShutdownMode};
 use windows::Win32::Foundation::{ERROR_BUFFER_OVERFLOW, ERROR_SUCCESS, WIN32_ERROR};
@@ -19,12 +26,14 @@ use windows::Win32::Networking::WinSock::{AF_INET, SOCKADDR_IN};
 use wmi::{COMLibrary, WMIConnection};
 
 use crate::bytes::get_buffer;
-
 use crate::{run_coroutine_in_thread, run_coroutine_sync, DynResult};
+use super::Tunnelling;
+use super::ptr_utils::{LocalMutTunnelTransport, MutSendPtr, RemoteMutTunnelTransport};
 
 
 const ZERO_IP_ADDRESS: Ipv4Addr = Ipv4Addr::new(0, 0, 0, 0);
-const DEFAULT_SUBINTERFACE: u32 = 0;
+const FRAGMENT_BYTES: usize = 8;
+const FRAGMENT_TTL: u8 = 64;
 
 
 unsafe fn get_default_interface_by_remote_address(destination_ip: Ipv4Addr) -> DynResult<u32> {
@@ -181,35 +190,74 @@ fn reset_dns_addresses(dns_data: &HashMap<u32, Vec<String>>) -> DynResult<()> {
 
 
 trait PacketExchangeProcess {
-    async fn packet_receive_loop(&self, tunnel_interface: u32) -> DynResult<()>;
+    async fn build_icmp_frag_needed_packet<'a>(&self, original_ip_packet: &WinDivertPacket<'a, NetworkLayer>, mtu: u16) -> DynResult<WinDivertPacket<'a, NetworkLayer>>;
+    async fn packet_receive_loop(&self, mtu: usize, queue: RemoteMutTunnelTransport) -> DynResult<()>;
 }
 
 impl PacketExchangeProcess for Arc<WinDivert<NetworkLayer>> {
-    async fn packet_receive_loop(&self, tunnel_interface: u32) -> DynResult<()> {
-        loop {
-            let buffer = get_buffer(None).await;
-            let mut packet_slice =  buffer.slice_mut();
-            let mut packet = match self.recv(Some(&mut packet_slice)) {
-                Ok(res) => {
-                    debug!("Captured a local packet, length: {}", res.data.len());
-                    res
-                },
-                Err(err) => bail!("Error capturing packet: {err}!")
-            };
-            packet.address.set_interface_index(tunnel_interface);
-            packet.address.set_subinterface_index(DEFAULT_SUBINTERFACE);
-            packet.address.set_outbound(false);
-            match self.send(&packet) {
-                Ok(res) => {
-                    debug!("Inserted a packet into a tunnel, length: {}", res);
-                },
-                Err(err) => bail!("Error inserting packet into a tunnel: {err}!")
-            };
+    async fn build_icmp_frag_needed_packet<'a>(&self, original_packet: &WinDivertPacket<'a, NetworkLayer>, mtu: u16) -> DynResult<WinDivertPacket<'a, NetworkLayer>> {
+        let original_ip_header = Ipv4HeaderSlice::from_slice(&original_packet.data)?;
+        let payload_length = original_ip_header.payload_len()? as usize;
+
+        if payload_length < FRAGMENT_BYTES {
+            bail!("Insufficient payload length: {payload_length} bytes!");
+        }
+
+        let mut icmp_header = Icmpv4Header::new(Icmpv4Type::DestinationUnreachable(DestUnreachableHeader::FragmentationNeeded { next_hop_mtu: mtu }));
+        let icmp_payload = &original_packet.data[..original_ip_header.slice().len() + FRAGMENT_BYTES];
+        icmp_header.update_checksum(icmp_payload);
+
+        let mut ip_header = Ipv4Header::new((icmp_header.header_len() + icmp_payload.len()) as u16, FRAGMENT_TTL, IpNumber::ICMP, original_ip_header.destination(), original_ip_header.source())?;
+        ip_header.header_checksum = ip_header.calc_header_checksum();
+        
+        let buffer = get_buffer(None).await;
+        buffer.append(&ip_header.to_bytes());
+        buffer.append(&icmp_header.to_bytes());
+        buffer.append(icmp_payload);
+
+        let mut address = unsafe { WinDivertAddress::<NetworkLayer>::new() };
+        address.set_interface_index(original_packet.address.interface_index());
+        address.set_subinterface_index(original_packet.address.subinterface_index());
+        address.set_outbound(true);
+        Ok(WinDivertPacket {
+            address,
+            data: Cow::Owned(buffer.into())
+        })
+    }
+
+    async fn packet_receive_loop(&self, mtu: usize, mut queue: RemoteMutTunnelTransport) -> DynResult<()> {
+        'outer: loop {
+            let value = queue.receive().await?;
+            'inner: loop {
+                let packet = match self.recv(Some(value.recreate())) {
+                    Ok(res) => {
+                        debug!("Captured a local packet, length: {}", res.data.len());
+                        res
+                    },
+                    Err(err) => bail!("Error capturing packet: {err}!")
+                };
+                let packet_length = packet.data.len();
+                if packet_length > mtu {
+                    debug!("Packet too long: {packet_length} bytes!");
+                    match self.build_icmp_frag_needed_packet(&packet, mtu as u16).await {
+                        Ok(res) => {
+                            debug!("Sending fragmentation request, length: {}", res.data.len());
+                            self.send(&res)?;
+                        },
+                        Err(err) => debug!("Error constructing 'fragmentation needed' packet: {err}"),
+                    };
+                    continue 'inner;
+                } else {
+                    debug!("Inserting a packet into a tunnel, length: {packet_length}");
+                    queue.send(packet_length).await?;
+                    continue 'outer;
+                }
+            }
         }
     }
 }
 
-async fn enable_routing(seaside_address: Ipv4Addr, default_index: u32, default_network: Ipv4Net, divert_priority: i16, tunnel_interface: u32, dns_addresses: Vec<Ipv4Addr>, capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, capture_ports: Option<(u16, u16)>, exempt_ports: Option<(u16, u16)>) -> DynResult<(Arc<WinDivert<NetworkLayer>>, JoinHandle<DynResult<()>>)> {
+async fn enable_routing(seaside_address: Ipv4Addr, default_index: u32, default_network: Ipv4Net, divert_priority: i16, default_mtu: u32, queue: RemoteMutTunnelTransport, dns_addresses: Vec<Ipv4Addr>, capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, capture_ports: Option<(u16, u16)>, exempt_ports: Option<(u16, u16)>) -> DynResult<(Arc<WinDivert<NetworkLayer>>, JoinHandle<DynResult<()>>)> {
     let exempt_ports_filter = if let Some((lowest, highest)) = exempt_ports {
         format!("tcp? (tcp.SrcPort < {} or tcp.SrcPort > {}): (udp.SrcPort < {} or udp.SrcPort > {})", lowest, highest, lowest, highest)
     } else {
@@ -253,15 +301,16 @@ async fn enable_routing(seaside_address: Ipv4Addr, default_index: u32, default_n
 
     let divert_arc = Arc::new(divert);
     let divert_clone = divert_arc.clone();
-    let receive_handle = run_coroutine_in_thread!(divert_clone.packet_receive_loop(tunnel_interface));
+    let receive_handle = run_coroutine_in_thread!(divert_clone.packet_receive_loop(default_mtu as usize, queue));
     Ok((divert_arc, receive_handle))
 }
 
 
 pub struct TunnelInternal {
     pub default_address: Ipv4Addr,
-    pub tunnel_device: Arc<AsyncDevice>,
+    tunnel_device: Arc<AsyncDevice>,
     divert: Arc<WinDivert<NetworkLayer>>,
+    queue: RwLock<LocalMutTunnelTransport>,
     handle: Option<JoinHandle<DynResult<()>>>,
     dns_data: HashMap<u32, Vec<String>>
 }
@@ -285,7 +334,6 @@ impl TunnelInternal {
 
         debug!("Creating tunnel device: address {}, netmask {}...", tunnel_network.addr(), tunnel_network.netmask());
         let tunnel_device = Arc::new(create_tunnel(tunnel_name, tunnel_network.addr(), tunnel_network.netmask(), default_mtu as u16)?);
-        let tunnel_index = unsafe { get_default_interface_by_local_address(tunnel_network.addr()).await }?;
 
         debug!("Setting DNS address to {dns:?}...");
         let interfaces: Result<Vec<u32>, ParseIntError> = capture_iface.iter().map(|s| s.parse()).collect();
@@ -293,8 +341,25 @@ impl TunnelInternal {
         debug!("The DNS server for interfaces were set to: {dns_addresses:?}");
 
         debug!("Setting up routing...");
-        let (divert, handle) = enable_routing(seaside_address, default_interface, default_network, svr_index as i16, tunnel_index, dns_addresses, capture_iface, capture_ranges, exempt_ranges, capture_ports, exempt_ports).await?;
-        Ok(Self {default_address, divert, tunnel_device, handle: Some(handle), dns_data})
+        let (remote_sender, local_receiver) = channel(None);
+        let (local_sender, remote_receiver) = channel(None);
+        let remote_queue = RemoteMutTunnelTransport::new(remote_sender, remote_receiver);
+        let local_queue = RwLock::new(LocalMutTunnelTransport::new(local_sender, local_receiver));
+        let (divert, handle) = enable_routing(seaside_address, default_interface, default_network, svr_index as i16, default_mtu, remote_queue, dns_addresses, capture_iface, capture_ranges, exempt_ranges, capture_ports, exempt_ports).await?;
+        Ok(Self {default_address, divert, queue: local_queue, tunnel_device, handle: Some(handle), dns_data})
+    }
+}
+
+impl Tunnelling for TunnelInternal {
+    async fn recv(&self, buf: &mut [u8]) -> DynResult<usize> {
+        let pointer = MutSendPtr::new(buf);
+        let mut writer = self.queue.write().await;
+        writer.send(pointer).await?;
+        writer.receive().await
+    }
+
+    async fn send(&self, buf: &[u8]) -> DynResult<usize> {
+        Ok(self.tunnel_device.send(buf).await?)
     }
 }
 
@@ -307,18 +372,22 @@ impl Drop for TunnelInternal {
             let divert = unsafe { &mut *(Arc::as_ptr(&self.divert) as *mut WinDivert<NetworkLayer>) };
 
             debug!("Resetting routing...");
-            divert.shutdown(WinDivertShutdownMode::Both).inspect_err(|e| error!("Error shutting down WinDivert: {}", e));
-            divert.close(CloseAction::Nothing).inspect_err(|e| error!("Error closing WinDivert: {}", e));
+            divert.shutdown(WinDivertShutdownMode::Both).inspect_err(|e| error!("Error shutting down WinDivert: {e}"));
+            divert.close(CloseAction::Nothing).inspect_err(|e| error!("Error closing WinDivert: {e}"));
+
+            debug!("Closing routing queue...");
+            let mut queue_writer = self.queue.write().await;
+            queue_writer.close().await.inspect_err(|e| info!("Error closing tunnel queue: {e}"));
 
             debug!("Waiting for handle thread...");
             let receive_decay = replace(&mut self.handle, None);
             if let Some(thread) = receive_decay {
                 let result = thread.await.expect("WinDivert thread termination error!");
-                result.inspect_err(|r| info!("WinDivert thread terminated with: {r}"));
+                result.inspect_err(|e| info!("WinDivert thread terminated with: {e}"));
             }
 
             debug!("Reverting DNS servers...");
-            reset_dns_addresses(&self.dns_data).inspect_err(|e| error!("Error resetting DNS addresses: {}", e));
+            reset_dns_addresses(&self.dns_data).inspect_err(|e| error!("Error resetting DNS addresses: {e}"));
         });
     }
 }
