@@ -25,6 +25,8 @@ const (
 	DEFAULT_API_PORT     = 8587
 	DEFAULT_PORT_PORT    = 29384
 	DEFAULT_TYPHOON_PORT = 29384
+
+	REQUIRED_TUNNEL_NETWORK_BITS = 16
 )
 
 // Tunnel config object, represents tunnel interface and forwarding setup.
@@ -118,7 +120,12 @@ func (conf *TunnelConfig) Open() (err error) {
 		return fmt.Errorf("error parsing tunnel network address (%s): %v", tunnelNetwork, err)
 	}
 
-	// TODO: check if the tunnel network has enough addresses!
+	// Check if tunnel network has enough available addresses to accommodate all viridians
+	networkMask, networkLen := conf.Network.Mask.Size()
+	availableTunnelNetworkBits := networkLen - networkMask
+	if availableTunnelNetworkBits < REQUIRED_TUNNEL_NETWORK_BITS {
+		return fmt.Errorf("not enough viridian addresses in tunnel network: %d bits < %d bits", availableTunnelNetworkBits, REQUIRED_TUNNEL_NETWORK_BITS)
+	}
 
 	// Create and open TUN device
 	configuration := water.Config{DeviceType: water.TUN}
