@@ -5,6 +5,7 @@ use std::net::{AddrParseError, Ipv4Addr};
 use std::num::ParseIntError;
 use std::sync::Arc;
 
+use cached::proc_macro::cached;
 use etherparse::icmpv4::DestUnreachableHeader;
 use etherparse::{Icmpv4Header, Icmpv4Type, IpNumber, Ipv4Header, Ipv4HeaderSlice};
 use ipnet::Ipv4Net;
@@ -37,12 +38,13 @@ const FRAGMENT_BYTES: usize = 8;
 const FRAGMENT_TTL: u8 = 64;
 
 
-unsafe fn get_default_interface_by_remote_address(destination_ip: Ipv4Addr) -> DynResult<u32> {
+#[cached(size=1024, result=true)]
+fn get_default_interface_by_remote_address(destination_ip: Ipv4Addr) -> DynResult<u32> {
     let dest_ip = u32::from(destination_ip).to_be();
     let src_ip = u32::from(ZERO_IP_ADDRESS).to_be();
 
     let mut route: MIB_IPFORWARDROW = MIB_IPFORWARDROW::default();
-    let result = GetBestRoute(dest_ip, src_ip, &mut route);
+    let result = unsafe { GetBestRoute(dest_ip, src_ip, &mut route) };
 
     if WIN32_ERROR(result) == ERROR_SUCCESS {
         Ok(route.dwForwardIfIndex)
@@ -219,15 +221,31 @@ impl PacketExchangeProcess for Arc<WinDivert<NetworkLayer>> {
     async fn packet_receive_loop(&self, mut queue: RemoteConstTunnelTransport) -> DynResult<()> {
         loop {
             let value = queue.receive().await?;
+            let raw_packet = value.recreate();
             debug!("Captured a remote packet, length: {}", value.len());
+            let interface_index = match Ipv4HeaderSlice::from_slice(raw_packet) {
+                Ok(res) => {
+                    match get_default_interface_by_remote_address(res.source_addr()) {
+                        Ok(res) => res,
+                        Err(err) => {
+                            debug!("Error calculating interface index for packet: {err}");
+                            continue;
+                        }
+                    }
+                },
+                Err(err) => {
+                    debug!("Error parsing packet header: {err}");
+                    continue;
+                }
+            };
             let mut address = unsafe { WinDivertAddress::<NetworkLayer>::new() };
-            address.set_interface_index(0);
+            address.set_interface_index(interface_index);
             address.set_subinterface_index(DEFAULT_SUBINTERFACE_INDEX);
             address.set_outbound(false);
-            let packet = WinDivertPacket {address, data: Cow::Borrowed(value.recreate())};
+            let packet = WinDivertPacket {address, data: Cow::Borrowed(raw_packet)};
             match self.send(&packet) {
                 Ok(res) => {
-                    debug!("Inserting remote packet into a tunnel, length: {res}");
+                    debug!("Inserting remote packet into a tunnel (interface {interface_index}), length: {res}");
                     queue.send(res as usize).await?;
                 },
                 Err(err) => bail!("Closing receive loop: {err}!")
@@ -334,7 +352,7 @@ impl TunnelInternal {
         let default_interface = if let Some(address) = local_address {
             unsafe { get_default_interface_by_local_address(address).await }?
         } else {
-            unsafe { get_default_interface_by_remote_address(seaside_address) }?
+            get_default_interface_by_remote_address(seaside_address)?
         };
         let (default_network, default_mtu) = unsafe { get_interface_details(default_interface).await }?;
         debug!("Default network properties received: network {default_network}, MTU {default_mtu}");

@@ -37,6 +37,7 @@ neli = "^0.6.4"
 tun = { version = "^0.7.1", features = ["async"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
+cached = "^0.55.1"
 etherparse = "^0.18.0"
 serde = "^1.0.219"
 windivert = "^0.6.0"
