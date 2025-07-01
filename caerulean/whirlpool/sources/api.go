@@ -12,7 +12,6 @@ import (
 	"slices"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/pseusys/betterbuf"
 	"github.com/sirupsen/logrus"
@@ -22,7 +21,6 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -30,7 +28,6 @@ const (
 	DEFAULT_SUGGESTED_DNS     = "8.8.8.8"
 
 	DEFAULT_ADMIN_KEYS           = ""
-	DEFAULT_ADMIN_TOKEN_TIMEOUT  = 24 * 365
 	DEFAULT_GRPC_MAX_TAIL_LENGTH = 256
 )
 
@@ -38,7 +35,6 @@ var (
 	NODE_OWNER_API_KEY  = utils.RequireEnv("SEASIDE_API_KEY_OWNER")
 	NODE_ADMIN_API_KEYS = strings.Split(utils.GetEnv("SEASIDE_API_KEY_ADMIN", DEFAULT_ADMIN_KEYS), ":")
 
-	ADMIN_TOKEN_TIMEOUT  = utils.GetIntEnv("SEASIDE_ADMIN_TOKEN_TIMEOUT", DEFAULT_ADMIN_TOKEN_TIMEOUT, 32) // TODO: rewrite!!
 	GRPC_MAX_TAIL_LENGTH = uint(utils.GetIntEnv("SEASIDE_GRPC_MAX_TAIL_LENGTH", DEFAULT_GRPC_MAX_TAIL_LENGTH, 32))
 	SUGGESTED_DNS_SERVER = utils.GetEnv("SEASIDE_SUGGESTED_DNS", DEFAULT_SUGGESTED_DNS)
 )
@@ -158,7 +154,7 @@ func (server *WhirlpoolServer) Authenticate(ctx context.Context, request *genera
 		Name:         request.Name,
 		Identifier:   request.Identifier,
 		IsAdmin:      true,
-		Subscription: timestamppb.New(time.Now().Add(time.Hour * time.Duration(ADMIN_TOKEN_TIMEOUT))),
+		Subscription: request.Subscription,
 	}
 	logrus.Infof("User %s (id: %s) autnenticated", token.Name, token.Identifier)
 	marshToken, err := proto.Marshal(token)
