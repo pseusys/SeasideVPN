@@ -3,15 +3,14 @@ use lazy_static::lazy_static;
 use rand::Rng;
 use simple_error::bail;
 
+use super::common::{ProtocolFlag, ProtocolMessageType, ProtocolReturnCode};
+use super::utils::{encode_to_32_bytes, get_type_size};
 use crate::bytes::{get_buffer, ByteBuffer};
 use crate::crypto::{Asymmetric, Symmetric};
 use crate::protocol::utils::ENCODE_CONF;
 use crate::rng::get_rng;
 use crate::utils::parse_env;
 use crate::DynResult;
-use super::common::{ProtocolFlag, ProtocolMessageType, ProtocolReturnCode};
-use super::utils::{encode_to_32_bytes, get_type_size};
-
 
 pub type ServerInitHeader = (u8, u32, u8, u16, u32, u16);
 pub type ClientInitHeader = (u8, u32, [u8; 32], u32, u16);
@@ -36,7 +35,6 @@ lazy_static! {
     pub static ref TYPHOON_MAX_RETRIES: usize = parse_env("TYPHOON_MAX_RETRIES", Some(8));
     pub static ref TYPHOON_MAX_TAIL_LENGTH: usize = parse_env("TYPHOON_MAX_TAIL_LENGTH", Some(1024));
 }
-
 
 pub async fn build_client_init<'a, 'b>(cipher: &Asymmetric, packet_number: u32, next_in: u32, token: &ByteBuffer<'b>) -> DynResult<(Symmetric, ByteBuffer<'b>)> {
     let buffer_size = get_type_size::<ClientInitHeader>()?;
@@ -121,12 +119,12 @@ async fn parse_any_hdsk<'a>(data: ByteBuffer<'a>, expected_packet_number: Option
     let header_size = get_type_size::<AnyHandshakeHeader>()?;
     let ((_, packet_number, next_in, tail_length), _): (AnyHandshakeHeader, usize) = decode_from_slice(&data.slice_end(header_size), ENCODE_CONF)?;
     let tail_offset = data.len() - tail_length as usize;
-    let payload  = data.rebuffer_both(header_size, tail_offset);
+    let payload = data.rebuffer_both(header_size, tail_offset);
     if *TYPHOON_MIN_NEXT_IN > next_in || next_in > *TYPHOON_MAX_NEXT_IN {
         bail!("Incorrect next in value in server init: {} < {next_in} < {}", *TYPHOON_MIN_NEXT_IN, *TYPHOON_MAX_NEXT_IN)
     } else if let None = expected_packet_number {
         bail!("Server handshake message received, but expected packet number is still undefined!")
-    } if packet_number != expected_packet_number.unwrap() {
+    } else if packet_number != expected_packet_number.unwrap() {
         bail!("Server INIT response packet ID doesn't match: {packet_number} != {}!", expected_packet_number.unwrap())
     } else if payload.len() == 0 {
         Ok((packet_number, next_in, None))
@@ -160,4 +158,3 @@ pub async fn parse_server_message<'a>(cipher: &mut Symmetric, packet: ByteBuffer
         bail!("Message flags malformed: {flags}!")
     }
 }
-

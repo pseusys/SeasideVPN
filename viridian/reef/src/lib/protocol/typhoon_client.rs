@@ -11,19 +11,18 @@ use rand::Rng;
 use simple_error::bail;
 use tokio::net::UdpSocket;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
-use tokio::{pin, select};
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, timeout};
+use tokio::{pin, select};
 
+use super::typhoon_core::*;
 use crate::bytes::{get_buffer, ByteBuffer};
 use crate::crypto::{Asymmetric, Symmetric};
 use crate::protocol::common::{ProtocolFlag, ProtocolMessageType};
 use crate::rng::get_rng;
 use crate::{run_coroutine_in_thread, run_coroutine_sync};
 use crate::{DynResult, Reader, Writer};
-use super::typhoon_core::*;
-
 
 #[inline]
 fn get_timestamp() -> u32 {
@@ -36,15 +35,14 @@ fn generate_next_in(multiplier: f32) -> u32 {
     (get_rng().gen_range(*TYPHOON_MIN_NEXT_IN..=*TYPHOON_MAX_NEXT_IN) as f32 * multiplier) as u32
 }
 
-
 pub struct TyphoonHandle<'a> {
     peer_address: SocketAddr,
     asymmetric: Asymmetric,
     local: SocketAddr,
-    token: ByteBuffer<'a>
+    token: ByteBuffer<'a>,
 }
 
-impl <'a> TyphoonHandle<'a> {
+impl<'a> TyphoonHandle<'a> {
     async fn read_server_init(&self, socket: &UdpSocket, cipher: &mut Symmetric, packet_number: u32) -> DynResult<(u16, u32)> {
         debug!("Reading server initialization message...");
         loop {
@@ -53,7 +51,7 @@ impl <'a> TyphoonHandle<'a> {
                 Ok(res) => {
                     debug!("Received initialization packet of size: {res}");
                     res
-                },
+                }
                 Err(err) => {
                     warn!("Invalid packet read error: {err}");
                     continue;
@@ -67,13 +65,13 @@ impl <'a> TyphoonHandle<'a> {
                 }
             };
             debug!("Server initialization message received: user ID {user_id}, next in {next_in}");
-            return Ok((user_id, next_in))
+            return Ok((user_id, next_in));
         }
     }
 
     async fn connect_inner(&mut self, socket: &UdpSocket) -> DynResult<(u16, u32, Symmetric)> {
         let mut packet_number: u32;
-    
+
         for i in 0..*TYPHOON_MAX_RETRIES {
             debug!("Trying connection attempt {i}...");
             packet_number = get_timestamp();
@@ -88,7 +86,7 @@ impl <'a> TyphoonHandle<'a> {
             match timeout(Duration::from_millis(sleep as u64), self.read_server_init(socket, &mut symmetric, packet_number)).await {
                 Ok(Ok((user_id, next_in))) => return Ok((user_id, next_in, symmetric)),
                 Ok(Err(err)) => warn!("Error while parsing server response: {err}"),
-                Err(_) => info!("Peer packet waiting timeout, retrying...")
+                Err(_) => info!("Peer packet waiting timeout, retrying..."),
             }
         }
 
@@ -101,12 +99,7 @@ impl <'a> TyphoonHandle<'a> {
         let peer_address = SocketAddr::new(IpAddr::V4(address), port);
         let local_address = SocketAddr::new(IpAddr::V4(local), 0);
         debug!("Handle set up to connect {local_address} (local) to {peer_address} (caerulean)!");
-        Ok(Self {
-            peer_address: peer_address,
-            asymmetric: Asymmetric::new(&key)?,
-            local: local_address,
-            token
-        })
+        Ok(Self { peer_address: peer_address, asymmetric: Asymmetric::new(&key)?, local: local_address, token })
     }
 
     pub async fn connect(&mut self) -> DynResult<impl Reader + Writer + Clone> {
@@ -142,10 +135,10 @@ impl <'a> TyphoonHandle<'a> {
                     prev_sent: 0,
                     rttvar: None,
                     srtt: None,
-                    decay: None
-                })
+                    decay: None,
+                }),
             }),
-            symmetric: cipher
+            symmetric: cipher,
         };
 
         let mut client_clone = client.clone();
@@ -158,7 +151,6 @@ impl <'a> TyphoonHandle<'a> {
     }
 }
 
-
 struct TyphoonClientMutable {
     termination_channel: Sender<()>,
     control_channel: Receiver<u32>,
@@ -168,7 +160,7 @@ struct TyphoonClientMutable {
     prev_sent: u32,
     rttvar: Option<f32>,
     srtt: Option<f32>,
-    decay: Option<JoinHandle<DynResult<()>>>
+    decay: Option<JoinHandle<DynResult<()>>>,
 }
 
 impl TyphoonClientMutable {
@@ -177,11 +169,7 @@ impl TyphoonClientMutable {
     }
 
     fn timeout(&self) -> u32 {
-        if let (Some(srtt_val), Some(rttvar_val)) = (self.srtt, self.rttvar) {
-            (srtt_val + *TYPHOON_RTT_MULT * rttvar_val as f32) as u32
-        } else {
-            *TYPHOON_DEFAULT_TIMEOUT as u32
-        }.clamp(*TYPHOON_MIN_TIMEOUT, *TYPHOON_MAX_TIMEOUT)
+        if let (Some(srtt_val), Some(rttvar_val)) = (self.srtt, self.rttvar) { (srtt_val + *TYPHOON_RTT_MULT * rttvar_val as f32) as u32 } else { *TYPHOON_DEFAULT_TIMEOUT as u32 }.clamp(*TYPHOON_MIN_TIMEOUT, *TYPHOON_MAX_TIMEOUT)
     }
 
     fn regenerate_next_in(&mut self) {
@@ -192,11 +180,7 @@ impl TyphoonClientMutable {
     async fn send_hdsk<'a>(&mut self, symmetric: &mut Symmetric, socket: &UdpSocket, packet_number: u32, data: Option<ByteBuffer<'a>>) -> DynResult<()> {
         debug!("Sending handshake message...");
         self.regenerate_next_in();
-        let packet = if let Some(package) = data {
-            build_client_hdsk_data(symmetric, packet_number, self.prev_next_in, package).await?
-        } else {
-            build_client_hdsk(symmetric, packet_number, self.prev_next_in).await?
-        };
+        let packet = if let Some(package) = data { build_client_hdsk_data(symmetric, packet_number, self.prev_next_in, package).await? } else { build_client_hdsk(symmetric, packet_number, self.prev_next_in).await? };
         socket.send(&packet.slice()).await?;
         Ok(())
     }
@@ -213,18 +197,16 @@ impl TyphoonClientMutable {
     }
 }
 
-
 struct TyphoonClientImmutable {
     socket: UdpSocket,
     references: AtomicUsize,
-    internal: RwLock<TyphoonClientMutable>
+    internal: RwLock<TyphoonClientMutable>,
 }
-
 
 pub struct TyphoonClient {
     keeper: bool,
     internal: Arc<TyphoonClientImmutable>,
-    symmetric: Symmetric
+    symmetric: Symmetric,
 }
 
 macro_rules! with_write {
@@ -268,7 +250,7 @@ impl TyphoonClient {
         match self.wait(Duration::from_millis(next_in_timeout), decay_chan, term_chan).await {
             Ok(Some(res)) => return Ok(Some(res)),
             Ok(None) => debug!("Next in timeout expired, proceeding to decay..."),
-            Err(_) => return Ok(None)
+            Err(_) => return Ok(None),
         }
 
         for i in 0..*TYPHOON_MAX_RETRIES {
@@ -284,7 +266,7 @@ impl TyphoonClient {
             match self.wait(Duration::from_millis(shadowride_timeout), decay_chan, term_chan).await {
                 Ok(Some(res)) => return Ok(Some(res)),
                 Ok(None) => debug!("Shadowride timeout expired, proceeding to force sending..."),
-                Err(_) => return Ok(None)
+                Err(_) => return Ok(None),
             }
 
             let next_in_timeout = with_write!(self, new_self, {
@@ -299,7 +281,7 @@ impl TyphoonClient {
             match self.wait(Duration::from_millis(next_in_timeout), decay_chan, term_chan).await {
                 Ok(Some(res)) => return Ok(Some(res)),
                 Ok(None) => debug!("Next in timeout expired, proceeding to new iteration of decay..."),
-                Err(_) => return Ok(None)
+                Err(_) => return Ok(None),
             }
         }
 
@@ -312,7 +294,7 @@ impl TyphoonClient {
             match self.decay_inner(next_in, &mut ctrl_chan_w, &mut decay_chan, &mut term_chan).await {
                 Ok(Some(nin)) => next_in = nin,
                 Ok(None) => return Ok(()),
-                Err(err) => bail!("Client decay cycle terminated error: {err}!")
+                Err(err) => bail!("Client decay cycle terminated error: {err}!"),
             }
         }
     }
@@ -341,16 +323,14 @@ impl Reader for TyphoonClient {
                 Ok(res) => {
                     debug!("Received a packet of size: {res}");
                     res
-                },
+                }
                 Err(err) => {
                     warn!("Invalid packet read error: {err}");
                     continue;
                 }
             };
             debug!("Peer packet read: {} bytes", buffer.len());
-            let message_parse_result = with_read!(self, new_self, {
-                parse_server_message(&mut self.symmetric, buffer.rebuffer_end(size), new_self.prev_packet_number).await
-            });
+            let message_parse_result = with_read!(self, new_self, { parse_server_message(&mut self.symmetric, buffer.rebuffer_end(size), new_self.prev_packet_number).await });
             let (msgtp, cons, data) = match message_parse_result {
                 Ok((msgtp, cons, data)) => {
                     if msgtp as u8 & ProtocolFlag::HDSK as u8 == 1 {
@@ -360,7 +340,7 @@ impl Reader for TyphoonClient {
                         });
                     }
                     (msgtp, cons, data)
-                },
+                }
                 Err(err) => {
                     warn!("Peer packet parsing error: {err}");
                     continue;
@@ -378,7 +358,7 @@ impl Reader for TyphoonClient {
                 })
             }
             if let Some(message) = data {
-                return Ok(message)
+                return Ok(message);
             }
         }
     }
@@ -398,7 +378,7 @@ impl Writer for TyphoonClient {
                 Ok(res) => {
                     new_self.send_hdsk(&mut self.symmetric, &self.internal.socket, res, Some(bytes)).await?;
                     Ok(0)
-                },
+                }
                 Err(_) => {
                     debug!("Sending data message: {} bytes...", bytes.len());
                     let packet = build_any_data(&mut self.symmetric, bytes).await?;

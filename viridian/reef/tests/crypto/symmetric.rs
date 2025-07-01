@@ -6,12 +6,10 @@ use crate::rng::get_rng;
 use super::super::super::bytes::ByteBuffer;
 use super::Symmetric;
 
-
 const SAMPLE_DATA: &[u8] = b"Sample data for encryption";
 const ADDITIONAL_DATA: &[u8] = b"Sample additional data for encryption";
 
 const SAMPLE_ENCRYPTED_MESSAGE: &[u8] = b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00+\xff\xfb\xf9\x89E\xad\x1b\xb8\x95\x92\xe5\xd3[mh\x8av\xc2L8\xf9\xec\xc4\xb5\xb3\xd6\x97&|\x8dVVmh}\xd3\xbe\xb6\x05i\xe5";
-
 
 #[test(flavor = "multi_thread")]
 async fn test_symmetric_encrypt() {

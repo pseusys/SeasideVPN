@@ -3,17 +3,15 @@ use blake2::Blake2bVar;
 use rand::RngCore;
 use x25519_dalek::{EphemeralSecret, PublicKey, SharedSecret};
 
+use super::symmetric::Symmetric;
 use crate::bytes::ByteBuffer;
 use crate::rng::get_rng;
 use crate::DynResult;
-use super::symmetric::Symmetric;
-
 
 const SYMMETRIC_HASH_SIZE: usize = 32;
 const PUBLIC_KEY_SIZE: usize = 32;
 const SEED_SIZE: usize = 8;
 const N_SIZE: usize = 2;
-
 
 #[inline]
 fn xor_bytes(a: &mut [u8], b: &[u8]) {
@@ -22,10 +20,9 @@ fn xor_bytes(a: &mut [u8], b: &[u8]) {
     }
 }
 
-
 pub struct Asymmetric {
     public_key: PublicKey,
-    seed_key: [u8; 8]
+    seed_key: [u8; 8],
 }
 
 impl Asymmetric {
@@ -33,10 +30,7 @@ impl Asymmetric {
         let asymmetric_key = key.slice();
         let private_bytes = <[u8; PUBLIC_KEY_SIZE]>::try_from(&asymmetric_key[..PUBLIC_KEY_SIZE])?;
         let seed_key = <[u8; SEED_SIZE]>::try_from(&asymmetric_key[PUBLIC_KEY_SIZE..])?;
-        Ok(Self {
-            public_key: PublicKey::from(private_bytes),
-            seed_key,
-        })
+        Ok(Self { public_key: PublicKey::from(private_bytes), seed_key })
     }
 
     #[inline]

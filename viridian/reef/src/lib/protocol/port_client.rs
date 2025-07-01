@@ -8,31 +8,29 @@ use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::{TcpSocket, TcpStream};
 use tokio::time::timeout;
 
-use crate::crypto::{Asymmetric, Symmetric};
-use crate::protocol::port_core::build_client_init;
-use crate::bytes::{get_buffer, ByteBuffer};
-use crate::{run_coroutine_sync, DynResult, Reader, Writer};
 use super::common::ProtocolMessageType;
 use super::port_core::*;
 use super::utils::get_type_size;
-
+use crate::bytes::{get_buffer, ByteBuffer};
+use crate::crypto::{Asymmetric, Symmetric};
+use crate::protocol::port_core::build_client_init;
+use crate::{run_coroutine_sync, DynResult, Reader, Writer};
 
 macro_rules! discard_exact {
     ($socket:expr, $tail:expr, $wait:expr) => {{
         let buffer = get_buffer(Some($tail)).await;
         match $wait {
             Some(res) => timeout(res, $socket.read_exact(&mut buffer.slice_mut())).await?,
-            None => $socket.read_exact(&mut buffer.slice_mut()).await
+            None => $socket.read_exact(&mut buffer.slice_mut()).await,
         }
     }};
 }
-
 
 pub struct PortHandle<'a> {
     peer_address: SocketAddr,
     asymmetric: Asymmetric,
     local: SocketAddr,
-    token: ByteBuffer<'a>
+    token: ByteBuffer<'a>,
 }
 
 impl<'a> PortHandle<'a> {
@@ -57,12 +55,7 @@ impl<'a> PortHandle<'a> {
         let peer_address = SocketAddr::new(IpAddr::V4(address), port);
         let local_address = SocketAddr::new(IpAddr::V4(local), 0);
         debug!("Handle set up to connect {local_address} (local) to {peer_address} (caerulean)!");
-        Ok(Self {
-            peer_address,
-            asymmetric: Asymmetric::new(&key)?,
-            local: local_address,
-            token
-        })
+        Ok(Self { peer_address, asymmetric: Asymmetric::new(&key)?, local: local_address, token })
     }
 
     pub async fn connect(&mut self) -> DynResult<(PortClientReader, PortClientWriter)> {
@@ -92,27 +85,20 @@ impl<'a> PortHandle<'a> {
         let main_stream = main_socket.connect(main_address).await?;
 
         let (main_read, main_write) = main_stream.into_split();
-        let reader_part = PortClientReader {
-            socket: main_read,
-            symmetric: symmetric.clone(),
-        };
-        let writer_part = PortClientWriter {
-            socket: main_write,
-            symmetric: symmetric.clone(),
-        };
+        let reader_part = PortClientReader { socket: main_read, symmetric: symmetric.clone() };
+        let writer_part = PortClientWriter { socket: main_write, symmetric: symmetric.clone() };
         Ok((reader_part, writer_part))
     }
 }
 
-
 pub struct PortClientReader {
     socket: OwnedReadHalf,
-    symmetric: Symmetric
+    symmetric: Symmetric,
 }
 
 pub struct PortClientWriter {
     socket: OwnedWriteHalf,
-    symmetric: Symmetric
+    symmetric: Symmetric,
 }
 
 impl Reader for PortClientReader {

@@ -8,7 +8,6 @@ use std::str::FromStr;
 
 use crate::DynResult;
 
-
 pub fn bytes_to_int(buffer: &[u8]) -> DynResult<i32> {
     Ok(i32::from_ne_bytes(*<&[u8; 4]>::try_from(buffer)?))
 }

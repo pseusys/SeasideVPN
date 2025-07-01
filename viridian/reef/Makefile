@@ -88,7 +88,11 @@ endif
 
 build: dependencies
 	@ # Build reef locally TODO: add feature strict, checking warnings, docs, removing debug info
+ifeq ($(BUILD_TYPE),release)
 	cargo build --all-features --$(BUILD_TYPE)
+else
+	cargo build --all-features --release
+endif
 .PHONY: build
 
 run: build runtime
@@ -103,6 +107,10 @@ test:
 	docker build -f Dockerfile --target tester -t seaside-reef-test ../..
 	docker run --privileged --rm --name seaside-reef-test --sysctl net.ipv6.conf.all.disable_ipv6=1 --entrypoint cargo seaside-reef-test test --package SeasideVPN-Reef --lib -- --nocapture --show-output
 .PHONY: test
+
+lint: build
+	cargo fmt --all -- --check
+.PHONY: lint
 
 
 

@@ -10,7 +10,6 @@ use crate::bytes::ByteBuffer;
 use crate::protocol::{PortHandle, ProtocolType, TyphoonHandle};
 use crate::{run_coroutine_in_thread, DynResult, Reader, Writer};
 
-
 async fn worker_task(mut reader: impl Reader, mut writer: impl Writer, mut terminator: Receiver<()>, message: &str) -> Result<(), Box<SimpleError>> {
     info!("Setting up worker task {}...", message);
     loop {
@@ -31,7 +30,7 @@ async fn worker_task(mut reader: impl Reader, mut writer: impl Writer, mut termi
         debug!("Captured {} bytes {}!", packet.len(), message);
         match writer.write_bytes(packet).await {
             Err(res) => bail!("Error writing to socket: {res}!"),
-            Ok(res) => debug!("Sent {res} bytes {}!", message)
+            Ok(res) => debug!("Sent {res} bytes {}!", message),
         };
     }
 }
@@ -50,7 +49,7 @@ pub async fn create_handle<TR: Reader, TW: Writer>(client_type: &ProtocolType, t
             let (client_reader, client_writer) = PortHandle::new(key.clone(), token.clone(), address, port, local)?.connect().await?;
             debug!("Spawning PORT reader and writer coroutines...");
             Ok(connect(tunnel_reader, tunnel_writer, client_reader, client_writer))
-        },
+        }
         ProtocolType::TYPHOON => {
             let client = TyphoonHandle::new(key.clone(), token.clone(), address, port, local)?.connect().await?;
             debug!("Spawning TYPHOON reader and writer coroutines...");

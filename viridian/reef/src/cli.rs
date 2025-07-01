@@ -1,26 +1,24 @@
 use std::env::{set_var, var};
-use std::net::{Ipv4Addr, IpAddr, ToSocketAddrs};
+use std::net::{IpAddr, Ipv4Addr, ToSocketAddrs};
 use std::str::FromStr;
 
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::engine::Engine;
+use env_logger::init;
 use log::{debug, info};
 use reeflib::protocol::ProtocolType;
 use simple_error::bail;
 use structopt::StructOpt;
-use env_logger::init;
 
 use reeflib::bytes::ByteBuffer;
 use reeflib::link::parse_client_link;
 use reeflib::viridian::Viridian;
 use reeflib::DynResult;
 
-
 const DEFAULT_CAERULEAN_ADDRESS: &str = "127.0.0.1";
 const DEFAULT_DNS_ADDRESS: &str = "8.8.8.8";
 const DEFAULT_CAERULEAN_PORT: &str = "8587";
 const DEFAULT_LOG_LEVEL: &str = "INFO";
-
 
 fn parse_address(address: &str) -> DynResult<Ipv4Addr> {
     match (address, 0).to_socket_addrs()?.next() {
@@ -35,7 +33,6 @@ fn parse_address(address: &str) -> DynResult<Ipv4Addr> {
 fn parse_bytes<'a>(string: String) -> DynResult<ByteBuffer<'a>> {
     Ok(ByteBuffer::from(URL_SAFE_NO_PAD.decode(&string)?))
 }
-
 
 #[derive(StructOpt, Debug)]
 #[structopt(rename_all = "kebab-case")]
@@ -94,29 +91,30 @@ struct Opt {
 
     /// Install VPN connection, run command and exit after command is finished
     #[structopt(short = "e", long)]
-    command: Option<String>
+    command: Option<String>,
 }
-
 
 fn init_logging() {
-    set_var("RUST_LOG", match var("SEASIDE_LOG_LEVEL") {
-        Ok(level) => level,
-        _ => match var("RUST_LOG") {
+    set_var(
+        "RUST_LOG",
+        match var("SEASIDE_LOG_LEVEL") {
             Ok(level) => level,
-            _ => DEFAULT_LOG_LEVEL.to_string()
-        }
-    });
+            _ => match var("RUST_LOG") {
+                Ok(level) => level,
+                _ => DEFAULT_LOG_LEVEL.to_string(),
+            },
+        },
+    );
     init();
 }
-
 
 fn process_link<'a>(link: Option<String>) -> DynResult<(Option<String>, Option<ByteBuffer<'a>>, Option<u16>, Option<u16>, Option<ByteBuffer<'a>>, Option<String>)> {
     match link {
         Some(res) => {
             let (a, p, pp, pt, t, d) = parse_client_link(res)?;
             Ok((Some(a), Some(p), pp, pt, Some(t), d))
-        },
-        None => Ok((None, None, None, None, None, None))
+        }
+        None => Ok((None, None, None, None, None, None)),
     }
 }
 
@@ -130,21 +128,21 @@ async fn main() -> DynResult<()> {
         Some(res) => res,
         None => match opt.public {
             Some(res) => parse_bytes(res)?,
-            None => bail!("Caerulean public key was not specified!")
-        }
+            None => bail!("Caerulean public key was not specified!"),
+        },
     };
 
     let token = match link_token {
         Some(res) => res,
         None => match opt.token {
             Some(res) => parse_bytes(res)?,
-            None => bail!("Caerulean token was not specified!")
-        }
+            None => bail!("Caerulean token was not specified!"),
+        },
     };
 
     let protocol = match opt.protocol {
         Some(res) => ProtocolType::from_str(&res)?,
-        None => bail!("Caerulean protocol was not specified!")
+        None => bail!("Caerulean protocol was not specified!"),
     };
 
     let link_port_number = match protocol {
@@ -154,17 +152,17 @@ async fn main() -> DynResult<()> {
 
     let port = match link_port_number {
         Some(res) => res,
-        None => opt.port
+        None => opt.port,
     };
 
     let address = match link_address {
         Some(res) => parse_address(&res)?,
-        None => opt.address
+        None => opt.address,
     };
 
     let dns = match link_dns {
         Some(res) => parse_address(&res)?,
-        None => opt.dns
+        None => opt.dns,
     };
 
     info!("Creating reef client...");

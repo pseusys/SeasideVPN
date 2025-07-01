@@ -22,10 +22,8 @@ use super::{bytes_to_int, bytes_to_ip_address, bytes_to_string, string_to_bytes,
 use crate::utils::parse_env;
 use crate::DynResult;
 
-
 const FRA_MASK: Rta = Rta::UnrecognizedConst(10);
 const DEFAULT_RESOLV_CONF_PATH: &str = "/etc/resolv.conf";
-
 
 fn get_default_address_and_device(socket: &mut NlSocketHandle, target: Ipv4Addr) -> DynResult<(Ipv4Addr, i32)> {
     let sea_addr_vec = Vec::from(target.octets());
@@ -118,19 +116,19 @@ fn get_default_interface_by_remote_address(seaside_address: Ipv4Addr) -> DynResu
     Ok((default_ip, default_cidr, default_name, default_mtu))
 }
 
-
 fn create_tunnel(name: &str, address: Ipv4Addr, netmask: Ipv4Addr, mtu: u16) -> DynResult<AsyncDevice> {
     let mut config = Configuration::default();
     config.address(address).netmask(netmask).tun_name(name).mtu(mtu).up();
-    config.platform_config(|conf| { conf.ensure_root_privileges(true); });
+    config.platform_config(|conf| {
+        conf.ensure_root_privileges(true);
+    });
     let tunnel = match create_as_async(&config) {
         Ok(device) => Ok(device),
-        Err(err) => bail!("Error creating tunnel: {}", err)
+        Err(err) => bail!("Error creating tunnel: {}", err),
     };
     File::create(format!("/proc/sys/net/ipv6/conf/{name}/disable_ipv6"))?.write(&[0x31])?;
     tunnel
 }
-
 
 fn set_dns_server(resolv_path: &str, dns_server: Option<Ipv4Addr>) -> DynResult<(String, Option<String>)> {
     let resolv_conf_data = read_to_string(resolv_path)?;
@@ -151,7 +149,6 @@ fn reset_dns_server(resolv_path: &str, resolv_conf_data: &str) -> DynResult<()> 
     write(resolv_path, resolv_conf_data)?;
     Ok(())
 }
-
 
 fn save_svr_table(svr_idx: u8) -> DynResult<Vec<Rtmsg>> {
     let svr_table = RtTable::UnrecognizedConst(svr_idx);
@@ -262,7 +259,6 @@ fn disable_firewall(firewall_rules: &Vec<String>) -> Result<(), Box<dyn Error>> 
     Ok(())
 }
 
-
 pub struct TunnelInternal {
     pub default_address: Ipv4Addr,
     tunnel_device: AsyncDevice,
@@ -271,7 +267,7 @@ pub struct TunnelInternal {
     svr_data: Vec<Rtmsg>,
     route_message: Rtmsg,
     rule_message: Rtmsg,
-    firewall_table: Vec<String>
+    firewall_table: Vec<String>,
 }
 
 impl TunnelInternal {
@@ -314,7 +310,7 @@ impl TunnelInternal {
         };
 
         debug!("Creating tunnel handle...");
-        Ok(Self {default_address, tunnel_device, resolv_conf, resolv_path, svr_data, route_message, rule_message, firewall_table})
+        Ok(Self { default_address, tunnel_device, resolv_conf, resolv_path, svr_data, route_message, rule_message, firewall_table })
     }
 }
 

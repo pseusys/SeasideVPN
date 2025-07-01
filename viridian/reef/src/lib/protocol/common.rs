@@ -6,14 +6,13 @@ use std::ops::BitOr;
 use num_enum::IntoPrimitive;
 use num_enum::TryFromPrimitive;
 
-
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
 pub enum ProtocolFlag {
     INIT = 128,
     HDSK = 64,
     DATA = 32,
-    TERM = 16
+    TERM = 16,
 }
 
 impl BitOr for ProtocolFlag {
@@ -38,14 +37,13 @@ impl Display for ProtocolFlag {
     }
 }
 
-
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
 pub enum ProtocolMessageType {
-    Handshake      = ProtocolFlag::HDSK as u8,
+    Handshake = ProtocolFlag::HDSK as u8,
     HandshakeData = (ProtocolFlag::HDSK as u8) | (ProtocolFlag::DATA as u8),
-    Data           = ProtocolFlag::DATA as u8,
-    Termination    = ProtocolFlag::TERM as u8
+    Data = ProtocolFlag::DATA as u8,
+    Termination = ProtocolFlag::TERM as u8,
 }
 
 impl Display for ProtocolMessageType {
@@ -54,9 +52,8 @@ impl Display for ProtocolMessageType {
     }
 }
 
-
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
 pub enum ProtocolReturnCode {
-    Success = 0
+    Success = 0,
 }

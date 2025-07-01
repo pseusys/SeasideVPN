@@ -2,7 +2,6 @@ use std::any::type_name;
 use std::env::var;
 use std::str::FromStr;
 
-
 pub fn parse_env<T: FromStr>(key: &str, default: Option<T>) -> T {
     match var(key) {
         Ok(res) => match res.parse::<T>() {

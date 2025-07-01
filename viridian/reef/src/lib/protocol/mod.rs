@@ -2,7 +2,6 @@ use std::str::FromStr;
 
 use simple_error::{bail, SimpleError};
 
-
 mod common;
 mod port_core;
 mod typhoon_core;
@@ -13,7 +12,6 @@ pub use port_client::*;
 
 mod typhoon_client;
 pub use typhoon_client::*;
-
 
 #[derive(Debug)]
 pub enum ProtocolType {

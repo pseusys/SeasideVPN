@@ -1,6 +1,5 @@
-use rand::{CryptoRng, RngCore};
 use rand::Rng;
-
+use rand::{CryptoRng, RngCore};
 
 #[allow(dead_code)]
 struct MockRng;
@@ -24,7 +23,6 @@ impl RngCore for MockRng {
 }
 
 impl CryptoRng for MockRng {}
-
 
 #[inline]
 #[allow(dead_code)]

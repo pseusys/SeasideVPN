@@ -9,7 +9,6 @@ use url::Url;
 use crate::bytes::ByteBuffer;
 use crate::DynResult;
 
-
 pub fn parse_client_link<'a>(link: String) -> DynResult<(String, ByteBuffer<'a>, Option<u16>, Option<u16>, ByteBuffer<'a>, Option<String>)> {
     let url = Url::parse(&link)?;
     if url.scheme() != "seaside+client" {

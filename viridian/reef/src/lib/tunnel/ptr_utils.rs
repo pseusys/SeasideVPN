@@ -6,12 +6,11 @@ use tokio::sync::watch::{Receiver, Sender};
 
 use crate::DynResult;
 
-
 #[derive(Clone, Copy)]
 pub struct SendPtr<T> {
     ptr: T,
     len: usize,
-    _marker: PhantomData<u8>
+    _marker: PhantomData<u8>,
 }
 
 impl<T> SendPtr<T> {
@@ -48,10 +47,9 @@ impl ConstSendPtr {
     }
 }
 
-
 pub struct TunnelTransport<S, R: Copy> {
     sender: Sender<Option<S>>,
-    receiver: Receiver<Option<R>>
+    receiver: Receiver<Option<R>>,
 }
 
 pub type LocalTunnelTransport<T> = TunnelTransport<SendPtr<T>, usize>;
@@ -64,7 +62,7 @@ pub type RemoteConstTunnelTransport = RemoteTunnelTransport<*const u8>;
 
 impl<S, R: Copy> TunnelTransport<S, R> {
     pub fn new(sender: Sender<Option<S>>, receiver: Receiver<Option<R>>) -> Self {
-        Self {sender, receiver}
+        Self { sender, receiver }
     }
 
     async fn send_internal(&mut self, data: Option<S>) -> DynResult<()> {
@@ -83,7 +81,7 @@ impl<S, R: Copy> TunnelTransport<S, R> {
         let borrowed = self.receiver.borrow();
         match *borrowed {
             Some(res) => Ok(res),
-            None => bail!("Tunnel queue was closed!")
+            None => bail!("Tunnel queue was closed!"),
         }
     }
 

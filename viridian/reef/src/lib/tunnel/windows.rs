@@ -18,27 +18,25 @@ use tokio::task::JoinHandle;
 use windivert::address::WinDivertAddress;
 use windivert::layer::NetworkLayer;
 use windivert::packet::WinDivertPacket;
-use windivert::{CloseAction, WinDivert};
 use windivert::prelude::{WinDivertFlags, WinDivertShutdownMode};
+use windivert::{CloseAction, WinDivert};
 use windows::Win32::Foundation::{ERROR_BUFFER_OVERFLOW, ERROR_SUCCESS, WIN32_ERROR};
 use windows::Win32::NetworkManagement::IpHelper::{GetAdaptersAddresses, GetBestRoute, GAA_FLAG_INCLUDE_PREFIX, IP_ADAPTER_ADDRESSES_LH, IP_ADAPTER_UNICAST_ADDRESS_LH, MIB_IPFORWARDROW};
 use windows::Win32::Networking::WinSock::{AF_INET, SOCKADDR_IN};
 use wmi::{COMLibrary, WMIConnection};
 
+use super::ptr_utils::{LocalMutTunnelTransport, MutSendPtr, RemoteMutTunnelTransport};
+use super::Tunnelling;
 use crate::bytes::get_buffer;
 use crate::tunnel::ptr_utils::{ConstSendPtr, LocalConstTunnelTransport, RemoteConstTunnelTransport};
 use crate::{run_coroutine_in_thread, run_coroutine_sync, DynResult};
-use super::Tunnelling;
-use super::ptr_utils::{LocalMutTunnelTransport, MutSendPtr, RemoteMutTunnelTransport};
-
 
 const ZERO_IP_ADDRESS: Ipv4Addr = Ipv4Addr::new(0, 0, 0, 0);
 const DEFAULT_SUBINTERFACE_INDEX: u32 = 0;
 const FRAGMENT_BYTES: usize = 8;
 const FRAGMENT_TTL: u8 = 64;
 
-
-#[cached(size=1024, result=true)]
+#[cached(size = 1024, result = true)]
 fn get_default_interface_by_remote_address(destination_ip: Ipv4Addr) -> DynResult<u32> {
     let dest_ip = u32::from(destination_ip).to_be();
     let src_ip = u32::from(ZERO_IP_ADDRESS).to_be();
@@ -73,13 +71,13 @@ async unsafe fn get_default_interface<T, P: Fn(*mut IP_ADAPTER_UNICAST_ADDRESS_L
 
     let mut current_adapter = adapter_addresses;
     while !current_adapter.is_null() {
-        let adapter = *current_adapter ;
+        let adapter = *current_adapter;
         let mut unicast_ptr = adapter.FirstUnicastAddress;
 
         while !unicast_ptr.is_null() {
             match processor(unicast_ptr, &adapter)? {
                 Some(res) => return Ok(Some(res)),
-                None => unicast_ptr = (*unicast_ptr).Next
+                None => unicast_ptr = (*unicast_ptr).Next,
             };
         }
 
@@ -105,7 +103,7 @@ async unsafe fn get_default_interface_by_local_address(local_ip: Ipv4Addr) -> Dy
     match get_default_interface(|u, a| process_interface(u, a, local_ip)).await {
         Ok(Some(res)) => Ok(res),
         Ok(None) => bail!("No interfaces with IP address {local_ip}!"),
-        Err(err) => bail!("Error processing interface addresses: {err}!")
+        Err(err) => bail!("Error processing interface addresses: {err}!"),
     }
 }
 
@@ -124,17 +122,16 @@ async unsafe fn get_interface_details(interface_index: u32) -> DynResult<(Ipv4Ne
     match get_default_interface(|u, a| process_interface(u, a, interface_index)).await {
         Ok(Some(res)) => Ok(res),
         Ok(None) => bail!("No IP addresses found for interface with index {interface_index}!"),
-        Err(err) => bail!("Error processing interface addresses: {err}!")
+        Err(err) => bail!("Error processing interface addresses: {err}!"),
     }
 }
-
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "PascalCase")]
 struct AdapterConfig {
     index: u32,
     ip_enabled: bool,
-    dns_server_search_order: Vec<String>
+    dns_server_search_order: Vec<String>,
 }
 
 pub fn set_dns_addresses(interface_indexes: HashSet<u32>, dns_address: Option<Ipv4Addr>) -> DynResult<(Vec<Ipv4Addr>, HashMap<u32, Vec<String>>)> {
@@ -142,7 +139,7 @@ pub fn set_dns_addresses(interface_indexes: HashSet<u32>, dns_address: Option<Ip
     let wmi_con = WMIConnection::new(com_con.into())?;
     let adapters: Vec<AdapterConfig> = wmi_con.raw_query("SELECT Index, IPEnabled, DNSServerSearchOrder FROM Win32_NetworkAdapterConfiguration")?;
     let active_adapters: Vec<AdapterConfig> = adapters.into_iter().filter(|a| a.ip_enabled && interface_indexes.contains(&a.index)).collect();
-    
+
     let mut dns_data = HashMap::new();
     let mut dns_servers = HashSet::new();
 
@@ -180,7 +177,6 @@ fn reset_dns_addresses(dns_data: &HashMap<u32, Vec<String>>) -> DynResult<()> {
     Ok(())
 }
 
-
 trait PacketExchangeProcess {
     async fn build_icmp_frag_needed_packet<'a>(&self, original_ip_packet: &WinDivertPacket<'a, NetworkLayer>, mtu: u16) -> DynResult<WinDivertPacket<'a, NetworkLayer>>;
     async fn packet_receive_loop(&self, queue: RemoteConstTunnelTransport) -> DynResult<()>;
@@ -202,7 +198,7 @@ impl PacketExchangeProcess for Arc<WinDivert<NetworkLayer>> {
 
         let mut ip_header = Ipv4Header::new((icmp_header.header_len() + icmp_payload.len()) as u16, FRAGMENT_TTL, IpNumber::ICMP, original_ip_header.destination(), original_ip_header.source())?;
         ip_header.header_checksum = ip_header.calc_header_checksum();
-        
+
         let buffer = get_buffer(None).await;
         buffer.append(&ip_header.to_bytes());
         buffer.append(&icmp_header.to_bytes());
@@ -212,10 +208,7 @@ impl PacketExchangeProcess for Arc<WinDivert<NetworkLayer>> {
         address.set_interface_index(original_packet.address.interface_index());
         address.set_subinterface_index(original_packet.address.subinterface_index());
         address.set_outbound(true);
-        Ok(WinDivertPacket {
-            address,
-            data: Cow::Owned(buffer.into())
-        })
+        Ok(WinDivertPacket { address, data: Cow::Owned(buffer.into()) })
     }
 
     async fn packet_receive_loop(&self, mut queue: RemoteConstTunnelTransport) -> DynResult<()> {
@@ -224,13 +217,11 @@ impl PacketExchangeProcess for Arc<WinDivert<NetworkLayer>> {
             let raw_packet = value.recreate();
             debug!("Captured a remote packet, length: {}", value.len());
             let interface_index = match Ipv4HeaderSlice::from_slice(raw_packet) {
-                Ok(res) => {
-                    match get_default_interface_by_remote_address(res.source_addr()) {
-                        Ok(res) => res,
-                        Err(err) => {
-                            debug!("Error calculating interface index for packet: {err}");
-                            continue;
-                        }
+                Ok(res) => match get_default_interface_by_remote_address(res.source_addr()) {
+                    Ok(res) => res,
+                    Err(err) => {
+                        debug!("Error calculating interface index for packet: {err}");
+                        continue;
                     }
                 },
                 Err(err) => {
@@ -242,13 +233,13 @@ impl PacketExchangeProcess for Arc<WinDivert<NetworkLayer>> {
             address.set_interface_index(interface_index);
             address.set_subinterface_index(DEFAULT_SUBINTERFACE_INDEX);
             address.set_outbound(false);
-            let packet = WinDivertPacket {address, data: Cow::Borrowed(raw_packet)};
+            let packet = WinDivertPacket { address, data: Cow::Borrowed(raw_packet) };
             match self.send(&packet) {
                 Ok(res) => {
                     debug!("Inserting remote packet into a tunnel (interface {interface_index}), length: {res}");
                     queue.send(res as usize).await?;
-                },
-                Err(err) => bail!("Closing receive loop: {err}!")
+                }
+                Err(err) => bail!("Closing receive loop: {err}!"),
             };
         }
     }
@@ -261,8 +252,8 @@ impl PacketExchangeProcess for Arc<WinDivert<NetworkLayer>> {
                     Ok(res) => {
                         debug!("Captured a local packet, length: {}", res.data.len());
                         res
-                    },
-                    Err(err) => bail!("Closing send loop: {err}!")
+                    }
+                    Err(err) => bail!("Closing send loop: {err}!"),
                 };
                 let packet_length = packet.data.len();
                 if packet_length > mtu {
@@ -271,7 +262,7 @@ impl PacketExchangeProcess for Arc<WinDivert<NetworkLayer>> {
                         Ok(res) => {
                             debug!("Sending fragmentation request, length: {}", res.data.len());
                             self.send(&res)?;
-                        },
+                        }
                         Err(err) => debug!("Error constructing 'fragmentation needed' packet: {err}"),
                     };
                     continue 'inner;
@@ -286,22 +277,14 @@ impl PacketExchangeProcess for Arc<WinDivert<NetworkLayer>> {
 }
 
 async fn enable_routing(seaside_address: Ipv4Addr, default_index: u32, default_network: Ipv4Net, divert_priority: i16, default_mtu: u32, receive_queue: RemoteConstTunnelTransport, send_queue: RemoteMutTunnelTransport, dns_addresses: Vec<Ipv4Addr>, capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, capture_ports: Option<(u16, u16)>, exempt_ports: Option<(u16, u16)>) -> DynResult<(Arc<WinDivert<NetworkLayer>>, JoinHandle<DynResult<()>>, JoinHandle<DynResult<()>>)> {
-    let exempt_ports_filter = if let Some((lowest, highest)) = exempt_ports {
-        format!("tcp? (tcp.SrcPort < {} or tcp.SrcPort > {}): (udp.SrcPort < {} or udp.SrcPort > {})", lowest, highest, lowest, highest)
-    } else {
-        String::from("true")
-    };
+    let exempt_ports_filter = if let Some((lowest, highest)) = exempt_ports { format!("tcp? (tcp.SrcPort < {} or tcp.SrcPort > {}): (udp.SrcPort < {} or udp.SrcPort > {})", lowest, highest, lowest, highest) } else { String::from("true") };
 
     let mut exempt_range_filter = exempt_ranges.iter().map(|i| format!("(ip.DstAddr < {} or ip.DstAddr > {})", i.network(), i.broadcast())).collect::<Vec<String>>().join(" and ");
     if exempt_range_filter.is_empty() {
         exempt_range_filter = String::from("true");
     }
 
-    let capture_ports_filter = if let Some((lowest, highest)) = capture_ports {
-        format!("(tcp.SrcPort >= {} and tcp.SrcPort <= {}) or (udp.SrcPort >= {} and udp.SrcPort <= {})", lowest, highest, lowest, highest)
-    } else {
-        String::from("false")
-    };
+    let capture_ports_filter = if let Some((lowest, highest)) = capture_ports { format!("(tcp.SrcPort >= {} and tcp.SrcPort <= {}) or (udp.SrcPort >= {} and udp.SrcPort <= {})", lowest, highest, lowest, highest) } else { String::from("false") };
 
     let mut capture_range_filter = capture_ranges.iter().map(|i| format!("(ip.DstAddr >= {} and ip.DstAddr <= {})", i.network(), i.broadcast())).collect::<Vec<String>>().join(" or ");
     if capture_range_filter.is_empty() {
@@ -314,7 +297,7 @@ async fn enable_routing(seaside_address: Ipv4Addr, default_index: u32, default_n
         let (network, _) = unsafe { get_interface_details(net_idx).await }?;
         let filter = format!("((ifIdx == {iface}) and (ip.DstAddr < {} or ip.DstAddr > {}))", network.network(), network.broadcast());
         capture_networks_result.push(filter);
-    };
+    }
     let mut capture_iface_filter = capture_networks_result.join(" or ");
     if capture_iface_filter.is_empty() {
         capture_iface_filter = String::from("false");
@@ -335,7 +318,6 @@ async fn enable_routing(seaside_address: Ipv4Addr, default_index: u32, default_n
     Ok((divert_arc, receive_handle, send_handle))
 }
 
-
 pub struct TunnelInternal {
     pub default_address: Ipv4Addr,
     divert: Arc<WinDivert<NetworkLayer>>,
@@ -343,17 +325,13 @@ pub struct TunnelInternal {
     receive_queue: RwLock<LocalConstTunnelTransport>,
     send_handle: Option<JoinHandle<DynResult<()>>>,
     receive_handle: Option<JoinHandle<DynResult<()>>>,
-    dns_data: HashMap<u32, Vec<String>>
+    dns_data: HashMap<u32, Vec<String>>,
 }
 
 impl TunnelInternal {
     pub async fn new(seaside_address: Ipv4Addr, _: &str, _: Ipv4Net, svr_index: u8, dns: Option<Ipv4Addr>, mut capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, capture_ports: Option<(u16, u16)>, exempt_ports: Option<(u16, u16)>, local_address: Option<Ipv4Addr>) -> DynResult<Self> {
         debug!("Checking system default network properties...");
-        let default_interface = if let Some(address) = local_address {
-            unsafe { get_default_interface_by_local_address(address).await }?
-        } else {
-            get_default_interface_by_remote_address(seaside_address)?
-        };
+        let default_interface = if let Some(address) = local_address { unsafe { get_default_interface_by_local_address(address).await }? } else { get_default_interface_by_remote_address(seaside_address)? };
         let (default_network, default_mtu) = unsafe { get_interface_details(default_interface).await }?;
         debug!("Default network properties received: network {default_network}, MTU {default_mtu}");
         let default_address = default_network.addr();
@@ -378,9 +356,9 @@ impl TunnelInternal {
         let remote_receive_queue = RemoteConstTunnelTransport::new(remote_receive_sender, remote_receive_receiver);
         let local_receive_queue = RwLock::new(LocalConstTunnelTransport::new(local_receive_sender, local_receive_receiver));
         let (divert, receive_handle, send_handle) = enable_routing(seaside_address, default_interface, default_network, svr_index as i16, default_mtu, remote_receive_queue, remote_send_queue, dns_addresses, capture_iface, capture_ranges, exempt_ranges, capture_ports, exempt_ports).await?;
-        
+
         debug!("Creating tunnel object...");
-        Ok(Self {default_address, divert, send_queue: local_send_queue, receive_queue: local_receive_queue, send_handle: Some(send_handle), receive_handle: Some(receive_handle), dns_data})
+        Ok(Self { default_address, divert, send_queue: local_send_queue, receive_queue: local_receive_queue, send_handle: Some(send_handle), receive_handle: Some(receive_handle), dns_data })
     }
 }
 

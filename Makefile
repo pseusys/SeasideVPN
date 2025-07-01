@@ -104,6 +104,11 @@ lint-algae:
 	poetry -C viridian/algae run poe lint
 .PHONY: lint-algae
 
+lint-reef:
+	@ # Lint viridian reef (locally)
+	make -C viridian/reef -s lint
+.PHONY: lint-reef
+
 lint-scripts:
 	@ # Lint all the scripts in project (*.sh and .github/*.mjs scripts)
 	shellcheck -x -e SC1091,SC2129,SC2002,SC2091 **/*.sh
@@ -115,7 +120,7 @@ lint-markdown:
 	markdownlint -d **/*.md
 .PHONY: lint-markdown
 
-lint: lint-whirlpool lint-algae lint-scripts lint-markdown
+lint: lint-whirlpool lint-algae lint-reef lint-scripts lint-markdown
 	@ # Lint all the system parts
 .PHONY: lint
 

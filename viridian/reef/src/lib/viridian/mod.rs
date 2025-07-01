@@ -10,13 +10,12 @@ use simple_error::{bail, require_with, SimpleError};
 use tokio::process::Command;
 use tokio::{select, try_join};
 
-use crate::bytes::ByteBuffer;
-use crate::general::create_handle;
-use crate::DynResult;
-use super::tunnel::Tunnel;
+use super::bytes::ByteBuffer;
+use super::general::create_handle;
 use super::protocol::ProtocolType;
+use super::tunnel::Tunnel;
 use super::utils::{parse_env, parse_str_env};
-
+use super::DynResult;
 
 #[cfg(target_os = "linux")]
 mod linux;
@@ -28,13 +27,11 @@ mod windows;
 #[cfg(target_os = "windows")]
 use windows::*;
 
-
 const DEFAULT_TUNNEL_NAME: &str = "seatun";
 const DEFAULT_DNS_ADDRESS: Ipv4Addr = Ipv4Addr::new(0, 0, 0, 0);
 const DEFAULT_TUNNEL_ADDRESS: Ipv4Addr = Ipv4Addr::new(192, 168, 0, 82);
 const DEFAULT_TUNNEL_NETMASK: Ipv4Addr = Ipv4Addr::new(255, 255, 255, 0);
 const DEFAULT_SVR_INDEX: u8 = 82;
-
 
 pub struct Viridian<'a> {
     key: ByteBuffer<'a>,
@@ -43,7 +40,7 @@ pub struct Viridian<'a> {
     port: u16,
     tunnel: Tunnel,
     client_type: ProtocolType,
-    local_address: Ipv4Addr
+    local_address: Ipv4Addr,
 }
 
 impl<'a> Viridian<'a> {
@@ -62,11 +59,7 @@ impl<'a> Viridian<'a> {
             dns = None;
         }
 
-        let capture_iface_set = if let Some(ifaces) = capture_iface{
-            HashSet::from_iter(ifaces)
-        } else {
-            HashSet::new()
-        };
+        let capture_iface_set = if let Some(ifaces) = capture_iface { HashSet::from_iter(ifaces) } else { HashSet::new() };
 
         let mut capture_ranges_pre = if let Some(ranges) = capture_ranges {
             let networks: Result<Vec<Ipv4Net>, ipnet::AddrParseError> = ranges.iter().map(|a| a.parse()).collect();
@@ -168,7 +161,7 @@ impl<'a> Viridian<'a> {
         let _ = termination.send(()).inspect_err(|_| debug!("Apparently all the background tasks have already terminated!"));
         match try_join!(send_handle, receive_handle) {
             Ok(_) => debug!("All the background tasks terminated successfully!"),
-            Err(res) => debug!("A background task failed with an error: {res}")
+            Err(res) => debug!("A background task failed with an error: {res}"),
         }
 
         Ok(result?)

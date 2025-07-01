@@ -2,19 +2,18 @@ use std::net::TcpStream;
 use std::time::Duration;
 
 use bincode::{decode_from_slice, encode_into_slice};
+use lazy_static::lazy_static;
 use rand::{Rng, RngCore};
 use simple_error::bail;
 use socket2::{Domain, Protocol, Socket, TcpKeepalive, Type};
-use lazy_static::lazy_static;
 
+use super::super::utils::parse_env;
+use super::common::{ProtocolFlag, ProtocolMessageType, ProtocolReturnCode};
+use super::utils::{encode_to_32_bytes, get_type_size, ENCODE_CONF};
 use crate::bytes::{get_buffer, ByteBuffer};
 use crate::crypto::{Asymmetric, Symmetric, MAC_LEN, NONCE_LEN};
-use crate::DynResult;
 use crate::rng::get_rng;
-use super::common::{ProtocolFlag, ProtocolMessageType, ProtocolReturnCode};
-use super::super::utils::parse_env;
-use super::utils::{encode_to_32_bytes, get_type_size, ENCODE_CONF};
-
+use crate::DynResult;
 
 pub type ServerInitHeader = (u8, u8, u16, u16);
 pub type ClientInitHeader = (u8, [u8; 32], u16, u16);
@@ -26,7 +25,6 @@ lazy_static! {
     static ref PORT_TAIL_LENGTH: usize = parse_env("PORT_TAIL_LENGTH", Some(512));
     pub static ref PORT_TIMEOUT: u32 = (parse_env("PORT_TIMEOUT", Some(32.0)) * 1000.0) as u32;
 }
-
 
 pub fn create_and_configure_socket() -> DynResult<TcpStream> {
     let socket = Socket::new(Domain::IPV4, Type::STREAM, Some(Protocol::TCP))?;
