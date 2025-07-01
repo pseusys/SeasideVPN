@@ -2,6 +2,7 @@ use rand::{CryptoRng, RngCore};
 use rand::Rng;
 
 
+#[allow(dead_code)]
 struct MockRng;
 
 impl RngCore for MockRng {
@@ -26,6 +27,7 @@ impl CryptoRng for MockRng {}
 
 
 #[inline]
+#[allow(dead_code)]
 pub(crate) fn get_rng() -> impl Rng + CryptoRng {
     MockRng
 }
