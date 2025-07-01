@@ -14,7 +14,6 @@ use simple_error::{bail, SimpleError};
 use tokio::sync::watch::channel;
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
-use tun::{create_as_async, AsyncDevice, Configuration};
 use windivert::address::WinDivertAddress;
 use windivert::layer::NetworkLayer;
 use windivert::packet::WinDivertPacket;
@@ -26,12 +25,14 @@ use windows::Win32::Networking::WinSock::{AF_INET, SOCKADDR_IN};
 use wmi::{COMLibrary, WMIConnection};
 
 use crate::bytes::get_buffer;
+use crate::tunnel::ptr_utils::{ConstSendPtr, LocalConstTunnelTransport, RemoteConstTunnelTransport};
 use crate::{run_coroutine_in_thread, run_coroutine_sync, DynResult};
 use super::Tunnelling;
 use super::ptr_utils::{LocalMutTunnelTransport, MutSendPtr, RemoteMutTunnelTransport};
 
 
 const ZERO_IP_ADDRESS: Ipv4Addr = Ipv4Addr::new(0, 0, 0, 0);
+const DEFAULT_SUBINTERFACE_INDEX: u32 = 0;
 const FRAGMENT_BYTES: usize = 8;
 const FRAGMENT_TTL: u8 = 64;
 
@@ -126,17 +127,6 @@ async unsafe fn get_interface_details(interface_index: u32) -> DynResult<(Ipv4Ne
 }
 
 
-fn create_tunnel(name: &str, address: Ipv4Addr, netmask: Ipv4Addr, mtu: u16) -> DynResult<AsyncDevice> {
-    let mut config = Configuration::default();
-    config.address(address).netmask(netmask).tun_name(name).mtu(mtu).up();
-    let tunnel = match create_as_async(&config) {
-        Ok(device) => Ok(device),
-        Err(err) => bail!("Error creating tunnel: {}", err)
-    };
-    tunnel
-}
-
-
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "PascalCase")]
 struct AdapterConfig {
@@ -191,7 +181,8 @@ fn reset_dns_addresses(dns_data: &HashMap<u32, Vec<String>>) -> DynResult<()> {
 
 trait PacketExchangeProcess {
     async fn build_icmp_frag_needed_packet<'a>(&self, original_ip_packet: &WinDivertPacket<'a, NetworkLayer>, mtu: u16) -> DynResult<WinDivertPacket<'a, NetworkLayer>>;
-    async fn packet_receive_loop(&self, mtu: usize, queue: RemoteMutTunnelTransport) -> DynResult<()>;
+    async fn packet_receive_loop(&self, queue: RemoteConstTunnelTransport) -> DynResult<()>;
+    async fn packet_send_loop(&self, mtu: usize, queue: RemoteMutTunnelTransport) -> DynResult<()>;
 }
 
 impl PacketExchangeProcess for Arc<WinDivert<NetworkLayer>> {
@@ -225,7 +216,26 @@ impl PacketExchangeProcess for Arc<WinDivert<NetworkLayer>> {
         })
     }
 
-    async fn packet_receive_loop(&self, mtu: usize, mut queue: RemoteMutTunnelTransport) -> DynResult<()> {
+    async fn packet_receive_loop(&self, mut queue: RemoteConstTunnelTransport) -> DynResult<()> {
+        loop {
+            let value = queue.receive().await?;
+            debug!("Captured a remote packet, length: {}", value.len());
+            let mut address = unsafe { WinDivertAddress::<NetworkLayer>::new() };
+            address.set_interface_index(0);
+            address.set_subinterface_index(DEFAULT_SUBINTERFACE_INDEX);
+            address.set_outbound(false);
+            let packet = WinDivertPacket {address, data: Cow::Borrowed(value.recreate())};
+            match self.send(&packet) {
+                Ok(res) => {
+                    debug!("Inserting remote packet into a tunnel, length: {res}");
+                    queue.send(res as usize).await?;
+                },
+                Err(err) => bail!("Closing receive loop: {err}!")
+            };
+        }
+    }
+
+    async fn packet_send_loop(&self, mtu: usize, mut queue: RemoteMutTunnelTransport) -> DynResult<()> {
         'outer: loop {
             let value = queue.receive().await?;
             'inner: loop {
@@ -234,7 +244,7 @@ impl PacketExchangeProcess for Arc<WinDivert<NetworkLayer>> {
                         debug!("Captured a local packet, length: {}", res.data.len());
                         res
                     },
-                    Err(err) => bail!("Error capturing packet: {err}!")
+                    Err(err) => bail!("Closing send loop: {err}!")
                 };
                 let packet_length = packet.data.len();
                 if packet_length > mtu {
@@ -248,7 +258,7 @@ impl PacketExchangeProcess for Arc<WinDivert<NetworkLayer>> {
                     };
                     continue 'inner;
                 } else {
-                    debug!("Inserting a packet into a tunnel, length: {packet_length}");
+                    debug!("Inserting local packet into a tunnel, length: {packet_length}");
                     queue.send(packet_length).await?;
                     continue 'outer;
                 }
@@ -257,7 +267,7 @@ impl PacketExchangeProcess for Arc<WinDivert<NetworkLayer>> {
     }
 }
 
-async fn enable_routing(seaside_address: Ipv4Addr, default_index: u32, default_network: Ipv4Net, divert_priority: i16, default_mtu: u32, queue: RemoteMutTunnelTransport, dns_addresses: Vec<Ipv4Addr>, capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, capture_ports: Option<(u16, u16)>, exempt_ports: Option<(u16, u16)>) -> DynResult<(Arc<WinDivert<NetworkLayer>>, JoinHandle<DynResult<()>>)> {
+async fn enable_routing(seaside_address: Ipv4Addr, default_index: u32, default_network: Ipv4Net, divert_priority: i16, default_mtu: u32, receive_queue: RemoteConstTunnelTransport, send_queue: RemoteMutTunnelTransport, dns_addresses: Vec<Ipv4Addr>, capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, capture_ports: Option<(u16, u16)>, exempt_ports: Option<(u16, u16)>) -> DynResult<(Arc<WinDivert<NetworkLayer>>, JoinHandle<DynResult<()>>, JoinHandle<DynResult<()>>)> {
     let exempt_ports_filter = if let Some((lowest, highest)) = exempt_ports {
         format!("tcp? (tcp.SrcPort < {} or tcp.SrcPort > {}): (udp.SrcPort < {} or udp.SrcPort > {})", lowest, highest, lowest, highest)
     } else {
@@ -300,23 +310,26 @@ async fn enable_routing(seaside_address: Ipv4Addr, default_index: u32, default_n
     let divert = WinDivert::network(filter, divert_priority, WinDivertFlags::new())?;
 
     let divert_arc = Arc::new(divert);
-    let divert_clone = divert_arc.clone();
-    let receive_handle = run_coroutine_in_thread!(divert_clone.packet_receive_loop(default_mtu as usize, queue));
-    Ok((divert_arc, receive_handle))
+    let receive_divert_clone = divert_arc.clone();
+    let send_divert_clone = divert_arc.clone();
+    let receive_handle = run_coroutine_in_thread!(receive_divert_clone.packet_receive_loop(receive_queue));
+    let send_handle = run_coroutine_in_thread!(send_divert_clone.packet_send_loop(default_mtu as usize, send_queue));
+    Ok((divert_arc, receive_handle, send_handle))
 }
 
 
 pub struct TunnelInternal {
     pub default_address: Ipv4Addr,
-    tunnel_device: Arc<AsyncDevice>,
     divert: Arc<WinDivert<NetworkLayer>>,
-    queue: RwLock<LocalMutTunnelTransport>,
-    handle: Option<JoinHandle<DynResult<()>>>,
+    send_queue: RwLock<LocalMutTunnelTransport>,
+    receive_queue: RwLock<LocalConstTunnelTransport>,
+    send_handle: Option<JoinHandle<DynResult<()>>>,
+    receive_handle: Option<JoinHandle<DynResult<()>>>,
     dns_data: HashMap<u32, Vec<String>>
 }
 
 impl TunnelInternal {
-    pub async fn new(seaside_address: Ipv4Addr, tunnel_name: &str, tunnel_network: Ipv4Net, svr_index: u8, dns: Option<Ipv4Addr>, mut capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, capture_ports: Option<(u16, u16)>, exempt_ports: Option<(u16, u16)>, local_address: Option<Ipv4Addr>) -> DynResult<Self> {
+    pub async fn new(seaside_address: Ipv4Addr, _: &str, _: Ipv4Net, svr_index: u8, dns: Option<Ipv4Addr>, mut capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, capture_ports: Option<(u16, u16)>, exempt_ports: Option<(u16, u16)>, local_address: Option<Ipv4Addr>) -> DynResult<Self> {
         debug!("Checking system default network properties...");
         let default_interface = if let Some(address) = local_address {
             unsafe { get_default_interface_by_local_address(address).await }?
@@ -332,34 +345,40 @@ impl TunnelInternal {
             capture_iface.insert(default_interface.to_string());
         }
 
-        debug!("Creating tunnel device: address {}, netmask {}...", tunnel_network.addr(), tunnel_network.netmask());
-        let tunnel_device = Arc::new(create_tunnel(tunnel_name, tunnel_network.addr(), tunnel_network.netmask(), default_mtu as u16)?);
-
         debug!("Setting DNS address to {dns:?}...");
         let interfaces: Result<Vec<u32>, ParseIntError> = capture_iface.iter().map(|s| s.parse()).collect();
         let (dns_addresses, dns_data) = set_dns_addresses(HashSet::from_iter(interfaces?), dns)?;
         debug!("The DNS server for interfaces were set to: {dns_addresses:?}");
 
         debug!("Setting up routing...");
-        let (remote_sender, local_receiver) = channel(None);
-        let (local_sender, remote_receiver) = channel(None);
-        let remote_queue = RemoteMutTunnelTransport::new(remote_sender, remote_receiver);
-        let local_queue = RwLock::new(LocalMutTunnelTransport::new(local_sender, local_receiver));
-        let (divert, handle) = enable_routing(seaside_address, default_interface, default_network, svr_index as i16, default_mtu, remote_queue, dns_addresses, capture_iface, capture_ranges, exempt_ranges, capture_ports, exempt_ports).await?;
-        Ok(Self {default_address, divert, queue: local_queue, tunnel_device, handle: Some(handle), dns_data})
+        let (remote_send_sender, local_send_receiver) = channel(None);
+        let (local_send_sender, remote_send_receiver) = channel(None);
+        let remote_send_queue = RemoteMutTunnelTransport::new(remote_send_sender, remote_send_receiver);
+        let local_send_queue = RwLock::new(LocalMutTunnelTransport::new(local_send_sender, local_send_receiver));
+        let (remote_receive_sender, local_receive_receiver) = channel(None);
+        let (local_receive_sender, remote_receive_receiver) = channel(None);
+        let remote_receive_queue = RemoteConstTunnelTransport::new(remote_receive_sender, remote_receive_receiver);
+        let local_receive_queue = RwLock::new(LocalConstTunnelTransport::new(local_receive_sender, local_receive_receiver));
+        let (divert, receive_handle, send_handle) = enable_routing(seaside_address, default_interface, default_network, svr_index as i16, default_mtu, remote_receive_queue, remote_send_queue, dns_addresses, capture_iface, capture_ranges, exempt_ranges, capture_ports, exempt_ports).await?;
+        
+        debug!("Creating tunnel object...");
+        Ok(Self {default_address, divert, send_queue: local_send_queue, receive_queue: local_receive_queue, send_handle: Some(send_handle), receive_handle: Some(receive_handle), dns_data})
     }
 }
 
 impl Tunnelling for TunnelInternal {
     async fn recv(&self, buf: &mut [u8]) -> DynResult<usize> {
         let pointer = MutSendPtr::new(buf);
-        let mut writer = self.queue.write().await;
+        let mut writer = self.send_queue.write().await;
         writer.send(pointer).await?;
         writer.receive().await
     }
 
     async fn send(&self, buf: &[u8]) -> DynResult<usize> {
-        Ok(self.tunnel_device.send(buf).await?)
+        let pointer = ConstSendPtr::new(buf);
+        let mut writer = self.receive_queue.write().await;
+        writer.send(pointer).await?;
+        writer.receive().await
     }
 }
 
@@ -375,15 +394,26 @@ impl Drop for TunnelInternal {
             divert.shutdown(WinDivertShutdownMode::Both).inspect_err(|e| error!("Error shutting down WinDivert: {e}"));
             divert.close(CloseAction::Nothing).inspect_err(|e| error!("Error closing WinDivert: {e}"));
 
-            debug!("Closing routing queue...");
-            let mut queue_writer = self.queue.write().await;
-            queue_writer.close().await.inspect_err(|e| info!("Error closing tunnel queue: {e}"));
+            debug!("Closing routing queue (receive)...");
+            let mut receive_queue_writer = self.receive_queue.write().await;
+            receive_queue_writer.close().await.inspect_err(|e| info!("Error closing receive tunnel queue: {e}"));
 
-            debug!("Waiting for handle thread...");
-            let receive_decay = replace(&mut self.handle, None);
-            if let Some(thread) = receive_decay {
-                let result = thread.await.expect("WinDivert thread termination error!");
-                result.inspect_err(|e| info!("WinDivert thread terminated with: {e}"));
+            debug!("Closing routing queue (send)...");
+            let mut send_queue_writer = self.send_queue.write().await;
+            send_queue_writer.close().await.inspect_err(|e| info!("Error closing send tunnel queue: {e}"));
+
+            debug!("Waiting for handle thread (receive)...");
+            let receive_handle = replace(&mut self.receive_handle, None);
+            if let Some(thread) = receive_handle {
+                let result = thread.await.expect("WinDivert receive thread termination error!");
+                result.inspect_err(|e| info!("WinDivert receive thread terminated with: {e}"));
+            }
+
+            debug!("Waiting for handle thread (send)...");
+            let send_handle = replace(&mut self.send_handle, None);
+            if let Some(thread) = send_handle {
+                let result = thread.await.expect("WinDivert send thread termination error!");
+                result.inspect_err(|e| info!("WinDivert send thread terminated with: {e}"));
             }
 
             debug!("Reverting DNS servers...");

@@ -1,5 +1,5 @@
 use std::marker::PhantomData;
-use std::slice::from_raw_parts_mut;
+use std::slice::{from_raw_parts, from_raw_parts_mut};
 
 use simple_error::bail;
 use tokio::sync::watch::{Receiver, Sender};
@@ -14,10 +14,17 @@ pub struct SendPtr<T> {
     _marker: PhantomData<u8>
 }
 
+impl<T> SendPtr<T> {
+    pub fn len(&self) -> usize {
+        self.len
+    }
+}
+
 unsafe impl<T> Send for SendPtr<T> {}
 unsafe impl<T> Sync for SendPtr<T> {}
 
 pub type MutSendPtr = SendPtr<*mut u8>;
+pub type ConstSendPtr = SendPtr<*const u8>;
 
 impl MutSendPtr {
     pub fn new(buf: &mut [u8]) -> Self {
@@ -27,6 +34,17 @@ impl MutSendPtr {
 
     pub fn recreate(&self) -> &mut [u8] {
         unsafe { from_raw_parts_mut(self.ptr, self.len) }
+    }
+}
+
+impl ConstSendPtr {
+    pub fn new(buf: &[u8]) -> Self {
+        let ptr = buf.as_ptr();
+        Self { ptr, len: buf.len(), _marker: PhantomData }
+    }
+
+    pub fn recreate(&self) -> &[u8] {
+        unsafe { from_raw_parts(self.ptr, self.len) }
     }
 }
 
@@ -40,7 +58,9 @@ pub type LocalTunnelTransport<T> = TunnelTransport<SendPtr<T>, usize>;
 pub type RemoteTunnelTransport<T> = TunnelTransport<usize, SendPtr<T>>;
 
 pub type LocalMutTunnelTransport = LocalTunnelTransport<*mut u8>;
+pub type LocalConstTunnelTransport = LocalTunnelTransport<*const u8>;
 pub type RemoteMutTunnelTransport = RemoteTunnelTransport<*mut u8>;
+pub type RemoteConstTunnelTransport = RemoteTunnelTransport<*const u8>;
 
 impl<S, R: Copy> TunnelTransport<S, R> {
     pub fn new(sender: Sender<Option<S>>, receiver: Receiver<Option<R>>) -> Self {
