@@ -292,7 +292,7 @@ impl TyphoonClient {
         let mut next_in = initial_next_in;
         loop {
             match self.decay_inner(next_in, &mut ctrl_chan_w, &mut decay_chan, &mut term_chan).await {
-                Ok(Some(nin)) => next_in = nin,
+                Ok(Some(res)) => next_in = res,
                 Ok(None) => return Ok(()),
                 Err(err) => bail!("Client decay cycle terminated error: {err}!"),
             }

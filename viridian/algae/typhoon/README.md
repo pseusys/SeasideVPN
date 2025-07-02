@@ -59,7 +59,7 @@ That is why a separate `Server` thread is provided for every user connected to t
 
 ## Recognition protection
 
-Since all the messages are completely encrypted (or consist of random parts), the protocol should provide suffient protection from packet analysis.
+Since all the messages are completely encrypted (or consist of random parts), the protocol should provide sufficient protection from packet analysis.
 However, there are some other metadata that is important to hide, including time and size metadata.
 That is how the protocol addresses the challenges:
 
@@ -201,7 +201,7 @@ stateDiagram
   Lonely --> Still: A handshake message is received from Server
   Lonely --> Shadowriding: Timeout expires
   note left of Lonely
-    Client waits for Server reponse for "next_in + timeout - RTT".
+    Client waits for Server response for "next_in + timeout - RTT".
     It continues sending data to Server in the meantime.
     A number of retries on entering the state is specified.
   end note
@@ -256,7 +256,7 @@ stateDiagram
   Lonely --> Still: A handshake message is received from Server
   Lonely --> Shadowriding: Timeout expires
   note left of Lonely
-    Server waits for Client reponse for "next_in + timeout".
+    Server waits for Client response for "next_in + timeout".
     It continues sending data to Client in the meantime.
     A number of retries on entering the state is specified.
   end note
@@ -289,12 +289,12 @@ Some of the values mentioned above have special constraints on their calculation
 
 RTT is calculated using [EWMA](https://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average) algorithm.
 However, since `INIT` packet is only send once and `DATA`-only packets are not tracked and have shortened header, only `HDSK` packets are used for RTT calculation.
-It is also important to substract the `next_in` random delay from the resulting packet RTT on every step.
+It is also important to subtract the `next_in` random delay from the resulting packet RTT on every step.
 Global variables `ALPHA` and `BETA` are used for RTT calculations.
 Timeout will be calculated as smooth RTT + RTT variance * `RTT_MULT`.
 
 The RTT value should be updated upon receiving a `HDSK` packet.
-The packet RTT cna be calculated using this formula: `PacketReceiveTimestamp - PacketSendTimestamp - RequestNextIn`.
+The packet RTT can be calculated using this formula: `PacketReceiveTimestamp - PacketSendTimestamp - RequestNextIn`.
 
 Several bounds are implemented for both RTT and timeout values (when they are used in practice).
 RTT should be between `MIN_RTT` and `MAX_RTT`, the default value can be set to `DEFAULT_RTT`.

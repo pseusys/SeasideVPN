@@ -69,7 +69,7 @@ func (conf *TunnelConfig) storeForwarding() {
 }
 
 // Setup iptables configuration for VPN usage.
-// First, flush all iptables rules, setup allowed incoming packet patters and drop all the other packets.
+// First, flush all iptables rules, setup allowed incoming packet patterns and drop all the other packets.
 // Then, setup forwarding from external to tunnel interface and back, also enabling masquerade for external interface outputs.
 // Should be applied for TunnelConf object.
 // Accept internal and external IP addresses as strings, seaside, network and control ports as integers.

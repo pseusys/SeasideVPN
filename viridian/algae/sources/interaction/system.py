@@ -23,10 +23,10 @@ class _SystemUtils:
     # Unix TUN device set name number.
     _UNIX_TUNSETIFF = 0x400454CA
 
-    # Unix TUN devuce set owner number.
+    # Unix TUN device set owner number.
     _UNIX_TUNSETOWNER = 0x400454CC
 
-    # Unix TUN devuce set group number.
+    # Unix TUN device set group number.
     _UNIX_TUNSETGROUP = 0x400454CE
 
     # Unix TUN device create named tunnel number.

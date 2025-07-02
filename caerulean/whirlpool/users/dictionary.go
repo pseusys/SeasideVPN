@@ -44,7 +44,7 @@ func NewViridianDict() (*ViridianDict, error) {
 	maxAdmins := uint16(utils.GetIntEnv("SEASIDE_MAX_ADMINS", DEFAULT_MAX_ADMINS, 16))
 	maxTotal := maxViridians + maxAdmins
 
-	// Exit if limit configuration is inconsistant
+	// Exit if limit configuration is inconsistent
 	if maxTotal > math.MaxUint16-3 {
 		return nil, fmt.Errorf("error initializing viridian array: too many users requested: %d", maxTotal)
 	}

@@ -1,6 +1,6 @@
 # Viridian
 
-Viridian is a common name for any Whirlpool VPN client.
+Viridian is a common name for any Seaside VPN client.
 There are several viridians available for different platforms and purposes.
 
 ## VPN packet encryption

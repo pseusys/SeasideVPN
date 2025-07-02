@@ -14,7 +14,7 @@ pub struct ByteBuffer<'a> {
 }
 
 impl<'a> ByteBuffer<'a> {
-    #[inline] // TOOD: private
+    #[inline] // TODO: private
     pub fn precise(before_cap: usize, size: usize, after_cap: usize, kept: KeptVector<'a>) -> Self {
         let buffer_end = before_cap + size;
         ByteBuffer { data: Rc::new(RefCell::new(kept)), length: buffer_end + after_cap, start: before_cap, end: buffer_end }

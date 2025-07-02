@@ -11,6 +11,25 @@ env:
   RUNNING_IN_CI: 1
 
 jobs:
+  spelling-lint:
+    name: Lint Spelling Everywhere
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11 🐍
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Dependencies 🔮
+        run: pip3 install codespell
+
+      - name: Lint Markdown Files 👇
+        run: make lint-spelling
+
   scripts-lint:
     name: Lint Scripts Everywhere
     runs-on: ubuntu-latest
@@ -25,8 +44,8 @@ jobs:
       - name: Lint Scripts 🧪
         run: make lint-scripts
 
-  misc-lint:
-    name: Lint Everything Else Everywhere
+  lint-markdown:
+    name: Lint Markdown Files
     runs-on: ubuntu-latest
 
     steps:

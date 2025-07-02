@@ -1,0 +1,7 @@
+[codespell]
+builtin = clear,rare,informal,usage,code,names
+ignore-words-list = stdio,crate,keypair,uint,jupyter,mut
+skip = *.ipynb
+count =
+check-filenames =
+check-hidden =

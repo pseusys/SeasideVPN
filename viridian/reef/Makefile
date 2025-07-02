@@ -89,9 +89,9 @@ endif
 build: dependencies
 	@ # Build reef locally TODO: add feature strict, checking warnings, docs, removing debug info
 ifeq ($(BUILD_TYPE),release)
-	cargo build --all-features --$(BUILD_TYPE)
-else
 	cargo build --all-features --release
+else
+	cargo build --all-features
 endif
 .PHONY: build
 

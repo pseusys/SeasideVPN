@@ -81,10 +81,10 @@ def port_number(minval: int, maxval: int) -> Callable[[str], int]:
     return internal
 
 
-def logging_level(defult: str, convert: bool) -> Callable[[str], Union[int, str]]:
+def logging_level(default: str, convert: bool) -> Callable[[str], Union[int, str]]:
     """
     Parse and return the given logging name, optionally converting it to int, or return the default one.
-    :param defult: default logging level (string representation).
+    :param default: default logging level (string representation).
     :param convert: resolve logging level to integer.
     :return: the generator function.
     """
@@ -93,16 +93,16 @@ def logging_level(defult: str, convert: bool) -> Callable[[str], Union[int, str]
     def inner(value: str) -> Union[int, str]:
         uppercase_value = value.upper()
         if convert:
-            return mapping.get(uppercase_value, mapping.get(defult.upper(), NOTSET))
+            return mapping.get(uppercase_value, mapping.get(default.upper(), NOTSET))
         else:
-            return uppercase_value if uppercase_value in mapping else defult.upper()
+            return uppercase_value if uppercase_value in mapping else default.upper()
 
     return inner
 
 
 class DefaultOptionalAction(Action):
     """
-    Action for storing and converting any passed agrument.
+    Action for storing and converting any passed argument.
     Return None if no arguments passed.
     """
 

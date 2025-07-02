@@ -23,7 +23,7 @@ logger = getLogger(__name__)
 def lint(files: Optional[List[str]] = None) -> int:
     """
     Run python code linting.
-    "Error", "warning" and "fatal" levels of `flake8` library are chacked.
+    "Error", "warning" and "fatal" levels of `flake8` library are checked.
     Library `black` is also used without source files modification.
     :param files: list of files to check, `None` for all project files.
     :return: exit code integer.
@@ -52,7 +52,7 @@ def lint(files: Optional[List[str]] = None) -> int:
 def format(files: Optional[List[str]] = None, modify: bool = True) -> int:
     """
     Format python code using `black` library.
-    :param files: list of files to check, `None` for all prject files.
+    :param files: list of files to check, `None` for all project files.
     :param modify: whether source files should be modified.
     :return: exit code integer.
     """

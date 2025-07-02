@@ -120,7 +120,12 @@ lint-markdown:
 	markdownlint -d **/*.md
 .PHONY: lint-markdown
 
-lint: lint-whirlpool lint-algae lint-reef lint-scripts lint-markdown
+lint-spelling:
+	@ # Lint spelling in all the indexed files
+	git ls-files | xargs codespell
+.PHONY: lint-spelling
+
+lint: lint-whirlpool lint-algae lint-reef lint-scripts lint-markdown lint-spelling
 	@ # Lint all the system parts
 .PHONY: lint
 

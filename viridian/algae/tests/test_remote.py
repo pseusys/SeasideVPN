@@ -24,9 +24,9 @@ def caerulean_address() -> Generator[str, None, None]:
 @pytest.mark.skipif(getenv("RUNNING_IN_CI", "0") == "1", reason="Ping test shouldn't be run in CI environment as most of them don't support PING")
 @pytest.mark.timeout(10.0)
 def test_caerulean_ping(caerulean_address: str) -> None:
-    logger.info("Testing with PING porotocol")
-    assert ping(caerulean_address, count=1, size=16).success(SuccessOn.All), "PING request was not completely successfull!"
-    assert ping("8.8.8.8", count=8, size=64).success(SuccessOn.Most), "PING request was not completely successfull!"
+    logger.info("Testing with PING protocol")
+    assert ping(caerulean_address, count=1, size=16).success(SuccessOn.All), "PING request was not completely successful!"
+    assert ping("8.8.8.8", count=8, size=64).success(SuccessOn.Most), "PING request was not completely successful!"
 
 
 @pytest.mark.timeout(10.0)

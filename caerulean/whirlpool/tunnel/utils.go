@@ -103,7 +103,7 @@ func NewContext(ctx context.Context, config *TunnelConfig) context.Context {
 
 // Retrieve TunnelConfig from context.
 // Accept context.
-// Return TunnelConfig and True if successul, nil and False otherwise.
+// Return TunnelConfig and True if successful, nil and False otherwise.
 func FromContext(ctx context.Context) (*TunnelConfig, bool) {
 	config, ok := ctx.Value(tunnelConfigKey{}).(*TunnelConfig)
 	return config, ok

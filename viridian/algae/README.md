@@ -67,7 +67,7 @@ The following rules are prepended to the existing chains (in order):
 ... and same rule set for `FORWARD` chain.
 
 After that it sets tunnel device `MTU`, IP address (the IP address is `192.168.0.65`) and changes state to `UP`.
-It also cleares routing table #65, sets default route to caerulean internal IP there and sets routing lookup for packets marked with number `65` in table #65.
+It also clears routing table #65, sets default route to caerulean internal IP there and sets routing lookup for packets marked with number `65` in table #65.
 
 Finally, the algae `viridian` launches two asyncio coroutines: one for reading packets from tunnel, encrypting them and sending in UDP packets to the specified caerulean `whirlpool` port, and another for reading packets from caerulean `whirlpool`, decrypting them and writing to the tunnel device.
 
@@ -95,11 +95,11 @@ flowchart TB
   end
   system{Local System} -- Outgoing traffic --> tunnel[Tunnel interface]
   system{Local System} -- Coordinator --> whirlpool[(Whirlpool)]
-  tunnel[Tunnel interface] -- Incomming traffic --> system{Local System}
-  receiver(Receiver process) -- Raw incomming packets --> tunnel[Tunnel interface]
+  tunnel[Tunnel interface] -- Incoming traffic --> system{Local System}
+  receiver(Receiver process) -- Raw incoming packets --> tunnel[Tunnel interface]
   tunnel[Tunnel interface] -- Raw outgoing packets --> sender(Sender process)
   sender(Sender process) -- Encrypted outgoing packets -->whirlpool[(Whirlpool)]
-  whirlpool[(Whirlpool)] -- Encrypted incomming packets --> receiver(Receiver process)
+  whirlpool[(Whirlpool)] -- Encrypted incoming packets --> receiver(Receiver process)
   whirlpool[(Whirlpool)] --> internet(((Internet)))
   internet(((Internet))) --> whirlpool[(Whirlpool)]
 ```

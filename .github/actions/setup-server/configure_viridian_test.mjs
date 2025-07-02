@@ -92,7 +92,7 @@ function convertPathToWindows(path) {
 /**
  * Convert given path to WSL-compatible format (using `wslpath` tool) if running on Windows.
  * Return path as it is otherwise.
- * @param {string} path path ro convert.
+ * @param {string} path path to convert.
  * @returns {string} converted path.
  */
 function convertPathToWSL(path) {

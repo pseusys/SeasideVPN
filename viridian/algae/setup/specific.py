@@ -17,7 +17,7 @@ _SEMVER_REGEX = r"\d+\.\d+\.\d+"
 
 def _get_distro() -> Optional[str]:
     """
-    Get the current linux destribution name (or a similar one) from the list in `_BASE_DISTROS`.
+    Get the current linux distribution name (or a similar one) from the list in `_BASE_DISTROS`.
     Reads and parses `/etc/os-release` file for that, uses either `ID` or `ID_LIKE` value.
     If the current distribution is not found in `_BASE_DISTROS`, just return the `ID` value.
     :return: linux distribution name or `None` if the file does not exist.

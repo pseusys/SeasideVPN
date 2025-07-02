@@ -6,7 +6,7 @@
 [![TEST](https://github.com/pseusys/SeasideVPN/actions/workflows/test.yml/badge.svg)](https://github.com/pseusys/SeasideVPN/actions/workflows/test.yml)
 [![LINT](https://github.com/pseusys/SeasideVPN/actions/workflows/lint.yml/badge.svg)](https://github.com/pseusys/SeasideVPN/actions/workflows/lint.yml)
 
-A simple PPTP UDP and VPN system, focused on undetectability.
+A simple PPTP UDP VPN system, focused on undetectability.
 The system is based on a new headerless completely encrypted communication protocol.
 
 > Current project version: **"0.0.3"**
@@ -15,7 +15,8 @@ The system is based on a new headerless completely encrypted communication proto
 
 Here are few things that make Seaside VPN unique, fast and secure:
 
-1. Seaside VPN operates on transport network level, being able to control the traffic on IP packet level. This allows simple and fast algorithms for packet processing.
+1. Seaside VPN operates on transport network level, being able to control the traffic on IP packet level.
+   This allows simple and fast algorithms for packet processing.
 2. VPN data packets in Seaside VPN contain no header at all, that makes it harder to detect the VPN traffic.
 3. Seaside VPN uses encrypted gRPC channels for control packet exchange. Channels are not recreated while the connection is active.
 4. Seaside VPN control packets contain random length tail metadata and are exchanged at random time intervals, making any assumptions about their nature harder.
@@ -42,7 +43,7 @@ Following naming is used:
 - [`Whirlpool`](#whirlpool) is a worker node.
   It allows user traffic forwarding, encryption, etc.
   Several `whirlpool` nodes in different locations and of different performance can be included into a single network.
-  In order to make the sytem truly P2P, all network users are encouraged to manage their own `whirlpool` node and though contribute to the system.
+  In order to make the system truly P2P, all network users are encouraged to manage their own `whirlpool` node and though contribute to the system.
 - [`Viridian`](#viridian-client) is a user application (desktop, mobile, etc.).
   One `viridian` can be connected to one Seaside network at a time, but is allowed to choose between different `whirlpool`s in it.
 
@@ -131,7 +132,7 @@ Following ways are yet to be implemented:
 1. VPN packets sending via several "gateway" servers with different IPs, simulating [`UDP tracker`](https://en.wikipedia.org/wiki/UDP_tracker) protocol.
 
 An encrypted viridian packet arriving to a whirlpool is authenticated by its port destination.
-I.e. alongside with a TCP gRPC contol channel a similar dedicated UDP port is assigned to every viridian and the VPN packets from that viridian should arrive to that port.
+I.e. alongside with a TCP gRPC control channel a similar dedicated UDP port is assigned to every viridian and the VPN packets from that viridian should arrive to that port.
 
 ## Connection certificate
 
@@ -150,8 +151,8 @@ Connection certificate is a secret Seaside network address and should be shared 
 
 > NB! In case of non-digital connection certificate transmission, QR-code usage is advised.
 
-Each node can support multiple **payload** options, e.g. for users with differen privelege levels or for users from different origins.
-It is required for unauthorised access to the network prevention (i.e. it is **not enough** to know the IP address and port to connect).
+Each node can support multiple **payload** options, e.g. for users with different privilege levels or for users from different origins.
+It is required for unauthorized access to the network prevention (i.e. it is **not enough** to know the IP address and port to connect).
 
 All the connection certificate can be expressed in a form of an URL:
 
@@ -167,7 +168,9 @@ Below some short descriptions of different system parts are given alongside with
 
 ### Caerulean (server)
 
-Caerulean is server side of Seaside VPN, it consists of several parts:
+Caerulean is server side of Seaside VPN.
+See detailed documentation [here](./caerulean/README.md).
+It consists of several parts:
 
 #### Surface
 
@@ -196,6 +199,7 @@ See detailed documentation [here](./viridian/algae/README.md).
 #### Reef
 
 A client in `Rust` written for production.
+Also defines a cross-platform library that is used in other OS-specific clients.
 My first program in `Rust` written after I have finished all the [rustanomicon](https://doc.rust-lang.org/nomicon/).
 
 See detailed documentation [here](./viridian/reef/README.md).
@@ -234,6 +238,7 @@ These are the most important of them:
   > - [`make`](https://www.gnu.org/software/make/) and [`bash`](https://www.gnu.org/software/bash/) for shell scripts execution.
   > - [`shellcheck`](https://github.com/koalaman/shellcheck) for `shell` scripts linting.
   > - [`markdownlint`](https://github.com/igorshubovych/markdownlint-cli) for `markdown` files linting.
+  > - [`codespell`](`https://github.com/codespell-project/codespell`) for all the text files spelling checking.
   > - Dependencies for `algae` running, testing and linting are listed in the [dedicated README](./viridian/algae/README.md#dependencies).
   > - Dependencies for `whirlpool` code generation and running are listed in the [dedicated README](./caerulean/whirlpool/README.md#dependencies).
   > - [`NodeJS18+`](https://nodejs.org/en) for scripts (in `./github/scripts`) execution.
@@ -247,7 +252,7 @@ The steps of expected system development and not-yet-implemented features are de
 Whirlpool to Surface connection:
 
 1. Whirlpool applies for connection, suggests the fee.
-2. Surface refuses OR server advices a new fee OR server registers payment contract on blockchain + approves.
+2. Surface refuses OR server proposes a new fee OR server registers payment contract on blockchain + approves.
 3. Whirlpool sends another application OR checks blockchain data over the LATEST request and sends connection info.
 
 Proxy to Surface connection:
@@ -271,7 +276,7 @@ Proxy to Surface connection:
 ### TODOs
 
 1. Check tests without 0.0.0.0 iptables rule(s).
-2. Rename all "user" and "cleint" to viridian (for consistency).
+2. Rename all "user" and "client" to viridian (for consistency).
 3. Publish notebooks (for future publication?).
 4. Revise python protocols, fix random bugs, add error synchronization.
 
