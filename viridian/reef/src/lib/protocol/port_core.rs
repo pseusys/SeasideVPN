@@ -7,12 +7,12 @@ use rand::{Rng, RngCore};
 use simple_error::bail;
 use socket2::{Domain, Protocol, Socket, TcpKeepalive, Type};
 
-use super::super::utils::parse_env;
-use super::common::{ProtocolFlag, ProtocolMessageType, ProtocolReturnCode};
-use super::utils::{encode_to_32_bytes, get_type_size, ENCODE_CONF};
 use crate::bytes::{get_buffer, ByteBuffer};
 use crate::crypto::{Asymmetric, Symmetric, MAC_LEN, NONCE_LEN};
+use crate::protocol::common::{ProtocolFlag, ProtocolMessageType, ProtocolReturnCode};
+use crate::protocol::utils::{encode_to_32_bytes, get_type_size, ENCODE_CONF};
 use crate::rng::get_rng;
+use crate::utils::parse_env;
 use crate::DynResult;
 
 pub type ServerInitHeader = (u8, u8, u16, u16);

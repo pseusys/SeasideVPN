@@ -3,11 +3,10 @@ use lazy_static::lazy_static;
 use rand::Rng;
 use simple_error::bail;
 
-use super::common::{ProtocolFlag, ProtocolMessageType, ProtocolReturnCode};
-use super::utils::{encode_to_32_bytes, get_type_size};
 use crate::bytes::{get_buffer, ByteBuffer};
 use crate::crypto::{Asymmetric, Symmetric};
-use crate::protocol::utils::ENCODE_CONF;
+use crate::protocol::common::{ProtocolFlag, ProtocolMessageType, ProtocolReturnCode};
+use crate::protocol::utils::{encode_to_32_bytes, get_type_size, ENCODE_CONF};
 use crate::rng::get_rng;
 use crate::utils::parse_env;
 use crate::DynResult;

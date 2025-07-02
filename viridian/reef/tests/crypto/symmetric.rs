@@ -3,8 +3,8 @@ use tokio::test;
 
 use crate::rng::get_rng;
 
-use super::super::super::bytes::ByteBuffer;
-use super::Symmetric;
+use crate::bytes::ByteBuffer;
+use crate::crypto::Symmetric;
 
 const SAMPLE_DATA: &[u8] = b"Sample data for encryption";
 const ADDITIONAL_DATA: &[u8] = b"Sample additional data for encryption";

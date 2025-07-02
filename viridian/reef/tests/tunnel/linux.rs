@@ -9,7 +9,7 @@ use regex::Regex;
 use simple_error::bail;
 use tokio::test;
 
-use super::{create_tunnel, disable_routing, enable_routing, get_address_device, get_default_interface_by_remote_address, restore_svr_table, save_svr_table};
+use crate::tunnel::linux::{create_tunnel, disable_routing, enable_routing, get_address_device, get_default_interface_by_remote_address, restore_svr_table, save_svr_table};
 use crate::DynResult;
 
 fn run_command<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(cmd: &str, args: I) -> DynResult<(String, String)> {

@@ -16,10 +16,10 @@ use tokio::task::JoinHandle;
 use tokio::time::{sleep, timeout};
 use tokio::{pin, select};
 
-use super::typhoon_core::*;
 use crate::bytes::{get_buffer, ByteBuffer};
 use crate::crypto::{Asymmetric, Symmetric};
 use crate::protocol::common::{ProtocolFlag, ProtocolMessageType};
+use crate::protocol::typhoon_core::*;
 use crate::rng::get_rng;
 use crate::{run_coroutine_in_thread, run_coroutine_sync};
 use crate::{DynResult, Reader, Writer};

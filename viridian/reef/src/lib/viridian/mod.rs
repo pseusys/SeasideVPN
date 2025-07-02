@@ -10,12 +10,12 @@ use simple_error::{bail, require_with, SimpleError};
 use tokio::process::Command;
 use tokio::{select, try_join};
 
-use super::bytes::ByteBuffer;
-use super::general::create_handle;
-use super::protocol::ProtocolType;
-use super::tunnel::Tunnel;
-use super::utils::{parse_env, parse_str_env};
-use super::DynResult;
+use crate::bytes::ByteBuffer;
+use crate::general::create_handle;
+use crate::protocol::ProtocolType;
+use crate::tunnel::Tunnel;
+use crate::utils::{parse_env, parse_str_env};
+use crate::DynResult;
 
 #[cfg(target_os = "linux")]
 mod linux;

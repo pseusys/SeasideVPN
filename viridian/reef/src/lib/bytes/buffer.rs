@@ -4,7 +4,7 @@ use std::slice::from_raw_parts_mut;
 
 use chacha20poly1305::aead::{Buffer, Error, Result};
 
-use super::pool::KeptVector;
+use crate::bytes::pool::KeptVector;
 
 pub struct ByteBuffer<'a> {
     data: Rc<RefCell<KeptVector<'a>>>,

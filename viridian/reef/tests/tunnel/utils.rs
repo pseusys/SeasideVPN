@@ -1,6 +1,6 @@
 use tokio::test;
 
-use super::bytes_to_string;
+use crate::tunnel::utils::bytes_to_string;
 
 #[test]
 async fn test_bytes_to_string() {

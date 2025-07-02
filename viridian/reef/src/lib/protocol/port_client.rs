@@ -8,12 +8,12 @@ use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::{TcpSocket, TcpStream};
 use tokio::time::timeout;
 
-use super::common::ProtocolMessageType;
-use super::port_core::*;
-use super::utils::get_type_size;
 use crate::bytes::{get_buffer, ByteBuffer};
 use crate::crypto::{Asymmetric, Symmetric};
+use crate::protocol::common::ProtocolMessageType;
 use crate::protocol::port_core::build_client_init;
+use crate::protocol::port_core::*;
+use crate::protocol::utils::get_type_size;
 use crate::{run_coroutine_sync, DynResult, Reader, Writer};
 
 macro_rules! discard_exact {

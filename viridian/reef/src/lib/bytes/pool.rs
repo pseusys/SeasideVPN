@@ -5,7 +5,7 @@ use tokio::sync::Mutex;
 
 use crate::run_coroutine_sync;
 
-use super::buffer::ByteBuffer;
+use crate::bytes::buffer::ByteBuffer;
 
 pub struct KeptVector<'a> {
     data: Vec<u8>,

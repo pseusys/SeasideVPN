@@ -3,8 +3,8 @@ use blake2::Blake2bVar;
 use rand::RngCore;
 use x25519_dalek::{EphemeralSecret, PublicKey, SharedSecret};
 
-use super::symmetric::Symmetric;
 use crate::bytes::ByteBuffer;
+use crate::crypto::symmetric::Symmetric;
 use crate::rng::get_rng;
 use crate::DynResult;
 
