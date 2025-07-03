@@ -279,6 +279,7 @@ Proxy to Surface connection:
 2. Rename all "user" and "client" to viridian (for consistency).
 3. Publish notebooks (for future publication?).
 4. Revise python protocols, fix random bugs, add error synchronization.
+5. Remove plugins from `poetry install` calls, add `requires-plugin` section.
 
 ### Further considerations
 
