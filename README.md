@@ -132,6 +132,7 @@ Seaside VPN offers several ways to handle all these cases:
 4. VPN packets sending via several "gateway" servers with different IPs (coming soon!).
 
 The unique Seaside protocols are defined specifically for this use case:
+
 - [TYPHOON](./viridian/algae/typhoon/typhoon.ipynb) is the primary protocol [created from scratch](./viridian/algae/typhoon/README.md) for Seaside VPN, it is the most secure and fast, but also the most complex one.
 - [PORT](./viridian/algae/typhoon/port.ipynb) is the fallback protocol attempting to repeat as much `TYPHOON` features as possible using built-in `TCP` settings, it is less secure and efficient, but more reliable and simple.
 
@@ -199,7 +200,7 @@ A set of tools in `Python` written for development and integration testing purpo
 It contains:
 
 - [`setup`](./viridian/algae/setup) package for easy caerulean deployment.
-- [`sources`](./viridian/algae/sources) package with simle client implementation and API fixtures.
+- [`sources`](./viridian/algae/sources) package with simple client implementation and API fixtures.
 - [`protocol`](./viridian/algae/typhoon/) defines protocols implemented and utilized by Seaside VPN.
 
 See detailed documentation [here](./viridian/algae/README.md).
