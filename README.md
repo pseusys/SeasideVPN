@@ -7,7 +7,7 @@
 [![LINT](https://github.com/pseusys/SeasideVPN/actions/workflows/lint.yml/badge.svg)](https://github.com/pseusys/SeasideVPN/actions/workflows/lint.yml)
 
 A simple PPTP UDP VPN system, focused on undetectability.
-The system is based on a new headerless completely encrypted communication protocol.
+It attempts to redefine the traditional approach used by most of the wide-spread VPN systems - for better.
 
 > Current project version: **"0.0.3"**
 
@@ -17,15 +17,17 @@ Here are few things that make Seaside VPN unique, fast and secure:
 
 1. Seaside VPN operates on transport network level, being able to control the traffic on IP packet level.
    This allows simple and fast algorithms for packet processing.
-2. VPN data packets in Seaside VPN contain no header at all, that makes it harder to detect the VPN traffic.
-3. Seaside VPN uses encrypted gRPC channels for control packet exchange. Channels are not recreated while the connection is active.
-4. Seaside VPN control packets contain random length tail metadata and are exchanged at random time intervals, making any assumptions about their nature harder.
-5. Seaside VPN has no centralized infrastructure (servers, IP addresses, etc.) that means that detecting and blocking a single VPN node will never bring the whole system down.
+2. When possible, Seaside VPN relies on kernel technologies, that are fast and well-tested.
+   Relying on system built-in solutions to complex problems (such as packet masquerading or fragmentation) makes Seaside VPN code base slim and efficient.
+3. Seaside VPN defines a few original transport-layer protocols that are focused on data transfer encryption, obfuscation and speed.
+   All the VPN packets have no headers, contain random length tail metadata and are exchanged at random time intervals.
+   This makes it harder to detect the VPN traffic.
+4. Seaside VPN has no centralized infrastructure (servers, IP addresses, etc.) that means that detecting and blocking a single VPN node will never bring the whole system down.
 
 Target users of the system are **groups** of people (companies, communities, etc.), residing in different countries and wishing to create their own VPN network.
 System deployment and integration is designed to be easy even for not very familiar with networking people, so that each system instance will consist of several connected individually managed nodes.
 
-> **NB!** As no global infrastructure (i.e. public servers, domen names, etc.) is planned, user privacy and safety solely depends on the each system instance _node operators_.
+> **NB!** As no global infrastructure (i.e. public servers, domain names, etc.) is planned, user privacy and safety solely depends on the each system instance _node operators_.
 > System can only exist and be active until the people that use it **trust each other**! 🤝
 
 ### System structure
@@ -105,12 +107,13 @@ That's what you can find inside:
 - `.github`: Resources used by GitHub Actions CI/CD.
   - `scripts`: Automatization scripts.
   - `workflows`: GitHub actions workflows.
-- `caerulean`: Caerulean system components.
+- `caerulean`: Caerulean system components (see [README](./caerulean/README.md)).
   - `whirlpool`: Caerulean whirlpool node (see [README](./caerulean/whirlpool/README.md)).
 - `vessels`: Protobuf schemas used in various protocols.
 - `view`: Project branding, images, etc.
-- `viridian`: Viridian system components.
+- `viridian`: Viridian system components (see [README](./viridian/README.md)).
   - `algae`: Viridian algae node (see [README](./viridian/algae/README.md)).
+  - `reef`: Viridian reef node (see [README](./viridian/reef/README.md)).
 
 ## Data, connections and protocols
 
@@ -126,38 +129,39 @@ Seaside VPN offers several ways to handle all these cases:
 1. All VPN and control packets are encrypted and don't have any unencrypted header.
 2. Control packet lengths are randomized with random length tail.
 3. Control packets (healthcheck) sending time is random.
+4. VPN packets sending via several "gateway" servers with different IPs (coming soon!).
 
-Following ways are yet to be implemented:
-
-1. VPN packets sending via several "gateway" servers with different IPs, simulating [`UDP tracker`](https://en.wikipedia.org/wiki/UDP_tracker) protocol.
-
-An encrypted viridian packet arriving to a whirlpool is authenticated by its port destination.
-I.e. alongside with a TCP gRPC control channel a similar dedicated UDP port is assigned to every viridian and the VPN packets from that viridian should arrive to that port.
+The unique Seaside protocols are defined specifically for this use case:
+- [TYPHOON](./viridian/algae/typhoon/typhoon.ipynb) is the primary protocol [created from scratch](./viridian/algae/typhoon/README.md) for Seaside VPN, it is the most secure and fast, but also the most complex one.
+- [PORT](./viridian/algae/typhoon/port.ipynb) is the fallback protocol attempting to repeat as much `TYPHOON` features as possible using built-in `TCP` settings, it is less secure and efficient, but more reliable and simple.
 
 ## Connection certificate
 
-Connection to all Seaside network nodes can be done using a special **connection certificate** only.
-That ensures no unauthorized access to any network internal interfaces.
-Even knowing all the outgoing viridian traffic (e.g. capturing all its packets, including IP addresses and port numbers), an intruder still can't be sure it's a Seaside network and not something else.
+Even though SeasideVPN has a defined gRPC API, it is designed so that the **most basic** connection scenario is available bing **100% encrypted** and without relying on any known API queries.
+That can be done using a special **connection certificate**.
+Having this certificate is absolutely necessary to connect to a Seaside VPN node, so without having this certificate it's impossible to say whether a node is available on the given IP address or not.
 
-**Connection certificate** for all the nodes have common structure:
+> NB! Different types of connection certificates are available for different Seaside VPN nodes, but only the `whirlpool` certificate allows no-gRPC access.
+> The other certificate formats are described in appropriate [caerulean documentation](./caerulean/README.md).
 
-- **nodetype**: type of node the certificate describes (`whirlpool` or `surface`).
-- **address**: (IP or domain name) where the node gRPC server is hosted.
-- **ctrlport**: port number where the node gRPC server is hosted.
-- **payload**: a secret string, unique for this node and shared to the network users only.
+**Connection certificate** is defined in [`SeasideConnectionClientCertificate` message](./vessels/common.proto):
+
+- **nodetype**: type of node the certificate describes, for worker nodes it is `whirlpool`.
+- **address**: (IP or domain name) where the node server is hosted.
+- **public**: a 32-byte Base64-encoded node public key.
+- **token**: a special encrypted token containing user information (between TODO and TODO) bytes, Base64-encoded.
+- **port**: port number for connection by PORT protocol.
+- **typhoon**: port number for connection by TYPHOON protocol.
+- **dns**: an IP address of the DNS server proposed by the server.
 
 Connection certificate is a secret Seaside network address and should be shared via a third-party channel (e.g. email, messengers, printed, etc.).
 
 > NB! In case of non-digital connection certificate transmission, QR-code usage is advised.
 
-Each node can support multiple **payload** options, e.g. for users with different privilege levels or for users from different origins.
-It is required for unauthorized access to the network prevention (i.e. it is **not enough** to know the IP address and port to connect).
-
-All the connection certificate can be expressed in a form of an URL:
+After all, the connection certificate can be expressed in a form of an URL:
 
 ```text
-seaside+{nodetype}://{address}:{ctrlport}/{payload}
+seaside+{nodetype}://{address}?public={public}&token={token}&port={port}&typhoon={typhoon}&dns={dns}
 ```
 
 > NB! Some of the nodes (the ones that can be run in Docker) usually accept the certificate in form of environmental variables.
@@ -191,8 +195,12 @@ There are several client options:
 
 #### Algae
 
-A client in `Python` written for development and integration testing purposes.
-Also, contains [`setup`](./viridian/algae/setup) package for easy caerulean deployment.
+A set of tools in `Python` written for development and integration testing purposes.
+It contains:
+
+- [`setup`](./viridian/algae/setup) package for easy caerulean deployment.
+- [`sources`](./viridian/algae/sources) package with simle client implementation and API fixtures.
+- [`protocol`](./viridian/algae/typhoon/) defines protocols implemented and utilized by Seaside VPN.
 
 See detailed documentation [here](./viridian/algae/README.md).
 
@@ -203,6 +211,16 @@ Also defines a cross-platform library that is used in other OS-specific clients.
 My first program in `Rust` written after I have finished all the [rustanomicon](https://doc.rust-lang.org/nomicon/).
 
 See detailed documentation [here](./viridian/reef/README.md).
+
+## Usage disclaimer
+
+Before exploring Seaside VPN code and use cases, please make sure you read and completely understood the following statement:
+
+> Everyone who ever participated in Seaside VPN creation, development and testing DOES respect the supremacy of laws and other legal obligations.
+> Seaside VPN is neither designed, nor intended for any usage that violates any local rules and legislation.
+> Please, do not under any circumstances use any part of this code for any criminal activity.
+> The whole Seaside VPN project was started as a research attempt, and so it should stay.
+> None of the potentially dangerous usage of this technology is encouraged and will be supported, and thus Seaside VPN developers should not be accountable for any legal damage it could cause.
 
 ## General launching commands
 
@@ -280,6 +298,7 @@ Proxy to Surface connection:
 3. Publish notebooks (for future publication?).
 4. Revise python protocols, fix random bugs, add error synchronization.
 5. Remove plugins from `poetry install` calls, add `requires-plugin` section.
+6. Protocol simulation: UDP tracker, BitTorrent, QUIC, etc.
 
 ### Further considerations
 

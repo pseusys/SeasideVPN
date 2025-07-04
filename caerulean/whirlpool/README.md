@@ -176,3 +176,14 @@ make help
 ## Test sets
 
 The only tests available are unit tests, for the most important functions of each module.
+
+
+
+
+
+
+
+
+
+An encrypted viridian packet arriving to a whirlpool is authenticated by its port destination.
+I.e. a dedicated UDP port is assigned to every viridian and the VPN packets from that viridian should arrive to that port.
