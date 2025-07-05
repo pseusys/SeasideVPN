@@ -20,15 +20,12 @@ Here are few things that make Seaside VPN unique, fast and secure:
 2. When possible, Seaside VPN relies on kernel technologies, that are fast and well-tested.
    Relying on system built-in solutions to complex problems (such as packet masquerading or fragmentation) makes Seaside VPN code base slim and efficient.
 3. Seaside VPN defines a few original transport-layer protocols that are focused on data transfer encryption, obfuscation and speed.
-   All the VPN packets have no headers, contain random length tail metadata and are exchanged at random time intervals.
+   All the VPN packets have no headers, contain random length tail bytes and are exchanged at random time intervals.
    This makes it harder to detect the VPN traffic.
 4. Seaside VPN has no centralized infrastructure (servers, IP addresses, etc.) that means that detecting and blocking a single VPN node will never bring the whole system down.
 
 Target users of the system are **groups** of people (companies, communities, etc.), residing in different countries and wishing to create their own VPN network.
 System deployment and integration is designed to be easy even for not very familiar with networking people, so that each system instance will consist of several connected individually managed nodes.
-
-> **NB!** As no global infrastructure (i.e. public servers, domain names, etc.) is planned, user privacy and safety solely depends on the each system instance _node operators_.
-> System can only exist and be active until the people that use it **trust each other**! 🤝
 
 ### System structure
 
@@ -84,7 +81,10 @@ The last `viridian` №6 is connected only to `whirlpool` №3 and not to `surfa
 
 ### Conventions
 
-Each program here has a special numeric identifier, that is the ASCII code of the first letter of its' name (capitalized).  
+All the system parts (normally) have word "seaside" in their name to distinguish them from any other unrelated programs.
+Each part also has a unique code name, somehow related to sea topic.
+
+Moreover, each of them has a special numeric identifier, that is the ASCII code of the first letter of its' name (capitalized).  
 The numeric identification table can be found below:
 
 | Program Name | Numeric Identifier |
@@ -93,11 +93,6 @@ The numeric identification table can be found below:
 | Viridian Algae | 65 |
 | Viridian Reef | 82 |
 | Seaside VPN | 83 |
-
-There are some important notes and conditions that must be fulfilled in order for system to work as expected:
-
-- Viridian packets must not exceed 65495 bytes (that is max UDP packet size minus overflow for encryption).
-- Whirlpool nodes can't maintain more than 65533 viridians (due to the whirlpool node architecture).
 
 ### Repository structure
 
@@ -114,6 +109,26 @@ That's what you can find inside:
 - `viridian`: Viridian system components (see [README](./viridian/README.md)).
   - `algae`: Viridian algae node (see [README](./viridian/algae/README.md)).
   - `reef`: Viridian reef node (see [README](./viridian/reef/README.md)).
+
+## System distribution
+
+Normally, every VPN provider creates and manages their own VPN infrastructure, including server and client apps, sometimes even encryption and protocols, that might or might not be based on widely-known VPN standards, like [OpenVPN](https://openvpn.net/).
+Still, major parts of their ecosystems are proprietary and in most cases client apps for different VPN providers work differently and are not interchangeable.
+
+This is what makes Seaside VPN different: it provides all the VPN infrastructure ready and easy to use, so that everyone who wants could easily become a VPN provider.
+It can be done in a few simple steps, including server rental and central and worker nodes deployment.
+This allows multiple use cases, such as:
+
+- Commercial VPNs, where all the nodes are owned and managed by one company (just like in all the other VPNs available online).
+- Corporate VPNs, where a few worker nodes provide access to the internal corporate network for the remote employees outside.
+- Community VPNs, where each worker node is hosted by a separate person, and they all work together to provide VPN for a group chat, for instance.
+
+Some of these networks might require fiat or cryptocurrency payment for subscription, the others might be free for use or community-funded.
+For all these types of networks, a single client app can be used, because all of them are based on the same platform and the same set of protocols.
+That allows easily switching between networks in case some of them are unavailable or suddenly blocked.
+
+> **NB!** As no global infrastructure (i.e. public servers, domain names, etc.) is planned, user privacy and safety solely depends on the each system instance _node operators_, somewhat like in [TOR](https://www.torproject.org/) network.
+> System can only exist and be active until the people that use it **trust each other**! 🤝
 
 ## Data, connections and protocols
 
@@ -133,8 +148,8 @@ Seaside VPN offers several ways to handle all these cases:
 
 The unique Seaside protocols are defined specifically for this use case:
 
-- [TYPHOON](./viridian/algae/typhoon/typhoon.ipynb) is the primary protocol [created from scratch](./viridian/algae/typhoon/README.md) for Seaside VPN, it is the most secure and fast, but also the most complex one.
-- [PORT](./viridian/algae/typhoon/port.ipynb) is the fallback protocol attempting to repeat as much `TYPHOON` features as possible using built-in `TCP` settings, it is less secure and efficient, but more reliable and simple.
+- [`TYPHOON`](./viridian/algae/typhoon/typhoon.ipynb) is the primary protocol [created from scratch](./viridian/algae/typhoon/README.md) for Seaside VPN, it is the most secure and fast, but also the most complex one.
+- [`PORT`](./viridian/algae/typhoon/port.ipynb) is the fallback protocol attempting to repeat as much `TYPHOON` features as possible using built-in `TCP` settings, it is less secure and efficient, but more reliable and simple.
 
 ## Connection certificate
 

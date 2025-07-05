@@ -181,3 +181,8 @@ The only tests available are unit tests, for the most important functions of eac
 
 An encrypted viridian packet arriving to a whirlpool is authenticated by its port destination.
 I.e. a dedicated UDP port is assigned to every viridian and the VPN packets from that viridian should arrive to that port.
+
+There are some important notes and conditions that must be fulfilled in order for system to work as expected:
+
+- Viridian packets must not exceed 65495 bytes (that is max UDP packet size minus overflow for encryption).
+- Whirlpool nodes can't maintain more than 65533 viridians (due to the whirlpool node architecture).
