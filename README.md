@@ -127,7 +127,7 @@ Some of these networks might require fiat or cryptocurrency payment for subscrip
 For all these types of networks, a single client app can be used, because all of them are based on the same platform and the same set of protocols.
 That allows easily switching between networks in case some of them are unavailable or suddenly blocked.
 
-> **NB!** As no global infrastructure (i.e. public servers, domain names, etc.) is planned, user privacy and safety solely depends on the each system instance _node operators_, somewhat like in [TOR](https://www.torproject.org/) network.
+> **NB!** As no global infrastructure (i.e. public servers, domain names, etc.) is planned, user privacy and safety solely depends on the each system instance _node operators_, somewhat like in [TOR](https://www.torproject.org/) network, but with one hop only.
 > System can only exist and be active until the people that use it **trust each other**! 🤝
 
 ## Data, connections and protocols
