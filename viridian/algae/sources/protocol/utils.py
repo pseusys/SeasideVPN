@@ -10,6 +10,7 @@ from ..utils.misc import create_logger
 
 @unique
 class ProtocolTypes(IntEnum):
+    CUSTOM = 0
     ALGAE = 65
     REEF = 82
 

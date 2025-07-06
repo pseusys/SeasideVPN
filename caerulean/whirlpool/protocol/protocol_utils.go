@@ -82,6 +82,7 @@ var (
 
 	UNKNOWN_TYPE   = "Unknown Viridian"
 	PROTOCOL_TYPES = map[uint8]string{
+		0:  "Custom Viridian",
 		65: "Viridian Algae",
 		82: "Viridian Reef",
 	}
