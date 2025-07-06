@@ -34,7 +34,7 @@ VERSIONED_FILES=(
     "viridian/reef/Cargo.toml" \
     "viridian/reef/src/lib/mod.rs" \
     "caerulean/whirlpool/README.md" \
-    "caerulean/whirlpool/sources/main.go"
+    "caerulean/whirlpool/sources/protocol/protocol_utils.go"
 )
 
 

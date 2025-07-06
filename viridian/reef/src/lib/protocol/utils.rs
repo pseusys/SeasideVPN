@@ -7,14 +7,6 @@ use crate::DynResult;
 
 pub const ENCODE_CONF: Configuration<BigEndian, Fixint> = standard().with_big_endian().with_fixed_int_encoding();
 
-pub fn encode_to_32_bytes(input: &str) -> [u8; 32] {
-    let mut buf = [0u8; 32];
-    let bytes = input.as_bytes();
-    let len = bytes.len().min(32);
-    buf[..len].copy_from_slice(&bytes[..len]);
-    buf
-}
-
 // CACHE VALUES!
 pub fn get_type_size<T: Default + Encode>() -> DynResult<usize> {
     let mut writer = SizeWriter::default();

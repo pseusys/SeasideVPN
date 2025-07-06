@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"log/syslog"
+	"main/protocol"
 	"main/tunnel" // TODO: optionally depend on nftables instead of iptables
 	"main/users"
 	"main/utils"
@@ -26,8 +27,6 @@ import (
 
 // Current Whirlpool distribution version.
 const (
-	VERSION = "0.0.3"
-
 	DEFAULT_LOG_LEVEL = "INFO"
 	DEFAULT_LOG_PATH  = "logs"
 )
@@ -83,7 +82,7 @@ func init() {
 }
 
 func RunMain() error {
-	logrus.Infof("Running Caerulean Whirlpool version %s...", VERSION)
+	logrus.Infof("Running Caerulean Whirlpool version %s...", protocol.VERSION)
 
 	// Initialize tunnel interface and firewall rules
 	tunnelConfig, err := tunnel.Preserve()

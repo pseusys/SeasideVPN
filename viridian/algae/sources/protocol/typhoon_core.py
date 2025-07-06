@@ -3,17 +3,19 @@ from struct import calcsize, pack, unpack
 from types import NoneType
 from typing import Tuple, Union
 
+from semver import Version
+
 from ..version import __version__
 from ..utils.crypto import Asymmetric, Symmetric
 from ..utils.misc import random_number
-from .utils import ProtocolMessageType, ProtocolFlag, ProtocolInitializationError, ProtocolParseError, ProtocolReturnCode
+from .utils import ProtocolMessageType, ProtocolFlag, ProtocolInitializationError, ProtocolParseError, ProtocolReturnCode, ProtocolTypes
 
 
 class TyphoonCore:
-    _CLIENT_NAME = f"algae-{__version__}"
+    _VERSION = Version.parse(__version__)
 
     _SERVER_INIT_HEADER = "!BIBHIH"
-    _CLIENT_INIT_HEADER = "!BI32sIH"
+    _CLIENT_INIT_HEADER = "!BIBBIH"
     _ANY_HDSK_HEADER = "!BIIH"
     _ANY_OTHER_HEADER = "!BH"
 
@@ -48,7 +50,7 @@ class TyphoonCore:
     def build_client_init(cls, cipher: Asymmetric, packet_number: int, next_in: int, token: bytes) -> Tuple[bytes, bytes]:
         client_name = cls._CLIENT_NAME.encode()
         tail_length = random_number(max=cls._TYPHOON_MAX_TAIL_LENGTH)
-        header = pack(cls._CLIENT_INIT_HEADER, ProtocolFlag.INIT, packet_number, client_name, next_in, tail_length)
+        header = pack(cls._CLIENT_INIT_HEADER, ProtocolFlag.INIT, packet_number, ProtocolTypes.ALGAE, cls._VERSION.major, client_name, next_in, tail_length)
         packet = header + token + bytes(tail_length)
         return cipher.encrypt(packet)
 
@@ -121,13 +123,15 @@ class TyphoonCore:
         try:
             key, data = cipher.decrypt(packet)
             header_length = calcsize(cls._CLIENT_INIT_HEADER)
-            flags, packet_number, client_name, next_in, tail_length = unpack(cls._CLIENT_INIT_HEADER, data[:header_length])
-            client_name = client_name.decode("utf8").rstrip("\0")
+            flags, packet_number, client_type, client_version, next_in, tail_length = unpack(cls._CLIENT_INIT_HEADER, data[:header_length])
+            client_name = ProtocolTypes(client_type).name
             token = data[header_length:-tail_length]
         except Exception as e:
             raise ProtocolParseError("Error parsing client INIT message!", e)
         if flags != ProtocolFlag.INIT:
             raise ProtocolParseError(f"Client INIT message flags malformed: {flags:b} != {ProtocolFlag.INIT:b}!")
+        if client_version < cls._VERSION.major:
+            raise ProtocolParseError(f"Client major version incompatible with server major version: {client_version} < {cls._VERSION.major}!")
         if not TyphoonCore._TYPHOON_INITIAL_MIN_NEXT_IN <= next_in <= TyphoonCore._TYPHOON_INITIAL_MAX_NEXT_IN:
             raise ProtocolParseError(f"Incorrect next in value in user init: {TyphoonCore._TYPHOON_INITIAL_MIN_NEXT_IN} < {next_in} < {TyphoonCore._TYPHOON_INITIAL_MAX_NEXT_IN}")
         return client_name, packet_number, next_in, bytes(key), bytes(token)

@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use lazy_static::lazy_static;
 use simple_error::{bail, SimpleError};
 
 mod common;
@@ -12,6 +13,11 @@ pub use port_client::*;
 
 mod typhoon_client;
 pub use typhoon_client::*;
+
+lazy_static! {
+    static ref CLIENT_TYPE: u8 = 82;
+    static ref CLIENT_VERSION: u8 = env!("CARGO_PKG_VERSION_MAJOR").parse::<u8>().unwrap();
+}
 
 #[derive(Debug)]
 pub enum ProtocolType {

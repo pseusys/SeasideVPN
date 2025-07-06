@@ -54,7 +54,8 @@ client = [
     "colorama~=0.4.6",
     "pyroute2~=0.7.9",
     "betterproto~=2.0.0b6",
-    "pymonocypher~=4.0.2.5"
+    "pymonocypher~=4.0.2.5",
+    "semver~=3.0.4"
 ]
 
 devel = [

@@ -10,16 +10,15 @@ use socket2::{Domain, Protocol, Socket, TcpKeepalive, Type};
 use crate::bytes::{get_buffer, ByteBuffer};
 use crate::crypto::{Asymmetric, Symmetric, MAC_LEN, NONCE_LEN};
 use crate::protocol::common::{ProtocolFlag, ProtocolMessageType, ProtocolReturnCode};
-use crate::protocol::utils::{encode_to_32_bytes, get_type_size, ENCODE_CONF};
+use crate::protocol::utils::{get_type_size, ENCODE_CONF};
+use crate::protocol::{CLIENT_TYPE, CLIENT_VERSION};
 use crate::rng::get_rng;
 use crate::utils::parse_env;
 use crate::DynResult;
 
 pub type ServerInitHeader = (u8, u8, u16, u16);
-pub type ClientInitHeader = (u8, [u8; 32], u16, u16);
+pub type ClientInitHeader = (u8, u8, u8, u16, u16);
 pub type AnyOtherHeader = (u8, u16, u16);
-
-const CLIENT_NAME: &str = concat!("reef-tcp-", env!("CARGO_PKG_VERSION"));
 
 lazy_static! {
     static ref PORT_TAIL_LENGTH: usize = parse_env("PORT_TAIL_LENGTH", Some(512));
@@ -39,10 +38,9 @@ pub async fn build_client_init<'a, 'b>(cipher: &Asymmetric, token: &ByteBuffer<'
     let buffer_size = get_type_size::<ClientInitHeader>()?;
     let buffer = get_buffer(Some(buffer_size)).await;
 
-    let user_name = encode_to_32_bytes(CLIENT_NAME);
     let data_len = token.len() + Symmetric::ciphertext_overhead();
     let tail_len = rand.gen_range(0..=*PORT_TAIL_LENGTH);
-    let header: ClientInitHeader = (ProtocolFlag::INIT as u8, user_name, data_len as u16, tail_len as u16);
+    let header: ClientInitHeader = (ProtocolFlag::INIT as u8, *CLIENT_TYPE, *CLIENT_VERSION, data_len as u16, tail_len as u16);
     encode_into_slice(&header, &mut buffer.slice_mut(), ENCODE_CONF)?;
     let (key, encrypted_header) = cipher.encrypt(buffer)?;
 

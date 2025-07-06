@@ -4,17 +4,19 @@ from socket import IPPROTO_TCP, SO_KEEPALIVE, SOL_SOCKET, TCP_KEEPCNT, TCP_KEEPI
 from struct import calcsize, pack, unpack
 from typing import Tuple
 
+from semver import Version
+
 from ..version import __version__
 from ..utils.crypto import Asymmetric, Symmetric
 from ..utils.misc import classproperty, random_number
-from .utils import ProtocolMessageType, ProtocolFlag, ProtocolInitializationError, ProtocolParseError, ProtocolReturnCode
+from .utils import ProtocolMessageType, ProtocolFlag, ProtocolInitializationError, ProtocolParseError, ProtocolReturnCode, ProtocolTypes
 
 
 class PortCore:
-    _CLIENT_NAME = f"algae-tcp-{__version__}"
+    _VERSION = Version.parse(__version__)
 
     _SERVER_INIT_HEADER = "!BBHH"
-    _CLIENT_INIT_HEADER = "!B32sHH"
+    _CLIENT_INIT_HEADER = "!BBBHH"
     _ANY_OTHER_HEADER = "!BHH"
 
     _PORT_TAIL_LENGTH = int(getenv("PORT_TAIL_LENGTH", "512"))
@@ -57,9 +59,8 @@ class PortCore:
 
     @classmethod
     def build_client_init(cls, cipher: Asymmetric, token: bytes) -> Tuple[bytes, bytes]:
-        client_name = cls._CLIENT_NAME.encode()
         tail_length = random_number(max=cls._PORT_TAIL_LENGTH)
-        header = pack(cls._CLIENT_INIT_HEADER, ProtocolFlag.INIT, client_name, len(token) + Symmetric.ciphertext_overhead, tail_length)
+        header = pack(cls._CLIENT_INIT_HEADER, ProtocolFlag.INIT, ProtocolTypes.ALGAE, cls._VERSION.major, len(token) + Symmetric.ciphertext_overhead, tail_length)
         key, asymmetric_part = cipher.encrypt(header)
         return key, asymmetric_part + Symmetric(key).encrypt(token) + token_bytes(tail_length)
 
@@ -93,12 +94,14 @@ class PortCore:
     def parse_client_init_header(cls, cipher: Asymmetric, packet: bytes) -> Tuple[str, bytes, int, int]:
         try:
             key, header = cipher.decrypt(packet)
-            flags, client_name, token_length, tail_length = unpack(cls._CLIENT_INIT_HEADER, header)
+            flags, client_type, client_version, token_length, tail_length = unpack(cls._CLIENT_INIT_HEADER, header)
             client_name = client_name.decode().rstrip("\0")
         except BaseException as e:
             raise ProtocolParseError("Error parsing client INIT message header!", e)
         if flags != ProtocolFlag.INIT:
             raise ProtocolParseError(f"Client INIT message flags malformed: {flags:b} != {ProtocolFlag.INIT:b}!")
+        if client_version < cls._VERSION.major:
+            raise ProtocolParseError(f"Client major version incompatible with server major version: {client_version} < {cls._VERSION.major}!")
         return client_name, bytes(key), token_length, tail_length
 
     # Parse all the other messages, they indeed can be confused with each other:

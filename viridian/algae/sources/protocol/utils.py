@@ -8,6 +8,11 @@ from ..utils.misc import create_logger
 
 # TYPES:
 
+@unique
+class ProtocolTypes(IntEnum):
+    ALGAE = 65
+    REEF = 82
+
 
 @unique
 class ProtocolFlag(IntEnum):

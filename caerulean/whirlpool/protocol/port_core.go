@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
-	"strings"
 	"time"
 
 	"main/crypto"
@@ -126,12 +125,17 @@ func parsePortClientInitHeader(cipher *crypto.Asymmetric, packet *betterbuf.Buff
 	}
 
 	flags := header.Get(0)
-	clientName := strings.TrimRight(string(header.Reslice(1, 33)), "\x00")
-	tokenLength := binary.BigEndian.Uint16(header.Reslice(33, 35))
-	tailLength := binary.BigEndian.Uint16(header.Reslice(35, 37))
+	clientType := header.Get(1)
+	clientVersion := header.Get(2)
+	tokenLength := binary.BigEndian.Uint16(header.Reslice(3, 5))
+	tailLength := binary.BigEndian.Uint16(header.Reslice(5, 7))
 
+	clientName := getTypeName(clientType)
 	if flags != byte(FLAG_INIT) {
 		return nil, nil, 0, 0, fmt.Errorf("invalid init header flags: %d", flags)
+	}
+	if clientVersion < MAJOR_VERSION {
+		return nil, nil, 0, 0, fmt.Errorf("incompatible viridian version: %d < %d", clientVersion, MAJOR_VERSION)
 	}
 
 	return &clientName, key, tokenLength, tailLength, nil
