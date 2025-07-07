@@ -44,7 +44,7 @@ Following naming is used:
   Several `whirlpool` nodes in different locations and of different performance can be included into a single network.
   In order to make the system truly P2P, all network users are encouraged to manage their own `whirlpool` node and though contribute to the system.
 - [`Viridian`](#viridian-client) is a user application (desktop, mobile, etc.).
-  One `viridian` can be connected to one Seaside network at a time, but is allowed to choose between different `whirlpool`s in it.
+  One `viridian` can be connected to one Seaside network at a time, but is allowed to choose between different `whirlpools` in it.
 
 ```mermaid
 graph LR
@@ -75,7 +75,7 @@ graph LR
 ```
 
 In this diagram, an example Seaside network is shown.
-Three `viridian`s are connected to the internet via `whirlpool` №1 and two other `viridian`s via `whirlpool` №2.
+Three `viridians` are connected to the internet via `whirlpool` №1 and two other `viridians` via `whirlpool` №2.
 All of them are also connected to `surface` node.
 The last `viridian` №6 is connected only to `whirlpool` №3 and not to `surface` node, (that is only e.g. if `viridian` №6 is the administrator of `whirlpool` №3).
 
@@ -122,6 +122,7 @@ This allows multiple use cases, such as:
 - Commercial VPNs, where all the nodes are owned and managed by one company (just like in all the other VPNs available online).
 - Corporate VPNs, where a few worker nodes provide access to the internal corporate network for the remote employees outside.
 - Community VPNs, where each worker node is hosted by a separate person, and they all work together to provide VPN for a group chat, for instance.
+- Private VPNs, where one person sets up a VPN for themselves (and maybe a few other people) abroad, for personal usage.
 
 Some of these networks might require fiat or cryptocurrency payment for subscription, the others might be free for use or community-funded.
 For all these types of networks, a single client app can be used, because all of them are based on the same platform and the same set of protocols.
@@ -325,7 +326,7 @@ Proxy to Surface connection:
 - Use Captcha for user registrations.
 - Track [GitHub issue](https://github.com/ldx/python-iptables/pull/340) for viridian algae warnings removal.
 - Add different cipher options (XChaCha20-Poly1305, AES-256-GCM, etc.).
-- Implement No-TLS solution (for countries like China).
+- Implement No-TLS solution (for stricter blocking).
 - Create an installation configuration whirlpool + proxy on the same host.
 - Create CONTRIBUTING.md and USING.md tutorials.
 - Fix release artiface algorithm: add different installation scripts **only** (whirlpool-standalone, whirlpool-foam, whirlpool-surface (with compose.yml), ...).
@@ -334,4 +335,4 @@ Proxy to Surface connection:
 
 - [Claimed-to-be undetectable VPN](https://github.com/vpnhood/VpnHood)
 - [Simple Golang VPN](https://github.com/skx/simple-vpn)
-- [Chinese VPN](https://github.com/bigeagle/gohop) and [article about it](https://www.researchgate.net/publication/269310871_GoHop_Personal_VPN_to_defend_from_censorship)
+- [Hidden VPN](https://github.com/bigeagle/gohop) and [article about it](https://www.researchgate.net/publication/269310871_GoHop_Personal_VPN_to_defend_from_censorship)
