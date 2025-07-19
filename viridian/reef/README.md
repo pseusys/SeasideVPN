@@ -56,7 +56,7 @@ On Windows the head heavily relies on `WinDivert` library.
 The packets are captured according to a filter string and they are received by the reef executable directly.
 Same for the packet injection, `WinDivert` handles that.
 
-On the other platforms, it is _impossible_ to create a VPN client that would mot be integrated with any system interfaces, so that is out of scope of reef client, that is meant to be standalone.
+On the other platforms, it is _impossible_ to create a VPN client that would not be integrated with any system interfaces, so that is out of scope of reef client, that is meant to be standalone.
 
 ### System diagram
 

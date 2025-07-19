@@ -42,7 +42,7 @@ Also the random timeout between the two first control messages is reduced (typic
 
 ## Encryption and authentication
 
-It is well-known that generally implementing custom cryptography [is a bad idea]().
+It is well-known that generally implementing custom cryptography [is a bad idea](https://www.reddit.com/r/programming/comments/yaplf2/dont_roll_your_own_crypto/).
 Still, for one specific scenario here (protocol initialization) it was decided not to rely on any existing algorithm.
 Technically, [ECIES](https://en.wikipedia.org/wiki/Integrated_Encryption_Scheme) would be the right solution for the initialization message (the one being sent from client to listener), but ECIES does not hide the ephemeral key and (since it has a predictable structure) it can be easily detected.
 That is why a custom obfuscation technique is used: the ephemeral key is XORed with the hash of the obfuscation key (that is the part of the server private key) and two leading bytes of the initialization message.
