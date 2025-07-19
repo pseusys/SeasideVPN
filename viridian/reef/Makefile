@@ -15,16 +15,11 @@ BUILD_TYPE=debug
 
 WINDIVERT_VERSION=2.2.2
 WINDIVERT_PATH=windivert-bin
-WINTUN_VERSION=0.14.1
-WINTUN_PATH=wintun-bin
 BINARY_PATH=target/$(BUILD_TYPE)/
 
 WINDIVERT_TEMP=windivert-source
 WINDIVERT_SOURCE=WinDivert-$(WINDIVERT_VERSION)-A
 WINDIVERT_URL=https://github.com/basil00/WinDivert/releases/download/v$(WINDIVERT_VERSION)/$(WINDIVERT_SOURCE).zip
-WINTUN_TEMP=wintun-source
-WINTUN_SOURCE=wintun-$(WINTUN_VERSION)
-WINTUN_URL=https://www.wintun.net/builds/$(WINTUN_SOURCE).zip
 
 
 UNAME_M := $(shell uname -m)
@@ -74,7 +69,6 @@ ifeq ($(OS),Windows_NT)
 	echo "Copying dependencies next to the executable..."
 	mkdir -p $(BINARY_PATH)
 	cp $(WINDIVERT_PATH)/*.dll $(WINDIVERT_PATH)/*.sys $(BINARY_PATH)
-	cp $(WINTUN_PATH)/*.dll $(BINARY_PATH)
 	echo "All dependencies in place!"
 endif
 .PHONY: runtime
