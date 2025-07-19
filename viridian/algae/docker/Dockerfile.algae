@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM ubuntu:22.04 AS builder
+FROM ubuntu:24.10 AS builder
 
 WORKDIR /seaside/algae
 
@@ -9,19 +9,21 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install python dependencies and build system.
-RUN apt-get update && apt-get install -y --no-install-recommends python3-pip && pip install --upgrade --no-cache-dir poetry
+RUN apt-get update && apt-get install -y --no-install-recommends python3-pip && rm -rf /var/lib/apt/lists/*
 
 # Export dependencies to a `requirements.txt` install protobuf compiler.
-COPY viridian/algae/pyproject.toml ./
-RUN poetry install --without client,devel,setup && poetry self add 'poethepoet[poetry_plugin]' poetry-plugin-export
-RUN poetry export -f requirements.txt --with client,devel --without-hashes --output requirements.txt
+COPY viridian/algae/pyproject.toml viridian/algae/README.md viridian/algae/__init__.py ./
+RUN pip3 install --no-cache-dir --break-system-packages .
 
 # Copy protobuf files and generate python code.
 COPY vessels ./vessels
-RUN poetry run python3 -m grpc_tools.protoc -I=vessels --python_betterproto_out=. vessels/*.proto
+RUN python3 -m grpc_tools.protoc -I=vessels --python_betterproto_out=. vessels/*.proto
 
 
-FROM ubuntu:22.04 AS default-sleeping
+FROM ubuntu:24.10 AS default
+
+ARG RUNNING_IN_CI
+ARG RUNNING_TEST_FILE
 
 WORKDIR /seaside/algae
 
@@ -31,57 +33,39 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install testing dependencies.
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential iptables iproute2 iputils-ping dnsutils python3-pip && rm -rf /var/lib/apt/lists/*
-COPY --from=builder /seaside/algae/requirements.txt ./
-RUN pip install --upgrade --no-cache-dir pip -r requirements.txt
+COPY viridian/algae/pyproject.toml viridian/algae/README.md viridian/algae/__init__.py ./
+RUN pip3 install --no-cache-dir --break-system-packages .[devel,client]
 
 # Copy algae and test sources, also copy generated protobuf files.
-COPY --from=builder /seaside/algae/ ./sources/
-COPY viridian/algae/sources/*.py ./sources/
-COPY viridian/algae/tests/*.py ./tests/
+COPY viridian/algae/sources/ ./sources/
+COPY --from=builder /seaside/algae/generated/ ./sources/interaction/generated/
+COPY viridian/algae/tests/ ./tests/
 
-ENV SEASIDE_PAYLOAD_OWNER=
 ENV SEASIDE_ADDRESS=
-ENV SEASIDE_CTRLPORT=
-
+ENV SEASIDE_API_KEY_OWNER=
+ENV SEASIDE_API_PORT=
+ENV SEASIDE_SUGGESTED_DNS=0.0.0.0
 ENV SEASIDE_TUNNEL_NAME=seatun
-ENV SEASIDE_MIN_HC_TIME=1
-ENV SEASIDE_MAX_HC_TIME=5
-ENV SEASIDE_CONNECTION_TIMEOUT=3.0
+
+ENV TEST_FILE=$RUNNING_TEST_FILE
+ENV RUNNING_IN_CI=${RUNNING_IN_CI:-0}
+ENV LOGGING_LEVEL=${RUNNING_IN_CI:+ERROR}
+ENV LOGGING_LEVEL=${RUNNING_IN_CI:-DEBUG}
+
+ENV TEST_COMMAND="python3 -m pytest --log-cli-level=$LOGGING_LEVEL tests/$TEST_FILE"
+ENV VPN_COMMAND="python3 -m sources.automation.simple_client -a \$SEASIDE_ADDRESS -k \$SEASIDE_API_KEY_OWNER -p \$SEASIDE_API_PORT -d \$SEASIDE_SUGGESTED_DNS -e \"\$TEST_COMMAND\""
 
 # Just sleep - run nothing.
-ENTRYPOINT ["sleep", "infinity"]
+ENTRYPOINT ["sh", "-c", "eval \"$VPN_COMMAND\""]
 
-
-FROM default-sleeping AS default
-
-# Run viridian algae in the background.
-ENTRYPOINT ["python3", "-m", "sources", "-p", "$SEASIDE_PAYLOAD_OWNER", "-a", "$SEASIDE_ADDRESS", "-c", "$SEASIDE_CTRLPORT"]
-
+# Healthcheck checks VPN is running, essentially making the target unhealthy
 HEALTHCHECK --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s CMD ls /sys/class/net | grep $SEASIDE_TUNNEL_NAME
 
 
-FROM default-sleeping AS smoke-sleeping
+FROM default AS default-routed
 
 ARG NETWORK_GATEWAY
 ENV ARG_NETWORK_GATEWAY=$NETWORK_GATEWAY
 
-# Setup default route IP and sleep.
-ENTRYPOINT ["sh", "-c", "ip route replace default via $ARG_NETWORK_GATEWAY && sleep infinity"]
-
-
-FROM smoke-sleeping AS smoke
-
-# Setup default route IP and run viridian algae in the background.
-ENTRYPOINT ["sh", "-c", "ip route replace default via $ARG_NETWORK_GATEWAY && python3 -m sources -p $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -c $SEASIDE_CTRLPORT"]
-
-HEALTHCHECK --interval=1m --timeout=1s --retries=3 --start-period=10s --start-interval=3s CMD ls /sys/class/net | grep $SEASIDE_TUNNEL_NAME
-
-
-
-FROM smoke AS commanded
-
-ARG COMMAND
-ENV COMMAND=$COMMAND
-
-# Setup default route IP and run viridian algae in the background.
-ENTRYPOINT ["sh", "-c", "ip route replace default via $ARG_NETWORK_GATEWAY && python3 -m sources -p $SEASIDE_PAYLOAD_OWNER -a $SEASIDE_ADDRESS -c $SEASIDE_CTRLPORT -e \"$COMMAND\""]
+# Setup default route IP and run viridian algae with command.
+ENTRYPOINT ["sh", "-c", "ip route replace default via $ARG_NETWORK_GATEWAY && eval \"$VPN_COMMAND\""]

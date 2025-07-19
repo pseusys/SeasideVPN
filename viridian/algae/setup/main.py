@@ -4,12 +4,12 @@ from pathlib import Path
 from sys import argv
 from typing import Sequence
 
-from base import Installer
-from certificates import check_certificates, generate_certificates
-from default import DEFAULT_GENERATED_VALUE, DefaultOptionalAction, local_ip, logging_level
-from specific import is_64_bit, is_admin, is_linux
-from utils import Logging
-from whirlpool import WhirlpoolInstaller
+from .base import Installer
+from .certificates import check_certificates, generate_certificates
+from .default import DEFAULT_GENERATED_VALUE, DefaultOptionalAction, local_ip, logging_level
+from .specific import is_64_bit, is_admin, is_linux
+from .utils import Logging
+from .whirlpool import WhirlpoolInstaller
 
 _RAC_NO = "no"
 _RAC_BACK = "back"

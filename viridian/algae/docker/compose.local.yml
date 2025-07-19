@@ -1,14 +1,11 @@
-name: seaside-algae-local
-
 services:
   algae:
-    image: seaside-algae-smoke-local
-    container_name: seaside-algae
     extends:
       file: compose.base.yml
       service: algae
     build:
       args:
+        RUNNING_TEST_FILE: test_local.py
         NETWORK_GATEWAY: 10.65.0.100
     environment:
       SEASIDE_ADDRESS: 10.87.65.87
@@ -25,7 +22,6 @@ services:
         condition: service_started
 
   algae-copy:
-    image: seaside-algae-smoke-local
     extends:
       file: compose.base.yml
       service: algae
@@ -37,6 +33,7 @@ services:
         NETWORK_GATEWAY: 10.65.0.100
     environment:
       SEASIDE_ADDRESS: 10.87.65.87
+      TEST_COMMAND: sleep infinity
       SEASIDE_CONNECTION_TIMEOUT: 30.0
     networks:
       - sea-cli-int
@@ -51,10 +48,10 @@ services:
         condition: service_healthy
 
   int-router:
+    container_name: router-local-internal
     extends:
       file: compose.base.yml
       service: router
-    container_name: seaside-internal-router
     networks:
       sea-cli-int:
         ipv4_address: 10.65.0.100
@@ -62,15 +59,14 @@ services:
         ipv4_address: 10.87.65.100
 
   whirlpool:
-    image: seaside-algae-whirlpool-local
     extends:
       file: compose.base.yml
       service: whirlpool
     build:
       args:
         NETWORK_GATEWAY: 10.87.42.100
+        SEASIDE_ADDRESS: 10.87.65.87
     environment:
-      SEASIDE_ADDRESS: 10.87.65.87
       SEASIDE_EXTERNAL: 10.87.42.87
     networks:
       sea-rout-int:
@@ -79,10 +75,10 @@ services:
         ipv4_address: 10.87.42.87
 
   ext-router:
+    container_name: router-local-external
     extends:
       file: compose.base.yml
       service: router
-    container_name: seaside-external-router
     networks:
       sea-rout-ext:
         ipv4_address: 10.87.42.100
@@ -90,7 +86,6 @@ services:
         ipv4_address: 10.42.0.100
 
   echo:
-    image: seaside-echo
     extends:
       file: compose.base.yml
       service: echo
@@ -103,10 +98,9 @@ services:
 
   disruptor:
     image: gaiaadm/pumba
-    container_name: network-disruptor
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    command: "-l info netem -d 1h loss -p 25 seaside-internal-router seaside-external-router"
+    command: "-l info netem -d 1h loss -p 25 router-local-internal router-local-external"
     depends_on:
       int-router:
         condition: service_started

@@ -18,3 +18,11 @@ func ConcatSlices[T any](slices ...[]T) []T {
 	}
 	return container
 }
+
+func XORSlices(src, dst []byte) []byte {
+	n := min(len(src), len(dst))
+	for i := range n {
+		src[i] = src[i] ^ dst[i]
+	}
+	return src
+}

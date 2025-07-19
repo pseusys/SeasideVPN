@@ -1,7 +1,7 @@
 syntax = "proto3";
 package generated;
 
-import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
 
 option go_package = "/generated";
 
@@ -9,61 +9,28 @@ option go_package = "/generated";
 
 // User data that is needed for administrator whirlpool node authentication
 message WhirlpoolAuthenticationRequest {
+    // User non-unique name
+    string name = 1;
     // User unique identifier
-    string uid = 1;
-    // User session cipher key
-    bytes session = 2;
-    // Node authentication owner payload
-    string payload = 3;
+    string identifier = 2;
+
+    string api_key = 3;
+
+    optional google.protobuf.Timestamp subscription = 4;
 }
 
 // User authentication certificate
 message WhirlpoolAuthenticationResponse {
     // Encrypted user token
     bytes token = 1;
-    // Maximum expected nextIn delay
-    int32 maxNextIn = 2;
-}
-
-
-
-// User control request for handshake to whirlpool node
-message ControlHandshakeRequest {
-    // Encrypted user token
-    bytes token = 1;
-    // Viridian version
-    string version = 2;
-    // Node authentication payload
-    optional string payload = 3;
-    // User local IP address
-    bytes address = 4;
-    // User seaside port number
-    int32 port = 5;
-    // TODO: Add viridian type to signin protocol.
-}
-
-// Handshake response, containing user ID
-message ControlHandshakeResponse {
-    // Optional user ID (will be sent after authentication)
-    int32 userID = 1;
-}
-
-
-
-// User control request to whirlpool node
-message ControlHealthcheck {
-    // Optional user ID (will be sent after authentication)
-    int32 userID = 1;
-    // Next healthping request timeout
-    int32 nextIn = 2;
+    bytes public_key = 2;
+    int32 port_port = 3;
+    int32 typhoon_port = 4;
+    string dns = 5;
 }
 
 
 
 service WhirlpoolViridian {
     rpc Authenticate(WhirlpoolAuthenticationRequest) returns (WhirlpoolAuthenticationResponse) {}
-
-    rpc Handshake(ControlHandshakeRequest) returns (ControlHandshakeResponse) {}
-
-    rpc Healthcheck(ControlHealthcheck) returns (google.protobuf.Empty) {}
 }

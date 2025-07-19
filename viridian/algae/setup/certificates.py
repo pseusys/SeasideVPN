@@ -5,13 +5,13 @@ from pathlib import Path
 from shutil import rmtree
 from typing import List, Union
 
-from cryptography.x509 import random_serial_number, Certificate, CertificateSigningRequest, CertificateSigningRequestBuilder, SubjectAlternativeName, CertificateBuilder, KeyUsage, ExtendedKeyUsage, BasicConstraints, IPAddress, DNSName, Name, NameAttribute
-from cryptography.x509.oid import NameOID, ExtendedKeyUsageOID
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, generate_private_key
 from cryptography.hazmat.primitives.hashes import SHA256
-from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, NoEncryption
-from cryptography.hazmat.primitives.asymmetric.rsa import generate_private_key, RSAPrivateKey
+from cryptography.hazmat.primitives.serialization import Encoding, NoEncryption, PrivateFormat
+from cryptography.x509 import BasicConstraints, Certificate, CertificateBuilder, CertificateSigningRequest, CertificateSigningRequestBuilder, DNSName, ExtendedKeyUsage, IPAddress, KeyUsage, Name, NameAttribute, SubjectAlternativeName, random_serial_number
+from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
-from utils import Logging
+from .utils import Logging
 
 _GENERATE_CERTIFICATES_KEY_SIZE = 2048
 _GENERATE_CERTIFICATES_PUBLIC_EXPONENT = 65537
@@ -128,7 +128,7 @@ def generate_certificates(address: Union[IPv4Address, str], cert_path: Path = GE
     """
     logger = Logging.logger_for(__name__)
 
-    if not remove_existing and check_certificates():
+    if not remove_existing and check_certificates(cert_path):
         logger.debug("Certificate files exist and recreation not requested, proceeding with doing nothing...")
         return
 

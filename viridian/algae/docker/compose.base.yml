@@ -3,57 +3,58 @@
 # They also will not be destroyed and recreated during tests - for speedup.
 # They are also reused in other Dockerfile targets in this directory.
 
-name: seaside-algae-base
-
 services:
   algae:
-    image: seaside-algae-smoke
     privileged: true
+    init: true
     build:
       dockerfile: viridian/algae/docker/Dockerfile.algae
       context: ../../..
-      target: smoke
+      target: default-routed
     env_file:
       - test.conf.env
     environment:
+      RUNNING_IN_CI: ${RUNNING_IN_CI:-0}
       SEASIDE_ROOT_CERTIFICATE_AUTHORITY: /seaside/viridian/ca/rootCA.crt
-      BUFFER_SIZE: 8192  # Buffer for echo server message storing
-      ECHO_PORT: 5000  # Port for echo server accessing
     sysctls:
       - net.ipv6.conf.all.disable_ipv6=1
     volumes:
-      - ../certificates/viridian:/seaside/viridian/ca:ro
+      - ../certificates/viridian:/seaside/viridian/ca:rw
 
   whirlpool:
-    image: seaside-whirlpool-smoke
-    container_name: seaside-whirlpool
     privileged: true
+    init: true
     build:
-      dockerfile: viridian/algae/docker/Dockerfile.whirlpool
+      dockerfile: caerulean/whirlpool/Dockerfile
       context: ../../..
-      target: smoke
+      target: default-routed
     env_file:
       - test.conf.env
+    environment:
+      RUNNING_IN_CI: ${RUNNING_IN_CI:-0}
     sysctls:
       - net.ipv6.conf.all.disable_ipv6=1
     volumes:
-      - ../certificates/caerulean:/seaside/caerulean/certificates:ro
+      - ../certificates:/seaside/caerulean/certificates:rw
 
   echo:
-    image: seaside-echo-smoke
-    container_name: seaside-echo
     privileged: true
+    init: true
     build:
-      dockerfile: Dockerfile.echo
-      target: smoke
+      dockerfile: viridian/algae/docker/Dockerfile.echo
+      context: ../../..
+      target: default-routed
+    env_file:
+      - test.conf.env
     environment:
       LOG_LEVEL: DEBUG
-      BUFFER_SIZE: 8192  # Buffer for echo server message storing
-      ECHO_PORT: 5000  # Port for echo server accessing
 
   router:
-    image: seaside-router-smoke
     privileged: true
+    init: true
     build:
-      dockerfile: Dockerfile.router
-      target: smoke
+      dockerfile: viridian/algae/docker/Dockerfile.router
+      context: ../../..
+      target: default
+    env_file:
+      - test.conf.env

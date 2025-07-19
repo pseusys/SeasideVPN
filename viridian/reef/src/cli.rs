@@ -1,93 +1,120 @@
 use std::env::{set_var, var};
-use std::net::{Ipv4Addr, IpAddr, ToSocketAddrs};
+use std::net::{IpAddr, Ipv4Addr, ToSocketAddrs};
+use std::str::FromStr;
 
-use log::info;
-use simple_error::bail;
-use gethostname::gethostname;
-use structopt::StructOpt;
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use base64::engine::Engine;
 use env_logger::init;
+use log::{debug, info};
+use reeflib::protocol::ProtocolType;
+use simple_error::bail;
+use structopt::StructOpt;
 
-use reeflib::coordinator::Coordinator;
+use reeflib::bytes::ByteBuffer;
+use reeflib::link::parse_client_link;
+use reeflib::viridian::Viridian;
 use reeflib::DynResult;
 
-mod generated {
-    tonic::include_proto!("generated");
-}
-
-
 const DEFAULT_CAERULEAN_ADDRESS: &str = "127.0.0.1";
+const DEFAULT_DNS_ADDRESS: &str = "8.8.8.8";
 const DEFAULT_CAERULEAN_PORT: &str = "8587";
 const DEFAULT_LOG_LEVEL: &str = "INFO";
 
-const DEFAULT_MIN_HC_TIME: &str = "1";
-const DEFAULT_MAX_HC_TIME: &str = "5";
-const DEFAULT_CONNECTION_TIMEOUT: &str = "3.0";
-const DEFAULT_TUNNEL_NAME: &str = "seatun";
-const DEFAULT_TUNNEL_ADDRESS: &str = "192.168.0.82";
-const DEFAULT_TUNNEL_NETMASK: &str = "255.255.255.0";
-const DEFAULT_SVR_INDEX: &str = "82";
-
-
 fn parse_address(address: &str) -> DynResult<Ipv4Addr> {
-    match address.parse::<IpAddr>() {
-        Ok(IpAddr::V4(pip)) => Ok(pip),
-        _ => match address.to_socket_addrs()?.next() {
-            Some(rip) => match rip.ip() {
-                IpAddr::V4(ripv4) => Ok(ripv4),
-                IpAddr::V6(ripv6) => bail!("IP addresses v6 {ripv6} are not yet supported!")
-            },
-            None => bail!("IP address {address} can't be resolved!")
-        }
+    match (address, 0).to_socket_addrs()?.next() {
+        Some(socket_addr) => match socket_addr.ip() {
+            IpAddr::V4(ipv4) => Ok(ipv4),
+            IpAddr::V6(ipv6) => bail!("IPv6 address {ipv6} is not supported!"),
+        },
+        None => bail!("Could not resolve address: {address}"),
     }
 }
 
+fn parse_bytes<'a>(string: String) -> DynResult<ByteBuffer<'a>> {
+    Ok(ByteBuffer::from(URL_SAFE_NO_PAD.decode(&string)?))
+}
 
 #[derive(StructOpt, Debug)]
-#[structopt()]
+#[structopt(rename_all = "kebab-case")]
 struct Opt {
     /// Caerulean remote IP address (default: [`DEFAULT_CAERULEAN_ADDRESS`])
     #[structopt(short = "a", long, default_value = DEFAULT_CAERULEAN_ADDRESS, parse(try_from_str = parse_address))]
     address: Ipv4Addr,
 
-    /// Caerulean control port number (default: [`DEFAULT_CAERULEAN_PORT`])
-    #[structopt(short = "c", long, default_value = DEFAULT_CAERULEAN_PORT)]
-    ctrl_port: u16,
+    /// Caerulean port number (default: [`DEFAULT_CAERULEAN_PORT`])
+    #[structopt(short = "p", long, default_value = DEFAULT_CAERULEAN_PORT)]
+    port: u16,
 
-    /// Admin or caerulean payload value (required, if not provided by 'link' argument!)
-    #[structopt(short = "p", long)]
-    payload: Option<String>,
+    /// Caerulean token value (required, if not provided by 'link' argument!)
+    #[structopt(short = "t", long)]
+    token: Option<String>,
+
+    /// Caerulean public key (required, if not provided by 'link' argument!)
+    #[structopt(short = "r", long)]
+    public: Option<String>,
+
+    /// Caerulean protocol (required, if not provided by 'link' argument!)
+    #[structopt(short = "s", long)]
+    protocol: Option<String>,
+
+    /// Caerulean suggested DNS server (required, if not provided by 'link' argument!)
+    #[structopt(short = "d", long, default_value = DEFAULT_DNS_ADDRESS, parse(try_from_str = parse_address))]
+    dns: Ipv4Addr,
 
     /// Connection link, will be used instead of other arguments if specified
     #[structopt(short = "l", long)]
     link: Option<String>,
 
-    /// Print reef version number and exit
-    #[structopt(short = "v", long)]
-    version: bool,
+    #[structopt(long)]
+    capture_iface: Vec<String>,
+
+    #[structopt(long)]
+    capture_ranges: Vec<String>,
+
+    #[structopt(long)]
+    exempt_ranges: Vec<String>,
+
+    #[structopt(long)]
+    capture_addresses: Vec<String>,
+
+    #[structopt(long)]
+    exempt_addresses: Vec<String>,
+
+    #[structopt(long)]
+    capture_ports: Option<String>,
+
+    #[structopt(long)]
+    exempt_ports: Option<String>,
+
+    #[structopt(long, parse(try_from_str = parse_address))]
+    local_address: Option<Ipv4Addr>,
 
     /// Install VPN connection, run command and exit after command is finished
     #[structopt(short = "e", long)]
-    command: Option<String>
+    command: Option<String>,
 }
 
-
 fn init_logging() {
-    set_var("RUST_LOG", match var("SEASIDE_LOG_LEVEL") {
-        Ok(level) => level,
-        _ => match var("RUST_LOG") {
+    set_var(
+        "RUST_LOG",
+        match var("SEASIDE_LOG_LEVEL") {
             Ok(level) => level,
-            _ => DEFAULT_LOG_LEVEL.to_string()
-        }
-    });
+            _ => match var("RUST_LOG") {
+                Ok(level) => level,
+                _ => DEFAULT_LOG_LEVEL.to_string(),
+            },
+        },
+    );
     init();
 }
 
-
-fn parse_link(link: Option<String>) -> (Option<String>, Option<Ipv4Addr>, Option<u16>, Option<String>) {
-    if link.is_some() {
-        todo!();
-    } else {
-        (None, None, None, None)
+fn process_link<'a>(link: Option<String>) -> DynResult<(Option<String>, Option<ByteBuffer<'a>>, Option<u16>, Option<u16>, Option<ByteBuffer<'a>>, Option<String>)> {
+    match link {
+        Some(res) => {
+            let (a, p, pp, pt, t, d) = parse_client_link(res)?;
+            Ok((Some(a), Some(p), pp, pt, Some(t), d))
+        }
+        None => Ok((None, None, None, None, None, None)),
     }
 }
 
@@ -95,27 +122,56 @@ fn parse_link(link: Option<String>) -> (Option<String>, Option<Ipv4Addr>, Option
 async fn main() -> DynResult<()> {
     init_logging();
     let opt = Opt::from_args();
-    if opt.version {
-        println!("Seaside Viridian Reef version {}", env!("CARGO_PKG_VERSION"));
-    } else {
-        let (_link_node, link_address, link_ctrl_port, link_payload) = parse_link(opt.link);
-        let address = link_address.unwrap_or(opt.address);
-        let port = link_ctrl_port.unwrap_or(opt.ctrl_port);
-        let payload = link_payload.unwrap_or_else(|| opt.payload.expect("Caerulean payload value was not specified!"));
-        let user = var("SEASIDE_USER_NAME").unwrap_or(gethostname().into_string().expect("Host name can not be parsed into a string!"));
-        let min_hc = var("SEASIDE_MIN_HC_TIME").unwrap_or(DEFAULT_MIN_HC_TIME.to_string()).parse::<u16>().expect("'SEASIDE_MIN_HC_TIME' should be an integer!");
-        let max_hc = var("SEASIDE_MAX_HC_TIME").unwrap_or(DEFAULT_MAX_HC_TIME.to_string()).parse::<u16>().expect("'SEASIDE_MAX_HC_TIME' should be an integer!");
-        let timeout = var("SEASIDE_CONNECTION_TIMEOUT").unwrap_or(DEFAULT_CONNECTION_TIMEOUT.to_string()).parse::<f32>().expect("'SEASIDE_CONNECTION_TIMEOUT' should be a float!");
-        let tunnel = var("SEASIDE_TUNNEL_NAME").unwrap_or(DEFAULT_TUNNEL_NAME.to_string());
-        let tunnel_address = var("SEASIDE_TUNNEL_ADDRESS").unwrap_or(DEFAULT_TUNNEL_ADDRESS.to_string()).parse::<Ipv4Addr>().expect("'SEASIDE_TUNNEL_ADDRESS' should be an IP address!");
-        let tunnel_netmask = var("SEASIDE_TUNNEL_NETMASK").unwrap_or(DEFAULT_TUNNEL_NETMASK.to_string()).parse::<Ipv4Addr>().expect("'DEFAULT_TUNNEL_NETMASK' should be an IP netmask!");
-        let svr_index = var("SEASIDE_SVR_INDEX").unwrap_or(DEFAULT_SVR_INDEX.to_string()).parse::<u8>().expect("'DEFAULT_SVR_INDEX' should be an integer!");
-        let certs = var("SEASIDE_ROOT_CERTIFICATE_AUTHORITY").ok();
+    let (link_address, link_public, link_port, link_typhoon, link_token, link_dns) = process_link(opt.link)?;
 
-        info!("Creating reef coordinator...");
-        let constructor = Coordinator::new(address, port, &payload, &user, min_hc, max_hc, timeout, &tunnel, tunnel_address, tunnel_netmask, svr_index, certs.as_deref());
-        info!("Starting reef coordinator...");
-        constructor.await?.start(opt.command).await?;
-    }
+    let public = match link_public {
+        Some(res) => res,
+        None => match opt.public {
+            Some(res) => parse_bytes(res)?,
+            None => bail!("Caerulean public key was not specified!"),
+        },
+    };
+
+    let token = match link_token {
+        Some(res) => res,
+        None => match opt.token {
+            Some(res) => parse_bytes(res)?,
+            None => bail!("Caerulean token was not specified!"),
+        },
+    };
+
+    let protocol = match opt.protocol {
+        Some(res) => ProtocolType::from_str(&res)?,
+        None => bail!("Caerulean protocol was not specified!"),
+    };
+
+    let link_port_number = match protocol {
+        ProtocolType::PORT => link_port,
+        ProtocolType::TYPHOON => link_typhoon,
+    };
+
+    let port = match link_port_number {
+        Some(res) => res,
+        None => opt.port,
+    };
+
+    let address = match link_address {
+        Some(res) => parse_address(&res)?,
+        None => opt.address,
+    };
+
+    let dns = match link_dns {
+        Some(res) => parse_address(&res)?,
+        None => opt.dns,
+    };
+
+    info!("Creating reef client...");
+    debug!("Parameters for reef client: address {address}, port {port}, protocol {protocol:?}, token length {}, public key length {}, dns {dns}", token.len(), public.len());
+    let mut constructor = Viridian::new(address, port, token, public, protocol, Some(dns), Some(opt.capture_iface), Some(opt.capture_ranges), Some(opt.exempt_ranges), Some(opt.capture_addresses), Some(opt.exempt_addresses), opt.capture_ports, opt.exempt_ports, opt.local_address).await?;
+
+    info!("Starting reef Viridian...");
+    constructor.start(opt.command).await?;
+
+    info!("Destroying reef client...");
     Ok(())
 }

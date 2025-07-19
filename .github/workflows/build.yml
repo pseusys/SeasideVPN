@@ -1,5 +1,4 @@
 name: BUILD
-# TODO: fix "poetry poe -C" commands once the issue is finally resolved: https://github.com/nat-n/poethepoet/issues/270
 # TODO: add ARM64 architecture for Windows build of Reef, once the issue is resolved: https://github.com/basil00/WinDivert/issues/236 
 
 on:
@@ -21,25 +20,22 @@ jobs:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
 
-      - name: Setup Python 3.10 🐍
+      - name: Setup Python 3.11 🐍
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.11"
 
       - name: Install Dependencies 🔮
+        working-directory: viridian/algae
         run: |
           pip3 install poetry
-          poetry -C viridian/algae install --without devel && poetry -C viridian/algae self add 'poethepoet[poetry_plugin]' poetry-plugin-export
-
-      - name: Build Algae Executable 🏗️
-        env:
-          EXEC_NAME: viridian_algae_executable
-        run: cd viridian/algae && poetry poe compile ${{ env.EXEC_NAME }}.run
+          poetry install --extras "bundle"
 
       - name: Build Caerulean Installer 📥
+        working-directory: viridian/algae
         env:
           EXEC_NAME: caerulean_installer
-        run: cd viridian/algae && poetry poe bundle ${{ env.EXEC_NAME }}.pyz
+        run: poetry poe bundle ${{ env.EXEC_NAME }}.pyz
 
       - name: Create Artifact Name From Branch Name 🌱
         uses: mad9000/actions-find-and-replace-string@5
@@ -58,9 +54,7 @@ jobs:
           name: algae-executable-${{ steps.branch-name.outputs.value }}
           retention-days: 3
           if-no-files-found: error
-          path: |
-            viridian/algae/dist/*.run
-            viridian/algae/*.pyz
+          path: viridian/algae/*.pyz
 
   caerulean-whirlpool-build:
     name: Build Caerulean Whirlpool Server Executable
@@ -74,20 +68,29 @@ jobs:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
 
-      - name: Setup Go 1.22 🦫
+      - name: Setup GCC 🐃
+        working-directory: caerulean/whirlpool
+        run: sudo apt-get install -y gcc-aarch64-linux-gnu gcc-x86-64-linux-gnu
+
+      - name: Setup Go 1.23 🦫
         uses: actions/setup-go@v5
         with:
-          go-version: "^1.22.0"
+          go-version: "^1.23.0"
 
       - name: Install Dependencies 🔮
-        run: go install github.com/pseusys/protogo@latest
+        working-directory: caerulean/whirlpool
+        run: |
+          go install github.com/xlab/c-for-go@latest
+          go install github.com/pseusys/protogo@latest
 
       - name: Build Caerulean Whirlpool 🏗️
+        working-directory: caerulean/whirlpool
         env:
+          LINKING_FLAGS: -w -s
           GOARCH: ${{ matrix.arch }}
-          COMPILE_FLAGS: -s
+          CC: ${{ matrix.arch == 'amd64' && 'x86_64-linux-gnu-gcc' || 'aarch64-linux-gnu-gcc' }}
           EXEC_NAME: ${{ format('caerulean_whirlpool_executable-{0}', matrix.arch) }}
-        run: make -C caerulean/whirlpool build EXEC_NAME=${{ env.EXEC_NAME }}.run
+        run: make build EXEC_NAME=${{ env.EXEC_NAME }}.run
 
       - name: Create Artifact Name From Branch Name 🌱
         uses: mad9000/actions-find-and-replace-string@5
@@ -135,21 +138,29 @@ jobs:
           target: ${{ env.TARGET }}
           override: true
 
+      - name: Download Dependencies 🔮
+        if: runner.os == 'Windows'
+        working-directory: viridian/reef
+        shell: bash
+        run: make dependencies
+
       - name: Build Viridian Reef 🏗️
         uses: actions-rs/cargo@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WINDIVERT_PATH: ${{ github.workspace }}/viridian/reef/windivert-bin
         with:
           command: build
           use-cross: true
           args: --release --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml --target ${{ env.TARGET }}
 
       - name: Rename Executable 📛
+        working-directory: viridian/reef
         env:
           EXEC_SRC: ${{ matrix.os == 'linux' && 'cli' || 'cli.exe' }}
           EXEC_STEM: ${{ format('viridian-reef-executable-{0}-{1}', matrix.os, matrix.arch) }}
           EXEC_EXT: ${{ matrix.os == 'linux' && 'run' || 'exe' }}
-        run: mv viridian/reef/target/${{ env.TARGET }}/release/${{ env.EXEC_SRC }} viridian/reef/target/${{ env.EXEC_STEM }}.${{ env.EXEC_EXT }}
+        run: mv target/${{ env.TARGET }}/release/${{ env.EXEC_SRC }} target/${{ env.EXEC_STEM }}.${{ env.EXEC_EXT }}
 
       - name: Create Artifact Name From Branch Name 🌱
         uses: mad9000/actions-find-and-replace-string@5

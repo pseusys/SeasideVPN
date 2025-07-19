@@ -16,20 +16,20 @@
 # JavaScript:
 
 ## Node modules:
-.github/scripts/node_modules
+.github/node_modules
 
 ## Dependency lock file:
-.github/scripts/package-lock.json
+.github/package-lock.json
 
 ## Testing utilities files:
-.github/scripts/.setup_test_cache
-.github/scripts/certificates
+.github/certificates
 
 
 
 # Python:
 
-## Poetry lock file:
+## Poetry lock file and cache:
+viridian/algae/.poetry
 viridian/algae/poetry.lock
 
 ## Pyinstaller build:
@@ -43,11 +43,12 @@ viridian/algae/**/.mypy_cache/
 viridian/algae/**/.pytest-cache/
 
 ## Python generated files:
-viridian/algae/sources/generated/
+viridian/algae/sources/interaction/generated/
 viridian/algae/*.pyz
 
 ## Test files:
 viridian/algae/certificates/
+.github/certificates/
 
 
 
@@ -81,3 +82,8 @@ viridian/reef/src/generated
 
 ## Test files:
 viridian/reef/certificates/
+
+## External dependencies:
+viridian/reef/WinDivert-*.zip
+viridian/reef/windivert-bin/
+viridian/reef/windivert-source/

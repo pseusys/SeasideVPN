@@ -23,7 +23,7 @@ const SLEEP_TIME = 15;
 // Ubuntu version to reinstall on the server
 const UBUNTU_VERISON = "22.04";
 // Local path to the 'install.pyz' Whirlpool node installation script
-const INSTALL_SCRIPT = join(dirname(import.meta.dirname), "..", "viridian", "algae", "install.pyz");
+const INSTALL_SCRIPT = join(import.meta.dirname, "..", "viridian", "algae", "install.pyz");
 // Default ctrlport for whirlpool.
 const DEFAULT_CTRLPORT = 8587;
 // Default certificates path.

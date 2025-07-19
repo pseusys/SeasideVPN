@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 use neli::consts::nl::{NlType, NlmF, NlmFFlags};
-use neli::consts::rtnl::{Arphrd, IfaFFlags, IffFlags, RtAddrFamily, RtScope, RtTable, Rta, Rtm, RtmF, RtmFFlags, Rtn, Rtprot};
+use neli::consts::rtnl::{Arphrd, Ifa, IfaFFlags, IffFlags, RtAddrFamily, RtScope, RtTable, Rta, RtaType, Rtm, RtmF, RtmFFlags, Rtn, Rtprot};
 use neli::consts::socket::NlFamily;
 use neli::err::NlError;
 use neli::nl::{NlPayload, Nlmsghdr};
@@ -13,9 +13,14 @@ use simple_error::bail;
 
 use crate::DynResult;
 
-
 // TODO: remove whenever neli-0.7.0 is out!
 fn copy_rtattr(attribute: &Rtattr<Rta, Buffer>) -> Rtattr<Rta, Buffer> {
+    let buffer = Buffer::from(attribute.rta_payload.as_ref());
+    Rtattr::new(Some(attribute.rta_len), attribute.rta_type, buffer).expect("Error serializing payload!")
+}
+
+// TODO: remove whenever neli-0.7.0 is out!
+fn copy_ifattr(attribute: &Rtattr<Ifa, Buffer>) -> Rtattr<Ifa, Buffer> {
     let buffer = Buffer::from(attribute.rta_payload.as_ref());
     Rtattr::new(Some(attribute.rta_len), attribute.rta_type, buffer).expect("Error serializing payload!")
 }
@@ -35,10 +40,9 @@ pub fn copy_rtmsg(message: &Rtmsg) -> Rtmsg {
         rtm_scope: message.rtm_scope,
         rtm_type: message.rtm_type,
         rtm_flags: RtmFFlags::new(&flags[..]),
-        rtattrs: RtBuffer::from_iter(buffer)
+        rtattrs: RtBuffer::from_iter(buffer),
     }
 }
-
 
 pub fn send_netlink_message<'a, T: NlType + Debug, P: FromBytesWithInput<'a, Input = usize> + Debug + ToBytes + Size, R: NlType + Debug>(socket: &'a mut NlSocketHandle, mut message: Nlmsghdr<T, P>, ack: bool) -> DynResult<Option<P>> {
     if ack {
@@ -48,21 +52,23 @@ pub fn send_netlink_message<'a, T: NlType + Debug, P: FromBytesWithInput<'a, Inp
         bail!("Error sending message: {res}")
     }
     let received = match socket.recv::<R, P>() {
-        Err(res) => if let NlError::Nlmsgerr(err) = res {
-            bail!("Netlink error, errno: {}!", err.error)
-        } else {
-            bail!("Unknown error: {res:?}!")
-        },
-        Ok(res) => res
+        Err(res) => {
+            if let NlError::Nlmsgerr(err) = res {
+                bail!("Netlink error, errno: {}!", err.error)
+            } else {
+                bail!("Unknown error: {res:?}!")
+            }
+        }
+        Ok(res) => res,
     };
     let response = match received {
         None => bail!("No message received in response!"),
-        Some(res) => res
+        Some(res) => res,
     };
     match (response.nl_payload, ack) {
         (NlPayload::Payload(res), false) => Ok(Some(res)),
         (NlPayload::Ack(_), true) => Ok(None),
-        _ => bail!("Unexpected payload received in response!")
+        _ => bail!("Unexpected payload received in response!"),
     }
 }
 
@@ -73,21 +79,20 @@ pub fn send_netlink_stream<'a, T: NlType + Debug, P: for<'b> FromBytesWithInput<
     for response in socket.iter::<T, P>(false) {
         let header = match response {
             Err(res) => bail!("Error receiving message: {res}"),
-            Ok(res) => res
+            Ok(res) => res,
         };
         if let Ok(res) = header.get_payload() {
             prc(res)?;
-        };
-    };
+        }
+    }
     Ok(())
 }
-
 
 pub fn create_socket() -> DynResult<NlSocketHandle> {
     Ok(NlSocketHandle::connect(NlFamily::Route, None, &[])?)
 }
 
-pub fn create_attr<P: Size + ToBytes>(attr_type: Rta, buffer: P) -> DynResult<Rtattr<Rta, Buffer>> {
+pub fn create_attr<T: RtaType, P: Size + ToBytes>(attr_type: T, buffer: P) -> DynResult<Rtattr<T, Buffer>> {
     Ok(Rtattr::new(None, attr_type, buffer)?)
 }
 
@@ -110,7 +115,18 @@ pub fn create_rtmsg(table: RtTable, full_length: bool, direct: bool, args: &[Rta
     for arg in args {
         rtbuff.push(copy_rtattr(arg));
     }
-    Ok(Rtmsg {rtm_family: RtAddrFamily::Inet, rtm_dst_len: rtmdl, rtm_src_len: 0, rtm_tos: 0, rtm_table: table, rtm_protocol: rtmp, rtm_scope: RtScope::Universe, rtm_type: rtmt, rtm_flags: RtmFFlags::empty(), rtattrs: rtbuff})
+    Ok(Rtmsg {
+        rtm_family: RtAddrFamily::Inet,
+        rtm_dst_len: rtmdl,
+        rtm_src_len: 0,
+        rtm_tos: 0,
+        rtm_table: table,
+        rtm_protocol: rtmp,
+        rtm_scope: RtScope::Universe,
+        rtm_type: rtmt,
+        rtm_flags: RtmFFlags::empty(),
+        rtattrs: rtbuff,
+    })
 }
 
 pub fn create_routing_message(table: RtTable, nl_type: Rtm, direct: bool, dump: bool, args: &[Rtattr<Rta, Buffer>]) -> DynResult<Nlmsghdr<Rtm, Rtmsg>> {
@@ -124,8 +140,12 @@ pub fn create_clear_cache_message(nl_type: Rtm) -> DynResult<Nlmsghdr<Rtm, Rtmsg
     Ok(header)
 }
 
-pub fn create_address_message(interface: i32, nl_type: Rtm) -> Nlmsghdr<Rtm, Ifaddrmsg> {
-    let message = Ifaddrmsg {ifa_family: RtAddrFamily::Inet, ifa_flags: IfaFFlags::empty(), ifa_index: interface, ifa_prefixlen: 0, ifa_scope: RtScope::Host.into(), rtattrs: RtBuffer::new()};
+pub fn create_address_message(interface: i32, nl_type: Rtm, args: &[Rtattr<Ifa, Buffer>]) -> Nlmsghdr<Rtm, Ifaddrmsg> {
+    let mut rtbuff = RtBuffer::new();
+    for arg in args {
+        rtbuff.push(copy_ifattr(arg));
+    }
+    let message = Ifaddrmsg { ifa_family: RtAddrFamily::Inet, ifa_flags: IfaFFlags::empty(), ifa_index: interface, ifa_prefixlen: 0, ifa_scope: RtScope::Host.into(), rtattrs: rtbuff };
     create_header(nl_type, true, message)
 }
 

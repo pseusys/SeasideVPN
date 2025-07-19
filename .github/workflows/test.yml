@@ -1,6 +1,5 @@
 name: TEST
-# TODO: fix "poetry poe -C" commands once the issue is finally resolved: https://github.com/nat-n/poethepoet/issues/270
-# TODO: fix "npm --prefix" commands once the windows issue is finally resolved: https://github.com/npm/cli/issues/4511
+# TODO: fix 'install poethepoet[poetry_plugin]' once windows issue is resolved: https://github.com/python-poetry/poetry/issues/10028
 
 on:
   push:
@@ -9,39 +8,84 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
+env:
+  RUNNING_IN_CI: 1
+
 jobs:
-  viridian-algae-test:
-    name: Test Viridian Algae
+  viridian-algae-test-full:
+    name: Test Viridian Algae Full
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
 
-      - name: Setup Python 3.10 🐍
+      - name: Setup Python 3.11 🐍
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.11"
 
       - name: Install Dependencies 🔮
+        working-directory: viridian/algae
         run: |
-          pip3 install poetry poethepoet[poetry_plugin]
-          poetry -C viridian/algae install --without client,devel,setup && poetry -C viridian/algae self add 'poethepoet[poetry_plugin]'
+          pip3 install poetry
+          poetry install --extras "setup test"
 
       - name: Test Viridian Algae (unit) 🧪
-        run: cd viridian/algae && poetry poe test-unit
+        working-directory: viridian/algae
+        run: poetry poe test-unit
 
       - name: Test Viridian Algae (integration) 📇
-        run: cd viridian/algae && poetry poe test-integration
+        working-directory: viridian/algae
+        run: poetry poe test-integration
 
       - name: Test Viridian Algae (smoke) 😶‍🌫️
-        run: cd viridian/algae && poetry poe test-smoke
+        working-directory: viridian/algae
+        run: poetry poe test-smoke
+
+  viridian-algae-test-quick:
+    name: Test Viridian Algae Quick
+    runs-on: ubuntu-latest
+    env:
+      TARGET_ADDRESS: 1.1.1.1
+      TARGET_LOWER_PORT: 44442
+      TARGET_HIGHER_PORT: 44446
+      TEST_COMMAND: curl -v -I --fail --max-time 15 https://1.1.1.1
+
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v4
+
+      - name: Setup VPN Server 🖴
+        id: setup-test-server
+        uses: ./.github/actions/setup-server
+        with:
+          target: ${{ env.TARGET_ADDRESS }}
+          lower_port: ${{ env.TARGET_LOWER_PORT }}
+          higher_port: ${{ env.TARGET_HIGHER_PORT }}
+          test-command: ${{ env.TEST_COMMAND }} --local-port 44443
+
+      - name: Test Viridian Algae PORT (standalone) 🧪
+        id: test-viridian-algae-port
+        working-directory: viridian/algae
+        run: sudo -E env "PATH=$PATH" poetry poe client -s port -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-ports "${{ env.TARGET_LOWER_PORT }}:${{ env.TARGET_HIGHER_PORT }}" -e "${{ env.TEST_COMMAND }} --local-port 44444"
+
+      - name: Test Viridian Algae TYPHOON (standalone) 🧪
+        id: test-viridian-algae-typhoon
+        working-directory: viridian/algae
+        run: sudo -E env "PATH=$PATH" poetry poe client -s typhoon -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-ports "${{ env.TARGET_LOWER_PORT }}:${{ env.TARGET_HIGHER_PORT }}" -e "${{ env.TEST_COMMAND }} --local-port 44445"
 
   viridian-reef-test:
     name: Test Viridian Reef
     runs-on: ${{ format('{0}-latest', matrix.os) }}
     env:
+      TARGET_ADDRESS: 1.1.1.1
+      TARGET_LOWER_PORT: 44442
+      TARGET_HIGHER_PORT: 44446
+      SEASIDE_LOG_LEVEL: reeflib=DEBUG,INFO
+      WINDIVERT_PATH: ${{ github.workspace }}/viridian/reef/windivert-bin
       SUDO: ${{ matrix.os == 'ubuntu' && 'sudo -E env "PATH=$PATH"' || '' }}
+      TEST_COMMAND: ${{ matrix.os == 'ubuntu' && 'curl' || '& curl.exe' }} -v -I --fail --max-time 15 https://1.1.1.1
     strategy:
       fail-fast: false
       matrix:
@@ -51,16 +95,6 @@ jobs:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
 
-      - name: Install NodeJS 🪢
-        uses: actions/setup-node@v4.1.0
-        with:
-          node-version: 22
-
-      - name: Setup Python 3.10 🐍
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-
       - name: Setup Rust 🦀
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
@@ -69,29 +103,34 @@ jobs:
           cache-workspaces: viridian/reef
           override: true
 
-      - name: Install Dependencies 🔮
-        run: |
-          cd .github/scripts && npm install && cd ../.. 
-          pip3 install poetry && poetry -C viridian/algae install --without client
+      - name: Download Dependencies 🔮
+        if: runner.os == 'Windows'
+        working-directory: viridian/reef
+        shell: bash
+        run: make dependencies runtime
 
       - name: Test Viridian Reef (unit) 🧪
-        run: ${{ env.SUDO }} cargo test --package SeasideVPN-Reef --lib --manifest-path viridian/reef/Cargo.toml -- --nocapture --show-output
+        working-directory: viridian/reef
+        run: ${{ env.SUDO }} cargo test --package SeasideVPN-Reef --lib -- --nocapture --show-output
 
-      - name: Prepare Host
-        run: cd .github/scripts && npm run configure-viridian-test
-
-      - name: Load .ENV File
-        uses: aarcangeli/load-dotenv@v1
+      - name: Setup VPN Server 🖴
+        id: setup-test-server
+        uses: ./.github/actions/setup-server
         with:
-          path: viridian/reef/docker
-          filenames: host.env
+          target: ${{ env.TARGET_ADDRESS }}
+          lower_port: ${{ env.TARGET_LOWER_PORT }}
+          higher_port: ${{ env.TARGET_HIGHER_PORT }}
+          test-command: ${{ env.TEST_COMMAND }} --local-port 44443
 
-      - name: Test Viridian Reef (integration) 🧪
-        env:
-          SEASIDE_ROOT_CERTIFICATE_AUTHORITY: viridian/reef/certificates/viridian/rootCA.crt
-          RUNNER_COMMAND: cargo run --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml
-          TEST_COMMAND: poetry -C viridian/algae run pytest --log-cli-level=INFO tests/test_local.py
-        run: ${{ env.SUDO }} ${{ env.RUNNER_COMMAND }} -- -a "${{ env.SEASIDE_ADDRESS }}" -c "${{ env.SEASIDE_CTRLPORT }}" -p "${{ env.SEASIDE_PAYLOAD_VIRIDIAN }}" -e "${{ env.TEST_COMMAND }}"
+      - name: Test Viridian Reef PORT (integration) 🧪
+        id: test-viridian-reef-port
+        working-directory: viridian/reef
+        run: ${{ env.SUDO }} cargo run --features cli-exec --bin cli -- -s port -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-ports ${{ env.TARGET_LOWER_PORT }}:${{ env.TARGET_HIGHER_PORT }} -e "${{ env.TEST_COMMAND }} --local-port 44444"
+
+      - name: Test Viridian Reef TYPHOON (integration) 🧪
+        id: test-viridian-reef-typhoon
+        working-directory: viridian/reef
+        run: ${{ env.SUDO }} cargo run --features cli-exec --bin cli -- -s typhoon -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-ports ${{ env.TARGET_LOWER_PORT }}:${{ env.TARGET_HIGHER_PORT }} -e "${{ env.TEST_COMMAND }} --local-port 44445"
 
   caerulean-whirlpool-test:
     name: Test Caerulean Whirlpool
@@ -102,7 +141,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Test Caerulean Whirlpool 🧪
-        run: make test-whirlpool
+        working-directory: caerulean/whirlpool
+        run: make -s test
 
   caerulean-installer-script:
     name: Test Caerulean Installer Script
@@ -117,20 +157,23 @@ jobs:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
 
-      - name: Setup Python 3.10 🐍
+      - name: Setup Python 3.11 🐍
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.11"
 
       - name: Install Dependencies 🔮
+        working-directory: viridian/algae
         run: |
           pip3 install poetry
-          poetry -C viridian/algae install --without client,devel && poetry -C viridian/algae self add 'poethepoet[poetry_plugin]'
+          poetry install --extras "bundle setup"
 
       - name: Compile Installer Script 🏗️
-        run: cd viridian/algae && poetry poe bundle
+        working-directory: viridian/algae
+        run: poetry poe bundle
 
       - name: Run Installer Script 📥
+        working-directory: viridian/algae
         env:
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
-        run: sudo -E python3 viridian/algae/install.pyz -g -a no ${{ matrix.caerulean }} -r ${{ matrix.dist }} -s ${{ env.BRANCH_NAME }}
+        run: sudo -E python3 install.pyz -g -a no ${{ matrix.caerulean }} -r ${{ matrix.dist }} -s ${{ env.BRANCH_NAME }}

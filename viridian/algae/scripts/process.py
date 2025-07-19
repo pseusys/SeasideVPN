@@ -1,21 +1,12 @@
-from asyncio import run as async_run
 from glob import glob
+from logging import getLogger
 from pathlib import Path
 from shutil import rmtree
-from subprocess import check_output
 from sys import argv
 from typing import List, Union
 
-from colorama import Fore, Style, just_fix_windows_console
-from grpc_tools.protoc import _get_resource_file_name
-from grpc_tools.protoc import main as protoc_main
-from PyInstaller.__main__ import run as install
-from python_on_whales import Container, DockerClient
-from python_on_whales.components.image.cli_wrapper import ValidImage
-from python_on_whales.utils import run as docker_run
-from zipapps import create_app
-
-from scripts.misc import ALGAE_ROOT
+# Root of algae viridian source files.
+ALGAE_ROOT = Path(__file__).parent.parent
 
 # Default algae executable file name.
 _EXECUTABLE_NAME = "algae.run"
@@ -23,64 +14,52 @@ _EXECUTABLE_NAME = "algae.run"
 # Default caerulean installer file name.
 _INSTALLER_NAME = "install.pyz"
 
+# Default logger instance.
+logger = getLogger(__name__)
 
-def generate() -> int:
+
+def generate() -> None:
     """
     Generate protobuf source files.
     Previous generation results will be removed.
     Library `betterproto` is used for generation.
     """
-    sources_root = ALGAE_ROOT / "sources"
-    generated_root = sources_root / "generated"
-    rmtree(generated_root, ignore_errors=True)
+    from grpc_tools.protoc import _get_resource_file_name, main
+
+    sources_root = ALGAE_ROOT / "sources" / "interaction"
+    rmtree(sources_root / "generated", ignore_errors=True)
 
     vessels_root = ALGAE_ROOT.parent.parent / "vessels"
     proto_include = _get_resource_file_name("grpc_tools", "_proto")
     vessels = [str(file) for file in glob(f"{str(vessels_root)}/*.proto", recursive=True)]
-    params = [protoc_main.__module__, f"-I={proto_include}", f"-I={str(vessels_root)}", f"--python_betterproto_out={str(sources_root)}"]
-    return int(protoc_main(params + vessels))
-
-
-def compile() -> None:
-    """
-    Generate single algae executable.
-    Library `pyinstaller` is used for generation.
-    """
-    executable_name = argv[1] if len(argv) > 1 else _EXECUTABLE_NAME
-    paths = ["--specpath", str(ALGAE_ROOT), "--distpath", str(ALGAE_ROOT / "dist"), "--workpath", str(ALGAE_ROOT / "build")]
-    install(paths + ["-F", "-c", "-y", "-n", executable_name, str(ALGAE_ROOT / "sources" / "main.py")])
-
-
-def execute() -> int:
-    """
-    Import and execute main function of algae module.
-    Pass console arguments to it.
-    """
-    from sources.main import main
-
-    return async_run(main(argv[1:]))
+    params = [main.__module__, f"-I={proto_include}", f"-I={str(vessels_root)}", f"--python_betterproto_out={str(sources_root)}"]
+    exit(main(params + vessels))
 
 
 def bundle() -> None:
     """
     Bundle caerulean installation script.
     """
+    from tomli import loads
+    from zipapps import create_app
 
-    dependencies = check_output(["poetry", "export", "--without-hashes", "--with-credentials", "--only=setup"], text=True)
-    requirements = [dep.split(";")[0].strip() for dep in dependencies.split("\n") if len(dep) > 0]
+    pyproject = Path.cwd() / "pyproject.toml"
+    dependencies = loads(pyproject.read_text()).get("project", dict()).get("optional-dependencies", dict()).get("setup", list())
 
-    main_module = "main:main"
+    setup = ALGAE_ROOT / "setup"
+    entrypoint = "setup.main:main"
     install_cache = "$TEMP/seaside_install_cache"
+    pycache = str((setup / "__pycache__").relative_to(ALGAE_ROOT))
     installer_name = str(ALGAE_ROOT / (argv[1] if len(argv) > 1 else _INSTALLER_NAME))
-    includes = [str(path) for path in (ALGAE_ROOT / "setup").glob("*.py") if path.name != "__init__.py"]
-    create_app(",".join(includes), output=installer_name, main=main_module, compressed=True, lazy_install=True, unzip_path=install_cache, pip_args=requirements)
+    create_app(str(setup), output=installer_name, main=entrypoint, compressed=True, lazy_install=True, ensure_pip=True, unzip="*", unzip_path=install_cache, pip_args=dependencies, rm_patterns=pycache)
 
 
 def clean() -> None:
     """
     Delete all algae generated source files, build files and executables.
-    Also remove all related Docker conatiners, images and networks.
+    Also remove all related Docker containers, images and networks.
     """
+
     for path in glob("**/__pycache__", recursive=True):
         rmtree(path, ignore_errors=True)
 
@@ -93,43 +72,20 @@ def clean() -> None:
     Path(f"{_EXECUTABLE_NAME}.spec").unlink(missing_ok=True)
     Path("poetry.lock").unlink(missing_ok=True)
 
-    docker = DockerClient()
-    unique_containers: List[Union[str, Container]] = ["seaside-algae", "seaside-whirlpool", "seaside-echo", "seaside-internal-router", "seaside-external-router", "network-disruptor"]
-    copy_containers: List[Union[str, Container]] = [f"docker-algae-copy-{n + 1}" for n in range(3)]
-    docker.container.remove(unique_containers + copy_containers, force=True, volumes=True)
-    algae_images: List[ValidImage] = [f"seaside-algae-{mode}" for mode in ("default", "smoke", "smoke-sleeping", "default-sleeping", "smoke-local", "smoke-remote", "smoke-domain")]
-    whirlpool_images: List[ValidImage] = [f"seaside-whirlpool-{mode}" for mode in ("default", "smoke", "integration", "smoke-local", "smoke-remote")]
-    docker.image.remove(["seaside-echo-smoke", "seaside-router-smoke", "seaside-router-smoke-sleeping", "seaside-echo-default", "seaside-echo"] + algae_images + whirlpool_images, True, True)
-    docker_network = [f"docker_{net}" for net in ("sea-client", "sea-router", "sea-server", "sea-cli-int", "sea-rout-int", "sea-rout-ext", "sea-serv-ext")]
-    docker_run(docker.docker_cmd + ["network", "remove", "--force"] + docker_network)
+    try:
+        from python_on_whales import Container, DockerClient
+        from python_on_whales.components.image.cli_wrapper import ValidImage
+        from python_on_whales.utils import run
 
+        docker = DockerClient()
+        unique_containers: List[Union[str, Container]] = ["seaside-algae", "seaside-whirlpool", "seaside-echo", "seaside-internal-router", "seaside-external-router", "network-disruptor"]
+        copy_containers: List[Union[str, Container]] = [f"docker-algae-copy-{n + 1}" for n in range(3)]
+        docker.container.remove(unique_containers + copy_containers, force=True, volumes=True)
+        algae_images: List[ValidImage] = [f"seaside-algae-{mode}" for mode in ("default", "smoke", "smoke-sleeping", "default-sleeping", "smoke-local", "smoke-remote", "smoke-domain")]
+        whirlpool_images: List[ValidImage] = [f"seaside-whirlpool-{mode}" for mode in ("default", "smoke", "integration", "smoke-local", "smoke-remote")]
+        docker.image.remove(["seaside-echo-smoke", "seaside-router-smoke", "seaside-router-smoke-sleeping", "seaside-echo-default", "seaside-echo"] + algae_images + whirlpool_images, True, True)
+        docker_network = [f"docker_{net}" for net in ("sea-client", "sea-router", "sea-server", "sea-cli-int", "sea-rout-int", "sea-rout-ext", "sea-serv-ext")]
+        run(docker.docker_cmd + ["network", "remove", "--force"] + docker_network)
 
-def help() -> None:
-    """
-    Print poetry commands summary.
-    """
-    just_fix_windows_console()
-    print(f"{Style.BRIGHT}Available poetry scripts{Style.RESET_ALL}:")
-    print(f"\t{Fore.BLUE}poetry poe generate{Fore.RESET}: generate protobuf sources (using betterproto library).")
-    print(f"\t{Fore.BLUE}poetry poe lint{Fore.RESET}: run Python code linting locally.")
-    print(f"\t{Fore.BLUE}poetry poe format{Fore.RESET}: run Python code formatting locally.")
-    print(f"\t{Fore.BLUE}poetry poe test-unit{Fore.RESET}: run algae unit tests in a Docker container.")
-    print(f"\t{Fore.BLUE}poetry poe test-integration{Fore.RESET}: run seaside integration tests in a Docker container.")
-    print(f"\t{Fore.BLUE}poetry poe test-smoke{Fore.RESET}: run seaside smoke tests in a Docker container.")
-    print(f"\t{Fore.BLUE}poetry poe test-local{Fore.RESET}: run seaside local smoke tests in a Docker container (without access to internet).")
-    print(f"\t{Fore.BLUE}poetry poe test-remote{Fore.RESET}: run seaside remote smoke tests in a Docker container.")
-    print(f"\t{Fore.BLUE}poetry poe test-domain{Fore.RESET}: run seaside domain smoke tests in a Docker container.")
-    print(f"\t{Fore.BLUE}poetry poe test-all{Fore.RESET}: run all possible tests in a Docker container.")
-    print(f"\t{Fore.BLUE}poetry poe compile{Fore.RESET}: compile algae Python source code to an executable (using pyinstaller library).")
-    print(f"\t{Fore.BLUE}poetry poe execute [ARGS...]{Fore.RESET}: execute algae Python sources locally (ARGS will be passed to the executable).")
-    print(f"\t{Fore.BLUE}poetry poe bundle{Fore.RESET}: bundle caerulean installation script 'install.pyz', required for caerulean installation and certificates generation.")
-    print(f"\t{Fore.BLUE}poetry poe clean{Fore.RESET}: clean all the build files, executables, Docker images, containers and networks.")
-    print(f"\t{Fore.BLUE}poetry poe help{Fore.RESET}: print this message again.")
-    print(f"{Style.BRIGHT}Arguments for algae executable (ARGS){Style.RESET_ALL}:")
-    print(f"\t{Fore.YELLOW}[PAYLOAD]{Fore.RESET}: caerulean payload string (required!).")
-    print(f"\t{Fore.GREEN}-a --address [ADDRESS]{Fore.RESET}: caerulean remote IP address (default: 127.0.0.1).")
-    print(f"\t{Fore.GREEN}-n --ctrlport [CTRLPORT]{Fore.RESET}: caerulean network port number (default: 8587).")
-    print(f"\t{Fore.GREEN}-t --tunnel [TUNNEL]{Fore.RESET}: tunnel interface name (default: seatun).")
-    print(f"\t{Fore.GREEN}-l --link [LINK]{Fore.RESET}: connection link, will be used instead of other arguments if specified.")
-    print(f"{Style.BRIGHT}Connection link format{Style.RESET_ALL}:")
-    print(f"\t{Fore.CYAN}seaside+[NODE_TYPE]://[ADDRESS]:[CTRLPORT]/[PAYLOAD]{Fore.RESET}")
+    except ImportError:
+        logger.info("Skipping clearing Docker artifacts as 'test' extra is not installed!")
