@@ -91,18 +91,17 @@ class PortCore:
         return user_id, tail_length
 
     @classmethod
-    def parse_client_init_header(cls, cipher: Asymmetric, packet: bytes) -> Tuple[str, bytes, int, int]:
+    def parse_client_init_header(cls, cipher: Asymmetric, packet: bytes) -> Tuple[int, bytes, int, int]:
         try:
             key, header = cipher.decrypt(packet)
             flags, client_type, client_version, token_length, tail_length = unpack(cls._CLIENT_INIT_HEADER, header)
-            client_name = client_name.decode().rstrip("\0")
         except BaseException as e:
             raise ProtocolParseError("Error parsing client INIT message header!", e)
         if flags != ProtocolFlag.INIT:
             raise ProtocolParseError(f"Client INIT message flags malformed: {flags:b} != {ProtocolFlag.INIT:b}!")
         if client_version < cls._VERSION.major:
             raise ProtocolParseError(f"Client major version incompatible with server major version: {client_version} < {cls._VERSION.major}!")
-        return client_name, bytes(key), token_length, tail_length
+        return client_type, bytes(key), token_length, tail_length
 
     # Parse all the other messages, they indeed can be confused with each other:
 

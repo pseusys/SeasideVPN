@@ -7,7 +7,7 @@ import pytest
 from .conftest import mock_random_bytes, shannon_entropy
 from sources.utils.crypto import Asymmetric, Symmetric
 from sources.protocol.port_core import PortCore
-from sources.protocol.utils import ProtocolMessageType, ProtocolReturnCode
+from sources.protocol.utils import ProtocolMessageType, ProtocolReturnCode, ProtocolTypes
 
 logger = getLogger(__file__)
 
@@ -30,9 +30,9 @@ SAMPLE_CLIENT_DATA = b'super secret data message payload'
 SAMPLE_ANY_TAIL = b'\xb2Ss\x9d\x17\x15\xdf\xe3g\x0f\x19b\xd1\xe0\x82\x97'
 SAMPLE_ANY_TAIL_LEN = len(SAMPLE_ANY_TAIL)
 
-SAMPLE_CLIENT_INIT_HEADER_LEN = 111
+SAMPLE_CLIENT_INIT_HEADER_LEN = 81
 SAMPLE_CLIENT_INIT_BODY_LEN = 57
-SAMPLE_CLIENT_INIT_MESSAGE = b'\x00\x00\x87\xedl\x0c\x84\xb5\xfa\xd4\xf8\\\xdc\xaa\x1a-\x92#h\x0eF\x9cZA\xc2\x17@\xb6\x0e\x99\xdfe/\x8f\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00hG\xe8\n{\x1b\x1a\x98-\xb1\x1c\xf0_\xa65X\xc9\x96\x0e\xe9\xe9\xcf\xf3_X\xe0\xaf\xcf\x934\xd3X\xc8\x1b\x03\x9bm\xcd\xf2\xb8c\x9eQ\x03h\x0f5\x8f\xe8\x0e\x7f\x12z\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xbbG\xe9\x1dv\x1b\x17\x99=\xa4C\xe0\x05\xf9p\x0e\xa7\xf6\x044\x7fL\x02\x9e+dZ\xd7z\x9dS\x12@\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+SAMPLE_CLIENT_INIT_MESSAGE = b'\x00\x00\x87\xedl\x0c\x84\xb5\xfa\xd4\xf8\\\xdc\xaa\x1a-\x92#h\x0eF\x9cZA\xc2\x17@\xb6\x0e\x99\xdfe/\x8f\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00hg\x84m#~\'a\xdc\xaf\xb7\xe6\xd8\xaf\xa2\xb4XF\xb9\xbal\x8e|\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xbbG\xe9\x1dv\x1b\x17\x99=\xa4C\xe0\x05\xf9p\x0e\xa7\xf6\x044\x7fL\x02\x9e+dZ\xd7z\x9dS\x12@\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
 
 SAMPLE_SERVER_INIT_LEN = 46
 SAMPLE_SERVER_INIT_MESSAGE = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xf8\x9e\x91n\xe50\xc8K\x14\x89\x08N\xaf\r\xcc\x82\xd7\xe1 K.\xf3\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
@@ -76,7 +76,7 @@ def test_client_init_encrypt(manual_asymmetric: Asymmetric):
 
 def test_client_init_decrypt(manual_asymmetric: Asymmetric):
     name, decrypted_key, token_length, tail_length = PortCore.parse_client_init_header(manual_asymmetric, SAMPLE_CLIENT_INIT_MESSAGE[:SAMPLE_CLIENT_INIT_HEADER_LEN])
-    assert name == PortCore._CLIENT_NAME, "Unexpected user name!"
+    assert name == ProtocolTypes.ALGAE, "Unexpected user type!"
     assert token_length == SAMPLE_CLIENT_INIT_BODY_LEN, "Unexpected encrypted token length!"
 
     tail_start = SAMPLE_CLIENT_INIT_HEADER_LEN + token_length
@@ -94,7 +94,7 @@ def test_client_init_cycle():
     assert len(encrypted_header) == PortCore.client_init_header_length, "Unexpected message length!"
 
     name, decrypted_key, token_length, tail_length = PortCore.parse_client_init_header(asymmetric_key, encrypted_header)
-    assert name == PortCore._CLIENT_NAME, "Unexpected user name!"
+    assert name == ProtocolTypes.ALGAE, "Unexpected user type!"
     assert encrypted_key == decrypted_key, "Symmetric keys don't match!"
     assert token_length == SAMPLE_CLIENT_INIT_BODY_LEN, "Unexpected encrypted token length!"
     logger.info(f"Client INIT message name: {name}")
