@@ -87,7 +87,7 @@ Each part also has a unique code name, somehow related to sea topic.
 Moreover, each of them has a special numeric identifier, that is the ASCII code of the first letter of its' name (capitalized).  
 The numeric identification table can be found below:
 
-| Program Name | Numeric Identifier |
+| Program Name | Number ID |
 | --- | :-: |
 | Caerulean Whirlpool | 87 |
 | Viridian Algae | 65 |
@@ -133,7 +133,7 @@ That allows easily switching between networks in case some of them are unavailab
 
 ## Data, connections and protocols
 
-The key difference of SeaSide VPN from other VPN systems is it's undetectability.
+The key difference of Seaside VPN from other VPN systems is it's undetectability.
 Indeed, according to several articles ([this](https://ieeexplore.ieee.org/document/8275301), [this](https://www.ir.com/guides/deep-packet-inspection) or [this](https://www.sciencedirect.com/science/article/abs/pii/S0167404813000837)), packet analysis is done according to several techniques:
 
 - Packet header analysis.
@@ -154,7 +154,7 @@ The unique Seaside protocols are defined specifically for this use case:
 
 ## Connection certificate
 
-Even though SeasideVPN has a defined gRPC API, it is designed so that the **most basic** connection scenario is available bing **100% encrypted** and without relying on any known API queries.
+Even though SeasideVPN has a defined gRPC API, it is designed so that the **most basic** connection scenario is available being **100% encrypted** and without relying on any known API queries.
 That can be done using a special **connection certificate**.
 Having this certificate is absolutely necessary to connect to a Seaside VPN node, so without having this certificate it's impossible to say whether a node is available on the given IP address or not.
 
@@ -166,7 +166,7 @@ Having this certificate is absolutely necessary to connect to a Seaside VPN node
 - **nodetype**: type of node the certificate describes, for worker nodes it is `whirlpool`.
 - **address**: (IP or domain name) where the node server is hosted.
 - **public**: a 32-byte Base64-encoded node public key.
-- **token**: a special encrypted token containing user information (between TODO and TODO) bytes, Base64-encoded.
+- **token**: a special encrypted token containing user information, Base64-encoded.
 - **port**: port number for connection by PORT protocol.
 - **typhoon**: port number for connection by TYPHOON protocol.
 - **dns**: an IP address of the DNS server proposed by the server.

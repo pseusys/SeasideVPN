@@ -31,7 +31,7 @@ class TyphoonCore:
     _TYPHOON_MIN_NEXT_IN = int(float(getenv("TYPHOON_MIN_NEXT_IN", "64.0")) * 1000)
     _TYPHOON_MAX_NEXT_IN = int(float(getenv("TYPHOON_MAX_NEXT_IN", "256.0")) * 1000)
     _TYPHOON_INITIAL_NEXT_IN = float(getenv("TYPHOON_INITIAL_NEXT_IN", "0.05"))
-    _TYPHOON_MAX_RETRIES = int(getenv("TYPHOON_MAX_RETRIES", "5"))
+    _TYPHOON_MAX_RETRIES = int(getenv("TYPHOON_MAX_RETRIES", "12"))
     _TYPHOON_MAX_TAIL_LENGTH = int(getenv("TYPHOON_MAX_TAIL_LENGTH", "1024"))
 
     _TYPHOON_INITIAL_MIN_NEXT_IN = _TYPHOON_MIN_NEXT_IN * _TYPHOON_INITIAL_NEXT_IN
@@ -48,9 +48,8 @@ class TyphoonCore:
 
     @classmethod
     def build_client_init(cls, cipher: Asymmetric, packet_number: int, next_in: int, token: bytes) -> Tuple[bytes, bytes]:
-        client_name = cls._CLIENT_NAME.encode()
         tail_length = random_number(max=cls._TYPHOON_MAX_TAIL_LENGTH)
-        header = pack(cls._CLIENT_INIT_HEADER, ProtocolFlag.INIT, packet_number, ProtocolTypes.ALGAE, cls._VERSION.major, client_name, next_in, tail_length)
+        header = pack(cls._CLIENT_INIT_HEADER, ProtocolFlag.INIT, packet_number, ProtocolTypes.ALGAE, cls._VERSION.major, next_in, tail_length)
         packet = header + token + bytes(tail_length)
         return cipher.encrypt(packet)
 

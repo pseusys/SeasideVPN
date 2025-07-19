@@ -30,7 +30,7 @@ lazy_static! {
     pub static ref TYPHOON_MIN_NEXT_IN: u32 = (parse_env("TYPHOON_MIN_NEXT_IN", Some(64.0)) * 1000.0) as u32;
     pub static ref TYPHOON_MAX_NEXT_IN: u32 = (parse_env("TYPHOON_MAX_NEXT_IN", Some(256.0)) * 1000.0) as u32;
     pub static ref TYPHOON_INITIAL_NEXT_IN: f32 = parse_env("TYPHOON_INITIAL_NEXT_IN", Some(0.05));
-    pub static ref TYPHOON_MAX_RETRIES: usize = parse_env("TYPHOON_MAX_RETRIES", Some(8));
+    pub static ref TYPHOON_MAX_RETRIES: usize = parse_env("TYPHOON_MAX_RETRIES", Some(12));
     pub static ref TYPHOON_MAX_TAIL_LENGTH: usize = parse_env("TYPHOON_MAX_TAIL_LENGTH", Some(1024));
 }
 

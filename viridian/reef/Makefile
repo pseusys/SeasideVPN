@@ -64,13 +64,6 @@ ifeq ($(OS),Windows_NT)
 	mkdir -p $(WINDIVERT_PATH)
 	mv $(WINDIVERT_TEMP)/$(WINDIVERT_SOURCE)/$(WINDIVERT_ARCH)/* $(WINDIVERT_PATH)/
 	rm -rf $(WINDIVERT_TEMP)
-	echo "Downloading WinTun library version $(WINTUN_VERSION)..."
-	curl -sSL -o $(WINTUN_SOURCE).zip $(WINTUN_URL)
-	mkdir -p $(WINTUN_TEMP)
-	unzip -q -o $(WINTUN_SOURCE).zip -d $(WINTUN_TEMP)
-	mkdir -p $(WINTUN_PATH)
-	mv $(WINTUN_TEMP)/wintun/bin/$(WINTUN_ARCH)/* $(WINTUN_PATH)/
-	rm -rf $(WINTUN_TEMP)
 	echo "All dependencies ready!"
 endif
 .PHONY: dependencies

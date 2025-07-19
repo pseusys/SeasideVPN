@@ -5,13 +5,13 @@
 For a VPN, it is equally important to transfer many packets (`DATA` packets) fast and some packets (keep-alive packets) reliably.
 Normally this issue is solved by using 2 distinct connections: 1 UDP data connection and 1 TCP (or QUIC) reliable connection.
 However, this approach is no longer relevant in the modern world, where even TLS protocol gets blocked sometimes.
-SeasideVPN solves this problem by transferring some authentication to the users via third channels (like email or messengers).
+Seaside VPN solves this problem by transferring some authentication to the users via third channels (like email or messengers).
 TYPHOON protocol is designed to replace traditional protocols in the circumstances where presence of this initial data eliminates need for normal handshaking.
 
 In general, it the protocol is based on UDP and most of its packets are just UDP packets with a minimal header and random tail.
 In addition to that, it ensures connection is healthy (somewhat close to TCP keepalive but with random interval).
 The healthcheck handshake messages are either sent empty or appended to data packets (shadowriding).
-The protocol ensures reliable transportation of these handshake headers, and also defines a TCP-style reliable 3-way handshake.
+The protocol ensures reliable transportation of these handshake headers, and also defines a TCP-style reliable 2.5-step handshake.
 
 ## Protocol idea
 
@@ -26,36 +26,44 @@ Here's the idea behind the protocol:
 1. Client already knows all the information required for connection, including:
    - `Listener` port and address.
    - Authentication token.
-   - Asymmetric key.
+   - Asymmetric key (and obfuscation key).
 2. `Client` sends a UDP connection message to the `Listener`, it performs some configuration, spawns `Server` and sends a response message back to `Client`.
 3. `Client` starts sending VPN data to the `Server`, from time to time it also sends keep-alive (handshake) messages:
-   - If there is some data flowing, these messages are just appended to the data messages (this is called `shadowride`).
-   - If the client stays silent for a while, separate handshake messages are sent.
+   - If there is some data flowing, these messages are just appended to the data messages (this is called **shadowriding**).
+   - If the client stays silent for a while, separate empty handshake messages are sent.
 4. One of the parties can optionally send a termination message to interrupt connection (otherwise it will just timeout once either client or server goes offline).
 
 ## Protocol initialization
 
-Two-handshake performed
-TODO: bc: token
-
-Protocol correctness: server can be interrupted by receiving user packet any time, it will restart
-User can not; it checks packet numbers and won't accept out of order
-
-No race condition on client or server is possible (two HDSK packets never processed simultaneously)
-
-Monocypher -> native solutions (no elligator, as it not widely implemented, not audited and also does not protect if known)
-
-HEADER_OVERHEAD = 64;
+Protocol is initialized with a 2.5-step handshake, almost like TCP.
+The difference is that the server allows client to send data packets even before it receives the final (3rd) control packet.
+That is, client can start sending VPN traffic to the server right after it has received its response (the 2nd control message).
+Also the random timeout between the two first control messages is reduced (typically 20 times comparing to the normal timeout).
 
 ## Encryption and authentication
 
-The initialization message (the one being sent from client to listener) is encrypted using asymmetric [ECIES](https://en.wikipedia.org/wiki/Integrated_Encryption_Scheme)-like algorithm (with ephemeral key being hidden by [Elligator](https://elligator.org/) algorithm and symmetric key derived using [Blake2b](https://www.blake2.net/) hash function).
+It is well-known that generally implementing custom cryptography [is a bad idea]().
+Still, for one specific scenario here (protocol initialization) it was decided not to rely on any existing algorithm.
+Technically, [ECIES](https://en.wikipedia.org/wiki/Integrated_Encryption_Scheme) would be the right solution for the initialization message (the one being sent from client to listener), but ECIES does not hide the ephemeral key and (since it has a predictable structure) it can be easily detected.
+That is why a custom obfuscation technique is used: the ephemeral key is XORed with the hash of the obfuscation key (that is the part of the server private key) and two leading bytes of the initialization message.
+This technique allows the initialization message to look completely random.
+It is also becomes hard to verify if a given message belongs to TYPHOON protocol (unlike it is with [Elligator](https://elligator.org/)).
+
 All the other messages (and also the initialization message) payload are encrypted using [XChaCha-Poly1305](https://en.wikipedia.org/wiki/ChaCha20-Poly1305) symmetric cipher.
 [Monocypher](https://monocypher.org/) library is used normally for both of the algorithms (however, both `Client` and `Server` can use any other faster implementation of XChaCha20-Ploy1305).
 
 Each user uses common asymmetric key and private symmetric key.
 Since all the messages are **completely** encrypted, the only way server could attribute a message with a user key is using distinct ports for every user.
 That is why a separate `Server` thread is provided for every user connected to the server.
+
+## Reliable packet order
+
+The protocol is designed so that it naturally avoids packet duplications and desynchronization.
+It is effectively stateless on server side, meaning that every new incoming packet resets the server state.
+Since the server does not have a strong inner state, the client can always enforces its own state, meaning that any out of order or unexpected packet will be just ignored.
+
+In case the correct response waiting delay is long enough and the retry number is sufficient, that eliminates the need for complex recovery behavior and state management.
+The single important rule is that the control packets should always be processed synchronously (or behind a mutex).
 
 ## Recognition protection
 
@@ -85,7 +93,8 @@ The different protocol message types have different header structure:
 |---|:---:|---|
 | Flags | `1` | Message flags |
 | Packet number | `2` | Unique number of the packet |
-| Client name | `16` | Client application name (may include version) |
+| Client type | `1` | Client application type, 0 for unknown or custom client |
+| Client version | `1` | Client application major version, used for compatibility checks |
 | Next in | `2` | A random delay until server answer will be expected |
 | Tail length | `2` | A random tail length that will be appended to the message |
 | Token | variable | User authentication payload |
@@ -150,8 +159,8 @@ If an error occurs during initialization process, it is reflected in the special
 |---|:---:|
 | `Success` | `0` |
 | `Toking parsing error` | `1` |
-| `Registration error` | `2` |
-| `Error in next in parameter` | `3` |
+| `Connection error` | `2` |
+| `Registration error` | `3` |
 | `Unknown error` | `4` |
 
 Finally, if any other outer circumstances require any communication party to stop communication, a `TERM` packet should be sent.
@@ -206,8 +215,6 @@ stateDiagram
     A number of retries on entering the state is specified.
   end note
 ```
-
-TODO: add terminating state to everywhere, change server state machine (add cycle to still, it can be interrupted).
 
 ### `Listener` state machine
 
@@ -268,22 +275,9 @@ Some of the values mentioned above have special constraints on their calculation
 
 ### Global constants
 
-| Constant name | Default value |
-|---|:---:|
-| `ALPHA` | `0.125` |
-| `BETA` | `0.25` |
-| `DEFAULT_RTT` | `5.0` |
-| `MIN_RTT` | `1.0` |
-| `MAX_RTT` | `8.0` |
-| `RTT_MULT` | `4.0` |
-| `MIN_TIMEOUT` | `4.0` |
-| `MAX_TIMEOUT` | `32.0` |
-| `DEFAULT_TIMEOUT` | `30.0` |
-| `MAX_TAIL_LENGTH` | `1024` |
-| `INITIAL_NEXT_IN` | `0.05` |
-| `MIN_NEXT_IN` | `64.0` |
-| `MAX_NEXT_IN` | `256.0` |
-| `MAX_RETRIES` | `12` |
+The constants are described in [an environment file](./example.conf.env).
+There, TYPHOON-related constants are prefixed with `TYPHOON_`, but they will be referred just by name later in this file.
+The constants can be overridden by setting environment variables (just like the environment file in question does), but in most cases they shouldn't be.
 
 ### RTTs calculation
 
@@ -315,10 +309,10 @@ Here are some notes on generation of some random values:
 ## Side notes
 
 1. The protocol can't be overwhelmed by numerous `INIT` messages sent to listener.  
-  Since the authentication token defines user uniquely, no new server will be spawner for an already authenticated user.
+  Since the authentication token defines user uniquely, no new server will be spawned for an already authenticated user.
 2. If an out-of-order packet (or just any unexpected packet) arrives to any of the actors, it is silently dropped.  
   At one point in time, only one `INIT` or `HDSK` message is expected.
 3. In general `HDSK` messages should be **rare**, there is no need to perform healthchecks often.  
   That is why setting next in values not within the default constants is not advised.
 4. However, it is important for server to limit `next_in` values received from user to some reasonable delay.
-  Otherwise the server might end up polluted with lots of waiting-forever `Server`s.
+  Otherwise the server might end up polluted with lots of waiting-forever `Servers`.

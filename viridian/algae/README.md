@@ -2,10 +2,9 @@
 
 > Current version: **"0.0.3"**
 
-Small CLI-based client application, written in `Python`.
-It can be run on linux (in for- and background), it's highly customizable.
+A set of tools and utilities, written in `Python`.
+It includes multiple tests and tools, including sample [client app](#sample-client), caerulean [installer](#caerulean-installer), admin [fixtures](#admin-fixtures), [protocol implementations](#protocol-descriptions) and more.
 Created mainly for development and testing purposes.
-Also contains caerulean installation [script](#caerulean-installation-script).
 
 > Target platform: _linux_ only
 
@@ -17,93 +16,6 @@ Also contains caerulean installation [script](#caerulean-installation-script).
   Installation guide can be found [here](https://python-poetry.org/docs/#installation).
 3. System packages: `iptables`, `iproute2`.
 
-## Implementation details
-
-Viridian algae client consists of the following parts:
-
-- `Coordinator`: establishes all connections, manages `healthcheck` control messages and handles connection exceptions (reconnects, updates token, etc.).
-  Also starts and gracefully stops `viridian` and `tunnel`.
-- `Viridian`: runs two separate threads/processes/coroutines for sending and receiving encrypted VPN packets to `whirlpool`.
-- `Tunnel`: manages all packet tunnelling and `iptables` firewall rules.
-
-NB! Algae uses deprecated `iptables` firewall instead of the newer `nftables`, it can be used and tested inside Docker containers (since recent Docker versions allow containers to have custom `iptables` rules).
-
-## General idea
-
-The basic idea behind viridian algae app is the following:
-
-1. Opens a special UDP VPN port (`seaport` or just `port`).
-2. It connects to the caerulean (starts `coordinator` process control message exchange and sends it `seaport` number).
-3. It creates a soecial tunnel network interface (`tunnel` part).
-4. It backs up built-in firewall setup.
-5. It makes a new set of firewall rules:
-   1. All the packets going to local networks are allowed.
-   2. All the packets going to the viridian IP are allowed.
-   3. All the packets going to the `default route` are forwarded to the tunnel interface.
-6. It starts `viridian` processes, that do the following:
-   1. Listen to the tunnel interface, read packets from there, encrypt them and send to caerulean from `seaport`.
-   2. Listen to `seaport`, decrypt any packets coming from it and sends them through the tunnel interface.
-7. Sleeps until the connection is interrupted.
-8. When the connection should be terminated, both `viridian` processes are stopped and terminated.
-9. Firewall rules are restored.
-10. Tunnel interface is stopped and deleted.
-
-### Initialization
-
-Upon initialization, the algae `tunnel` finds out the local **default** network interface, i.e. the interface the packets will be forwarded through if no local destination is found.
-After that it creates a `TUN` device, sets current user and group as its owner.
-
-Right before the connection, the algae `coordinator` opens gRPC channel to caerulean `whirlpool` and requests token from it.
-Then it connects to caerulean `whirlpool`.
-
-Just after the connection, the algae `tunnel` uses `iptables-legacy` firewall to configure traffic.
-The following rules are prepended to the existing chains (in order):
-
-1. `iptables -t mangle -A OUTPUT --src [LOCAL_DEFAULT_NETWORK_INTERFACE_IP] -o [LOCAL_DEFAULT_NETWORK_INTERFACE] --dst [CAERULEAN_INTERNAL_IP] -j ACCEPT`
-2. `iptables -t mangle -A OUTPUT -o [LOCAL_DEFAULT_NETWORK_INTERFACE] ! --dst [LOCAL_DEFAULT_NETWORK] -j MARK --set-mark 65`
-3. `iptables -t mangle -A OUTPUT -o [LOCAL_DEFAULT_NETWORK_INTERFACE] ! --dst [LOCAL_DEFAULT_NETWORK] -j ACCEPT`
-4. `... all iptables rules that existed before ...`
-
-... and same rule set for `FORWARD` chain.
-
-After that it sets tunnel device `MTU`, IP address (the IP address is `192.168.0.65`) and changes state to `UP`.
-It also clears routing table #65, sets default route to caerulean internal IP there and sets routing lookup for packets marked with number `65` in table #65.
-
-Finally, the algae `viridian` launches two asyncio coroutines: one for reading packets from tunnel, encrypting them and sending in UDP packets to the specified caerulean `whirlpool` port, and another for reading packets from caerulean `whirlpool`, decrypting them and writing to the tunnel device.
-
-While connection is active, the algae `coordinator` sends healthcheck gRPC messages to caerulean `whirlpool` with random timeouts.
-If a non-fatal exception happens, `coordinator` tries to stop algae `viridian` and re-initialize connection, starting from token request, but skipping `tunnel` initialization (since it wasn't stopped).
-
-### Termination
-
-Upon connection interruption (fatal exception or manual), `coordinator` just closes gRPC channel.
-
-Right after that, the algae `tunnel` removes all the `iptables` rules it added (just pops them from the beginning of the tables).
-After that it flushes routing table #65, resets routing lookup for packets marked with number `65` and sets tunnel device state to `DOWN`.
-
-> NB! The same cleanup sequence happens if an error before connection is established.
-
-Finally, the algae `tunnel` deletes the tunnel device.
-
-### System diagram
-
-```mermaid
-flowchart TB
-  subgraph Viridian
-    receiver(Receiver process)
-    sender(Sender process)
-  end
-  system{Local System} -- Outgoing traffic --> tunnel[Tunnel interface]
-  system{Local System} -- Coordinator --> whirlpool[(Whirlpool)]
-  tunnel[Tunnel interface] -- Incoming traffic --> system{Local System}
-  receiver(Receiver process) -- Raw incoming packets --> tunnel[Tunnel interface]
-  tunnel[Tunnel interface] -- Raw outgoing packets --> sender(Sender process)
-  sender(Sender process) -- Encrypted outgoing packets -->whirlpool[(Whirlpool)]
-  whirlpool[(Whirlpool)] -- Encrypted incoming packets --> receiver(Receiver process)
-  whirlpool[(Whirlpool)] --> internet(((Internet)))
-  internet(((Internet))) --> whirlpool[(Whirlpool)]
-```
-
 ## Configuration and running
 
 All required python dependencies can be installed with this command:
@@ -112,36 +24,26 @@ All required python dependencies can be installed with this command:
 poetry install --all-extras
 ```
 
-Algae can be executed with following command:
+## Sample client
+
+> Requires `client` extra.
+
+Sample client app is built using traditional Linux VPN architecture.
+The architecture is described in more detail in [`reef` README](../reef/README.md#general-idea).
+Here, the `algae` client is also optionally capable of authenticating user before connection (using a gRPC call).
+The client is mainly implemented for integration testing and is not meant for production.
+
+Detailed description of arguments required for starting the client can be received with this command:
 
 ```bash
-sudo poetry poe execute [PAYLOAD_VALUE]
+sudo poetry poe client --help
 ```
 
-Superuser rights required for tunnel interface creation.
+> The most CLI options and settings are also similar to the ones of `reef`.
 
-The following CLI arguments are supported:
+## Caerulean installer
 
-- `-a --address [ADDRESS]`: Caerulean server address, to connect to (default: `127.0.0.1`).
-- `-c --ctrl-port`: Control port - the port that will be used for control communication with caerulean (default: `8587`).
-- `-l --link`: Connection certificate in link form (will overwrite other parameters specified).
-- `-h --help`: Print short command notice and exit.
-- `-v --version`: Print current algae version and exit.
-
-It also sensitive to the following environmental variable:
-
-- `SEASIDE_TUNNEL_NAME`: Name of the tunnel interface (default: `seatun`).
-- `SEASIDE_TUNNEL_ADDRESS`: IP address of the tunnel (default: `192.168.0.65`).
-- `SEASIDE_TUNNEL_NETMASK`: Netmask of the tunnel network (default: `255.255.255.0`).
-- `SEASIDE_TUNNEL_SVA`: A special constant used for packet marking and routing table setting (default: `65`).
-- `SEASIDE_USER_NAME`: User name that will be used during connection (default: `default_algae_user`).
-- `SEASIDE_MIN_HC_TIME`: Minimal time between two healthcheck control messages, in seconds (default: `1`).
-- `SEASIDE_MAX_HC_TIME`: Maximal time between two healthcheck control messages, in seconds (default: `5`).
-- `SEASIDE_CONNECTION_TIMEOUT`: Timeout for gRPC control connection, in seconds (default: `3.0`).
-- `SEASIDE_LOG_LEVEL`: Output verbosity logging level, can be "error", "warning", "info", "debug" (default: `DEBUG`).
-- `SEASIDE_ROOT_CERTIFICATE_AUTHORITY`: Custom certificate authority file path for whirlpool server.
-
-## Caerulean installation script
+> Requires `bundle` extra for compilation and `setup` extra for running (will be installed automatically).
 
 Caerulean installation script consists of several python files in `setup` directory.
 It can deploy different caerulean server apps on Linux machines with different architectures.
@@ -170,12 +72,42 @@ poetry run python3 -m setup CAERULEAN_NAME --help
 In order to achieve reproducible caerulean deployments, `conf.env` and `certificates` files can be uploaded before deployment.
 Combined with relevant script arguments, they will prevent script from regenerating system settings.
 
-> NB! A special case of using the script is generating self-signed certificates set (for local testing or no-DNS deployment).
-> It can be done with the following command: `poetry run python3 -m setup --just-certs`.
-
 Examples of this script usage can be found in [whirlpool make](../../caerulean/whirlpool/Makefile) and [Beget deployment script](../../.github/scripts//deploy_whirlpool_beget.mjs).
 
+## Admin fixtures
+
+Admin fixtures provide CLI to caerulean gRPC.
+They can be used for manual user adding, parameter setting, configuration, etc.
+More information about fixtures is available from running this command:
+
+```bash
+poetry run python3 -m fixture --help
+```
+
+### Whirlpool: Supply Viridian
+
+This fixture adds a viridian to whirlpool, generating a valid token with requested parameters.
+It can be used for adding viridians with administrator privileges to a whirlpool node.
+Detailed description of this fixture can be retrieved using this command:
+
+```bash
+poetry run python3 -m fixture supply-viridian --help
+```
+
+## Protocol Descriptions
+
+> Requires `protocol` extra.
+> Might also require `python` executable temporary patching, but that is described separately in [the notebook](./typhoon/typhoon.ipynb).
+
+Contains some documentation files, jupyter notebooks and support scripts for more detailed and formal description of the protocols utilized by Seaside VPN.
+In the notebooks, some real-world diagrams and packet capture statistics are shown, protocol behavior under pressure is presented.
+The [documentation README file](./typhoon/README.md) describes the TYPHOON protocol, presents its state diagrams, common values, random parameters and limitations.
+There is no detailed documentation for PORT protocol though, since it is in the end just a stripped version of TYPHOON, with delivery guarantees and healthcheck messages removed (they are provided by TCP).
+
 ## Other commands
+
+> Requires `codestyle` dependency for linting and `test` for testing.
+> Tests also rely on `devel` extra, but they run in Docker containers, so it will be automatically installed inside.
 
 Lint all python files:
 
