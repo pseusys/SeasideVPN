@@ -26,7 +26,7 @@ The other apps, in turn, have to define their own **front-end** (either CLI or G
 They can also optionally either wrap the reef library into another object, conforming to the target platform architecture, or just use it as-is if linking with rust library is directly supported.
 
 > NB! All the tests and executables were only build for Intel/AMD x64 architecture.
-> There is no ARM executable primarily because there are [no ARM artifacts]() for WinDivert.
+> There is no ARM executable primarily because there are [no ARM artifacts](https://github.com/basil00/WinDivert/issues/379) for WinDivert.
 
 ## General idea
 
@@ -106,7 +106,7 @@ iptables -t mangle -I INPUT 1 -i <INPUT_INTERFACE> -j MARK --set-mark <SVR_CODE>
 Running reef on Windows is not as easy as for Linux.
 
 First of all, the executable depends on `WinDivert` shared library.
-This library file should be retrieved from the [`WinDivert` official release page](), getting the version number from the [`Makefile`](./Makefile) (`WINDIVERT_VERSION` constant).
+This library file should be retrieved from the [`WinDivert` official release page](https://github.com/basil00/WinDivert/releases), getting the version number from the [`Makefile`](./Makefile) (`WINDIVERT_VERSION` constant).
 The release archive should be unpacked, the library file in question can be retrieved either from `x64` or `x32` directory (depending on your architecture), it should have `.DLL` extension.
 The file should be placed to the same directory as reef executable.
 
