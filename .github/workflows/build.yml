@@ -138,7 +138,7 @@ jobs:
           target: ${{ env.TARGET }}
           override: true
 
-      - name: Download Dependencies
+      - name: Download Dependencies 🔮
         if: runner.os == 'Windows'
         working-directory: viridian/reef
         shell: bash

@@ -56,7 +56,7 @@ jobs:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
 
-      - name: Setup VPN Server
+      - name: Setup VPN Server 🖴
         id: setup-test-server
         uses: ./.github/actions/setup-server
         with:
@@ -103,7 +103,7 @@ jobs:
           cache-workspaces: viridian/reef
           override: true
 
-      - name: Download Dependencies
+      - name: Download Dependencies 🔮
         if: runner.os == 'Windows'
         working-directory: viridian/reef
         shell: bash
@@ -113,7 +113,7 @@ jobs:
         working-directory: viridian/reef
         run: ${{ env.SUDO }} cargo test --package SeasideVPN-Reef --lib -- --nocapture --show-output
 
-      - name: Setup VPN Server
+      - name: Setup VPN Server 🖴
         id: setup-test-server
         uses: ./.github/actions/setup-server
         with:
