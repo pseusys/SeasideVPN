@@ -25,16 +25,27 @@ func (conf *TunnelConfig) openInterface(extIP string) error {
 		if err != nil {
 			return fmt.Errorf("error resolving network addresses: %v", err)
 		}
-		conf.mtu = uint32(tunnelInterface.MTU)
+		conf.mtu = int32(tunnelInterface.MTU)
 	}
 	tunnelMTU := strconv.FormatInt(int64(conf.mtu), 10)
 
 	// Setup tunnel interface MTU
-	runCommand("ip", "link", "set", "dev", tunnelName, "mtu", tunnelMTU)
+	_, err := runCommand("ip", "link", "set", "dev", tunnelName, "mtu", tunnelMTU)
+	if err != nil {
+		return fmt.Errorf("error setting tunnel MTU: %v", err)
+	}
+
 	// Setup IP address for tunnel interface
-	runCommand("ip", "addr", "add", fmt.Sprintf("%s/%d", tunnelString, tunnelCIDR), "dev", tunnelName)
+	_, err = runCommand("ip", "addr", "add", fmt.Sprintf("%s/%d", tunnelString, tunnelCIDR), "dev", tunnelName)
+	if err != nil {
+		return fmt.Errorf("error setting tunnel IP address: %v", err)
+	}
+
 	// Enable tunnel interfaces
-	runCommand("ip", "link", "set", "dev", tunnelName, "up")
+	_, err = runCommand("ip", "link", "set", "dev", tunnelName, "up")
+	if err != nil {
+		return fmt.Errorf("error setting tunnel UP: %v", err)
+	}
 
 	// Log and return no error
 	logrus.Infof("Interface %s opened (IP: %s, MTU: %s)", tunnelName, tunnelString, tunnelMTU)
@@ -44,14 +55,22 @@ func (conf *TunnelConfig) openInterface(extIP string) error {
 // Disable and remove tunnel interface.
 // Use "ip" "link" command to remove interface.
 // Should be applied for TunnelConf object, receives tunnel name from it.
-func (conf *TunnelConfig) closeInterface() {
+func (conf *TunnelConfig) closeInterface() error {
 	// Receive tunnel name
 	tunnelName := conf.Tunnel.Name()
 
 	// Disable and remove tunnel
-	runCommand("ip", "link", "set", "dev", tunnelName, "down")
-	runCommand("ip", "link", "del", "dev", tunnelName)
+	_, err := runCommand("ip", "link", "set", "dev", tunnelName, "down")
+	if err != nil {
+		return fmt.Errorf("error shutting down tunnel interface: %v", err)
+	}
+
+	_, err = runCommand("ip", "link", "del", "dev", tunnelName)
+	if err != nil {
+		return fmt.Errorf("error deleting tunnel interface: %v", err)
+	}
 
 	// Log interface closed
 	logrus.Infof("Interface %s closed", tunnelName)
+	return nil
 }

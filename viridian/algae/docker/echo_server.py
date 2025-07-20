@@ -16,8 +16,8 @@ logger.addHandler(handler)
 
 # Create listener TCP socket and listen to all network interfaces.
 sock = socket(AF_INET, SOCK_STREAM)
-buffer = int(environ["BUFFER_SIZE"])
-sock.bind(("0.0.0.0", int(environ["ECHO_PORT"])))
+buffer = int(environ.get("BUFFER_SIZE", 8192))
+sock.bind(("0.0.0.0", int(environ.get("ECHO_PORT", 5000))))
 sock.listen(1)
 
 # Accept connections and return payload and incoming address in a loop.

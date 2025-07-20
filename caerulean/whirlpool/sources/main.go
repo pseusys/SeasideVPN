@@ -11,7 +11,9 @@ import (
 	"fmt"
 	"io"
 	"log/syslog"
-	"main/tunnel"
+	"main/protocol"
+	"main/tunnel" // TODO: optionally depend on nftables instead of iptables
+	"main/users"
 	"main/utils"
 	"os"
 	"os/signal"
@@ -23,17 +25,15 @@ import (
 	"github.com/sirupsen/logrus/hooks/writer"
 )
 
+// Current Whirlpool distribution version.
 const (
-	// Current Whirlpool distribution version.
-	VERSION = "0.0.3"
-
-	// Path for storing logs, two files will be created there: "danger.log" and "safe.log".
-	LOG_PATH = "logs"
+	DEFAULT_LOG_LEVEL = "INFO"
+	DEFAULT_LOG_PATH  = "logs"
 )
 
 // Initialize package variables from environment variables and setup logging level.
 func init() {
-	unparsedLevel := utils.GetEnv("SEASIDE_LOG_LEVEL")
+	unparsedLevel := utils.GetEnv("SEASIDE_LOG_LEVEL", DEFAULT_LOG_LEVEL)
 	level, err := logrus.ParseLevel(unparsedLevel)
 	if err != nil {
 		logrus.Fatalf("Error parsing log level environmental variable: %v", unparsedLevel)
@@ -57,8 +57,17 @@ func init() {
 			logrus.WarnLevel,
 		},
 	})
-	safeLogPath := fmt.Sprintf("%s/safe.log", LOG_PATH)
-	dangerLogPath := fmt.Sprintf("%s/danger.log", LOG_PATH)
+	logrus.AddHook(&writer.Hook{
+		Writer: os.Stdout,
+		LogLevels: []logrus.Level{
+			logrus.InfoLevel,
+			logrus.DebugLevel,
+		},
+	})
+
+	logPath := utils.GetEnv("SEASIDE_LOG_PATH", DEFAULT_LOG_PATH)
+	safeLogPath := fmt.Sprintf("%s/safe.log", logPath)
+	dangerLogPath := fmt.Sprintf("%s/danger.log", logPath)
 	logrus.AddHook(lfshook.NewHook(
 		lfshook.PathMap{
 			logrus.PanicLevel: dangerLogPath,
@@ -68,33 +77,63 @@ func init() {
 			logrus.InfoLevel:  safeLogPath,
 			logrus.DebugLevel: safeLogPath,
 		},
-		&logrus.JSONFormatter{},
+		new(logrus.JSONFormatter),
 	))
 }
 
-func main() {
-	logrus.Infof("Running Caerulean Whirlpool version %s...", VERSION)
+func RunMain() error {
+	logrus.Infof("Running Caerulean Whirlpool version %s...", protocol.VERSION)
 
 	// Initialize tunnel interface and firewall rules
-	tunnelConfig := tunnel.Preserve()
-	err := tunnelConfig.Open()
+	tunnelConfig, err := tunnel.Preserve()
 	if err != nil {
-		logrus.Fatalf("Error establishing network connections: %v", err)
+		return fmt.Errorf("error saving system properties: %v", err)
 	}
 
+	err = tunnelConfig.Open()
+	if err != nil {
+		return fmt.Errorf("error establishing network connections: %v", err)
+	}
+	defer tunnelConfig.Close()
+
+	// Initialize viridian dictionary
+	viridians, err := users.NewViridianDict()
+	if err != nil {
+		return fmt.Errorf("error creating viridian dictionary: %v", err)
+	}
+	defer viridians.Clear()
+
+	// Initialize metaserver
+	metaServer, err := NewMetaServer(viridians, tunnelConfig)
+	if err != nil {
+		return fmt.Errorf("error creating servers: %v", err)
+	}
+	defer metaServer.Stop()
+
+	errorChan := make(chan error)
+	defer close(errorChan)
+
 	// Initialize context and start metaserver
-	ctx, cancel := context.WithCancel(context.Background())
-	server := start(tunnel.NewContext(ctx, tunnelConfig))
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	ctx = tunnel.NewContext(ctx, tunnelConfig)
+	ctx = users.NewContext(ctx, viridians)
 
-	// Prepare termination signal
-	exitSignal := make(chan os.Signal, 1)
-	signal.Notify(exitSignal, syscall.SIGINT, syscall.SIGTERM)
-	<-exitSignal
+	go metaServer.Start(ctx, errorChan)
+	defer cancel()
 
-	// Send termination signal to metaserver
-	cancel()
-	server.stop()
+	select {
+	case <-ctx.Done():
+		logrus.Info("Stopping whirlpool because of a signal interruption...")
+		return nil
+	case err := <-errorChan:
+		logrus.Info("Stopping whirlpool because of an error...")
+		return fmt.Errorf("error serving: %v", err)
+	}
+}
 
-	// Disable tunnel and restore firewall configs
-	tunnelConfig.Close()
+func main() {
+	err := RunMain()
+	if err != nil {
+		logrus.Fatalf("Runtime error: %v", err)
+	}
 }

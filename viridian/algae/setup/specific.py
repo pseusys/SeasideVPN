@@ -1,11 +1,12 @@
-from os import getuid
 from pathlib import Path
 from platform import machine, system
 from re import search
-from subprocess import DEVNULL, SubprocessError, check_call, check_output
+from subprocess import CalledProcessError, run
 from typing import Optional
 
-from utils import Logging, semver_to_tuple
+from semver import Version
+
+from .utils import Logging, run_command
 
 # See "https://github.com/chef/os_release" for different "os_release" formats
 _BASE_DISTROS = {"debian", "alpine"}
@@ -16,7 +17,7 @@ _SEMVER_REGEX = r"\d+\.\d+\.\d+"
 
 def _get_distro() -> Optional[str]:
     """
-    Get the current linux destribution name (or a similar one) from the list in `_BASE_DISTROS`.
+    Get the current linux distribution name (or a similar one) from the list in `_BASE_DISTROS`.
     Reads and parses `/etc/os-release` file for that, uses either `ID` or `ID_LIKE` value.
     If the current distribution is not found in `_BASE_DISTROS`, just return the `ID` value.
     :return: linux distribution name or `None` if the file does not exist.
@@ -51,7 +52,7 @@ def _install_package_command() -> str:
         raise RuntimeError(f"Current platform '{platform_version}' distribution is either not supported or unknown!")
 
 
-def check_package(package: str, version: Optional[str] = None, version_command: str = "--version") -> bool:
+def check_package(package: str, version: Optional[Version] = None, version_command: str = "--version") -> bool:
     """
     Check if the given package is installed, optionally check its version.
     If the version is not specified, it will not be checked.
@@ -65,14 +66,14 @@ def check_package(package: str, version: Optional[str] = None, version_command: 
     logger = Logging.logger_for(__name__)
     try:
         logger.debug(f"Checking if package {package} exists...")
-        check_call(f"command -v {package}", stdout=DEVNULL, stderr=DEVNULL, shell=True)
+        run(f"command -v {package}", shell=True, capture_output=True, check=True)
         logger.debug(f"Package {package} found!")
         if version is not None:
             logger.debug(f"Checking package {package} version...")
-            semver = search(_SEMVER_REGEX, check_output(f"{package} {version_command}", shell=True).decode())
+            semver = search(_SEMVER_REGEX, run(f"{package} {version_command}", shell=True, text=True, capture_output=True, check=True).stdout)
             if semver is not None:
-                package_version = semver.group()
-                versions_match = semver_to_tuple(package_version) >= semver_to_tuple(version)
+                package_version = Version.parse(semver.group())
+                versions_match = version.is_compatible(package_version)
                 logger.debug(f"Found package version '{package_version}', required '{version}', versions match: {versions_match}")
                 return versions_match
             else:
@@ -81,7 +82,7 @@ def check_package(package: str, version: Optional[str] = None, version_command: 
         else:
             logger.debug("Proceeding without checking package version...")
             return True
-    except SubprocessError:
+    except CalledProcessError:
         logger.debug(f"Package {package} not found!")
         return False
 
@@ -94,7 +95,7 @@ def check_install_package(package: str) -> None:
     logger = Logging.logger_for(__name__)
     if not check_package(package):
         logger.debug(f"Installing package {package}...")
-        check_call(_install_package_command().format(pack=package), stdout=DEVNULL, stderr=DEVNULL, shell=True)
+        run_command(_install_package_command().format(pack=package))
         logger.debug(f"Package {package} installed!")
 
 
@@ -129,8 +130,10 @@ def is_admin() -> bool:
     :return: `True` if superuser, `False` otherwise.
     """
     try:
+        from os import getuid
+
         return getuid() == 0
-    except AttributeError:
+    except ImportError:
         return False
 
 

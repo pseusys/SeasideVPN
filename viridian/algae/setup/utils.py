@@ -1,22 +1,6 @@
-from logging import Logger, StreamHandler, getLogger
-from typing import Optional, Tuple
-
-BOLD = "\033[1m"
-UNDER = "\033[4m"
-BLUE = "\033[34m"
-GREEN = "\033[32m"
-YELLOW = "\033[33m"
-RED = "\033[31m"
-RESET = "\033[0m"
-
-
-def semver_to_tuple(semver: str) -> Tuple[int, int, int]:
-    """
-    Convert semantic version string to a 3-integer tuple.
-    :param semver: semantic version string, in form of "A.B.C", where A, B and C are integers.
-    :return: a tuple of three integers.
-    """
-    return tuple(int(part) for part in semver.split(".")[:3])  # type: ignore
+from logging import Logger, StreamHandler, root
+from subprocess import CalledProcessError, run
+from typing import Any, Optional
 
 
 class Logging:
@@ -26,18 +10,26 @@ class Logging:
     If no root logger is initialized, the default root logger will be used.
     """
 
-    _root: Optional[Logger] = None
+    _base: Optional[Logger] = None
 
     @classmethod
     def init(cls, level: int, name: str) -> Logger:
-        cls._root = getLogger(name)
-        cls._root.setLevel(level)
+        cls._base = root
+        cls._base.setLevel(level)
         stream = StreamHandler()
         stream.setLevel(level)
-        cls._root.addHandler(stream)
-        return cls._root
+        cls._base.handlers.clear()
+        cls._base.addHandler(stream)
+        return cls.logger_for(name)
 
     @classmethod
     def logger_for(cls, name: str) -> Logger:
-        root = getLogger() if cls._root is None else cls._root
-        return root.getChild(name)
+        base = root if cls._base is None else cls._base
+        return base.getChild(name)
+
+
+def run_command(command: str, **kwargs: Any) -> None:
+    try:
+        run(command, shell=True, capture_output=True, check=True, text=True, **kwargs)
+    except CalledProcessError as e:
+        raise RuntimeError(f"Command '{command}' failed with code {e.returncode}:\n\n>>> STDOUT:\n{e.stdout}\n>>> STDERR:\n{e.stderr}\n")

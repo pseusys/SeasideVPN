@@ -20,8 +20,13 @@ help-whirlpool:
 
 help-algae:
 	@ # Print help message of viridian algae
-	poetry poe -C viridian/algae help
+	poetry -C viridian/algae run poe help
 .PHONY: help-algae
+
+help-reef:
+	@ # Print help message of viridian reef
+	make -C viridian/reef -s help
+.PHONY: help-reef
 
 help:
 	@ # Print general help message
@@ -58,27 +63,32 @@ bump-version:
 
 install-algae:
 	@ # Install viridian algae requirements for poetry, linting, installing and running Docker
-	poetry -C viridian/algae install --without client,devel
+	poetry -C viridian/algae install --extras "client codestyle compile bundle setup test protocol"
 .PHONY: install-algae
 
 install-algae-all:
 	@ # Install all the viridian algae requirements (insluding the ones for running)
-	poetry -C viridian/algae install
+	poetry -C viridian/algae install --all-extras
 .PHONY: install-algae
 
 
 
 test-whirlpool:
-	@ # Run caerulean algae tests (in a docker container)
+	@ # Run caerulean whirlpool tests (in a docker container)
 	make -C caerulean/whirlpool -s test
 .PHONY: test-whirlpool
 
 test-algae: install-algae
-	@ # Run caerulean algae tests (in a docker container)
-	poetry poe -C viridian/algae test-all
+	@ # Run viridian algae tests (in a docker container)
+	poetry -C viridian/algae run poe test-all
 .PHONY: test-algae
 
-test: test-whirlpool test-algae
+test-reef:
+	@ # Run viridian reef tests (in a docker container)
+	make -C viridian/reef -s test
+.PHONY: test-reef
+
+test: test-whirlpool test-algae test-reef
 	@ # Run all the system part tests
 .PHONY: test
 
@@ -89,15 +99,20 @@ lint-whirlpool:
 	make -C caerulean/whirlpool -s lint
 .PHONY: lint-whirlpool
 
-lint-algae: install-algae-all
+lint-algae:
 	@ # Lint viridian algae (locally, formatting available)
-	poetry poe -C viridian/algae lint
+	poetry -C viridian/algae run poe lint
 .PHONY: lint-algae
+
+lint-reef:
+	@ # Lint viridian reef (locally)
+	make -C viridian/reef -s lint
+.PHONY: lint-reef
 
 lint-scripts:
 	@ # Lint all the scripts in project (*.sh and .github/*.mjs scripts)
 	shellcheck -x -e SC1091,SC2129,SC2002,SC2091 **/*.sh
-	npm run --prefix .github/scripts lint-scripts
+	npm run --prefix .github lint-scripts
 .PHONY: lint-scripts
 
 lint-markdown:
@@ -105,7 +120,12 @@ lint-markdown:
 	markdownlint -d **/*.md
 .PHONY: lint-markdown
 
-lint: lint-whirlpool lint-algae lint-scripts lint-markdown
+lint-spelling:
+	@ # Lint spelling in all the indexed files
+	git ls-files | xargs codespell
+.PHONY: lint-spelling
+
+lint: lint-whirlpool lint-algae lint-reef lint-scripts lint-markdown lint-spelling
 	@ # Lint all the system parts
 .PHONY: lint
 
@@ -118,9 +138,14 @@ clean-whirlpool:
 
 clean-algae: install-algae
 	@ # Clean viridian algae (including build and docker artifacts)
-	poetry poe -C viridian/algae clean
+	poetry -C viridian/algae run poe clean
 .PHONY: clean-algae
 
-clean: clean-whirlpool clean-algae
+clean-reef: install-algae
+	@ # Clean viridian reef (including build and docker artifacts)
+	make -C viridian/reef -s clean
+.PHONY: clean-reef
+
+clean: clean-whirlpool clean-algae clean-reef
 	@ # Clean all the system parts
 .PHONY: clean

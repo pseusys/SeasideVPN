@@ -3,17 +3,31 @@ package tunnel
 import (
 	"bytes"
 	"fmt"
+	"main/users"
 	"main/utils"
 	"net"
 	"sync"
 
+	"github.com/sirupsen/logrus"
 	"github.com/songgao/water"
 )
 
 // Tunnel IP address, also serves as gateway address for tunnel network interface.
 // Last bits of the packet source network address are used to store state user information in "iptables" firewall.
 // Last 2 bytes of will be used for attributing packages belonging to different viridians.
-const TUNNEL_IP = "172.16.0.1/12"
+const (
+	DEFAULT_TUNNEL_NETWORK = "172.16.0.1/12"
+	DEFAULT_TUNNEL_NAME    = "seatun"
+	DEFAULT_TUNNEL_MTU     = 1500
+
+	DEFAULT_BURST_MULTIPLIER = 3
+
+	DEFAULT_API_PORT     = 8587
+	DEFAULT_PORT_PORT    = 29384
+	DEFAULT_TYPHOON_PORT = 29384
+
+	REQUIRED_TUNNEL_NETWORK_BITS = 16
+)
 
 // Tunnel config object, represents tunnel interface and forwarding setup.
 // Contains all the data necessary to setup and disable acket forwarding.
@@ -30,6 +44,9 @@ type TunnelConfig struct {
 	// Tunnel network properties: network address and CIDR.
 	Network *net.IPNet
 
+	// Default network properties: network address and CIDR.
+	Default *net.IPNet
+
 	// Buffer for storing iptables saved configuration.
 	buffer bytes.Buffer
 
@@ -43,7 +60,7 @@ type TunnelConfig struct {
 	icmpPacketPACKETLimitRules []string
 
 	// Tunnel MTU.
-	mtu uint32
+	mtu int32
 
 	// Tunnel name.
 	name string
@@ -51,17 +68,25 @@ type TunnelConfig struct {
 
 // Preserve current iptables configuration in a TunnelConfig object.
 // Create and return the tunnel config pointer.
-func Preserve() *TunnelConfig {
-	maxViridians := int32(utils.GetIntEnv("SEASIDE_MAX_VIRIDIANS", 32) + utils.GetIntEnv("SEASIDE_MAX_ADMINS", 32))
-	burstMultiplier := uint32(utils.GetIntEnv("SEASIDE_BURST_LIMIT_MULTIPLIER", 32))
+func Preserve() (*TunnelConfig, error) {
+	maxViridians := utils.GetIntEnv("SEASIDE_MAX_VIRIDIANS", users.DEFAULT_MAX_VIRIDIANS, 32)
+	maxAdmins := utils.GetIntEnv("SEASIDE_MAX_ADMINS", users.DEFAULT_MAX_ADMINS, 32)
+	maxTotal := int32(maxViridians + maxAdmins)
+	burstMultiplier := uint32(utils.GetIntEnv("SEASIDE_BURST_LIMIT_MULTIPLIER", DEFAULT_BURST_MULTIPLIER, 32))
 
-	vpnDataKbyteLimitRule := readLimit("SEASIDE_VPN_DATA_LIMIT", "%dkb/s", maxViridians, burstMultiplier)
-	controlPacketLimitRule := readLimit("SEASIDE_CONTROL_PACKET_LIMIT", "%d/sec", maxViridians, burstMultiplier)
-	icmpPacketPACKETLimitRules := readLimit("SEASIDE_ICMP_PACKET_LIMIT", "%d/sec", maxViridians, burstMultiplier)
-	mtu := uint32(utils.GetIntEnv("SEASIDE_TUNNEL_MTU", 32))
-	name := utils.GetEnv("SEASIDE_TUNNEL_NAME")
+	defaultNet, err := findDefaultInterface()
+	if err != nil {
+		return nil, fmt.Errorf("error finding default IP address: %v", err)
+	}
+
+	vpnDataKbyteLimitRule := readLimit("SEASIDE_VPN_DATA_LIMIT", "%dkb/s", maxTotal, burstMultiplier)
+	controlPacketLimitRule := readLimit("SEASIDE_CONTROL_PACKET_LIMIT", "%d/sec", maxTotal, burstMultiplier)
+	icmpPacketPACKETLimitRules := readLimit("SEASIDE_ICMP_PACKET_LIMIT", "%d/sec", maxTotal, burstMultiplier)
+	mtu := int32(utils.GetIntEnv("SEASIDE_TUNNEL_MTU", DEFAULT_TUNNEL_MTU, 32))
+	name := utils.GetEnv("SEASIDE_TUNNEL_NAME", DEFAULT_TUNNEL_NAME)
 
 	conf := TunnelConfig{
+		Default:                    defaultNet,
 		vpnDataKbyteLimitRule:      vpnDataKbyteLimitRule,
 		controlPacketLimitRule:     controlPacketLimitRule,
 		icmpPacketPACKETLimitRules: icmpPacketPACKETLimitRules,
@@ -73,7 +98,7 @@ func Preserve() *TunnelConfig {
 	conf.storeForwarding()
 	conf.mutex.Unlock()
 
-	return &conf
+	return &conf, nil
 }
 
 // Open tunnel interface and setup iptables forwarding rules.
@@ -85,14 +110,21 @@ func (conf *TunnelConfig) Open() (err error) {
 	defer conf.mutex.Unlock()
 
 	// Parse IPs and control port number from environment variables
-	intIP := utils.GetEnv("SEASIDE_ADDRESS")
-	extIP := utils.GetEnv("SEASIDE_EXTERNAL")
-	ctrlPort := uint16(utils.GetIntEnv("SEASIDE_CTRLPORT", 16))
+	intIP := utils.GetEnv("SEASIDE_ADDRESS", conf.Default.IP.String())
+	extIP := utils.GetEnv("SEASIDE_EXTERNAL", intIP)
 
 	// Parse and initialize tunnel IP and network fields
-	conf.IP, conf.Network, err = net.ParseCIDR(TUNNEL_IP)
+	tunnelNetwork := utils.GetEnv("SEASIDE_TUNNEL_NETWORK", DEFAULT_TUNNEL_NETWORK)
+	conf.IP, conf.Network, err = net.ParseCIDR(tunnelNetwork)
 	if err != nil {
-		return fmt.Errorf("error parsing tunnel network address (%s): %v", TUNNEL_IP, err)
+		return fmt.Errorf("error parsing tunnel network address (%s): %v", tunnelNetwork, err)
+	}
+
+	// Check if tunnel network has enough available addresses to accommodate all viridians
+	networkMask, networkLen := conf.Network.Mask.Size()
+	availableTunnelNetworkBits := networkLen - networkMask
+	if availableTunnelNetworkBits < REQUIRED_TUNNEL_NETWORK_BITS {
+		return fmt.Errorf("not enough viridian addresses in tunnel network: %d bits < %d bits", availableTunnelNetworkBits, REQUIRED_TUNNEL_NETWORK_BITS)
 	}
 
 	// Create and open TUN device
@@ -110,7 +142,10 @@ func (conf *TunnelConfig) Open() (err error) {
 	}
 
 	// Setup iptables forwarding rules
-	err = conf.openForwarding(intIP, extIP, ctrlPort)
+	apiPort := uint16(utils.GetIntEnv("SEASIDE_API_PORT", DEFAULT_API_PORT, 16))
+	portPort := int32(utils.GetIntEnv("SEASIDE_PORT_PORT", DEFAULT_PORT_PORT, 32))
+	typhoonPort := int32(utils.GetIntEnv("SEASIDE_TYPHOON_PORT", DEFAULT_TYPHOON_PORT, 32))
+	err = conf.openForwarding(intIP, extIP, apiPort, portPort, typhoonPort)
 	if err != nil {
 		return fmt.Errorf("error creating firewall rules: %v", err)
 	}
@@ -125,7 +160,18 @@ func (conf *TunnelConfig) Close() {
 	conf.mutex.Lock()
 	defer conf.mutex.Unlock()
 
-	conf.closeForwarding()
+	err := conf.closeForwarding()
+	if err != nil {
+		logrus.Errorf("Error closing forwarding: %v", err)
+	}
+
 	conf.closeInterface()
+	if err != nil {
+		logrus.Errorf("Error closing tunnel: %v", err)
+	}
+
 	conf.Tunnel.Close()
+	if err != nil {
+		logrus.Errorf("Error removing tunnel: %v", err)
+	}
 }

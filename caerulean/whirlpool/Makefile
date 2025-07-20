@@ -5,8 +5,11 @@
 SHELL=/bin/bash
 .SHELLFLAGS=-c -e
 
-PYTHON=python3
-PYTHONPATH=../../viridian/algae
+PROTOGO_PROTOC_VERSION=24.4
+LINKING_FLAGS=""
+
+GOOS=linux
+CGO_ENABLED=1
 
 BOLD=\033[1m
 BLUE=\033[34m
@@ -18,6 +21,7 @@ include example.conf.env
 
 EXEC_NAME := whirlpool.run
 PATH := $(PATH):$(shell go env GOPATH)/bin
+PROJECT_ROOT := ../..
 
 
 
@@ -43,24 +47,14 @@ help:
 
 build:
 	@ # Generate protobuf files, install dependencies and build executable
-	protoc -I=../../ --go_out=. --go-grpc_out=. ../../vessels/*.proto
-	go mod tidy
-	go build -o build/$(EXEC_NAME) ./sources
+	protogo mod tidy -- -I=${PROJECT_ROOT} --go_out=. --go-grpc_out=. ${PROJECT_ROOT}/vessels/*.proto
+	go build -ldflags ${LINKING_FLAGS} -o build/$(EXEC_NAME) ./sources
 .PHONY: build
 
-run: build
-	@ # Run executable
-	if [ ! -d "certificates" ]; then
-		${PYTHON} -m setup --just-certs
-		mv certificates/caerulean/cert.key certificates/caerulean/cert.cert caertificates/
-	fi
-	sudo build/$(EXEC_NAME)
-.PHONY: run
-
-format: build
-	@ # Format source files
-	go fmt ./sources
-.PHONY: format
+lint: build
+	@ # Run lint
+	staticcheck -f stylish ./...
+.PHONY: lint
 
 
 
@@ -79,23 +73,18 @@ run-docker: build-docker-prod
 build-docker-test:
 	@ # Build testing Docker image (verbose, if CI env var is not defined)
 ifndef CI
-	docker build -f Dockerfile --target builder -t seaside-whirlpool-test ../..
+	docker build -f Dockerfile --target builder --build-arg RUNNING_IN_CI=0 -t seaside-whirlpool-test ../..
 else
-	docker build -f Dockerfile --target builder -t seaside-whirlpool-test -q ../..
+	docker build -f Dockerfile --target builder --build-arg RUNNING_IN_CI=1 -t seaside-whirlpool-test -q ../..
 endif
 .PHONY: build-docker-test
-
-lint: build-docker-test
-	@ # Run lint inside of the testing docker container
-	docker run --privileged --rm --name seaside-whirlpool-lint --env-file example.conf.env --sysctl net.ipv6.conf.all.disable_ipv6=1 --entrypoint golint seaside-whirlpool-test .
-.PHONY: lint
 
 test: build-docker-test
 	@ # Run tests inside of the testing docker container
 ifndef CI
 	docker run --privileged --rm --name seaside-whirlpool-test --env-file example.conf.env --sysctl net.ipv6.conf.all.disable_ipv6=1 --entrypoint go seaside-whirlpool-test test -v ./...
 else
-	docker run --privileged --rm -e CI=${CI} --name seaside-whirlpool-test --env-file example.conf.env --sysctl net.ipv6.conf.all.disable_ipv6=1 --entrypoint go seaside-whirlpool-test test ./...
+	docker run --privileged --rm --name seaside-whirlpool-test --env-file example.conf.env --sysctl net.ipv6.conf.all.disable_ipv6=1 --entrypoint go seaside-whirlpool-test test ./...
 endif
 .PHONY: test
 

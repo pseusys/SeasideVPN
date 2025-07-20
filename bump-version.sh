@@ -17,7 +17,7 @@ RESET="\033[0m"
 
 # Global arguments:
 
-# Curremt project version
+# Current project version
 CURRENT_VERSION="0.0.3"
 # New project version (same as current by default)
 NEW_VERSION="$CURRENT_VERSION"
@@ -29,10 +29,13 @@ VERSIONED_FILES=(
     ".github/scripts/package.json" \
     "viridian/algae/pyproject.toml" \
     "viridian/algae/README.md" \
-    "viridian/algae/sources/coordinator.py" \
+    "viridian/algae/sources/version.py" \
     "viridian/algae/setup/whirlpool.py" \
+    "viridian/reef/Cargo.toml" \
+    "viridian/reef/README.md" \
+    "viridian/reef/src/lib/mod.rs" \
     "caerulean/whirlpool/README.md" \
-    "caerulean/whirlpool/sources/main.go"
+    "caerulean/whirlpool/sources/protocol/protocol_utils.go"
 )
 
 
@@ -53,7 +56,7 @@ while getopts "v:h" flag
 do
     case "${flag}" in
         v) NEW_VERSION=${OPTARG};;
-        h) help && exit 1;;
+        h) help && exit 0;;
         *) echo -e "${RED}Invalid flag found: $flag${RESET}" && exit 1;;
     esac
 done
