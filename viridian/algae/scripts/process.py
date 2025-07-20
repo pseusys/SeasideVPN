@@ -70,6 +70,7 @@ def clean() -> None:
     rmtree("sources/generated", ignore_errors=True)
 
     Path(f"{_EXECUTABLE_NAME}.spec").unlink(missing_ok=True)
+    Path(_INSTALLER_NAME).unlink(missing_ok=True)
     Path("poetry.lock").unlink(missing_ok=True)
 
     try:

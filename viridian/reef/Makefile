@@ -103,7 +103,7 @@ lint: build
 
 clean:
 	@ # Clean all reef build artifacts
-	rm -rf target
+	rm -rf target certificates
 	rm -f Cargo.lock
 	docker rmi -f seaside-reef-test
 .PHONY: clean
