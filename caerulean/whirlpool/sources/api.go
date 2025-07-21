@@ -3,12 +3,15 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"main/crypto"
 	"main/generated"
 	"main/utils"
 	"net"
+	"os"
 	"slices"
 	"strings"
 	"sync"
@@ -63,8 +66,25 @@ type WhirlpoolServer struct {
 // Certificates are expected to be in `certificates/cert.crt` and `certificates/cert.key` files.
 // Certificates should be valid and contain `subjectAltName` for the current SEASIDE_ADDRESS.
 func loadTLSCredentials() (credentials.TransportCredentials, error) {
-	// Format server key and certificate paths
+	// Receive certificate path
 	certificatesPath := utils.GetEnv("SEASIDE_CERTIFICATE_PATH", DEFAULT_CERTIFICATES_PATH)
+
+	// Format certificate authority path
+	CAPath := fmt.Sprintf("%s/rootCA.crt", certificatesPath)
+
+	// Load certificate authority certificate
+	caCertPEM, err := os.ReadFile(CAPath)
+	if err != nil {
+		log.Fatalf("error reading client CA certificate: %v", err)
+	}
+
+	// Load certificate authority pool and add current CA certificate
+	certPool := x509.NewCertPool()
+	if ok := certPool.AppendCertsFromPEM(caCertPEM); !ok {
+		log.Fatal("error adding client CA certificate")
+	}
+
+	// Format certificate paths
 	keyPath := fmt.Sprintf("%s/cert.key", certificatesPath)
 	certPath := fmt.Sprintf("%s/cert.crt", certificatesPath)
 
@@ -76,8 +96,9 @@ func loadTLSCredentials() (credentials.TransportCredentials, error) {
 
 	// Create the credentials and return it
 	config := &tls.Config{
+		ClientCAs:    certPool,
 		Certificates: []tls.Certificate{serverCert},
-		ClientAuth:   tls.NoClientCert,
+		ClientAuth:   tls.RequireAndVerifyClientCert,
 	}
 
 	// Return credentials

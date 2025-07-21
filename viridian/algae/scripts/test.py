@@ -59,13 +59,13 @@ def test_set(profile: Profile) -> None:
         logger.error(f"Testing {profile}: {Style.BRIGHT}{Fore.RED}failed{Fore.RESET}!{Style.RESET_ALL}")
         logger.error(f"Error message: {exc}")
 
-        _print_container_logs(docker, "seaside-algae")
-        _print_container_logs(docker, "seaside-whirlpool")
+        _print_container_logs(docker, "docker-algae-1")
+        _print_container_logs(docker, "docker-whirlpool-1")
         if profile == "local":
-            _print_container_logs(docker, "seaside-echo")
-            _print_container_logs(docker, "network-disruptor")
-            for i in range(1, 4):
-                _print_container_logs(docker, f"seaside-algae-local-algae-copy-{i}")
+            _print_container_logs(docker, "docker-echo-1")
+            _print_container_logs(docker, "docker-disruptor-1")
+            for i in range(2, 4):
+                _print_container_logs(docker, f"docker-algae-{i}")
 
         docker.compose.kill()
         exit_code = 1

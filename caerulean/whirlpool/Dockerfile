@@ -74,9 +74,12 @@ ENV SEASIDE_CERTIFICATE_PATH=/seaside/caerulean/certificates/caerulean
 
 RUN apk add --no-cache openssl
 RUN mkdir -p /tmp/certificates/caerulean && mkdir -p /tmp/certificates/viridian && cd /tmp/certificates \
-    && openssl req -digest -newkey rsa:2048 -sha256 -nodes -keyout caerulean/cert.key -out caerulean/cert.csr -subj "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPN" -addext "subjectAltName = IP:${SEASIDE_ADDRESS}" -addext keyUsage=critical,digitalSignature,nonRepudiation -addext extendedKeyUsage=serverAuth \
-    && openssl req -digest -new -x509 -sha256 -nodes -keyout viridian/rootCA.key -out viridian/rootCA.crt -days 365250 -newkey rsa:2048 -subj "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPN" -addext keyUsage=critical,digitalSignature,nonRepudiation,keyEncipherment,dataEncipherment,keyAgreement,keyCertSign,cRLSign -addext extendedKeyUsage=serverAuth,clientAuth \
-    && openssl x509 -req -CA viridian/rootCA.crt -CAkey viridian/rootCA.key -in caerulean/cert.csr -out caerulean/cert.crt -days 365250 -CAcreateserial -copy_extensions=copyall
+    && openssl req -digest -newkey rsa:2048 -sha256 -nodes -keyout viridian/cert.key -out viridian/cert.csr -subj "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPN" -addext "keyUsage=critical,digitalSignature,nonRepudiation" -addext "extendedKeyUsage=clientAuth" \
+    && openssl req -digest -newkey rsa:2048 -sha256 -nodes -keyout caerulean/cert.key -out caerulean/cert.csr -subj "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPN" -addext "subjectAltName = IP:${SEASIDE_ADDRESS}" -addext "keyUsage=critical,digitalSignature,nonRepudiation" -addext "extendedKeyUsage=serverAuth" \
+    && openssl req -digest -newkey rsa:2048 -sha256 -nodes -new -x509  -keyout caerulean/rootCA.key -out caerulean/rootCA.crt -days 365250 -subj "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPN" -addext "keyUsage=critical,digitalSignature,nonRepudiation,keyEncipherment,dataEncipherment,keyAgreement,keyCertSign,cRLSign" -addext "extendedKeyUsage=serverAuth,clientAuth" \
+    && chmod 644 */*.key && cp caerulean/rootCA.* viridian/ \
+    && openssl x509 -req -CA caerulean/rootCA.crt -CAkey caerulean/rootCA.key -in caerulean/cert.csr -out caerulean/cert.crt -days 365250 -copy_extensions=copyall \
+    && openssl x509 -req -CA viridian/rootCA.crt -CAkey viridian/rootCA.key -in viridian/cert.csr -out viridian/cert.crt -days 365250 -copy_extensions=copyall
 
 ENTRYPOINT ["sh", "-c", "cp -r /tmp/certificates ./ && ./whirlpool.run"]
 
