@@ -51,7 +51,7 @@ def bundle() -> None:
     install_cache = "$TEMP/seaside_install_cache"
     pycache = str((setup / "__pycache__").relative_to(ALGAE_ROOT))
     installer_name = str(ALGAE_ROOT / (argv[1] if len(argv) > 1 else _INSTALLER_NAME))
-    create_app(str(setup), output=installer_name, main=entrypoint, compressed=True, lazy_install=True, ensure_pip=True, unzip="*", unzip_path=install_cache, pip_args=dependencies, rm_patterns=pycache)
+    create_app(str(setup), output=installer_name, main=entrypoint, compressed=True, lazy_install=True, unzip="*", unzip_path=install_cache, pip_args=dependencies, rm_patterns=pycache)
 
 
 def clean() -> None:
