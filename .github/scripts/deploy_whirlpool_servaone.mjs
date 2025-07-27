@@ -222,7 +222,7 @@ async function reinstallServer(server, password, disk, osID, token) {
  * Throw an error if the connection will not be established after 'waitTimes' attempts.
  * @param {string} ip VPS IP (or host name) to connect to
  * @param {string} key root user password
- * @param {string} user root user name 
+ * @param {string} user root user name
  * @param {int} waitTimes number of SSH connection attempts
  * @param {int} sleepTime time to sleep between connection attempts
  * @returns {Promise<NodeSSH>} established SSH connection
