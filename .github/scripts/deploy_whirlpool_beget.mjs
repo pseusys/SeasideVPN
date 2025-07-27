@@ -100,6 +100,18 @@ function ensureInstallationScript() {
 	} else console.log("Installation script found!");
 }
 
+function ensureCertificatesExist(ip) {
+	if (!existsSync(CERTS_PATH)) {
+		const scriptDir = dirname(INSTALL_SCRIPT);
+		console.log("Certificates not found, generating...");
+		try {
+			execSync(`poetry run python3 -m setup.main --just-certs ${ip}`, { cwd: scriptDir });
+		} catch (error) {
+			throw Error(`Error generating certificates, try reinstalling poetry in ${scriptDir}!\nError: ${error}`);
+		}
+	} else console.log("Certificates found!");
+}
+
 /**
  * Parse CLI and environment flags and arguments.
  * Throw an error if one of the required arguments is missing.
@@ -243,12 +255,14 @@ async function waitForServer(ip, key, user, waitTimes, sleepTime) {
  * @param {string} viridianPayload deployment server viridian payload
  * @param {string} apiport whirlpool API port
  */
-async function runDeployCommand(sshConn, certsPath, whirlpoolIP, ownerPayload, viridianPayload, apiport) {
+async function runDeployCommand(sshConn, whirlpoolIP, ownerPayload, viridianPayload, apiport) {
 	console.log("Ensuring installation script exists...");
 	ensureInstallationScript();
-	const certificatesPathExists = existsSync(certsPath);
-	console.log(`Regenerating certificates (required: ${certificatesPathExists})...`);
-	if (!certificatesPathExists) execSync(`python3 install.pyz --just-certs ${whirlpoolIP}`);
+	console.log("Ensuring certificates exist...");
+	ensureCertificatesExist();
+	console.log("Ensuring python and pip are installed and available on server...");
+	const pipRes = await sshConn.execCommand("sudo apt-get update && sudo apt-get install -y --no-install-recommends python3-dev python3-pip");
+	if (pipRes.code != 0) throw new Error(`Python and pip installation failed, error code: ${pipRes.code}`);
 	console.log("Determining current git branch...");
 	const gitBranch = execSync("git rev-parse --abbrev-ref HEAD").toString().trim();
 	console.log("Copying whirlpool installation script to beget test server...");
@@ -272,6 +286,6 @@ const ubuntuID = await getUbuntuAppID(UBUNTU_VERISON, token);
 
 const vps = await reinstallServer(serverID, ssh, args.key, ubuntuID, token);
 const conn = await waitForServer(vps.ip_address, args.key, args.user, WAIT_TIMES, SLEEP_TIME);
-await runDeployCommand(conn, CERTS_PATH, vps.ip_address, args.key, args.payload, args.apiport);
+await runDeployCommand(conn, vps.ip_address, args.key, args.payload, args.apiport);
 
 if (args.verbose) console.log(`Viridian connection link is: ${YELLOW}${UNDER}seaside+whirlpool://${vps.ip_address}:${args.apiport}${RESET}`);
