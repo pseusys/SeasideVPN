@@ -174,14 +174,6 @@ function getOutputConnection(unreachable) {
 	}
 }
 
-function generateCertificates(address) {
-	runCommandForSystem(
-		`python3 ${INSTALLER_PATH} --just-certs ${address}`,
-		`wsl -u root python3 ${convertPathToWSL(INSTALLER_PATH)} --just-certs ${address}`,
-		undefined
-	);
-}
-
 /**
  * Extract and remove system route to the given network and replace it with a route via given gateway.
  * After that, print the resulting routes.
@@ -208,15 +200,21 @@ function setupRouting(unreachable, lower_port, higher_port, iface, address, sile
  * Wait for some time to check if it started successfully and throw an error if it did.
  * @param {string} path Docker Compose standalone project file path.
  */
-async function launchWhirlpool(whirlpool, certificates, silent) {
+async function launchWhirlpool(whirlpool, silent) {
 	print("Preparing whirlpool executable...", silent);
 	runCommandForSystem(`docker compose -f ${DOCKER_COMPOSE_PATH} build ${DOCKER_COMPOSE_CONTAINER}`, `poetry poe -C ${VIRIDIAN_ALGAE_ROOT} bundle`, undefined, {
 		SEASIDE_HOST_ADDRESS: whirlpool
 	});
+	print("Generating certificates...", silent);
+	runCommandForSystem(
+		`true`,
+		`wsl -u root python3 ${convertPathToWSL(INSTALLER_PATH)} --just-certs ${whirlpool}`,
+		undefined
+	);
 	print("Spawning whirlpool process...", silent);
 	runCommandForSystem(
 		`docker compose -f ${DOCKER_COMPOSE_PATH} up --detach ${DOCKER_COMPOSE_CONTAINER}`,
-		`wsl -u root python3 ${convertPathToWSL(INSTALLER_PATH)} -o -a back whirlpool -l "${convertPathToWSL(CAERULEAN_WHIRLPOOL_ROOT)}" -r compile -v "${process.env.SEASIDE_API_KEY_ADMIN}" -a ${whirlpool} -e ${whirlpool} -i ${process.env.SEASIDE_API_PORT} --certificates-path ${convertPathToWSL(certificates)} --log-level DEBUG`,
+		`wsl -u root python3 ${convertPathToWSL(INSTALLER_PATH)} -o -a back whirlpool -l "${convertPathToWSL(CAERULEAN_WHIRLPOOL_ROOT)}" -r compile -v "${process.env.SEASIDE_API_KEY_ADMIN}" -a ${whirlpool} -e ${whirlpool} -i ${process.env.SEASIDE_API_PORT} --certificates-path ${convertPathToWSL(SERVER_CERTIFICATES)} --log-level DEBUG`,
 		undefined,
 		{
 			SEASIDE_HOST_ADDRESS: whirlpool
@@ -232,7 +230,6 @@ async function launchWhirlpool(whirlpool, certificates, silent) {
 const args = parseArguments();
 const whirlpoolIP = getWhirlpoolIP(args.silent);
 const { iface, address } = getOutputConnection(args.target);
-generateCertificates(address);
 await launchWhirlpool(whirlpoolIP, SERVER_CERTIFICATES, args.silent);
 setupRouting(args.target, args.lower_port, args.higher_port, iface, address, args.silent);
 print(whirlpoolIP, !args.silent);
