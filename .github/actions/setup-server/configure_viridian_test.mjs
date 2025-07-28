@@ -24,7 +24,7 @@ const CAERULEAN_WHIRLPOOL_ROOT = join(import.meta.dirname, "..", "..", "..", "ca
 
 const VIRIDIAN_ALGAE_ROOT = join(import.meta.dirname, "..", "..", "..", "viridian", "algae");
 
-const SERVER_CERTIFICATES = join(import.meta.dirname, "certificates", "caerulean");
+const SERVER_CERTIFICATES = join(VIRIDIAN_ALGAE_ROOT, "certificates", "caerulean");
 
 const INSTALLER_PATH = join(VIRIDIAN_ALGAE_ROOT, "install.pyz");
 
@@ -208,7 +208,7 @@ async function launchWhirlpool(whirlpool, silent) {
 	print("Generating certificates...", silent);
 	runCommandForSystem(
 		`true`,
-		`wsl -u root python3 ${convertPathToWSL(INSTALLER_PATH)} --just-certs ${whirlpool}`,
+		`poetry -C ${VIRIDIAN_ALGAE_ROOT} run python3 ${INSTALLER_PATH} --just-certs ${whirlpool}`,
 		undefined
 	);
 	print("Spawning whirlpool process...", silent);
