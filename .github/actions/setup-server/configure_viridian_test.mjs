@@ -24,6 +24,8 @@ const CAERULEAN_WHIRLPOOL_ROOT = join(import.meta.dirname, "..", "..", "..", "ca
 
 const VIRIDIAN_ALGAE_ROOT = join(import.meta.dirname, "..", "..", "..", "viridian", "algae");
 
+const SERVER_CERTIFICATES = join(import.meta.dirname, "certificates", "caerulean");
+
 const INSTALLER_PATH = join(VIRIDIAN_ALGAE_ROOT, "install.pyz");
 
 function print(message, silent = false) {
@@ -172,6 +174,14 @@ function getOutputConnection(unreachable) {
 	}
 }
 
+function generateCertificates(address) {
+	runCommandForSystem(
+		`python3 ${INSTALLER_PATH} --just-certs ${address}`,
+		`wsl -u root python3 ${convertPathToWSL(INSTALLER_PATH)} --just-certs ${address}`,
+		undefined
+	);
+}
+
 /**
  * Extract and remove system route to the given network and replace it with a route via given gateway.
  * After that, print the resulting routes.
@@ -198,7 +208,7 @@ function setupRouting(unreachable, lower_port, higher_port, iface, address, sile
  * Wait for some time to check if it started successfully and throw an error if it did.
  * @param {string} path Docker Compose standalone project file path.
  */
-async function launchWhirlpool(whirlpool, silent) {
+async function launchWhirlpool(whirlpool, certificates, silent) {
 	print("Preparing whirlpool executable...", silent);
 	runCommandForSystem(`docker compose -f ${DOCKER_COMPOSE_PATH} build ${DOCKER_COMPOSE_CONTAINER}`, `poetry poe -C ${VIRIDIAN_ALGAE_ROOT} bundle`, undefined, {
 		SEASIDE_HOST_ADDRESS: whirlpool
@@ -206,7 +216,7 @@ async function launchWhirlpool(whirlpool, silent) {
 	print("Spawning whirlpool process...", silent);
 	runCommandForSystem(
 		`docker compose -f ${DOCKER_COMPOSE_PATH} up --detach ${DOCKER_COMPOSE_CONTAINER}`,
-		`wsl -u root python3 ${convertPathToWSL(INSTALLER_PATH)} -g -o -a back whirlpool -l "${convertPathToWSL(CAERULEAN_WHIRLPOOL_ROOT)}" -r compile -v "${process.env.SEASIDE_API_KEY_ADMIN}" -a ${whirlpool} -e ${whirlpool} -i ${process.env.SEASIDE_API_PORT} --log-level DEBUG`,
+		`wsl -u root python3 ${convertPathToWSL(INSTALLER_PATH)} -o -a back whirlpool -l "${convertPathToWSL(CAERULEAN_WHIRLPOOL_ROOT)}" -r compile -v "${process.env.SEASIDE_API_KEY_ADMIN}" -a ${whirlpool} -e ${whirlpool} -i ${process.env.SEASIDE_API_PORT} --certificates-path ${convertPathToWSL(certificates)} --log-level DEBUG`,
 		undefined,
 		{
 			SEASIDE_HOST_ADDRESS: whirlpool
@@ -219,12 +229,10 @@ async function launchWhirlpool(whirlpool, silent) {
 
 // Script body:
 
-// NB! Since the default route can not be changed in GitHub Actions, a different approach is taken here:
-// Since, in fact, the only meaningful targets are whirlpool and echo docker containers, routes to them are changed instead of the default one.
-// Viridian client determines the default route as the route to the caerulean address, so the router address is considered to be the default one.
 const args = parseArguments();
 const whirlpoolIP = getWhirlpoolIP(args.silent);
 const { iface, address } = getOutputConnection(args.target);
-await launchWhirlpool(whirlpoolIP, args.silent);
+generateCertificates(address);
+await launchWhirlpool(whirlpoolIP, SERVER_CERTIFICATES, args.silent);
 setupRouting(args.target, args.lower_port, args.higher_port, iface, address, args.silent);
 print(whirlpoolIP, !args.silent);
