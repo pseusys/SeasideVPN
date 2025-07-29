@@ -93,7 +93,9 @@ runs:
         SEASIDE_ADDRESS: ${{ steps.start-background-server.outputs.server-ip }}
         SEASIDE_CERTIFICATE_PATH: certificates/viridian
         SEASIDE_LOG_LEVEL: ERROR
-      run: echo "connection-link=$(poetry poe -q fixture -a "${{ env.SEASIDE_ADDRESS }}" -p "${{ env.SEASIDE_API_PORT }}" -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian -s)" >> $GITHUB_OUTPUT
+      run: |
+        poetry poe -q fixture -a "${{ env.SEASIDE_ADDRESS }}" -p "${{ env.SEASIDE_API_PORT }}" -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian
+        echo "connection-link=$(poetry poe -q fixture -a "${{ env.SEASIDE_ADDRESS }}" -p "${{ env.SEASIDE_API_PORT }}" -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian -s)" >> $GITHUB_OUTPUT
 
     - name: Test Echo Server Access (no VPN)
       if: ${{ inputs.test-command != '' }}
