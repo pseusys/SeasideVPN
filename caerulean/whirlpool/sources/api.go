@@ -114,17 +114,11 @@ func loadTLSCredentials() (credentials.TransportCredentials, error) {
 				return fmt.Errorf("invalid certificate")
 			}
 
-			logrus.Infof("Client cert: Subject=%s, Issuer=%s", cert.Subject, cert.Issuer)
+			logrus.Infof("Client cert: Subject: %s, Issuer: %s, KeyUsage: %v, ExtKeyUsage: %v", cert.Subject, cert.Issuer, cert.KeyUsage, cert.ExtKeyUsage)
 
 			// Now manually verify against your CA pool if you want
 			opts := x509.VerifyOptions{
-				Roots:         certPool, // your CA pool
-				Intermediates: x509.NewCertPool(),
-			}
-			for _, icert := range rawCerts[1:] {
-				if parsed, err := x509.ParseCertificate(icert); err == nil {
-					opts.Intermediates.AddCert(parsed)
-				}
+				Roots: certPool,
 			}
 			if _, err := cert.Verify(opts); err != nil {
 				logrus.Errorf("Manual verification failed: %v", err)

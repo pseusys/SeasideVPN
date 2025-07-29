@@ -48,7 +48,7 @@ def _create_self_signed_cert(private_key: EllipticCurvePrivateKey, subject: Name
     builder = builder.public_key(private_key.public_key())
     builder = builder.add_extension(SubjectAlternativeName(altnames), False)
     builder = builder.add_extension(KeyUsage(True, True, False, False, False, True, True, False, False), True)
-    builder = builder.add_extension(ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH]), False)
+    builder = builder.add_extension(ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH, ExtendedKeyUsageOID.CLIENT_AUTH]), False)
     builder = builder.add_extension(BasicConstraints(ca=True, path_length=None), critical=True)
     builder = builder.not_valid_before(datetime.now(timezone.utc))
     builder = builder.not_valid_after(datetime.now(timezone.utc) + timedelta(days=validity_days))
@@ -152,8 +152,8 @@ def generate_certificates(address: Union[IPv4Address, str], cert_path: Path = GE
     logger.debug("Creating certificate authority key...")
     ca_private_key = generate_private_key(SECP384R1())
     ca_cert = _create_self_signed_cert(ca_private_key, ca_subject, [altnames], _GENERATE_CERTIFICATES_VALIDITY)
-    _save_cert_and_key_to_file(ca_cert, ca_private_key, caerulean_dir / "rootCA.crt", caerulean_dir / "rootCA.key")
     _save_cert_and_key_to_file(ca_cert, ca_private_key, viridian_dir / "rootCA.crt", viridian_dir / "rootCA.key")
+    _save_cert_and_key_to_file(ca_cert, ca_private_key, caerulean_dir / "rootCA.crt", caerulean_dir / "rootCA.key")
 
     logger.debug("Signing viridian certificates signed with CA...")
     cert_private_key = generate_private_key(SECP384R1())
