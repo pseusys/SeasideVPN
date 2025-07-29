@@ -304,5 +304,5 @@ class WhirlpoolInstaller(Installer):
             run_command(self.run_command)
         else:
             self._logger.info("Starting command in the background...")
-            Popen(self.run_command, stdout=DEVNULL, stderr=DEVNULL, shell=True)
+            Popen(self.run_command, stdout=DEVNULL, stderr=DEVNULL, shell=True, env={"GRPC_VERBOSITY": "debug", "GRPC_TRACE": "ssl"})
             self._logger.info("Command running in the background!")

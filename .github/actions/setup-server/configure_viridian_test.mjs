@@ -213,8 +213,6 @@ async function launchWhirlpool(whirlpool, silent) {
 		`wsl -u root python3 ${convertPathToWSL(INSTALLER_PATH)} -o -a back whirlpool -l "${convertPathToWSL(CAERULEAN_WHIRLPOOL_ROOT)}" -r compile -v "${process.env.SEASIDE_API_KEY_ADMIN}" -a ${whirlpool} -e ${whirlpool} -i ${process.env.SEASIDE_API_PORT} --certificates-path ${convertPathToWSL(SERVER_CERTIFICATES)} --log-level DEBUG`,
 		undefined,
 		{
-        	GRPC_VERBOSITY: "debug",
-        	GRPC_TRACE: "ssl",
 			SEASIDE_HOST_ADDRESS: whirlpool
 		}
 	);
