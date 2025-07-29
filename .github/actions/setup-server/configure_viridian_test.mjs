@@ -206,11 +206,7 @@ async function launchWhirlpool(whirlpool, silent) {
 		SEASIDE_HOST_ADDRESS: whirlpool
 	});
 	print("Generating certificates...", silent);
-	runCommandForSystem(
-		`true`,
-		`poetry -C ${VIRIDIAN_ALGAE_ROOT} run python3 ${INSTALLER_PATH} --just-certs ${whirlpool}`,
-		undefined
-	);
+	runCommandForSystem(`true`, `poetry -C ${VIRIDIAN_ALGAE_ROOT} run python3 ${INSTALLER_PATH} --just-certs ${whirlpool}`, undefined);
 	print("Spawning whirlpool process...", silent);
 	runCommandForSystem(
 		`docker compose -f ${DOCKER_COMPOSE_PATH} up --detach ${DOCKER_COMPOSE_CONTAINER}`,

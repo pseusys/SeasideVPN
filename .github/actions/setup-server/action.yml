@@ -76,6 +76,13 @@ runs:
         SUDO: ${{ runner.os == 'Linux' && 'sudo -E env "PATH=$PATH"' || '' }}
       run: echo "server-ip=$(${{ env.SUDO }} node actions/setup-server/configure_viridian_test.mjs -l ${{ inputs.lower_port }} -h ${{ inputs.higher_port }} -t ${{ steps.resolve-target.outputs.target-ip }} -s)" >> $GITHUB_OUTPUT
 
+    - name: Check Certificates
+      working-directory: viridian/algae
+      shell: bash
+      env:
+        SEASIDE_CERTIFICATE_PATH: certificates/viridian
+      run: ls && ls certificates && ls ${{ env.SEASIDE_CERTIFICATE_PATH }}
+
     - name: Get Connection Link
       id: get-server-connection-link
       working-directory: viridian/algae
