@@ -98,7 +98,22 @@ func loadTLSCredentials() (credentials.TransportCredentials, error) {
 	config := &tls.Config{
 		ClientCAs:    certPool,
 		Certificates: []tls.Certificate{serverCert},
-		ClientAuth:   tls.RequireAndVerifyClientCert,
+		ClientAuth:   tls.RequireAnyClientCert,
+
+		VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+			logrus.Infoln("VerifyPeerCertificate called")
+			for _, asn1Data := range rawCerts {
+				cert, err := x509.ParseCertificate(asn1Data)
+				if err != nil {
+					logrus.Infof("Failed to parse cert: %v", err)
+					continue
+				}
+				logrus.Infof("Client cert: Subject=%s, Issuer=%s", cert.Subject, cert.Issuer)
+			}
+			// You could return an error here to reject, or nil to accept.
+			// Normally you'd do extra checks and return nil if all good.
+			return nil
+		},
 	}
 
 	// Return credentials
