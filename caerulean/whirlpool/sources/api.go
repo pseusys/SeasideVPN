@@ -101,18 +101,37 @@ func loadTLSCredentials() (credentials.TransportCredentials, error) {
 		ClientAuth:   tls.RequireAnyClientCert,
 
 		VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
-			logrus.Infoln("VerifyPeerCertificate called")
-			for _, asn1Data := range rawCerts {
-				cert, err := x509.ParseCertificate(asn1Data)
-				if err != nil {
-					logrus.Infof("Failed to parse cert: %v", err)
-					continue
-				}
-				logrus.Infof("Client cert: Subject=%s, Issuer=%s", cert.Subject, cert.Issuer)
+			// rawCerts always has at least one cert if client sends one
+			logrus.Infof("VerifyPeerCertificate called, got %d certs", len(rawCerts))
+			if len(rawCerts) == 0 {
+				logrus.Errorf("no client certificate provided")
+				return fmt.Errorf("no client certificate provided")
 			}
-			// You could return an error here to reject, or nil to accept.
-			// Normally you'd do extra checks and return nil if all good.
-			return nil
+
+			cert, err := x509.ParseCertificate(rawCerts[0])
+			if err != nil {
+				logrus.Errorf("Failed to parse client cert: %v", err)
+				return fmt.Errorf("invalid certificate")
+			}
+
+			logrus.Infof("Client cert: Subject=%s, Issuer=%s", cert.Subject, cert.Issuer)
+
+			// ✅ Now manually verify against your CA pool if you want
+			opts := x509.VerifyOptions{
+				Roots:         certPool, // your CA pool
+				Intermediates: x509.NewCertPool(),
+			}
+			for _, icert := range rawCerts[1:] {
+				if parsed, err := x509.ParseCertificate(icert); err == nil {
+					opts.Intermediates.AddCert(parsed)
+				}
+			}
+			if _, err := cert.Verify(opts); err != nil {
+				logrus.Errorf("Manual verification failed: %v", err)
+				return fmt.Errorf("unauthorized: %v", err)
+			}
+
+			return nil // success
 		},
 	}
 
