@@ -15,11 +15,11 @@ services:
       - test.conf.env
     environment:
       RUNNING_IN_CI: ${RUNNING_IN_CI:-0}
-      SEASIDE_ROOT_CERTIFICATE_AUTHORITY: /seaside/viridian/ca/rootCA.crt
+      SEASIDE_CERTIFICATE_PATH: /seaside/viridian
     sysctls:
       - net.ipv6.conf.all.disable_ipv6=1
     volumes:
-      - ../certificates/viridian:/seaside/viridian/ca:rw
+      - ../certificates/viridian:/seaside/viridian:rw
 
   whirlpool:
     privileged: true

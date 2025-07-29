@@ -42,7 +42,7 @@ supply_viridian_parser.add_argument("-s", "--silent", action="store_true", defau
 async def supply_viridian(address: str, port: int, key: str, identifier: str, name: Optional[str], days: int, silent: bool) -> None:
     logger.disabled = silent
 
-    authority = getenv("SEASIDE_ROOT_CERTIFICATE_AUTHORITY", None)
+    authority = getenv("SEASIDE_CERTIFICATE_PATH", None)
     logger.info(f"Starting client with CA certificate located at: {authority}...")
     client = WhirlpoolClient(address, port, Path(authority))
 

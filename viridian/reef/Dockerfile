@@ -46,7 +46,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends iptables iprout
 COPY viridian/algae/tests/conftest.py viridian/algae/tests/test_local.py tests/
 COPY --from=builder /seaside/viridian/reef/target/debug/cli cli
 
-VOLUME /seaside/viridian/ca
+VOLUME /seaside/viridian
 
 ENV SEASIDE_PAYLOAD_VIRIDIAN=
 ENV SEASIDE_ADDRESS=

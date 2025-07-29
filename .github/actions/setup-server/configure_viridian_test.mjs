@@ -24,6 +24,8 @@ const CAERULEAN_WHIRLPOOL_ROOT = join(import.meta.dirname, "..", "..", "..", "ca
 
 const VIRIDIAN_ALGAE_ROOT = join(import.meta.dirname, "..", "..", "..", "viridian", "algae");
 
+const SERVER_CERTIFICATES = join(VIRIDIAN_ALGAE_ROOT, "certificates", "caerulean");
+
 const INSTALLER_PATH = join(VIRIDIAN_ALGAE_ROOT, "install.pyz");
 
 function print(message, silent = false) {
@@ -203,10 +205,12 @@ async function launchWhirlpool(whirlpool, silent) {
 	runCommandForSystem(`docker compose -f ${DOCKER_COMPOSE_PATH} build ${DOCKER_COMPOSE_CONTAINER}`, `poetry poe -C ${VIRIDIAN_ALGAE_ROOT} bundle`, undefined, {
 		SEASIDE_HOST_ADDRESS: whirlpool
 	});
+	print("Generating certificates...", silent);
+	runCommandForSystem(`true`, `poetry -C ${VIRIDIAN_ALGAE_ROOT} run python3 ${INSTALLER_PATH} --just-certs ${whirlpool}`, undefined);
 	print("Spawning whirlpool process...", silent);
 	runCommandForSystem(
 		`docker compose -f ${DOCKER_COMPOSE_PATH} up --detach ${DOCKER_COMPOSE_CONTAINER}`,
-		`wsl -u root python3 ${convertPathToWSL(INSTALLER_PATH)} -g -o -a back whirlpool -l "${convertPathToWSL(CAERULEAN_WHIRLPOOL_ROOT)}" -r compile -v "${process.env.SEASIDE_API_KEY_ADMIN}" -a ${whirlpool} -e ${whirlpool} -i ${process.env.SEASIDE_API_PORT} --log-level DEBUG`,
+		`wsl -u root python3 ${convertPathToWSL(INSTALLER_PATH)} -o -a back whirlpool -l "${convertPathToWSL(CAERULEAN_WHIRLPOOL_ROOT)}" -r compile -v "${process.env.SEASIDE_API_KEY_ADMIN}" -a ${whirlpool} -e ${whirlpool} -i ${process.env.SEASIDE_API_PORT} --certificates-path ${convertPathToWSL(SERVER_CERTIFICATES)} --log-level DEBUG`,
 		undefined,
 		{
 			SEASIDE_HOST_ADDRESS: whirlpool
@@ -219,9 +223,6 @@ async function launchWhirlpool(whirlpool, silent) {
 
 // Script body:
 
-// NB! Since the default route can not be changed in GitHub Actions, a different approach is taken here:
-// Since, in fact, the only meaningful targets are whirlpool and echo docker containers, routes to them are changed instead of the default one.
-// Viridian client determines the default route as the route to the caerulean address, so the router address is considered to be the default one.
 const args = parseArguments();
 const whirlpoolIP = getWhirlpoolIP(args.silent);
 const { iface, address } = getOutputConnection(args.target);

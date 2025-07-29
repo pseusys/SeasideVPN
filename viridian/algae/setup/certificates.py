@@ -2,22 +2,23 @@ from datetime import datetime, timedelta, timezone
 from ipaddress import IPv4Address
 from os import getcwd
 from pathlib import Path
+from secrets import token_bytes
 from shutil import rmtree
 from typing import List, Union
 
-from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, generate_private_key
+from cryptography.hazmat.primitives.asymmetric.ec import SECP384R1, EllipticCurvePrivateKey, generate_private_key
 from cryptography.hazmat.primitives.hashes import SHA256
-from cryptography.hazmat.primitives.serialization import Encoding, NoEncryption, PrivateFormat
+from cryptography.hazmat.primitives.serialization import Encoding, NoEncryption, BestAvailableEncryption, PrivateFormat
 from cryptography.x509 import BasicConstraints, Certificate, CertificateBuilder, CertificateSigningRequest, CertificateSigningRequestBuilder, DNSName, ExtendedKeyUsage, IPAddress, KeyUsage, Name, NameAttribute, SubjectAlternativeName, random_serial_number
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
 from .utils import Logging
 
-_GENERATE_CERTIFICATES_KEY_SIZE = 2048
-_GENERATE_CERTIFICATES_PUBLIC_EXPONENT = 65537
+_KEY_ENCRYPTION_PASSWORD_BYTES = 32
 _GENERATE_CERTIFICATES_VALIDITY = 365250
-_GENERATE_CERTIFICATES_ISSUER = "SeasideTrustableIssuer"
-_GENERATE_CERTIFICATES_SUBJECT = "SeasideTestEnvironment"
+_GENERATE_CERTIFICATES_ISSUER_CA = "SeasideVPN Trustable Issuer"
+_GENERATE_CERTIFICATES_ISSUER_VIRIDIAN = "SeasideVPN Test Viridian"
+_GENERATE_CERTIFICATES_ISSUER_CAERULEAN = "SeasideVPN Test Caerulean"
 
 GENERATE_CERTIFICATES_PATH = Path(getcwd()) / "certificates"
 
@@ -33,7 +34,7 @@ def check_certificates(cert_path: Path = GENERATE_CERTIFICATES_PATH) -> bool:
     return cert_key.exists() and cert_cert.exists()
 
 
-def _create_self_signed_cert(private_key: RSAPrivateKey, subject: Name, altnames: List[Union[DNSName, IPAddress]], validity_days: int) -> Certificate:
+def _create_self_signed_cert(private_key: EllipticCurvePrivateKey, subject: Name, validity_days: int) -> Certificate:
     """
     Create a self-signed CA certificate.
     :param private_key: CA private key.
@@ -46,17 +47,15 @@ def _create_self_signed_cert(private_key: RSAPrivateKey, subject: Name, altnames
     builder = builder.subject_name(subject)
     builder = builder.issuer_name(subject)
     builder = builder.public_key(private_key.public_key())
-    builder = builder.add_extension(SubjectAlternativeName(altnames), False)
-    builder = builder.add_extension(KeyUsage(True, True, False, False, False, True, True, False, False), True)
-    builder = builder.add_extension(ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH]), False)
-    builder = builder.add_extension(BasicConstraints(ca=True, path_length=None), critical=True)
+    builder = builder.add_extension(KeyUsage(False, False, False, False, False, True, True, False, False), True)
+    builder = builder.add_extension(BasicConstraints(ca=True, path_length=None), True)
     builder = builder.not_valid_before(datetime.now(timezone.utc))
     builder = builder.not_valid_after(datetime.now(timezone.utc) + timedelta(days=validity_days))
     builder = builder.serial_number(random_serial_number())
     return builder.sign(private_key, SHA256())
 
 
-def _create_csr(private_key: RSAPrivateKey, subject: Name, altnames: List[Union[DNSName, IPAddress]]) -> CertificateSigningRequest:
+def _create_csr(private_key: EllipticCurvePrivateKey, subject: Name, altnames: List[Union[DNSName, IPAddress]], server: bool) -> CertificateSigningRequest:
     """
     Create a Certificate Signing Request (CSR).
     :param private_key: certificate private key.
@@ -67,12 +66,12 @@ def _create_csr(private_key: RSAPrivateKey, subject: Name, altnames: List[Union[
     builder = CertificateSigningRequestBuilder()
     builder = builder.subject_name(subject)
     builder = builder.add_extension(SubjectAlternativeName(altnames), False)
-    builder = builder.add_extension(KeyUsage(True, True, True, True, True, True, True, False, False), True)
-    builder = builder.add_extension(ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH, ExtendedKeyUsageOID.CLIENT_AUTH]), False)
+    builder = builder.add_extension(KeyUsage(True, False, server, False, False, False, False, False, False), True)
+    builder = builder.add_extension(ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH] if server else [ExtendedKeyUsageOID.CLIENT_AUTH]), False)
     return builder.sign(private_key, SHA256())
 
 
-def _sign_csr(ca_private_key: RSAPrivateKey, ca_cert: Certificate, csr: CertificateSigningRequest, validity_days: int) -> Certificate:
+def _sign_csr(ca_private_key: EllipticCurvePrivateKey, ca_cert: Certificate, csr: CertificateSigningRequest, validity_days: int) -> Certificate:
     """
     Sign a CSR using the CA's private key and certificate.
     :param ca_private_key: CA private key.
@@ -85,7 +84,7 @@ def _sign_csr(ca_private_key: RSAPrivateKey, ca_cert: Certificate, csr: Certific
     builder = builder.subject_name(csr.subject)
     builder = builder.issuer_name(ca_cert.subject)
     builder = builder.public_key(csr.public_key())
-    builder = builder.add_extension(BasicConstraints(ca=False, path_length=None), critical=True)
+    builder = builder.add_extension(BasicConstraints(ca=False, path_length=None), critical=False)
     builder = builder.not_valid_before(datetime.now(timezone.utc))
     builder = builder.not_valid_after(datetime.now(timezone.utc) + timedelta(days=validity_days))
     builder = builder.serial_number(random_serial_number())
@@ -94,7 +93,7 @@ def _sign_csr(ca_private_key: RSAPrivateKey, ca_cert: Certificate, csr: Certific
     return builder.sign(ca_private_key, SHA256())
 
 
-def _save_cert_and_key_to_file(certificate: Certificate, private_key: RSAPrivateKey, cert_path: Path, key_path: Path) -> None:
+def _save_cert_and_key_to_file(certificate: Certificate, private_key: EllipticCurvePrivateKey, cert_path: Path, key_path: Path, encrypt: bool = False) -> None:
     """
     Save certificate and its private key to files.
     :param certificate: certificate to save.
@@ -102,8 +101,9 @@ def _save_cert_and_key_to_file(certificate: Certificate, private_key: RSAPrivate
     :param cert_path: path to save certificate.
     :param key_path: path to save private key.
     """
+    encryption_password = token_bytes(_KEY_ENCRYPTION_PASSWORD_BYTES)
     cert_path.write_bytes(certificate.public_bytes(Encoding.PEM))
-    key_path.write_bytes(private_key.private_bytes(Encoding.PEM, PrivateFormat.TraditionalOpenSSL, NoEncryption()))
+    key_path.write_bytes(private_key.private_bytes(Encoding.PEM, PrivateFormat.TraditionalOpenSSL, BestAvailableEncryption(encryption_password) if encrypt else NoEncryption()))
 
 
 def generate_certificates(address: Union[IPv4Address, str], cert_path: Path = GENERATE_CERTIFICATES_PATH, remove_existing: bool = False) -> None:
@@ -115,11 +115,15 @@ def generate_certificates(address: Union[IPv4Address, str], cert_path: Path = GE
     ```txt
     --- cert_path
      |--- viridian
+     | |--- cert.key
+     | |--- cert.crt
      | |--- rootCA.key
      | '--- rootCA.crt
      '--- caerulean
        |--- cert.key
-       '--- cert.crt
+       |--- cert.crt
+       |--- rootCA.key
+       '--- rootCA.crt
     ```
     Some additional generation artifact files may be present in the directories.
     :param address: host name or IP address for certificate generation.
@@ -141,16 +145,24 @@ def generate_certificates(address: Union[IPv4Address, str], cert_path: Path = GE
 
     logger.debug(f"Certificates for {address} will be created in {cert_path} directory...")
     altnames = IPAddress(address) if isinstance(address, IPv4Address) else DNSName(address)
-    ca_subject = Name([NameAttribute(NameOID.COMMON_NAME, _GENERATE_CERTIFICATES_ISSUER)])
-    cert_subject = Name([NameAttribute(NameOID.COMMON_NAME, _GENERATE_CERTIFICATES_SUBJECT)])
+    ca_subject = Name([NameAttribute(NameOID.COMMON_NAME, _GENERATE_CERTIFICATES_ISSUER_CA)])
+    viridian_subject = Name([NameAttribute(NameOID.COMMON_NAME, _GENERATE_CERTIFICATES_ISSUER_VIRIDIAN)])
+    caerulean_subject = Name([NameAttribute(NameOID.COMMON_NAME, _GENERATE_CERTIFICATES_ISSUER_CAERULEAN)])
 
-    logger.debug("Creating caerulean certificates...")
-    ca_private_key = generate_private_key(_GENERATE_CERTIFICATES_PUBLIC_EXPONENT, _GENERATE_CERTIFICATES_KEY_SIZE)
-    ca_cert = _create_self_signed_cert(ca_private_key, ca_subject, [altnames], _GENERATE_CERTIFICATES_VALIDITY)
+    logger.debug("Creating certificate authority key...")
+    ca_private_key = generate_private_key(SECP384R1())
+    ca_cert = _create_self_signed_cert(ca_private_key, ca_subject, _GENERATE_CERTIFICATES_VALIDITY)
     _save_cert_and_key_to_file(ca_cert, ca_private_key, viridian_dir / "rootCA.crt", viridian_dir / "rootCA.key")
+    _save_cert_and_key_to_file(ca_cert, ca_private_key, caerulean_dir / "rootCA.crt", caerulean_dir / "rootCA.key")
 
-    logger.debug("Signing viridian certificates with caerulean certificates...")
-    cert_private_key = generate_private_key(_GENERATE_CERTIFICATES_PUBLIC_EXPONENT, _GENERATE_CERTIFICATES_KEY_SIZE)
-    cert_sign_request = _create_csr(cert_private_key, cert_subject, [altnames])
+    logger.debug("Signing viridian certificates signed with CA...")
+    cert_private_key = generate_private_key(SECP384R1())
+    cert_sign_request = _create_csr(cert_private_key, viridian_subject, [altnames], False)
+    signed_cert = _sign_csr(ca_private_key, ca_cert, cert_sign_request, _GENERATE_CERTIFICATES_VALIDITY)
+    _save_cert_and_key_to_file(signed_cert, cert_private_key, viridian_dir / "cert.crt", viridian_dir / "cert.key")
+
+    logger.debug("Signing caerulean certificates signed with CA...")
+    cert_private_key = generate_private_key(SECP384R1())
+    cert_sign_request = _create_csr(cert_private_key, caerulean_subject, [altnames], True)
     signed_cert = _sign_csr(ca_private_key, ca_cert, cert_sign_request, _GENERATE_CERTIFICATES_VALIDITY)
     _save_cert_and_key_to_file(signed_cert, cert_private_key, caerulean_dir / "cert.crt", caerulean_dir / "cert.key")
