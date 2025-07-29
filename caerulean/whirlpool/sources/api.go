@@ -116,7 +116,7 @@ func loadTLSCredentials() (credentials.TransportCredentials, error) {
 
 			logrus.Infof("Client cert: Subject=%s, Issuer=%s", cert.Subject, cert.Issuer)
 
-			// ✅ Now manually verify against your CA pool if you want
+			// Now manually verify against your CA pool if you want
 			opts := x509.VerifyOptions{
 				Roots:         certPool, // your CA pool
 				Intermediates: x509.NewCertPool(),
