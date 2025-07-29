@@ -226,6 +226,6 @@ async function launchWhirlpool(whirlpool, silent) {
 const args = parseArguments();
 const whirlpoolIP = getWhirlpoolIP(args.silent);
 const { iface, address } = getOutputConnection(args.target);
-await launchWhirlpool(whirlpoolIP, SERVER_CERTIFICATES, args.silent);
+await launchWhirlpool(whirlpoolIP, args.silent);
 setupRouting(args.target, args.lower_port, args.higher_port, iface, address, args.silent);
 print(whirlpoolIP, !args.silent);

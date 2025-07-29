@@ -81,7 +81,7 @@ runs:
       shell: bash
       env:
         SEASIDE_CERTIFICATE_PATH: certificates/viridian
-      run: ls && ls certificates && ls ${{ env.SEASIDE_CERTIFICATE_PATH }}
+      run: ls && ls certificates && ls ${{ env.SEASIDE_CERTIFICATE_PATH }} && ls certificates/caerulean
 
     - name: Get Connection Link
       id: get-server-connection-link
