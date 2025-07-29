@@ -30,6 +30,8 @@ const INSTALL_SCRIPT = join(import.meta.dirname, "..", "..", "viridian", "algae"
 const DEFAULT_APIPORT = 8587;
 // Certificates path.
 const CERTS_PATH = "./certificates";
+// Host name.
+const HOST_NAME = "SeasideVPN";
 
 /**
  * Make HTTP request and return results parsed as JSON.
@@ -45,7 +47,7 @@ async function request(url, method, data = null, token = null) {
 		options["body"] = JSON.stringify(data);
 		options.headers["Content-Type"] = "application/json";
 	}
-	if (token != null) options.headers["Authorization"] = `Bearer ${token}`;
+	if (token != null) options.headers["x-xsrf-token"] = token;
 	const response = await fetch(url, options);
 	return await response.json();
 }
@@ -75,16 +77,17 @@ async function get(url, token = null) {
  * Print usage help message and exit with code 0.
  */
 function printHelpMessage() {
-	console.log(`${BOLD}Beget deployment script usage${RESET}:`);
+	console.log(`${BOLD}ServaOne deployment script usage${RESET}:`);
 	console.log(`\t${BLUE}-h --help${RESET}: Print this message again and exit.`);
 	console.log(`\t${BLUE}-v --verbose${RESET}: Print viridian connection link in the end.`);
 	console.log(`${BOLD}Required environment variables${RESET}:`);
-	console.log(`\t${GREEN}BEGET_API_LOGIN${RESET}: Beget account owner login.`);
-	console.log(`\t${GREEN}BEGET_API_PASSWORD${RESET}: Beget account owner password.`);
-	console.log(`\t${GREEN}BEGET_SERVER_USER${RESET}: User name of the deployment server root user (default: "root").`);
-	console.log(`\t${GREEN}BEGET_SERVER_KEY${RESET}: Password of the deployment server root user (also admin payload).`);
+	console.log(`\t${GREEN}SERVAONE_API_EMAIL${RESET}: ServaOne account owner email.`);
+	console.log(`\t${GREEN}SERVAONE_API_TOKEN${RESET}: ServaOne account owner password.`);
+	console.log(`\t${GREEN}SERVAONE_SERVER_USER${RESET}: ServaOne server root user (default: "root").`);
+	console.log(`\t${GREEN}SERVAONE_SERVER_PASSWORD${RESET}: ServaOne server root user password.`);
+	console.log(`\t${GREEN}SERVAONE_SERVER_KEY${RESET}: Seaside whirlpool node owner API key.`);
 	console.log(`${BOLD}Optional environment variables${RESET}:`);
-	console.log(`\t${GREEN}WHIRLPOOL_PAYLOAD${RESET}: Whirlpool viridian poyload (default: will be generated).`);
+	console.log(`\t${GREEN}WHIRLPOOL_PAYLOAD${RESET}: Seaside whirlpool node admin API keys (default: will be generated).`);
 	console.log(`\t${GREEN}WHIRLPOOL_APIPORT${RESET}: Whirlpool API port (default: ${DEFAULT_APIPORT}).`);
 	process.exit(0);
 }
@@ -95,8 +98,13 @@ function printHelpMessage() {
  */
 function ensureInstallationScript() {
 	if (!existsSync(INSTALL_SCRIPT)) {
+		const scriptDir = dirname(INSTALL_SCRIPT);
 		console.log("Installation script not found, generating...");
-		execSync("poetry poe bundle", { cwd: dirname(INSTALL_SCRIPT) });
+		try {
+			execSync("poetry poe bundle", { cwd: scriptDir });
+		} catch (error) {
+			throw Error(`Error generating installation script, try reinstalling poetry in ${scriptDir}!\nError: ${error}`);
+		}
 	} else console.log("Installation script found!");
 }
 
@@ -115,7 +123,7 @@ function ensureCertificatesExist(ip) {
 /**
  * Parse CLI and environment flags and arguments.
  * Throw an error if one of the required arguments is missing.
- * The required arguments are: login, password, key.
+ * The required arguments are: email, password, key.
  * @returns {object} object, containing all the arguments parsed
  */
 function parseArguments() {
@@ -133,14 +141,16 @@ function parseArguments() {
 	};
 	const { values } = parseArgs({ options });
 	if (values.help) printHelpMessage();
-	if (process.env.BEGET_API_LOGIN === undefined) throw new Error("Parameter 'login' is missing!");
-	else values["login"] = process.env.BEGET_API_LOGIN;
-	if (process.env.BEGET_API_PASSWORD === undefined) throw new Error("Parameter 'password' is missing!");
-	else values["password"] = process.env.BEGET_API_PASSWORD;
-	if (process.env.BEGET_SERVER_KEY === undefined) throw new Error("Parameter 'key' is missing!");
-	else values["key"] = process.env.BEGET_SERVER_KEY;
-	if (process.env.BEGET_SERVER_USER === undefined) values["user"] = DEFAULT_USER;
-	else values["user"] = process.env.BEGET_SERVER_USER;
+	if (process.env.SERVAONE_API_EMAIL === undefined) throw new Error("Parameter 'email' is missing!");
+	else values["email"] = process.env.SERVAONE_API_EMAIL;
+	if (process.env.SERVAONE_API_TOKEN === undefined) throw new Error("Parameter 'token' is missing!");
+	else values["token"] = process.env.SERVAONE_API_TOKEN;
+	if (process.env.SERVAONE_SERVER_PASSWORD === undefined) throw new Error("Parameter 'password' is missing!");
+	else values["password"] = process.env.SERVAONE_SERVER_PASSWORD;
+	if (process.env.SERVAONE_SERVER_KEY === undefined) throw new Error("Parameter 'key' is missing!");
+	else values["key"] = process.env.SERVAONE_SERVER_KEY;
+	if (process.env.SERVAONE_SERVER_USER === undefined) values["user"] = DEFAULT_USER;
+	else values["user"] = process.env.SERVAONE_SERVER_USER;
 	if (process.env.WHIRLPOOL_PAYLOAD === undefined) values["payload"] = randomBytes(16).toString("hex");
 	else values["payload"] = process.env.WHIRLPOOL_PAYLOAD;
 	if (process.env.WHIRLPOOL_APIPORT === undefined) values["apiport"] = DEFAULT_APIPORT;
@@ -149,15 +159,15 @@ function parseArguments() {
 }
 
 /**
- * Receive Beget authentication token.
- * @param {string} login Beget user login
- * @param {string} password Beget user password
+ * Receive ServaOne authentication token.
+ * @param {string} email ServaOne user email
+ * @param {string} password ServaOne user password
  * @returns {Promise<string>} authentication token string
  */
-async function getToken(login, password) {
-	console.log("Receiving beget authentication token...");
-	const credentials = { login: login, password: password };
-	const { token } = await post("https://api.beget.com/v1/auth", credentials);
+async function getToken(email, password) {
+	console.log("Receiving servaone authentication token...");
+	const credentials = { email: email, password: password };
+	const { token } = await post("https://vm.serva.one/auth/v4/public/token", credentials);
 	return token;
 }
 
@@ -165,26 +175,14 @@ async function getToken(login, password) {
  * Get the first VPS ID.
  * Throw an error if no VPS found.
  * @param {string} token authentication token
- * @returns {Promise<string>} server ID
+ * @returns {Promise<string>} host ID
  */
-async function getServer(token) {
-	console.log("Receiving beget test server ID...");
-	const { vps } = await get("https://api.beget.com/v1/vps/server/list", token);
-	if (vps.length < 1) throw new Error("No VPS found on account!");
-	return vps[0].id;
-}
-
-/**
- * Get the first SSH key ID.
- * Throw an error if no SSH keys found.
- * @param {string} token authentication token
- * @returns {Promise<string>} SSH key ID
- */
-async function getSSHKey(token) {
-	console.log("Receiving beget test server SSH key...");
-	const { keys } = await get("https://api.beget.com/v1/vps/sshKey", token);
-	if (keys.length < 1) throw new Error("No SSH keys found on account!");
-	return keys[0].id;
+async function getHostID(token) {
+	console.log("Receiving servaone test host ID...");
+	const list = await get(`https://vm.serva.one/vm/v3/host?where=(name+EQ+'${HOST_NAME}')`, token);
+	if (list.size < 1) throw new Error("No VPS found on account!");
+	const vps = list.list[0];
+	return { serverID: vps.id, serverDisk: vps.disk.id, serverAddress: vps.ip4[0].ip };
 }
 
 /**
@@ -194,16 +192,15 @@ async function getSSHKey(token) {
  * @param {string} token authentication token
  * @returns {Promise<string>} Ubuntu application ID
  */
-async function getUbuntuAppID(version, token) {
-	console.log("Receiving beget Ubuntu app ID...");
-	const { software } = await get("https://api.beget.com/v1/vps/marketplace/software/list?display_name=Ubuntu", token);
-	const application = software.find((x) => x.version === version);
-	if (application === undefined) throw new Error(`No Ubuntu version ${version} found!`);
-	return application.id;
+async function getUbuntuOsID(version, token) {
+	console.log("Receiving servaone Ubuntu app ID...");
+	const list = await get(`https://vm.serva.one/vm/v3/os?where=(name+EQ+'Ubuntu ${version}')`, token);
+	if (list.size < 1) throw new Error("No OS found available!");
+	return list.list[0].id;
 }
 
 /**
- * Reinstall Beget VPS.
+ * Reinstall ServaOne VPS.
  * Performs server reset, removes all the user files and reinstalls the OS.
  * @param {string} server VPS ID
  * @param {string} ssh ID of the SSH key that will be added to the VPS
@@ -212,11 +209,11 @@ async function getUbuntuAppID(version, token) {
  * @param {string} token authentication token
  * @returns {Promise<object>} new VPS configuration object
  */
-async function reinstallServer(server, ssh, key, osID, token) {
-	console.log("Reinstalling beget test server...");
-	const params = { id: server, ssh_keys: [ssh], password: key, software: { id: osID } };
-	const { vps } = await post(`https://api.beget.com/v1/vps/server/${server}/reinstall`, params, token);
-	return vps;
+async function reinstallServer(server, password, disk, osID, token) {
+	console.log("Reinstalling servaone test server...");
+	const reinstallParams = { os: osID, send_email_mode: "default", password: password, disk: disk };
+	const task = await post(`https://vm.serva.one/vm/v3/host/${server}/reinstall`, reinstallParams, token);
+	if (task.id === undefined) throw Error(`Error reinstalling server: ${JSON.stringify(task)}`);
 }
 
 /**
@@ -230,12 +227,14 @@ async function reinstallServer(server, ssh, key, osID, token) {
  * @param {int} sleepTime time to sleep between connection attempts
  * @returns {Promise<NodeSSH>} established SSH connection
  */
-async function waitForServer(ip, key, user, waitTimes, sleepTime) {
-	console.log("Waiting for beget test server to come online...");
+async function waitForServer(id, ip, password, user, waitTimes, sleepTime, token) {
+	console.log("Waiting for servaone test server to come online...");
 	const sshConn = new NodeSSH();
 	for (let step = 0; step < waitTimes; step++) {
 		try {
-			return await sshConn.connect({ host: ip, username: user, password: key });
+			const vps = await get(`https://vm.serva.one/vm/v3/host/${id}`, token);
+			if (vps.state !== "active") throw Error("Server is still restarting...");
+			return await sshConn.connect({ host: ip, username: user, password: password, timeout: sleepTime });
 		} catch {
 			await sleep(sleepTime);
 		}
@@ -278,14 +277,13 @@ async function runDeployCommand(sshConn, whirlpoolIP, ownerPayload, viridianPayl
 // Script body:
 
 const args = parseArguments();
-const token = await getToken(args.login, args.password);
+const token = await getToken(args.email, args.token);
 
-const serverID = await getServer(token);
-const ssh = await getSSHKey(token);
-const ubuntuID = await getUbuntuAppID(UBUNTU_VERISON, token);
+const { serverID, serverDisk, serverAddress } = await getHostID(token);
+const osID = await getUbuntuOsID(UBUNTU_VERISON, token);
+await reinstallServer(serverID, args.password, serverDisk, osID, token);
 
-const vps = await reinstallServer(serverID, ssh, args.key, ubuntuID, token);
-const conn = await waitForServer(vps.ip_address, args.key, args.user, WAIT_TIMES, SLEEP_TIME);
-await runDeployCommand(conn, vps.ip_address, args.key, args.payload, args.apiport);
+const conn = await waitForServer(serverID, serverAddress, args.password, args.user, WAIT_TIMES, SLEEP_TIME, token);
+await runDeployCommand(conn, serverAddress, args.key, args.payload, args.apiport);
 
-if (args.verbose) console.log(`Viridian connection link is: ${YELLOW}${UNDER}seaside+whirlpool://${vps.ip_address}:${args.apiport}${RESET}`);
+if (args.verbose) console.log(`Viridian connection link is: ${YELLOW}${UNDER}seaside+whirlpool://${serverAddress}:${args.apiport}${RESET}`);

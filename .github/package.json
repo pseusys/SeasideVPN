@@ -4,7 +4,8 @@
 	"description": "Scripts for SeasideVPN GitHub Actions",
 	"type": "module",
 	"scripts": {
-		"deploy-whirlpool-beget": "node deploy_whirlpool_beget.mjs",
+		"deploy-whirlpool-beget": "node scripts/deploy_whirlpool_beget.mjs",
+		"deploy-whirlpool-servaone": "node scripts/deploy_whirlpool_servaone.mjs",
 		"lint-scripts": "npx prettier './**/*.*js' --check",
 		"format-scripts": "npx prettier './**/*.*js' --write"
 	},
