@@ -24,13 +24,17 @@ const SLEEP_TIME = 15;
 const UBUNTU_VERISON = "22.04";
 // Default root user name.
 const DEFAULT_USER = "root";
-// Local path to the 'install.pyz' Whirlpool node installation script
-const INSTALL_SCRIPT = join(import.meta.dirname, "..", "..", "viridian", "algae", "install.pyz");
-// Default API port for whirlpool.
+// Local path to the viridian algae project root
+const ALGAE_PATH = join(import.meta.dirname, "..", "..", "viridian", "algae");
+// Local path to the 'install.pyz' whirlpool node installation script
+const INSTALL_SCRIPT = join(ALGAE_PATH, "install.pyz");
+// Local certificates path
+const LOCAL_CERTS_PATH = join(ALGAE_PATH, "certificates");
+// Remote certificates path
+const REMOTE_CERTS_PATH = "./certificates/caerulean";
+// Default API port for whirlpool
 const DEFAULT_APIPORT = 8587;
-// Certificates path.
-const CERTS_PATH = "./certificates";
-// Host name.
+// Host name
 const HOST_NAME = "SeasideVPN";
 
 /**
@@ -98,24 +102,22 @@ function printHelpMessage() {
  */
 function ensureInstallationScript() {
 	if (!existsSync(INSTALL_SCRIPT)) {
-		const scriptDir = dirname(INSTALL_SCRIPT);
 		console.log("Installation script not found, generating...");
 		try {
-			execSync("poetry poe bundle", { cwd: scriptDir });
+			execSync("poetry poe bundle", { cwd: ALGAE_PATH });
 		} catch (error) {
-			throw Error(`Error generating installation script, try reinstalling poetry in ${scriptDir}!\nError: ${error}`);
+			throw Error(`Error generating installation script, try reinstalling poetry in ${ALGAE_PATH}!\nError: ${error}`);
 		}
 	} else console.log("Installation script found!");
 }
 
 function ensureCertificatesExist(ip) {
-	if (!existsSync(CERTS_PATH)) {
-		const scriptDir = dirname(INSTALL_SCRIPT);
+	if (!existsSync(LOCAL_CERTS_PATH)) {
 		console.log("Certificates not found, generating...");
 		try {
-			execSync(`poetry run python3 -m setup.main --just-certs ${ip}`, { cwd: scriptDir });
+			execSync(`poetry poe setup --just-certs ${ip}`, { cwd: ALGAE_PATH });
 		} catch (error) {
-			throw Error(`Error generating certificates, try reinstalling poetry in ${scriptDir}!\nError: ${error}`);
+			throw Error(`Error generating certificates, try reinstalling poetry in ${ALGAE_PATH}!\nError: ${error}`);
 		}
 	} else console.log("Certificates found!");
 }
@@ -178,7 +180,7 @@ async function getToken(email, password) {
  * @returns {Promise<string>} host ID
  */
 async function getHostID(token) {
-	console.log("Receiving servaone test host ID...");
+	console.log("Receiving ServaOne test host ID...");
 	const list = await get(`https://vm.serva.one/vm/v3/host?where=(name+EQ+'${HOST_NAME}')`, token);
 	if (list.size < 1) throw new Error("No VPS found on account!");
 	const vps = list.list[0];
@@ -193,7 +195,7 @@ async function getHostID(token) {
  * @returns {Promise<string>} Ubuntu application ID
  */
 async function getUbuntuOsID(version, token) {
-	console.log("Receiving servaone Ubuntu app ID...");
+	console.log("Receiving ServaOne Ubuntu app ID...");
 	const list = await get(`https://vm.serva.one/vm/v3/os?where=(name+EQ+'Ubuntu ${version}')`, token);
 	if (list.size < 1) throw new Error("No OS found available!");
 	return list.list[0].id;
@@ -264,13 +266,15 @@ async function runDeployCommand(sshConn, whirlpoolIP, ownerPayload, viridianPayl
 	if (pipRes.code != 0) throw new Error(`Python and pip installation failed, error code: ${pipRes.code}`);
 	console.log("Determining current git branch...");
 	const gitBranch = execSync("git rev-parse --abbrev-ref HEAD").toString().trim();
-	console.log("Copying whirlpool installation script to beget test server...");
+	console.log("Copying whirlpool installation script to ServaOne test server...");
 	await sshConn.putFile(INSTALL_SCRIPT, "install.pyz");
-	console.log("Running whirlpool installation script on beget test server...");
+	console.log("Copying whirlpool certificates to ServaOne test server...");
+	await sshConn.putDirectory(LOCAL_CERTS_PATH, "certificates", { recursive: true });
+	console.log("Running whirlpool installation script on ServaOne test server...");
 	const installArgs = `-s ${gitBranch} -a ${whirlpoolIP} -e ${whirlpoolIP} -o ${ownerPayload} -v ${viridianPayload} -p ${apiport}`;
-	const installRes = await sshConn.execCommand(`python3 install.pyz -o -g -a back whirlpool ${installArgs}`);
+	const installRes = await sshConn.execCommand(`python3 install.pyz -o -a back whirlpool ${installArgs} --certificates-path ${REMOTE_CERTS_PATH}`);
 	if (installRes.code != 0) throw new Error(`Installation script failed, error code: ${installRes.code}`);
-	console.log("Closing connection to beget test server...");
+	console.log("Closing connection to ServaOne test server...");
 	sshConn.dispose();
 }
 
