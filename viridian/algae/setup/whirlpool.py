@@ -304,5 +304,6 @@ class WhirlpoolInstaller(Installer):
             run_command(self.run_command)
         else:
             self._logger.info("Starting command in the background...")
-            Popen(self.run_command, stdout=DEVNULL, stderr=DEVNULL, shell=True, env={**environ, "GRPC_GO_LOG_SEVERITY_LEVEL": "debug", "GRPC_GO_LOG_VERBOSITY_LEVEL": "2"})
+            stdout, stderr = open("./stdout.txt", "w"), open("./stderr.txt", "w")
+            Popen(self.run_command, stdout=stdout, stderr=stderr, shell=True, env={**environ, "GRPC_GO_LOG_SEVERITY_LEVEL": "debug", "GRPC_GO_LOG_VERBOSITY_LEVEL": "2"})
             self._logger.info("Command running in the background!")
