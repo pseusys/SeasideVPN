@@ -22,6 +22,13 @@ _DEFAULT_NAME = gethostname()
 
 _DEFAULT_SUBSCRIPTION = 365
 
+
+
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
+
+
 logger = create_logger(__name__)
 
 
