@@ -88,8 +88,8 @@ runs:
       working-directory: viridian/algae
       shell: bash
       env:
-        GRPC_VERBOSITY=debug
-        GRPC_TRACE=ssl
+        GRPC_VERBOSITY: debug
+        GRPC_TRACE: ssl
         SEASIDE_ADDRESS: ${{ steps.start-background-server.outputs.server-ip }}
         SEASIDE_CERTIFICATE_PATH: certificates/viridian
         SEASIDE_LOG_LEVEL: ERROR
