@@ -94,7 +94,7 @@ jobs:
         working-directory: viridian/algae
         run: |
           pip3 install poetry
-          poetry --extras "bundle"
+          poetry install --extras "bundle"
 
       - name: Deploy Caerulean Whirlpool 🚀
         working-directory: .github/scripts
