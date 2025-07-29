@@ -16,8 +16,9 @@ from .utils import Logging
 
 _KEY_ENCRYPTION_PASSWORD_BYTES = 32
 _GENERATE_CERTIFICATES_VALIDITY = 365250
-_GENERATE_CERTIFICATES_ISSUER = "SeasideTrustableIssuer"
-_GENERATE_CERTIFICATES_SUBJECT = "SeasideTestEnvironment"
+_GENERATE_CERTIFICATES_ISSUER_CA = "SeasideVPN Trustable Issuer"
+_GENERATE_CERTIFICATES_ISSUER_VIRIDIAN = "SeasideVPN Test Viridian"
+_GENERATE_CERTIFICATES_ISSUER_CAERULEAN = "SeasideVPN Test Caerulean"
 
 GENERATE_CERTIFICATES_PATH = Path(getcwd()) / "certificates"
 
@@ -47,7 +48,6 @@ def _create_self_signed_cert(private_key: EllipticCurvePrivateKey, subject: Name
     builder = builder.issuer_name(subject)
     builder = builder.public_key(private_key.public_key())
     builder = builder.add_extension(KeyUsage(False, False, False, False, False, True, True, False, False), True)
-    builder = builder.add_extension(ExtendedKeyUsage([ExtendedKeyUsageOID.ANY_EXTENDED_KEY_USAGE]), True)
     builder = builder.add_extension(BasicConstraints(ca=True, path_length=None), True)
     builder = builder.not_valid_before(datetime.now(timezone.utc))
     builder = builder.not_valid_after(datetime.now(timezone.utc) + timedelta(days=validity_days))
@@ -66,7 +66,7 @@ def _create_csr(private_key: EllipticCurvePrivateKey, subject: Name, altnames: L
     builder = CertificateSigningRequestBuilder()
     builder = builder.subject_name(subject)
     builder = builder.add_extension(SubjectAlternativeName(altnames), False)
-    builder = builder.add_extension(KeyUsage(True, False, server, False, False, False, False, False, False), False)
+    builder = builder.add_extension(KeyUsage(True, False, server, False, False, False, False, False, False), True)
     builder = builder.add_extension(ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH] if server else [ExtendedKeyUsageOID.CLIENT_AUTH]), False)
     return builder.sign(private_key, SHA256())
 
@@ -84,7 +84,7 @@ def _sign_csr(ca_private_key: EllipticCurvePrivateKey, ca_cert: Certificate, csr
     builder = builder.subject_name(csr.subject)
     builder = builder.issuer_name(ca_cert.subject)
     builder = builder.public_key(csr.public_key())
-    builder = builder.add_extension(BasicConstraints(ca=False, path_length=None), critical=True)
+    builder = builder.add_extension(BasicConstraints(ca=False, path_length=None), critical=False)
     builder = builder.not_valid_before(datetime.now(timezone.utc))
     builder = builder.not_valid_after(datetime.now(timezone.utc) + timedelta(days=validity_days))
     builder = builder.serial_number(random_serial_number())
@@ -145,8 +145,9 @@ def generate_certificates(address: Union[IPv4Address, str], cert_path: Path = GE
 
     logger.debug(f"Certificates for {address} will be created in {cert_path} directory...")
     altnames = IPAddress(address) if isinstance(address, IPv4Address) else DNSName(address)
-    ca_subject = Name([NameAttribute(NameOID.COMMON_NAME, _GENERATE_CERTIFICATES_ISSUER)])
-    cert_subject = Name([NameAttribute(NameOID.COMMON_NAME, _GENERATE_CERTIFICATES_SUBJECT)])
+    ca_subject = Name([NameAttribute(NameOID.COMMON_NAME, _GENERATE_CERTIFICATES_ISSUER_CA)])
+    viridian_subject = Name([NameAttribute(NameOID.COMMON_NAME, _GENERATE_CERTIFICATES_ISSUER_VIRIDIAN)])
+    caerulean_subject = Name([NameAttribute(NameOID.COMMON_NAME, _GENERATE_CERTIFICATES_ISSUER_CAERULEAN)])
 
     logger.debug("Creating certificate authority key...")
     ca_private_key = generate_private_key(SECP384R1())
@@ -156,12 +157,12 @@ def generate_certificates(address: Union[IPv4Address, str], cert_path: Path = GE
 
     logger.debug("Signing viridian certificates signed with CA...")
     cert_private_key = generate_private_key(SECP384R1())
-    cert_sign_request = _create_csr(cert_private_key, cert_subject, [altnames], False)
+    cert_sign_request = _create_csr(cert_private_key, viridian_subject, [altnames], False)
     signed_cert = _sign_csr(ca_private_key, ca_cert, cert_sign_request, _GENERATE_CERTIFICATES_VALIDITY)
     _save_cert_and_key_to_file(signed_cert, cert_private_key, viridian_dir / "cert.crt", viridian_dir / "cert.key")
 
     logger.debug("Signing caerulean certificates signed with CA...")
     cert_private_key = generate_private_key(SECP384R1())
-    cert_sign_request = _create_csr(cert_private_key, cert_subject, [altnames], True)
+    cert_sign_request = _create_csr(cert_private_key, caerulean_subject, [altnames], True)
     signed_cert = _sign_csr(ca_private_key, ca_cert, cert_sign_request, _GENERATE_CERTIFICATES_VALIDITY)
     _save_cert_and_key_to_file(signed_cert, cert_private_key, caerulean_dir / "cert.crt", caerulean_dir / "cert.key")

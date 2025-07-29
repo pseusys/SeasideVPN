@@ -74,12 +74,12 @@ ENV SEASIDE_CERTIFICATE_PATH=/seaside/caerulean/certificates/caerulean
 
 RUN apk add --no-cache openssl
 RUN mkdir -p /tmp/certificates/caerulean && mkdir -p /tmp/certificates/viridian && cd /tmp/certificates \
-    && openssl req -digest -newkey rsa:2048 -sha256 -nodes -keyout viridian/cert.key -out viridian/cert.csr -subj "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPN" -addext "subjectAltName = IP:${SEASIDE_ADDRESS}" -addext "keyUsage=digitalSignature" -addext "extendedKeyUsage=clientAuth" \
-    && openssl req -digest -newkey rsa:2048 -sha256 -nodes -keyout caerulean/cert.key -out caerulean/cert.csr -subj "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPN" -addext "subjectAltName = IP:${SEASIDE_ADDRESS}" -addext "keyUsage=digitalSignature,keyEncipherment" -addext "extendedKeyUsage=serverAuth" \
-    && openssl req -digest -newkey rsa:2048 -sha256 -nodes -new -x509  -keyout caerulean/rootCA.key -out caerulean/rootCA.crt -days 365250 -subj "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPN" -addext "keyUsage=critical,keyCertSign,cRLSign" -addext "extendedKeyUsage=anyExtendedKeyUsage" \
-    && chmod 644 */*.key && cp caerulean/rootCA.* viridian/ \
+    && openssl req -digest -newkey rsa:2048 -sha256 -nodes -keyout viridian/cert.key -out viridian/cert.csr -subj "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPNViridian" -addext "subjectAltName = IP:${SEASIDE_ADDRESS}" -addext "keyUsage=critical,digitalSignature" -addext "extendedKeyUsage=clientAuth" \
+    && openssl req -digest -newkey rsa:2048 -sha256 -nodes -keyout caerulean/cert.key -out caerulean/cert.csr -subj "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPNCaerulean" -addext "subjectAltName = IP:${SEASIDE_ADDRESS}" -addext "keyUsage=critical,digitalSignature,keyEncipherment" -addext "extendedKeyUsage=serverAuth" \
+    && openssl req -digest -newkey rsa:2048 -sha256 -nodes -new -x509  -keyout caerulean/rootCA.key -out caerulean/rootCA.crt -days 365250 -subj "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPNRootCA" -addext "basicConstraints=critical,CA:true" -addext "keyUsage=critical,keyCertSign,cRLSign" \
     && openssl x509 -req -CA caerulean/rootCA.crt -CAkey caerulean/rootCA.key -in caerulean/cert.csr -out caerulean/cert.crt -days 365250 -copy_extensions=copyall \
-    && openssl x509 -req -CA viridian/rootCA.crt -CAkey viridian/rootCA.key -in viridian/cert.csr -out viridian/cert.crt -days 365250 -copy_extensions=copyall
+    && openssl x509 -req -CA caerulean/rootCA.crt -CAkey caerulean/rootCA.key -in viridian/cert.csr -out viridian/cert.crt -days 365250 -copy_extensions=copyall \
+    && chmod 644 */*.key && cp caerulean/rootCA.* viridian/
 
 ENTRYPOINT ["sh", "-c", "cp -r /tmp/certificates ./ && ./whirlpool.run"]
 

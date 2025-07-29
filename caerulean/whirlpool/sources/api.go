@@ -98,35 +98,7 @@ func loadTLSCredentials() (credentials.TransportCredentials, error) {
 	config := &tls.Config{
 		ClientCAs:    certPool,
 		Certificates: []tls.Certificate{serverCert},
-		ClientAuth:   tls.RequireAnyClientCert,
-
-		VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
-			// rawCerts always has at least one cert if client sends one
-			logrus.Infof("VerifyPeerCertificate called, got %d certs", len(rawCerts))
-			if len(rawCerts) == 0 {
-				logrus.Errorf("no client certificate provided")
-				return fmt.Errorf("no client certificate provided")
-			}
-
-			cert, err := x509.ParseCertificate(rawCerts[0])
-			if err != nil {
-				logrus.Errorf("Failed to parse client cert: %v", err)
-				return fmt.Errorf("invalid certificate")
-			}
-
-			logrus.Infof("Client cert: Subject: %s, Issuer: %s, KeyUsage: %v, ExtKeyUsage: %v", cert.Subject, cert.Issuer, cert.KeyUsage, cert.ExtKeyUsage)
-
-			// Now manually verify against your CA pool if you want
-			opts := x509.VerifyOptions{
-				Roots: certPool,
-			}
-			if _, err := cert.Verify(opts); err != nil {
-				logrus.Errorf("Manual verification failed: %v", err)
-				return fmt.Errorf("unauthorized: %v", err)
-			}
-
-			return nil // success
-		},
+		ClientAuth:   tls.RequireAndVerifyClientCert,
 	}
 
 	// Return credentials
