@@ -33,7 +33,7 @@ def check_certificates(cert_path: Path = GENERATE_CERTIFICATES_PATH) -> bool:
     return cert_key.exists() and cert_cert.exists()
 
 
-def _create_self_signed_cert(private_key: EllipticCurvePrivateKey, subject: Name, altnames: List[Union[DNSName, IPAddress]], validity_days: int) -> Certificate:
+def _create_self_signed_cert(private_key: EllipticCurvePrivateKey, subject: Name, validity_days: int) -> Certificate:
     """
     Create a self-signed CA certificate.
     :param private_key: CA private key.
@@ -46,10 +46,9 @@ def _create_self_signed_cert(private_key: EllipticCurvePrivateKey, subject: Name
     builder = builder.subject_name(subject)
     builder = builder.issuer_name(subject)
     builder = builder.public_key(private_key.public_key())
-    builder = builder.add_extension(SubjectAlternativeName(altnames), False)
-    builder = builder.add_extension(KeyUsage(True, True, False, False, False, True, True, False, False), True)
-    builder = builder.add_extension(ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH, ExtendedKeyUsageOID.CLIENT_AUTH]), False)
-    builder = builder.add_extension(BasicConstraints(ca=True, path_length=None), critical=True)
+    builder = builder.add_extension(KeyUsage(False, False, False, False, False, True, True, False, False), True)
+    builder = builder.add_extension(ExtendedKeyUsage([ExtendedKeyUsageOID.ANY_EXTENDED_KEY_USAGE]), True)
+    builder = builder.add_extension(BasicConstraints(ca=True, path_length=None), True)
     builder = builder.not_valid_before(datetime.now(timezone.utc))
     builder = builder.not_valid_after(datetime.now(timezone.utc) + timedelta(days=validity_days))
     builder = builder.serial_number(random_serial_number())
@@ -67,7 +66,7 @@ def _create_csr(private_key: EllipticCurvePrivateKey, subject: Name, altnames: L
     builder = CertificateSigningRequestBuilder()
     builder = builder.subject_name(subject)
     builder = builder.add_extension(SubjectAlternativeName(altnames), False)
-    builder = builder.add_extension(KeyUsage(True, True, True, True, True, True, True, False, False), True)
+    builder = builder.add_extension(KeyUsage(True, False, server, False, False, False, False, False, False), False)
     builder = builder.add_extension(ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH] if server else [ExtendedKeyUsageOID.CLIENT_AUTH]), False)
     return builder.sign(private_key, SHA256())
 
@@ -151,13 +150,13 @@ def generate_certificates(address: Union[IPv4Address, str], cert_path: Path = GE
 
     logger.debug("Creating certificate authority key...")
     ca_private_key = generate_private_key(SECP384R1())
-    ca_cert = _create_self_signed_cert(ca_private_key, ca_subject, [altnames], _GENERATE_CERTIFICATES_VALIDITY)
+    ca_cert = _create_self_signed_cert(ca_private_key, ca_subject, _GENERATE_CERTIFICATES_VALIDITY)
     _save_cert_and_key_to_file(ca_cert, ca_private_key, viridian_dir / "rootCA.crt", viridian_dir / "rootCA.key")
     _save_cert_and_key_to_file(ca_cert, ca_private_key, caerulean_dir / "rootCA.crt", caerulean_dir / "rootCA.key")
 
     logger.debug("Signing viridian certificates signed with CA...")
     cert_private_key = generate_private_key(SECP384R1())
-    cert_sign_request = _create_csr(cert_private_key, cert_subject, list(), False)
+    cert_sign_request = _create_csr(cert_private_key, cert_subject, [altnames], False)
     signed_cert = _sign_csr(ca_private_key, ca_cert, cert_sign_request, _GENERATE_CERTIFICATES_VALIDITY)
     _save_cert_and_key_to_file(signed_cert, cert_private_key, viridian_dir / "cert.crt", viridian_dir / "cert.key")
 
