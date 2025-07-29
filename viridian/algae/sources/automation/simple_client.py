@@ -204,7 +204,7 @@ async def main(args: Sequence[str] = argv[1:]) -> None:
 
         identifier = token_urlsafe()
         logger.info(f"Authenticating user {identifier}...")
-        authority = getenv("SEASIDE_ROOT_CERTIFICATE_AUTHORITY", None)
+        authority = getenv("SEASIDE_CERTIFICATE_PATH", None)
 
         async with WhirlpoolClient(arguments["address"], arguments["port"], Path(authority)) as conn:
             public, token, typhoon_port, port_port, dns = await conn.authenticate(identifier, key)

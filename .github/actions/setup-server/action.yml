@@ -33,22 +33,22 @@ runs:
         distribution: Ubuntu-24.04
         set-as-default: true
 
-    - name: Install NodeJS 🪢
+    - name: Install NodeJS
       uses: actions/setup-node@v4.1.0
       with:
         node-version: 22
 
-    - name: Install Node Dependencies 🔮
+    - name: Install Node Dependencies
       working-directory: .github
       shell: bash
       run: npm install > /dev/null 2>&1
 
-    - name: Setup Python 3.11 🐍
+    - name: Setup Python 3.11
       uses: actions/setup-python@v5
       with:
         python-version: "3.11"
 
-    - name: Install Dependencies 🔮
+    - name: Install Dependencies
       working-directory: viridian/algae
       shell: bash
       run: |
@@ -82,7 +82,7 @@ runs:
       shell: bash
       env:
         SEASIDE_ADDRESS: ${{ steps.start-background-server.outputs.server-ip }}
-        SEASIDE_ROOT_CERTIFICATE_AUTHORITY: ${{ runner.os == 'Linux' && 'certificates/viridian/rootCA.crt' || '../../.github/certificates/viridian/rootCA.crt' }}
+        SEASIDE_CERTIFICATE_PATH: certificates/viridian
         SEASIDE_LOG_LEVEL: ERROR
       run: echo "connection-link=$(poetry poe -q fixture -a "${{ env.SEASIDE_ADDRESS }}" -p "${{ env.SEASIDE_API_PORT }}" -k "${{ env.SEASIDE_API_KEY_ADMIN }}" supply-viridian -s)" >> $GITHUB_OUTPUT
 

@@ -18,7 +18,7 @@ logger = getLogger(__name__)
 async def api_client() -> AsyncGenerator[WhirlpoolClient, None]:
     address = environ["SEASIDE_ADDRESS"]
     api_port = int(environ["SEASIDE_API_PORT"])
-    authority = environ["SEASIDE_ROOT_CERTIFICATE_AUTHORITY"]
+    authority = environ["SEASIDE_CERTIFICATE_PATH"]
     yield WhirlpoolClient(address, api_port, Path(authority))
 
 
