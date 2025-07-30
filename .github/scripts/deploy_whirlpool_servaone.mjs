@@ -195,7 +195,7 @@ async function getHostID(token) {
  * @returns {Promise<string>} Ubuntu application ID
  */
 async function getUbuntuOsID(version, token) {
-	console.log("Receiving ServaOne Ubuntu app ID...");
+	console.log("Receiving ServaOne Ubuntu OS ID...");
 	const list = await get(`https://vm.serva.one/vm/v3/os?where=(name+EQ+'Ubuntu ${version}')`, token);
 	if (list.size < 1) throw new Error("No OS found available!");
 	return list.list[0].id;
@@ -271,7 +271,7 @@ async function runDeployCommand(sshConn, whirlpoolIP, ownerPayload, viridianPayl
 	console.log("Copying whirlpool certificates to ServaOne test server...");
 	await sshConn.putDirectory(LOCAL_CERTS_PATH, "certificates", { recursive: true });
 	console.log("Running whirlpool installation script on ServaOne test server...");
-	const installArgs = `-s ${gitBranch} -a ${whirlpoolIP} -e ${whirlpoolIP} -o ${ownerPayload} -v ${viridianPayload} -p ${apiport}`;
+	const installArgs = `-s ${gitBranch} -a ${whirlpoolIP} -e ${whirlpoolIP} -o ${ownerPayload} -v ${viridianPayload} -i ${apiport}`;
 	const installRes = await sshConn.execCommand(`python3 install.pyz -o -a back whirlpool ${installArgs} --certificates-path ${REMOTE_CERTS_PATH}`);
 	if (installRes.code != 0) throw new Error(`Installation script failed, error code: ${installRes.code}\n\nSTDOUT:\n${installRes.stdout}\nSTDERR:\n${installRes.stderr}`);
 	console.log("Closing connection to ServaOne test server...");

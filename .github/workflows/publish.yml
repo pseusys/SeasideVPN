@@ -9,6 +9,7 @@ on:
 jobs:
   all-build:
     name: Build All Artifacts
+    if: github.event_name == 'push'
     uses: ./.github/workflows/build.yml
     secrets: inherit
     concurrency:
@@ -16,6 +17,7 @@ jobs:
 
   all-release-publish:
     name: Create Release For All Files
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     needs: all-build
     concurrency:
