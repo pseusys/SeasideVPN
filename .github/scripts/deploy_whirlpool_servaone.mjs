@@ -195,7 +195,7 @@ async function getHostID(token) {
  * @returns {Promise<string>} Ubuntu application ID
  */
 async function getUbuntuOsID(version, token) {
-	console.log("Receiving ServaOne Ubuntu app ID...");
+	console.log("Receiving ServaOne Ubuntu OS ID...");
 	const list = await get(`https://vm.serva.one/vm/v3/os?where=(name+EQ+'Ubuntu ${version}')`, token);
 	if (list.size < 1) throw new Error("No OS found available!");
 	return list.list[0].id;
