@@ -251,9 +251,9 @@ class WhirlpoolInstaller(Installer):
     def _download_binary(self) -> None:
         arch = "arm64" if get_arch() == "arm" else "amd64"
         if self._args["binary_name"] == _DEFAULT_BINARY_NAME:
-            binary_url = f"{_SEASIDE_REPO}/releases/latest/download/caerulean-whirlpool-executable-{arch}.run"
+            binary_url = f"{_SEASIDE_REPO}/releases/latest/download/caerulean_whirlpool_executable_{arch}.run"
         else:
-            binary_url = f"{_SEASIDE_REPO}/releases/download/{self._args['binary_name']}/caerulean-whirlpool-executable-{arch}.run"
+            binary_url = f"{_SEASIDE_REPO}/releases/download/{self._args['binary_name']}/caerulean_whirlpool_executable__{arch}.run"
         exepath = Path("whirlpool.run")
         self._logger.debug(f"Downloading whirlpool binary from {binary_url}...")
         urlretrieve(binary_url, exepath)
