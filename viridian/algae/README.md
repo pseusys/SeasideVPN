@@ -31,6 +31,7 @@ poetry install --all-extras
 Sample client app is built using traditional Linux VPN architecture.
 The architecture is described in more detail in [`reef` README](../reef/README.md#general-idea).
 Here, the `algae` client is also optionally capable of authenticating user before connection (using a gRPC call).
+In order to be able to do that, the client requires client server certificates and CA (in case the caerulean certificates are self-signed).
 The client is mainly implemented for integration testing and is not meant for production.
 
 Detailed description of arguments required for starting the client can be received with this command:
