@@ -34,7 +34,7 @@ jobs:
       - name: Build Caerulean Installer 📥
         working-directory: viridian/algae
         env:
-          EXEC_NAME: caerulean_installer
+          EXEC_NAME: caerulean-installer
         run: poetry poe bundle ${{ env.EXEC_NAME }}.pyz
 
       - name: Create Artifact Name From Branch Name 🌱
@@ -51,7 +51,7 @@ jobs:
         env:
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
         with:
-          name: algae-executable-${{ steps.branch-name.outputs.value }}
+          name: viridian-algae-executable-${{ steps.branch-name.outputs.value }}
           retention-days: 3
           if-no-files-found: error
           path: viridian/algae/*.pyz
@@ -89,7 +89,7 @@ jobs:
           LINKING_FLAGS: -w -s
           GOARCH: ${{ matrix.arch }}
           CC: ${{ matrix.arch == 'amd64' && 'x86_64-linux-gnu-gcc' || 'aarch64-linux-gnu-gcc' }}
-          EXEC_NAME: ${{ format('caerulean_whirlpool_executable-{0}', matrix.arch) }}
+          EXEC_NAME: ${{ format('caerulean-whirlpool-executable-{0}', matrix.arch) }}
         run: make build EXEC_NAME=${{ env.EXEC_NAME }}.run
 
       - name: Create Artifact Name From Branch Name 🌱
@@ -106,8 +106,8 @@ jobs:
         env:
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
         with:
-          name: whirlpool-executable-${{ steps.branch-name.outputs.value }}-${{ matrix.arch }}
-          path: caerulean/whirlpool/build/caerulean_whirlpool_executable-*.run
+          name: caerulean-whirlpool-executable-${{ steps.branch-name.outputs.value }}-${{ matrix.arch }}
+          path: caerulean/whirlpool/build/caerulean-whirlpool-executable-*.run
           retention-days: 3
           if-no-files-found: error
 
@@ -174,7 +174,7 @@ jobs:
       - name: Save Artifact 🏺
         uses: actions/upload-artifact@v4
         with:
-          name: reef-executable-${{ steps.branch-name.outputs.value }}-${{ matrix.os }}-${{ matrix.arch }}
+          name: viridian-reef-executable-${{ steps.branch-name.outputs.value }}-${{ matrix.os }}-${{ matrix.arch }}
           path: viridian/reef/target/viridian-reef-executable-*.*
           retention-days: 3
           if-no-files-found: error

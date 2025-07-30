@@ -285,16 +285,15 @@ class WhirlpoolInstaller(Installer):
         """Print configuration of the node that will be applied upon running."""
         underscored = code_to_chars(4)
         owner_payload = "***" if hide else self._args["api_key_owner"]
+        admin_payload = ":".join(["***"] * len(self._args["api_key_admin"])) if hide else self._args["api_key_admin"]
         host_name = f"{self._args['internal_address']}:{self._args['api_port']}"
         print("\n\n>> ================================================ >>")
         print(f"{Style.BRIGHT}{Fore.GREEN}Seaside Whirlpool node version {_VERSION} successfully configured!{Style.RESET_ALL}")
         print(f"The node address is: {Fore.GREEN}{host_name}{Style.RESET_ALL}")
         print(f"The administrator payload is: {Fore.BLUE}{owner_payload}{Style.RESET_ALL}")
-        print(f"\tConnection link: {underscored}{Fore.YELLOW}seaside+whirlpool://{host_name}?payload={owner_payload}{Style.RESET_ALL}")
+        print(f"\tNode is available at: {underscored}{Fore.YELLOW}{host_name}{Style.RESET_ALL}")
         if len(self._args["api_key_admin"]) > 0:
-            print(f"The viridian payloads are: {Fore.BLUE}{self._args['api_key_admin']}{Style.RESET_ALL}")
-            for link in self._args["api_key_admin"]:
-                print(f"\tConnection link: {underscored}{Fore.YELLOW}seaside+whirlpool://{host_name}?payload={link}{Style.RESET_ALL}")
+            print(f"The viridian payloads are: {Fore.BLUE}{admin_payload}{Style.RESET_ALL}")
         print(f"{Style.BRIGHT}{Fore.RED}NB! In order to replicate the server, store and reuse the ./conf.env file!{Style.RESET_ALL}")
         print("<< ================================================ <<\n\n")
 

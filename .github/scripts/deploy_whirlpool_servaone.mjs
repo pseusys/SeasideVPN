@@ -273,7 +273,7 @@ async function runDeployCommand(sshConn, whirlpoolIP, ownerPayload, viridianPayl
 	console.log("Running whirlpool installation script on ServaOne test server...");
 	const installArgs = `-s ${gitBranch} -a ${whirlpoolIP} -e ${whirlpoolIP} -o ${ownerPayload} -v ${viridianPayload} -p ${apiport}`;
 	const installRes = await sshConn.execCommand(`python3 install.pyz -o -a back whirlpool ${installArgs} --certificates-path ${REMOTE_CERTS_PATH}`);
-	if (installRes.code != 0) throw new Error(`Installation script failed, error code: ${installRes.code}`);
+	if (installRes.code != 0) throw new Error(`Installation script failed, error code: ${installRes.code}\n\nSTDOUT:\n${installRes.stdout}\nSTDERR:\n${installRes.stderr}`);
 	console.log("Closing connection to ServaOne test server...");
 	sshConn.dispose();
 }
@@ -290,4 +290,4 @@ await reinstallServer(serverID, args.password, serverDisk, osID, token);
 const conn = await waitForServer(serverID, serverAddress, args.password, args.user, WAIT_TIMES, SLEEP_TIME, token);
 await runDeployCommand(conn, serverAddress, args.key, args.payload, args.apiport);
 
-if (args.verbose) console.log(`Viridian connection link is: ${YELLOW}${UNDER}seaside+whirlpool://${serverAddress}:${args.apiport}${RESET}`);
+if (args.verbose) console.log(`Node is available at: ${YELLOW}${UNDER}${serverAddress}:${args.apiport}${RESET}`);
