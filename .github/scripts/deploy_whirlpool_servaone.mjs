@@ -260,7 +260,7 @@ async function runDeployCommand(sshConn, whirlpoolIP, ownerPayload, viridianPayl
 	console.log("Ensuring installation script exists...");
 	ensureInstallationScript();
 	console.log("Ensuring certificates exist...");
-	ensureCertificatesExist();
+	ensureCertificatesExist(whirlpoolIP);
 	console.log("Ensuring python and pip are installed and available on server...");
 	const pipRes = await sshConn.execCommand("sudo apt-get update && sudo apt-get install -y --no-install-recommends python3-dev python3-pip");
 	if (pipRes.code != 0) throw new Error(`Python and pip installation failed, error code: ${pipRes.code}`);
