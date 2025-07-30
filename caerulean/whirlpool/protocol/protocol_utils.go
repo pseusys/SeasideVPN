@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	VERSION = "0.0.3"
+	VERSION = "0.0.4"
 
 	MAX_PROTOCOL_HEADER        int = 64
 	MAX_PROTOCOL_BODY          int = math.MaxUint16 - MAX_PROTOCOL_HEADER - 2*crypto.AsymmetricCiphertextOverhead

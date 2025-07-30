@@ -1,6 +1,6 @@
 # Caerulean Whirlpool
 
-> Current version: **"0.0.3"**
+> Current version: **"0.0.4"**
 
 Whirlpool is "worker" Seaside server node.
 It is written in `Go`.

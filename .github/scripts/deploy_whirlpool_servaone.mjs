@@ -167,7 +167,7 @@ function parseArguments() {
  * @returns {Promise<string>} authentication token string
  */
 async function getToken(email, password) {
-	console.log("Receiving servaone authentication token...");
+	console.log("Receiving ServaOne authentication token...");
 	const credentials = { email: email, password: password };
 	const { token } = await post("https://vm.serva.one/auth/v4/public/token", credentials);
 	return token;
@@ -212,7 +212,7 @@ async function getUbuntuOsID(version, token) {
  * @returns {Promise<object>} new VPS configuration object
  */
 async function reinstallServer(server, password, disk, osID, token) {
-	console.log("Reinstalling servaone test server...");
+	console.log("Reinstalling ServaOne test server...");
 	const reinstallParams = { os: osID, send_email_mode: "default", password: password, disk: disk };
 	const task = await post(`https://vm.serva.one/vm/v3/host/${server}/reinstall`, reinstallParams, token);
 	if (task.id === undefined) throw Error(`Error reinstalling server: ${JSON.stringify(task)}`);
@@ -230,7 +230,7 @@ async function reinstallServer(server, password, disk, osID, token) {
  * @returns {Promise<NodeSSH>} established SSH connection
  */
 async function waitForServer(id, ip, password, user, waitTimes, sleepTime, token) {
-	console.log("Waiting for servaone test server to come online...");
+	console.log("Waiting for ServaOne test server to come online...");
 	const sshConn = new NodeSSH();
 	for (let step = 0; step < waitTimes; step++) {
 		try {

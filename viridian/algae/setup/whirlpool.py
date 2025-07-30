@@ -18,7 +18,7 @@ from .specific import check_install_packages, check_package, get_arch
 from .utils import run_command
 
 _PARSER_NAME = "whirlpool"
-_VERSION = '"0.0.3"'
+_VERSION = '"0.0.4"'
 
 _DT_COMPILE = "compile"
 _DT_DOCKER = "docker"

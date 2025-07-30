@@ -1,6 +1,6 @@
 # Viridian Algae
 
-> Current version: **"0.0.3"**
+> Current version: **"0.0.4"**
 
 A set of tools and utilities, written in `Python`.
 It includes multiple tests and tools, including sample [client app](#sample-client), caerulean [installer](#caerulean-installer), admin [fixtures](#admin-fixtures), [protocol implementations](#protocol-descriptions) and more.

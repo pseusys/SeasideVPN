@@ -9,7 +9,7 @@
 A simple PPTP UDP VPN system, focused on undetectability.
 It attempts to redefine the traditional approach used by most of the wide-spread VPN systems - for better.
 
-> Current project version: **"0.0.3"**
+> Current project version: **"0.0.4"**
 
 ## General info
 

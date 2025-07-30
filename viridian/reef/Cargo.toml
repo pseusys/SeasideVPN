@@ -1,6 +1,6 @@
 [package]
 name = "SeasideVPN-Reef"
-version = "0.0.3"
+version = "0.0.4"
 edition = "2021"
 description = "A production-ready SeasideVPN client for Linux and Windows"
 authors = [

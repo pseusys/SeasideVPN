@@ -1,6 +1,6 @@
 # Reef
 
-> Current version: **"0.0.3"**
+> Current version: **"0.0.4"**
 
 Reef is a standalone cross-platform VPN client, written in rust.
 It specifically does not integrate with any built-in VPN interfaces or network connection managers.

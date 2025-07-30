@@ -1,6 +1,6 @@
 [project]
 name = "SeasideVPN-Algae"
-version = "0.0.3"
+version = "0.0.4"
 description = "A testing SeasideVPN client and installation script for Linux"
 readme = "README.md"
 requires-python = ">=3.11,<3.13"

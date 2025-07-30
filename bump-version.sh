@@ -18,7 +18,7 @@ RESET="\033[0m"
 # Global arguments:
 
 # Current project version
-CURRENT_VERSION="0.0.3"
+CURRENT_VERSION="0.0.4"
 # New project version (same as current by default)
 NEW_VERSION="$CURRENT_VERSION"
 # Files that require versioning
@@ -26,7 +26,7 @@ VERSIONED_FILES=(
     "Makefile" \
     "README.md" \
     "bump-version.sh" \
-    ".github/scripts/package.json" \
+    ".github/package.json" \
     "viridian/algae/pyproject.toml" \
     "viridian/algae/README.md" \
     "viridian/algae/sources/version.py" \
@@ -35,7 +35,7 @@ VERSIONED_FILES=(
     "viridian/reef/README.md" \
     "viridian/reef/src/lib/mod.rs" \
     "caerulean/whirlpool/README.md" \
-    "caerulean/whirlpool/sources/protocol/protocol_utils.go"
+    "caerulean/whirlpool/protocol/protocol_utils.go"
 )
 
 
