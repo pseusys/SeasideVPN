@@ -24,6 +24,9 @@
 ## Testing utilities files:
 .github/certificates
 
+## Test server accessing script:
+.github/manage-test-server.sh
+
 
 
 # Python:

@@ -99,7 +99,7 @@ The numeric identification table can be found below:
 This repository contains **all** Seaside VPN components and parts.
 That's what you can find inside:
 
-- `.github`: Resources used by GitHub Actions CI/CD.
+- `.github`: Resources used by GitHub Actions CI/CD (see [README](./.github/README.md)).
   - `scripts`: Automatization scripts.
   - `workflows`: GitHub actions workflows.
 - `caerulean`: Caerulean system components (see [README](./caerulean/README.md)).

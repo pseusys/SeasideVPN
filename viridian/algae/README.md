@@ -60,14 +60,14 @@ The script is flexible and accepts multiple different parameters, that will not 
 Detailed parameter description can be received by running this command:
 
 ```bash
-poetry run python3 -m setup --help
+poetry poe setup --help
 ```
 
 For each individual caerulean, the options closely resemble the environment variables they depend on.
 The option description for each individual caerulean in the following list: (`whirlpool`) can be received by running this command:
 
 ```bash
-poetry run python3 -m setup CAERULEAN_NAME --help
+poetry poe setup CAERULEAN_NAME --help
 ```
 
 In order to achieve reproducible caerulean deployments, `conf.env` and `certificates` files can be uploaded before deployment.
@@ -77,12 +77,14 @@ Examples of this script usage can be found in [whirlpool make](../../caerulean/w
 
 ## Admin fixtures
 
+> Requires `client` extra.
+
 Admin fixtures provide CLI to caerulean gRPC.
 They can be used for manual user adding, parameter setting, configuration, etc.
 More information about fixtures is available from running this command:
 
 ```bash
-poetry run python3 -m fixture --help
+poetry poe fixture --help
 ```
 
 ### Whirlpool: Supply Viridian
@@ -92,7 +94,7 @@ It can be used for adding viridians with administrator privileges to a whirlpool
 Detailed description of this fixture can be retrieved using this command:
 
 ```bash
-poetry run python3 -m fixture supply-viridian --help
+poetry poe fixture supply-viridian --help
 ```
 
 ## Protocol Descriptions

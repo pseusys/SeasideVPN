@@ -1,4 +1,4 @@
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
@@ -24,12 +24,16 @@ const SLEEP_TIME = 15;
 const UBUNTU_VERISON = "22.04";
 // Default root user name.
 const DEFAULT_USER = "root";
-// Local path to the 'install.pyz' Whirlpool node installation script
-const INSTALL_SCRIPT = join(import.meta.dirname, "..", "..", "viridian", "algae", "install.pyz");
+// Local path to the viridian algae project root
+const ALGAE_PATH = join(import.meta.dirname, "..", "..", "viridian", "algae");
+// Local path to the 'install.pyz' whirlpool node installation script
+const INSTALL_SCRIPT = join(ALGAE_PATH, "install.pyz");
+// Local certificates path
+const LOCAL_CERTS_PATH = join(ALGAE_PATH, "certificates");
+// Remote certificates path
+const REMOTE_CERTS_PATH = "./certificates/caerulean";
 // Default API port for whirlpool.
 const DEFAULT_APIPORT = 8587;
-// Certificates path.
-const CERTS_PATH = "./certificates";
 
 /**
  * Make HTTP request and return results parsed as JSON.
@@ -80,12 +84,13 @@ function printHelpMessage() {
 	console.log(`\t${BLUE}-v --verbose${RESET}: Print viridian connection link in the end.`);
 	console.log(`${BOLD}Required environment variables${RESET}:`);
 	console.log(`\t${GREEN}BEGET_API_LOGIN${RESET}: Beget account owner login.`);
-	console.log(`\t${GREEN}BEGET_API_PASSWORD${RESET}: Beget account owner password.`);
-	console.log(`\t${GREEN}BEGET_SERVER_USER${RESET}: User name of the deployment server root user (default: "root").`);
-	console.log(`\t${GREEN}BEGET_SERVER_KEY${RESET}: Password of the deployment server root user (also admin payload).`);
+	console.log(`\t${GREEN}BEGET_API_TOKEN${RESET}: Beget account owner password.`);
+	console.log(`\t${GREEN}BEGET_SERVER_PASSWORD${RESET}: Password of the deployment server root user.`);
 	console.log(`${BOLD}Optional environment variables${RESET}:`);
-	console.log(`\t${GREEN}WHIRLPOOL_PAYLOAD${RESET}: Whirlpool viridian poyload (default: will be generated).`);
-	console.log(`\t${GREEN}WHIRLPOOL_APIPORT${RESET}: Whirlpool API port (default: ${DEFAULT_APIPORT}).`);
+	console.log(`\t${GREEN}BEGET_SERVER_USER${RESET}: User name of the deployment server root user (default: "root").`);
+	console.log(`\t${GREEN}WHIRLPOOL_OWNER_KEY${RESET}: Seaside whirlpool node owner API key (default: will be generated).`);
+	console.log(`\t${GREEN}WHIRLPOOL_ADMIN_KEY${RESET}: Whirlpool viridian poyload (default: empty).`);
+	console.log(`\t${GREEN}WHIRLPOOL_API_PORT${RESET}: Whirlpool API port (default: ${DEFAULT_APIPORT}).`);
 	process.exit(0);
 }
 
@@ -96,18 +101,21 @@ function printHelpMessage() {
 function ensureInstallationScript() {
 	if (!existsSync(INSTALL_SCRIPT)) {
 		console.log("Installation script not found, generating...");
-		execSync("poetry poe bundle", { cwd: dirname(INSTALL_SCRIPT) });
+		try {
+			execSync("poetry poe bundle", { cwd: ALGAE_PATH });
+		} catch (error) {
+			throw Error(`Error generating installation script, try reinstalling poetry in ${ALGAE_PATH}!\nError: ${error}`);
+		}
 	} else console.log("Installation script found!");
 }
 
 function ensureCertificatesExist(ip) {
-	if (!existsSync(CERTS_PATH)) {
-		const scriptDir = dirname(INSTALL_SCRIPT);
+	if (!existsSync(LOCAL_CERTS_PATH)) {
 		console.log("Certificates not found, generating...");
 		try {
-			execSync(`poetry run python3 -m setup.main --just-certs ${ip}`, { cwd: scriptDir });
+			execSync(`poetry poe setup --just-certs ${ip}`, { cwd: ALGAE_PATH });
 		} catch (error) {
-			throw Error(`Error generating certificates, try reinstalling poetry in ${scriptDir}!\nError: ${error}`);
+			throw Error(`Error generating certificates, try reinstalling poetry in ${ALGAE_PATH}!\nError: ${error}`);
 		}
 	} else console.log("Certificates found!");
 }
@@ -135,16 +143,18 @@ function parseArguments() {
 	if (values.help) printHelpMessage();
 	if (process.env.BEGET_API_LOGIN === undefined) throw new Error("Parameter 'login' is missing!");
 	else values["login"] = process.env.BEGET_API_LOGIN;
-	if (process.env.BEGET_API_PASSWORD === undefined) throw new Error("Parameter 'password' is missing!");
-	else values["password"] = process.env.BEGET_API_PASSWORD;
-	if (process.env.BEGET_SERVER_KEY === undefined) throw new Error("Parameter 'key' is missing!");
-	else values["key"] = process.env.BEGET_SERVER_KEY;
+	if (process.env.BEGET_API_TOKEN === undefined) throw new Error("Parameter 'token' is missing!");
+	else values["token"] = process.env.BEGET_API_TOKEN;
+	if (process.env.BEGET_SERVER_PASSWORD === undefined) throw new Error("Parameter 'password' is missing!");
+	else values["password"] = process.env.BEGET_SERVER_PASSWORD;
 	if (process.env.BEGET_SERVER_USER === undefined) values["user"] = DEFAULT_USER;
 	else values["user"] = process.env.BEGET_SERVER_USER;
-	if (process.env.WHIRLPOOL_PAYLOAD === undefined) values["payload"] = randomBytes(16).toString("hex");
-	else values["payload"] = process.env.WHIRLPOOL_PAYLOAD;
-	if (process.env.WHIRLPOOL_APIPORT === undefined) values["apiport"] = DEFAULT_APIPORT;
-	else values["apiport"] = parseInt(process.env.WHIRLPOOL_APIPORT);
+	if (process.env.WHIRLPOOL_OWNER_KEY === undefined) values["key"] = randomBytes(16).toString("hex");
+	else values["key"] = process.env.WHIRLPOOL_OWNER_KEY;
+	if (process.env.WHIRLPOOL_ADMIN_KEY === undefined) values["payload"] = null;
+	else values["payload"] = process.env.WHIRLPOOL_ADMIN_KEY;
+	if (process.env.WHIRLPOOL_API_PORT === undefined) values["apiport"] = DEFAULT_APIPORT;
+	else values["apiport"] = parseInt(process.env.WHIRLPOOL_API_PORT);
 	return values;
 }
 
@@ -259,7 +269,7 @@ async function runDeployCommand(sshConn, whirlpoolIP, ownerPayload, viridianPayl
 	console.log("Ensuring installation script exists...");
 	ensureInstallationScript();
 	console.log("Ensuring certificates exist...");
-	ensureCertificatesExist();
+	ensureCertificatesExist(whirlpoolIP);
 	console.log("Ensuring python and pip are installed and available on server...");
 	const pipRes = await sshConn.execCommand("sudo apt-get update && sudo apt-get install -y --no-install-recommends python3-dev python3-pip");
 	if (pipRes.code != 0) throw new Error(`Python and pip installation failed, error code: ${pipRes.code}`);
@@ -268,8 +278,9 @@ async function runDeployCommand(sshConn, whirlpoolIP, ownerPayload, viridianPayl
 	console.log("Copying whirlpool installation script to beget test server...");
 	await sshConn.putFile(INSTALL_SCRIPT, "install.pyz");
 	console.log("Running whirlpool installation script on beget test server...");
-	const installArgs = `-s ${gitBranch} -a ${whirlpoolIP} -e ${whirlpoolIP} -o ${ownerPayload} -v ${viridianPayload} -p ${apiport}`;
-	const installRes = await sshConn.execCommand(`python3 install.pyz -o -g -a back whirlpool ${installArgs}`);
+	let installArgs = `-s ${gitBranch} -a ${whirlpoolIP} -e ${whirlpoolIP} -o ${ownerPayload} -v ${viridianPayload} -i ${apiport}`;
+	if (viridianKey !== null) installArgs = `${installArgs} -v ${viridianKey}`;
+	const installRes = await sshConn.execCommand(`python3 install.pyz -o -g -a back whirlpool ${installArgs} --certificates-path ${REMOTE_CERTS_PATH} --log-level INFO`);
 	if (installRes.code != 0) throw new Error(`Installation script failed, error code: ${installRes.code}`);
 	console.log("Closing connection to beget test server...");
 	sshConn.dispose();
@@ -278,14 +289,14 @@ async function runDeployCommand(sshConn, whirlpoolIP, ownerPayload, viridianPayl
 // Script body:
 
 const args = parseArguments();
-const token = await getToken(args.login, args.password);
+const token = await getToken(args.login, args.token);
 
 const serverID = await getServer(token);
 const ssh = await getSSHKey(token);
 const ubuntuID = await getUbuntuAppID(UBUNTU_VERISON, token);
 
-const vps = await reinstallServer(serverID, ssh, args.key, ubuntuID, token);
-const conn = await waitForServer(vps.ip_address, args.key, args.user, WAIT_TIMES, SLEEP_TIME);
+const vps = await reinstallServer(serverID, ssh, args.password, ubuntuID, token);
+const conn = await waitForServer(vps.ip_address, args.password, args.user, WAIT_TIMES, SLEEP_TIME);
 await runDeployCommand(conn, vps.ip_address, args.key, args.payload, args.apiport);
 
 if (args.verbose) console.log(`Viridian connection link is: ${YELLOW}${UNDER}seaside+whirlpool://${vps.ip_address}:${args.apiport}${RESET}`);
