@@ -107,7 +107,7 @@ Running reef on Windows is not as easy as for Linux.
 
 First of all, the executable depends on `WinDivert` shared library.
 This library file should be retrieved from the [`WinDivert` official release page](https://github.com/basil00/WinDivert/releases), getting the version number from the [`Makefile`](./Makefile) (`WINDIVERT_VERSION` constant).
-The release archive should be unpacked, the library file in question can be retrieved either from `x64` or `x32` directory (depending on your architecture), it should have `.DLL` extension.
+The release archive should be unpacked, the library files in question can be retrieved either from `x64` or `x32` directory (depending on your architecture), they should have `.DLL` and `.SYS` extensions.
 The file should be placed to the same directory as reef executable.
 
 Finally, Windows does not have a native support for environment files and managing them manually is not at all convenient, so it can be advisable to use a `CMD` script for setting up the environment and running the binary.
