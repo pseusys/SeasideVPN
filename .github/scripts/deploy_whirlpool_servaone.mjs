@@ -272,7 +272,7 @@ async function runDeployCommand(sshConn, whirlpoolIP, ownerPayload, viridianPayl
 	await sshConn.putDirectory(LOCAL_CERTS_PATH, "certificates", { recursive: true });
 	console.log("Running whirlpool installation script on ServaOne test server...");
 	const installArgs = `-s ${gitBranch} -a ${whirlpoolIP} -e ${whirlpoolIP} -o ${ownerPayload} -v ${viridianPayload} -i ${apiport}`;
-	const installRes = await sshConn.execCommand(`python3 install.pyz -o -a back whirlpool ${installArgs} --certificates-path ${REMOTE_CERTS_PATH}`);
+	const installRes = await sshConn.execCommand(`python3 install.pyz -o -a back whirlpool ${installArgs} --certificates-path ${REMOTE_CERTS_PATH} --log-level INFO`);
 	if (installRes.code != 0) throw new Error(`Installation script failed, error code: ${installRes.code}\n\nSTDOUT:\n${installRes.stdout}\nSTDERR:\n${installRes.stderr}`);
 	console.log("Closing connection to ServaOne test server...");
 	sshConn.dispose();

@@ -111,12 +111,12 @@ func (conf *TunnelConfig) openForwarding(intIP, extIP string, apiPort uint16, po
 	}
 
 	// Accept admin connections to private ports (e.g. SSH, HTTP, etc.)
-	_, err = runCommand("iptables", "-A", "INPUT", "-p", "tcp", "--dport", "0:1024", "-j", "ACCEPT")
+	_, err = runCommand("iptables", "-A", "INPUT", "--dport", "0:1024", "-j", "ACCEPT")
 	if err != nil {
 		return err
 	}
 
-	_, err = runCommand("iptables", "-A", "OUTPUT", "-p", "tcp", "--sport", "0:1024", "-j", "ACCEPT")
+	_, err = runCommand("iptables", "-A", "OUTPUT", "--sport", "0:1024", "-j", "ACCEPT")
 	if err != nil {
 		return err
 	}

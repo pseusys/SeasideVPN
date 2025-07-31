@@ -35,7 +35,7 @@ subparsers = parser.add_subparsers(title="Fixtures", dest="fixture", description
 supply_viridian_parser = subparsers.add_parser("supply-viridian", help="Add viridian (owner or admin) to the server and print their token")
 supply_viridian_parser.add_argument("-i", "--identifier", default=_DEFAULT_IDENTIFIER, help=f"Viridian unique identifier (default: {_DEFAULT_IDENTIFIER})")
 supply_viridian_parser.add_argument("-n", "--name", default=_DEFAULT_NAME, help=f"Viridian non-unique name (default is equal to the device name: {_DEFAULT_NAME})")
-supply_viridian_parser.add_argument("-d", "--days", default=_DEFAULT_SUBSCRIPTION, help=f"Viridian subscription length, in days (default: {_DEFAULT_SUBSCRIPTION})")
+supply_viridian_parser.add_argument("-d", "--days", type=int, default=_DEFAULT_SUBSCRIPTION, help=f"Viridian subscription length, in days (default: {_DEFAULT_SUBSCRIPTION})")
 supply_viridian_parser.add_argument("-s", "--silent", action="store_true", default=False, help="Only output the API token and no logs, used for automatization (other useful info like public key pr protocol ports won't be displayed, default: False)")
 
 
