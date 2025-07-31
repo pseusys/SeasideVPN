@@ -3,7 +3,6 @@ package tunnel
 import (
 	"bytes"
 	"fmt"
-	"main/users"
 	"main/utils"
 	"net"
 	"sync"
@@ -50,15 +49,6 @@ type TunnelConfig struct {
 	// Buffer for storing iptables saved configuration.
 	buffer bytes.Buffer
 
-	// Limit rules for VPN data transfer.
-	vpnDataKbyteLimitRule []string
-
-	// Limit rules for control (TCP, gRPC) data transfer.
-	controlPacketLimitRule []string
-
-	// Limit rules for ICPM (Ping) data transfer.
-	icmpPacketPACKETLimitRules []string
-
 	// Tunnel MTU.
 	mtu int32
 
@@ -69,29 +59,17 @@ type TunnelConfig struct {
 // Preserve current iptables configuration in a TunnelConfig object.
 // Create and return the tunnel config pointer.
 func Preserve() (*TunnelConfig, error) {
-	maxViridians := utils.GetIntEnv("SEASIDE_MAX_VIRIDIANS", users.DEFAULT_MAX_VIRIDIANS, 32)
-	maxAdmins := utils.GetIntEnv("SEASIDE_MAX_ADMINS", users.DEFAULT_MAX_ADMINS, 32)
-	maxTotal := int32(maxViridians + maxAdmins)
-	burstMultiplier := uint32(utils.GetIntEnv("SEASIDE_BURST_LIMIT_MULTIPLIER", DEFAULT_BURST_MULTIPLIER, 32))
-
 	defaultNet, err := findDefaultInterface()
 	if err != nil {
 		return nil, fmt.Errorf("error finding default IP address: %v", err)
 	}
-
-	vpnDataKbyteLimitRule := readLimit("SEASIDE_VPN_DATA_LIMIT", "%dkb/s", maxTotal, burstMultiplier)
-	controlPacketLimitRule := readLimit("SEASIDE_CONTROL_PACKET_LIMIT", "%d/sec", maxTotal, burstMultiplier)
-	icmpPacketPACKETLimitRules := readLimit("SEASIDE_ICMP_PACKET_LIMIT", "%d/sec", maxTotal, burstMultiplier)
 	mtu := int32(utils.GetIntEnv("SEASIDE_TUNNEL_MTU", DEFAULT_TUNNEL_MTU, 32))
 	name := utils.GetEnv("SEASIDE_TUNNEL_NAME", DEFAULT_TUNNEL_NAME)
 
 	conf := TunnelConfig{
-		Default:                    defaultNet,
-		vpnDataKbyteLimitRule:      vpnDataKbyteLimitRule,
-		controlPacketLimitRule:     controlPacketLimitRule,
-		icmpPacketPACKETLimitRules: icmpPacketPACKETLimitRules,
-		mtu:                        mtu,
-		name:                       name,
+		Default: defaultNet,
+		mtu:     mtu,
+		name:    name,
 	}
 
 	conf.mutex.Lock()

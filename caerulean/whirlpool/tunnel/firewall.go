@@ -2,6 +2,7 @@ package tunnel
 
 import (
 	"fmt"
+	"main/users"
 	"main/utils"
 	"os/exec"
 	"strconv"
@@ -60,7 +61,7 @@ func flushIPTables() error {
 // Use iptables-store command to store iptables configurations as bytes.
 // Should be applied for TunnelConf object, store the configurations in .buffer field.
 func (conf *TunnelConfig) storeForwarding() {
-	command := exec.Command("iptables-save", "--counters")
+	command := exec.Command("iptables-save")
 	command.Stdout = &conf.buffer
 	err := command.Run()
 	if err != nil {
@@ -92,6 +93,17 @@ func (conf *TunnelConfig) openForwarding(intIP, extIP string, apiPort uint16, po
 		return fmt.Errorf("error finding interface for external IP %s: %v", extIP, err)
 	}
 	extName := extIface.Name
+
+	logrus.Debugln("Looking for iptables configurations...")
+	maxViridians := utils.GetIntEnv("SEASIDE_MAX_VIRIDIANS", users.DEFAULT_MAX_VIRIDIANS, 32)
+	maxAdmins := utils.GetIntEnv("SEASIDE_MAX_ADMINS", users.DEFAULT_MAX_ADMINS, 32)
+	maxTotal := int32(maxViridians + maxAdmins)
+	burstMultiplier := uint32(utils.GetIntEnv("SEASIDE_BURST_LIMIT_MULTIPLIER", DEFAULT_BURST_MULTIPLIER, 32))
+
+	logrus.Debugln("Building iptables limits...")
+	vpnDataKbyteLimitRule := readLimit("SEASIDE_VPN_DATA_LIMIT", "%dkb/s", maxTotal, burstMultiplier)
+	controlPacketLimitRule := readLimit("SEASIDE_CONTROL_PACKET_LIMIT", "%d/sec", maxTotal, burstMultiplier)
+	icmpPacketPacketLimitRules := readLimit("SEASIDE_ICMP_PACKET_LIMIT", "%d/sec", maxTotal, burstMultiplier)
 
 	// Flush iptables rules
 	err = flushIPTables()
@@ -135,36 +147,56 @@ func (conf *TunnelConfig) openForwarding(intIP, extIP string, apiPort uint16, po
 	// Accept packets to port network, control and whirlpool ports, also accept PING packets
 	if typhoonPort != -1 {
 		typhoonStr := strconv.FormatUint(uint64(typhoonPort), 10)
-		_, err = runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "udp", "-d", intIP, "--dport", typhoonStr, "-i", intName}, conf.controlPacketLimitRule)...)
+		_, err = runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "udp", "-d", intIP, "--dport", typhoonStr, "-i", intName}, controlPacketLimitRule)...)
+		if err != nil {
+			return err
+		}
+
+		_, err = runCommand("iptables", "-A", "INPUT", "-p", "udp", "-d", intIP, "--dport", typhoonStr, "-i", intName, "-j", "DROP")
 		if err != nil {
 			return err
 		}
 	}
 
-	_, err = runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "udp", "-d", intIP, "-i", intName}, conf.vpnDataKbyteLimitRule)...)
+	_, err = runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "udp", "-d", intIP, "-i", intName}, vpnDataKbyteLimitRule)...)
 	if err != nil {
 		return err
 	}
 
 	if portPort != -1 {
 		portStr := strconv.FormatUint(uint64(portPort), 10)
-		_, err = runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "tcp", "-d", intIP, "--dport", portStr, "-i", intName}, conf.controlPacketLimitRule)...)
+		_, err = runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "tcp", "-d", intIP, "--dport", portStr, "-i", intName}, controlPacketLimitRule)...)
+		if err != nil {
+			return err
+		}
+
+		_, err = runCommand("iptables", "-A", "INPUT", "-p", "tcp", "-d", intIP, "--dport", portStr, "-i", intName, "-j", "DROP")
 		if err != nil {
 			return err
 		}
 	}
 
-	_, err = runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "tcp", "-d", intIP, "--dport", apiStr, "-i", intName}, conf.controlPacketLimitRule)...)
+	_, err = runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "tcp", "-d", intIP, "--dport", apiStr, "-i", intName}, controlPacketLimitRule)...)
 	if err != nil {
 		return err
 	}
 
-	_, err = runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "tcp", "-d", intIP, "-i", intName}, conf.vpnDataKbyteLimitRule)...)
+	_, err = runCommand("iptables", "-A", "INPUT", "-p", "tcp", "-d", intIP, "--dport", apiStr, "-i", intName, "-j", "DROP")
 	if err != nil {
 		return err
 	}
 
-	_, err = runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "icmp", "-d", intIP, "-i", intName}, conf.icmpPacketPACKETLimitRules)...)
+	_, err = runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "tcp", "-d", intIP, "-i", intName}, vpnDataKbyteLimitRule)...)
+	if err != nil {
+		return err
+	}
+
+	_, err = runCommand("iptables", utils.ConcatSlices([]string{"-A", "INPUT", "-p", "icmp", "-d", intIP, "-i", intName}, icmpPacketPacketLimitRules)...)
+	if err != nil {
+		return err
+	}
+
+	_, err = runCommand("iptables", "-A", "INPUT", "-p", "icmp", "-d", intIP, "-i", intName, "-j", "DROP")
 	if err != nil {
 		return err
 	}
@@ -209,7 +241,7 @@ func (conf *TunnelConfig) openForwarding(intIP, extIP string, apiPort uint16, po
 // Should be applied for TunnelConf object, restore the configurations from .buffer field.
 func (conf *TunnelConfig) closeForwarding() error {
 	if conf.buffer.Len() > 0 {
-		command := exec.Command("iptables-restore", "--counters")
+		command := exec.Command("iptables-restore")
 		command.Stdin = &conf.buffer
 		err := command.Run()
 		if err != nil {
