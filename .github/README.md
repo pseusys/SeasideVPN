@@ -32,7 +32,7 @@ Finally, run this command to add an admin user (for a year) to the test server (
 
 ```shell
 export SEASIDE_CERTIFICATE_PATH=[LOCAL_CERTIFICATE_PATH]/viridian
-poetry poe fixture -a [SERVER_IP] -k "[WHIRLPOOL_OWNER_KEY]" supply-viridian -i "[UNIQUE_ADMIN_ID]" -n "[ADMIN_COMMON_NAME]" -d 365
+poetry poe fixture -a [SERVER_IP] -k "[WHIRLPOOL_OWNER_KEY]" supply-viridian -i "[UNIQUE_ADMIN_ID]" -n "[ADMIN_COMMON_NAME]" -d 365 -s
 ```
 
 > These commands can be stored in a shell script in the current directory called `manage-test-server.sh`, and it will be automatically ignored bu git.
