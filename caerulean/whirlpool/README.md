@@ -95,6 +95,8 @@ Before whirlpool node can be run, the following configuration steps have to be m
 - Enable IP packet forwarding:
   `echo 1 > /proc/sys/net/ipv4/ip_forward`
 
+> NB! The changes are not persistent and will be reset after reboot!
+
 ### Local whirlpool execution
 
 The executable file can be produced with this command:

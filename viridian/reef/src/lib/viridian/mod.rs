@@ -123,6 +123,9 @@ impl<'a> Viridian<'a> {
     }
 
     pub async fn start(&mut self, command: Option<String>) -> DynResult<()> {
+        debug!("Creating protocol client handle...");
+        let (mut send_handle, mut receive_handle, termination) = create_handle(&self.client_type, self.tunnel.clone(), self.tunnel.clone(), self.key.clone(), self.token.clone(), self.address, self.port, self.local_address).await?;
+
         debug!("Creating signal handlers...");
         let signals = create_signal_handlers()?;
         let mut handlers = FuturesUnordered::new();
@@ -132,9 +135,6 @@ impl<'a> Viridian<'a> {
                 info!("Received {name} signal!");
             });
         }
-
-        debug!("Creating protocol client handle...");
-        let (mut send_handle, mut receive_handle, termination) = create_handle(&self.client_type, self.tunnel.clone(), self.tunnel.clone(), self.key.clone(), self.token.clone(), self.address, self.port, self.local_address).await?;
 
         debug!("Running VPN processes asynchronously...");
         let result = select! {

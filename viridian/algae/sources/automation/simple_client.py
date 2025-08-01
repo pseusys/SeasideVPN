@@ -26,7 +26,7 @@ _DEFAULT_ADDRESS = "127.0.0.1"
 _DEFAULT_PORT = 8587
 
 # Default control protocol.
-_DEFAULT_PROTO = "port"
+_DEFAULT_PROTO = "typhoon"
 
 # Default tunnel interface name.
 _DEFAULT_TUNNEL_NAME = "seatun"

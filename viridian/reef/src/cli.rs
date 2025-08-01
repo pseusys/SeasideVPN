@@ -1,10 +1,9 @@
-use std::env::{set_var, var};
 use std::net::{IpAddr, Ipv4Addr, ToSocketAddrs};
 use std::str::FromStr;
 
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::engine::Engine;
-use env_logger::init;
+use env_logger::{Env, try_init_from_env};
 use log::{debug, info};
 use reeflib::protocol::ProtocolType;
 use simple_error::bail;
@@ -94,20 +93,6 @@ struct Opt {
     command: Option<String>,
 }
 
-fn init_logging() {
-    set_var(
-        "RUST_LOG",
-        match var("SEASIDE_LOG_LEVEL") {
-            Ok(level) => level,
-            _ => match var("RUST_LOG") {
-                Ok(level) => level,
-                _ => DEFAULT_LOG_LEVEL.to_string(),
-            },
-        },
-    );
-    init();
-}
-
 fn process_link<'a>(link: Option<String>) -> DynResult<(Option<String>, Option<ByteBuffer<'a>>, Option<u16>, Option<u16>, Option<ByteBuffer<'a>>, Option<String>)> {
     match link {
         Some(res) => {
@@ -120,7 +105,9 @@ fn process_link<'a>(link: Option<String>) -> DynResult<(Option<String>, Option<B
 
 #[tokio::main]
 async fn main() -> DynResult<()> {
-    init_logging();
+    let env = Env::new().filter_or("SEASIDE_LOG_LEVEL", DEFAULT_LOG_LEVEL);
+    try_init_from_env(env)?;
+
     let opt = Opt::from_args();
     let (link_address, link_public, link_port, link_typhoon, link_token, link_dns) = process_link(opt.link)?;
 
@@ -142,7 +129,7 @@ async fn main() -> DynResult<()> {
 
     let protocol = match opt.protocol {
         Some(res) => ProtocolType::from_str(&res)?,
-        None => bail!("Caerulean protocol was not specified!"),
+        None => ProtocolType::TYPHOON,
     };
 
     let link_port_number = match protocol {

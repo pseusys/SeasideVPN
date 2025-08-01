@@ -115,11 +115,11 @@ Again, see [sample environment file](./example.conf.env) and [protocol environme
 The script could look somewhat like this:
 
 ```bat
-set CONNECTION_LINK=...
+set "CONNECTION_LINK=..."
 
 [All the other environment variable configurations...]
 
-start "" ".\reef.exe -l %CONNECTION_LINK% ..."
+reef.exe -l "%CONNECTION_LINK%" ...
 pause
 ```
 
