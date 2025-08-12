@@ -108,3 +108,10 @@ func FromContext(ctx context.Context) (*TunnelConfig, bool) {
 	config, ok := ctx.Value(tunnelConfigKey{}).(*TunnelConfig)
 	return config, ok
 }
+
+// Convert string to null-terminated byte sequence.
+// Accept string to convert.
+// Return bytes.
+func NullTerminatedString(str string) []byte {
+	return append([]byte(str), 0)
+}

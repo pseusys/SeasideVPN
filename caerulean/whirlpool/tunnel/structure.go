@@ -1,12 +1,12 @@
 package tunnel
 
 import (
-	"bytes"
 	"fmt"
 	"main/utils"
 	"net"
 	"sync"
 
+	"github.com/google/nftables"
 	"github.com/sirupsen/logrus"
 	"github.com/songgao/water"
 )
@@ -47,7 +47,7 @@ type TunnelConfig struct {
 	Default *net.IPNet
 
 	// Buffer for storing iptables saved configuration.
-	buffer bytes.Buffer
+	Nftable *nftables.Table
 
 	// Tunnel MTU.
 	mtu int32
@@ -71,10 +71,6 @@ func Preserve() (*TunnelConfig, error) {
 		mtu:     mtu,
 		name:    name,
 	}
-
-	conf.mutex.Lock()
-	conf.storeForwarding()
-	conf.mutex.Unlock()
 
 	return &conf, nil
 }

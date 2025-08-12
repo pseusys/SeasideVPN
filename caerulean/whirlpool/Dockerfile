@@ -8,9 +8,9 @@ WORKDIR /seaside/caerulean
 ARG RUNNING_IN_CI
 
 # Protobuf development library are required for executable building.
-# Go lint and iptables are required for testing.
+# Go lint and nftables are required for testing.
 ENV PROTOGO_PROTOC_VERSION=24.4
-RUN apk add --no-cache make tar wget build-base iptables protobuf protobuf-dev && go install github.com/pseusys/protogo@latest
+RUN apk add --no-cache make tar wget build-base nftables protobuf protobuf-dev && go install github.com/pseusys/protogo@latest
 
 ENV RUNNING_IN_CI=${RUNNING_IN_CI:-0}
 
@@ -32,8 +32,8 @@ FROM alpine:3.17 AS default
 
 WORKDIR /seaside/caerulean
 
-# Install iptables package for whirlpool running.
-RUN apk add --no-cache iptables
+# Install nftables package for whirlpool running.
+RUN apk add --no-cache nftables
 COPY --from=builder /seaside/caerulean/whirlpool.run ./
 
 # Setup environmental variables.
