@@ -128,6 +128,7 @@ poethepoet = "^0.34.0"
 
 [tool.poe]
 default_task_type = "script"
+env = { COMPOSE_BAKE = "true" }
 
 
 [tool.poe.tasks]

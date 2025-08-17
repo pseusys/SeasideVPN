@@ -34,7 +34,7 @@ impl Asymmetric {
     }
 
     #[inline]
-    pub fn public_key(&self) -> ByteBuffer {
+    pub fn public_key(&self) -> ByteBuffer<'_> {
         [self.public_key.as_bytes(), self.seed_key.as_ref()].concat().into()
     }
 
@@ -43,7 +43,7 @@ impl Asymmetric {
         N_SIZE + PUBLIC_KEY_SIZE + Symmetric::ciphertext_overhead()
     }
 
-    fn compute_blake2b_hash(&self, shared_secret: &SharedSecret, client_key: &ByteBuffer, server_key: &PublicKey) -> DynResult<ByteBuffer> {
+    fn compute_blake2b_hash(&self, shared_secret: &SharedSecret, client_key: &ByteBuffer, server_key: &PublicKey) -> DynResult<ByteBuffer<'_>> {
         let hash = ByteBuffer::empty(SYMMETRIC_HASH_SIZE);
         let mut state = Blake2bVar::new(SYMMETRIC_HASH_SIZE)?;
         state.update(&shared_secret.to_bytes());
@@ -53,7 +53,7 @@ impl Asymmetric {
         Ok(hash)
     }
 
-    fn hide_public_key(&self, public_key: &ByteBuffer) -> DynResult<ByteBuffer> {
+    fn hide_public_key(&self, public_key: &ByteBuffer) -> DynResult<ByteBuffer<'_>> {
         let mut state = Blake2bVar::new(SYMMETRIC_HASH_SIZE)?;
         let result = ByteBuffer::empty(N_SIZE + SYMMETRIC_HASH_SIZE);
         let (n_number, hash) = result.split_buf(N_SIZE);
@@ -65,7 +65,7 @@ impl Asymmetric {
         Ok(result)
     }
 
-    pub fn encrypt<'a>(&self, plaintext: ByteBuffer<'a>) -> DynResult<(ByteBuffer, ByteBuffer<'a>)> {
+    pub fn encrypt<'a>(&self, plaintext: ByteBuffer<'a>) -> DynResult<(ByteBuffer<'_>, ByteBuffer<'a>)> {
         let ephemeral_secret = EphemeralSecret::random_from_rng(get_rng());
         let ephemeral_public = ByteBuffer::from(&PublicKey::from(&ephemeral_secret).to_bytes()[..]);
         let shared_secret = ephemeral_secret.diffie_hellman(&self.public_key);
