@@ -5,7 +5,8 @@ import "google/protobuf/timestamp.proto";
 
 option go_package = "/generated";
 
-
+// TODO: get general node info
+// TODO: get user key info
 
 // User data that is needed for administrator whirlpool node authentication
 message WhirlpoolAuthenticationRequest {
@@ -14,9 +15,13 @@ message WhirlpoolAuthenticationRequest {
     // User unique identifier
     string identifier = 2;
 
-    string api_key = 3;
+    bool privileged = 3;
 
-    optional google.protobuf.Timestamp subscription = 4;
+    string api_key = 4;
+
+    optional google.protobuf.Timestamp subscription = 5;
+
+    optional uint32 devices = 6;
 }
 
 // User authentication certificate

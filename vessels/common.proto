@@ -44,4 +44,6 @@ message UserToken {
     bool is_admin = 3;
     // User subscription end timestamp
     optional google.protobuf.Timestamp subscription = 4;
+    // Device number
+    optional uint32 devices = 5;
 }

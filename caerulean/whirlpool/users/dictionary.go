@@ -12,6 +12,7 @@ import (
 )
 
 const (
+	DEFAULT_MAX_DEVICES   = 1
 	DEFAULT_MAX_VIRIDIANS = 10
 	DEFAULT_MAX_ADMINS    = 5
 )
@@ -28,8 +29,8 @@ type ViridianDict struct {
 	// The viridian dictionary itself.
 	entries map[uint16]*Viridian
 
-	// The viridian dictionary re-mapped by unique IDs.
-	uniques map[string]*Viridian
+	// The viridian token unique IDs mapped to the number of devices currently connected.
+	uniques map[string]uint16
 
 	// Mutex for viridian operations.
 	mutex sync.Mutex
@@ -40,21 +41,23 @@ type ViridianDict struct {
 // Accept context, return viridian dictionary pointer.
 func NewViridianDict() (*ViridianDict, error) {
 	// Retrieve limits from environment variables
+	maxDevices := uint16(utils.GetIntEnv("SEASIDE_MAX_DEVICES", DEFAULT_MAX_DEVICES, 16))
 	maxViridians := uint16(utils.GetIntEnv("SEASIDE_MAX_VIRIDIANS", DEFAULT_MAX_VIRIDIANS, 16))
 	maxAdmins := uint16(utils.GetIntEnv("SEASIDE_MAX_ADMINS", DEFAULT_MAX_ADMINS, 16))
 	maxTotal := maxViridians + maxAdmins
+	maxEntries := maxTotal * maxDevices
 
 	// Exit if limit configuration is inconsistent
-	if maxTotal > math.MaxUint16-3 {
-		return nil, fmt.Errorf("error initializing viridian array: too many users requested: %d", maxTotal)
+	if maxEntries > math.MaxUint16-3 {
+		return nil, fmt.Errorf("error initializing viridian array: too many users requested: %d", maxEntries)
 	}
 
 	// Create viridian dictionary object and start sending packets to them
 	dict := ViridianDict{
 		maxViridians: maxViridians,
 		maxOverhead:  maxAdmins,
-		entries:      make(map[uint16]*Viridian, maxTotal),
-		uniques:      make(map[string]*Viridian, maxTotal),
+		entries:      make(map[uint16]*Viridian, maxEntries),
+		uniques:      make(map[string]uint16, maxTotal),
 	}
 
 	// Return dictionary pointer
@@ -76,10 +79,9 @@ func (dict *ViridianDict) Add(getViridianID func() (any, uint16, error), viridia
 	defer dict.mutex.Unlock()
 
 	// Check if there are slots available (or if viridian is already connected)
-	viridian, ok := dict.uniques[token.Identifier]
-	if ok {
-		viridian.stop()
-		delete(dict.entries, viridian.peerID)
+	connected, ok := dict.uniques[token.Identifier] // TODO: check if returns 0 by default
+	if ok && *token.Devices <= uint32(connected) {
+		return nil, 0, fmt.Errorf("can not connect any more viridians with this token, connected: %d", connected)
 	} else if !token.IsAdmin && len(dict.entries) >= int(dict.maxViridians) {
 		return nil, 0, fmt.Errorf("can not connect any more viridians, connected: %d", len(dict.entries))
 	} else if len(dict.entries) == int(dict.maxViridians+dict.maxOverhead) {
@@ -114,7 +116,7 @@ func (dict *ViridianDict) Add(getViridianID func() (any, uint16, error), viridia
 	}
 
 	// Create viridian object
-	viridian = &Viridian{
+	viridian := &Viridian{
 		Name:       token.Name,
 		Device:     *viridianDevice,
 		Identifier: token.Identifier,
@@ -125,7 +127,7 @@ func (dict *ViridianDict) Add(getViridianID func() (any, uint16, error), viridia
 	}
 
 	dict.entries[viridianID] = viridian
-	dict.uniques[token.Identifier] = viridian
+	dict.uniques[token.Identifier] = connected + 1
 	return viridianHandle, viridianID, nil
 }
 
@@ -150,12 +152,27 @@ func (dict *ViridianDict) Delete(viridianID uint16, timeout bool) {
 	// Retrieve viridian from the dictionary
 	viridian, ok := dict.entries[viridianID]
 	if !ok {
+		logrus.Warnf("User %d should have been deleted, but was not found!", viridianID)
 		return
 	}
 
 	// Stop viridian and remove it from the dictionary
 	viridian.stop()
 	delete(dict.entries, viridianID)
+
+	// Retrieve connected devices number
+	connected, ok := dict.uniques[viridian.Identifier]
+	if !ok {
+		logrus.Warnf("User %d was deleted, but was not connected!", viridianID)
+		return
+	}
+
+	// Remove viridian from the uniques dictionary
+	if connected > 1 {
+		dict.uniques[viridian.Identifier] = connected - 1
+	} else {
+		delete(dict.uniques, viridian.Identifier)
+	}
 
 	// Log appropriate message if deleted by timeout
 	if timeout {
@@ -165,7 +182,7 @@ func (dict *ViridianDict) Delete(viridianID uint16, timeout bool) {
 	}
 }
 
-// Clear viridan dictionary.
+// Clear viridian dictionary.
 // Stop all viridian connections and delete all the objects.
 // Should be applied for ViridianDict object.
 func (dict *ViridianDict) Clear() {
@@ -175,5 +192,9 @@ func (dict *ViridianDict) Clear() {
 	for key, viridian := range dict.entries {
 		viridian.stop()
 		delete(dict.entries, key)
+	}
+
+	for key := range dict.uniques {
+		delete(dict.uniques, key)
 	}
 }

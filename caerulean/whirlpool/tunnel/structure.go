@@ -69,9 +69,10 @@ type TunnelConfig struct {
 // Preserve current iptables configuration in a TunnelConfig object.
 // Create and return the tunnel config pointer.
 func Preserve() (*TunnelConfig, error) {
+	maxDevices := utils.GetIntEnv("SEASIDE_MAX_DEVICES", users.DEFAULT_MAX_DEVICES, 32)
 	maxViridians := utils.GetIntEnv("SEASIDE_MAX_VIRIDIANS", users.DEFAULT_MAX_VIRIDIANS, 32)
 	maxAdmins := utils.GetIntEnv("SEASIDE_MAX_ADMINS", users.DEFAULT_MAX_ADMINS, 32)
-	maxTotal := int32(maxViridians + maxAdmins)
+	maxTotal := int32((maxViridians + maxAdmins) * maxDevices)
 	burstMultiplier := uint32(utils.GetIntEnv("SEASIDE_BURST_LIMIT_MULTIPLIER", DEFAULT_BURST_MULTIPLIER, 32))
 
 	defaultNet, err := findDefaultInterface()

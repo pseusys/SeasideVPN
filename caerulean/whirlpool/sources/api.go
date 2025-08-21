@@ -9,6 +9,7 @@ import (
 	"log"
 	"main/crypto"
 	"main/generated"
+	"main/users"
 	"main/utils"
 	"net"
 	"os"
@@ -40,6 +41,8 @@ var (
 
 	GRPC_MAX_TAIL_LENGTH = uint(utils.GetIntEnv("SEASIDE_GRPC_MAX_TAIL_LENGTH", DEFAULT_GRPC_MAX_TAIL_LENGTH, 32))
 	SUGGESTED_DNS_SERVER = utils.GetEnv("SEASIDE_SUGGESTED_DNS", DEFAULT_SUGGESTED_DNS)
+
+	MAX_DEVICES = uint16(utils.GetIntEnv("SEASIDE_MAX_DEVICES", users.DEFAULT_MAX_DEVICES, 16))
 )
 
 // Metaserver structure.
@@ -166,18 +169,35 @@ func (server *APIServer) Stop() {
 // Return authentication response and nil if authentication successful, otherwise nil and error.
 func (server *WhirlpoolServer) Authenticate(ctx context.Context, request *generated.WhirlpoolAuthenticationRequest) (*generated.WhirlpoolAuthenticationResponse, error) {
 	// Check node owner or viridian payload
-	if request.ApiKey != NODE_OWNER_API_KEY && !slices.Contains(NODE_ADMIN_API_KEYS, request.ApiKey) {
+	calledByOwner := request.ApiKey == NODE_OWNER_API_KEY
+	calledByAdmin := slices.Contains(NODE_ADMIN_API_KEYS, request.ApiKey)
+
+	// Raise an error if not called by authority
+	if !calledByOwner && !calledByAdmin {
 		return nil, status.Error(codes.PermissionDenied, "wrong payload value")
+	}
+
+	// Downgrade privileges if called not by owner
+	if !calledByOwner {
+		request.Privileged = false
+	}
+
+	// Limit device number to the maximum allowed (if set)
+	if request.Devices == nil {
+		*request.Devices = uint32(MAX_DEVICES)
+	} else {
+		*request.Devices = min(uint32(MAX_DEVICES), *request.Devices)
 	}
 
 	// Create and marshall user token (will be valid for 10 years for non-privileged users)
 	token := &generated.UserToken{
 		Name:         request.Name,
 		Identifier:   request.Identifier,
-		IsAdmin:      true,
+		IsAdmin:      request.Privileged,
 		Subscription: request.Subscription,
+		Devices:      request.Devices,
 	}
-	logrus.Infof("User %s (id: %s) autnenticated", token.Name, token.Identifier)
+	logrus.Infof("User %s (id: %s) authenticated", token.Name, token.Identifier)
 	marshToken, err := proto.Marshal(token)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error marshalling token: %v", err)

@@ -11,6 +11,7 @@ from grpclib.metadata import Deadline
 from ..utils.misc import create_logger, random_number
 from .generated import WhirlpoolAuthenticationRequest, WhirlpoolViridianStub
 
+_DEFAULT_PRIVILEGED = False
 _DEFAULT_SUBSCRIPTION_DAYS = 30
 _METADATA_TAIL_MAX = 1024
 _DEFAULT_TIMEOUT = 30
@@ -52,11 +53,11 @@ class WhirlpoolClient(WhirlpoolViridianStub):
         context.set_alpn_protocols(["h2", "http/1.1"])
         return Channel(host, port, ssl=context)
 
-    async def authenticate(self, identifier: str, api_key: str, name: Optional[str] = None, subscription: int = _DEFAULT_SUBSCRIPTION_DAYS) -> Tuple[bytes, bytes, int, int, str]:
+    async def authenticate(self, identifier: str, api_key: str, name: Optional[str] = None, privileged: bool = _DEFAULT_PRIVILEGED, subscription: int = _DEFAULT_SUBSCRIPTION_DAYS, devices: Optional[int] = None) -> Tuple[bytes, bytes, int, int, str]:
         name = gethostname() if name is None else name
         subscription = datetime.now(timezone.utc) + timedelta(days=subscription)
-        logger.debug(f"User will be initiated with name '{name}', subscription until {subscription} and identifier: {identifier}!")
-        response = await super().authenticate(WhirlpoolAuthenticationRequest(name, identifier, api_key, subscription))
+        logger.debug(f"User will be initiated with name '{name}' privileged {privileged}, subscription until {subscription} with {devices} devices and identifier: {identifier}!")
+        response = await super().authenticate(WhirlpoolAuthenticationRequest(name, identifier, privileged, api_key, subscription, devices))
         logger.debug(f"Symmetric session token received: {response.token!r}!")
         return response.public_key, response.token, response.typhoon_port, response.port_port, response.dns
 
