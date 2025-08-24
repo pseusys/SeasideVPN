@@ -38,6 +38,7 @@ _MAX_PORT_VALUE = (1 << 16) - 1
 _DEFAULT_SUGGESTED_DNS = "8.8.8.8"
 _DEFAULT_CERTIFICATES_PATH = "certificates"
 _DEFAULT_LOG_PATH = "log"
+_DEFAULT_MAX_DEVICES = 1
 _DEFAULT_MAX_VIRIDIANS = 10
 _DEFAULT_MAX_ADMINS = 5
 _DEFAULT_WAITING_OVERTIME = 15
@@ -89,6 +90,7 @@ class WhirlpoolInstaller(Installer):
         parser.add_argument("--typhoon-port", type=port_number(_MIN_PORT_VALUE, _MAX_PORT_VALUE), default=DEFAULT_GENERATED_VALUE, help=f"Seaside control port number (default: random, between {_MIN_PORT_VALUE} and {_MAX_PORT_VALUE})")
         parser.add_argument("--certificates-path", type=str, default=_DEFAULT_CERTIFICATES_PATH, help=f"Path for storing certificates, two files should be present there, 'cert.crt' and 'key.crt' (default: {_DEFAULT_CERTIFICATES_PATH})")
         parser.add_argument("--suggested-dns", type=current_dns(_DEFAULT_SUGGESTED_DNS), default=DEFAULT_GENERATED_VALUE, help=f"Path for storing certificates, two files should be present there, 'cert.crt' and 'key.crt' (default: {_DEFAULT_CERTIFICATES_PATH})")
+        parser.add_argument("--max-devices", type=int, default=_DEFAULT_MAX_DEVICES, help=f"Maximum devices for every viridian (default: {_DEFAULT_MAX_DEVICES})")
         parser.add_argument("--max-viridians", type=int, default=_DEFAULT_MAX_VIRIDIANS, help=f"Maximum network viridian number (default: {_DEFAULT_MAX_VIRIDIANS})")
         parser.add_argument("--max-admins", type=int, default=_DEFAULT_MAX_ADMINS, help=f"Maximum privileged viridian number (default: {_DEFAULT_MAX_ADMINS})")
         parser.add_argument("--tunnel-mtu", type=int, default=_DEFAULT_TUNNEL_MTU, help=f"VPN tunnel interface MTU (default: {_DEFAULT_TUNNEL_MTU})")
@@ -131,6 +133,7 @@ class WhirlpoolInstaller(Installer):
         environment["SEASIDE_TYPHOON_PORT"] = self._args["typhoon_port"]
         environment["SEASIDE_CERTIFICATE_PATH"] = self._args["certificates_path"]
         environment["SEASIDE_SUGGESTED_DNS"] = self._args["suggested_dns"]
+        environment["SEASIDE_MAX_DEVICES"] = self._args["max_devices"]
         environment["SEASIDE_MAX_VIRIDIANS"] = self._args["max_viridians"]
         environment["SEASIDE_MAX_ADMINS"] = self._args["max_admins"]
         environment["SEASIDE_TUNNEL_MTU"] = self._args["tunnel_mtu"]
