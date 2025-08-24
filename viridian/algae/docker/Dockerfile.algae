@@ -32,7 +32,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install testing dependencies.
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential iptables iproute2 iputils-ping dnsutils python3-pip && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential nftables iproute2 iputils-ping dnsutils python3-pip python3-nftables && rm -rf /var/lib/apt/lists/*
 COPY viridian/algae/pyproject.toml viridian/algae/README.md viridian/algae/__init__.py ./
 RUN pip3 install --no-cache-dir --break-system-packages .[devel,client]
 

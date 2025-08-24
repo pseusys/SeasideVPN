@@ -1,10 +1,10 @@
 from contextlib import AbstractAsyncContextManager
 from fcntl import ioctl
 from ipaddress import IPv4Address, IPv4Interface, IPv4Network
+from nftables import Nftables
 from os import O_RDWR, getegid, getenv, geteuid, open
 from pathlib import Path
 from struct import pack
-from subprocess import run
 from typing import List, Optional, Tuple
 
 from colorama import Fore
@@ -47,8 +47,13 @@ class _SystemUtils:
     # Unspecified IP address.
     _EMPTY_IP_ADDRESS = IPv4Address("0.0.0.0")
 
-    _OUTPUT_CHAIN = "OUTPUT"
-    _FORWARD_CHAIN = "FORWARD"
+    _OUTPUT_CHAIN = "output"
+    _OUTPUT_TYPE = "route"
+    _OUTPUT_PRIORITY = -100
+
+    _FORWARD_CHAIN = "forward"
+    _FORWARD_TYPE = "filter"
+    _FORWARD_PRIORITY = 0
 
     @classmethod
     def _create_tunnel(cls, name: str) -> Tuple[int, str]:
@@ -119,29 +124,29 @@ class _SystemUtils:
 
     @classmethod
     def _create_allowing_rule(cls, source_subnet: Optional[str], destination_subnet: Optional[str], output_interface: Optional[str], source_ports: Optional[Tuple[str, str]], negative_destination: bool = False) -> str:
-        rule = str()
-        if source_subnet is not None:
-            rule = f"{rule} -s {source_subnet}"
+        parts = list()
         if output_interface is not None:
-            rule = f"{rule} -o {output_interface}"
-        if source_ports is not None:
-            rule = f"{rule} -p {source_ports[0]} --sport {source_ports[1]}"
+            parts += [f"oifname {output_interface}"]
         if destination_subnet is not None:
-            rule = f"{rule} {'!' if negative_destination else ''} -d {destination_subnet}"
-        rule = f"{rule} -j ACCEPT"
-        return rule
+            parts += [f"ip daddr {'!= ' if negative_destination else ''}{destination_subnet}"]
+        if source_subnet is not None:
+            parts += [f"ip saddr {source_subnet}"]
+        if source_ports is not None:
+            parts += [f"{source_ports[0]} sport {source_ports[1]}"]
+        parts += ["accept"]
+        return " ".join(parts)
 
     @classmethod
     def _create_marking_rule(cls, destination_subnet: Optional[str], output_interface: Optional[str], source_ports: Optional[Tuple[str, str]], sva_code: int, negative_destination: bool = False) -> str:
-        rule = str()
+        parts = list()
         if output_interface is not None:
-            rule = f"{rule} -o {output_interface}"
-        if source_ports is not None:
-            rule = f"{rule} -p {source_ports[0]} --sport {source_ports[1]}"
+            parts += [f"oifname {output_interface}"]
         if destination_subnet is not None:
-            rule = f"{rule} {'!' if negative_destination else ''} -d {destination_subnet}"
-        rule = f"{rule} -j MARK --set-mark {hex(sva_code)}"
-        return rule
+            parts += [f"ip daddr {'!= ' if negative_destination else ''}{destination_subnet}"]
+        if source_ports is not None:
+            parts += [f"{source_ports[0]} sport {source_ports[1]}"]
+        parts += [f"meta mark set {hex(sva_code)}"]
+        return " ".join(parts)
 
     @classmethod
     def _send_clear_cache_message(cls, iproute: IPRoute):
@@ -160,6 +165,8 @@ class Tunnel(AbstractAsyncContextManager):
     It creates, enables, stops and deletes tunnel interface.
     It also creates and removes iptables rules for packet forwarding.
     """
+
+    _TABLE_NAME = "seaside"
 
     def __init__(self, name: str, address: IPv4Address, netmask: IPv4Address, sva_code: int, seaside_address: IPv4Address, dns: IPv4Address, capture_iface: Optional[List[str]] = None, capture_ranges: Optional[List[str]] = None, capture_addresses: Optional[List[str]] = None, capture_ports: Optional[str] = None, exempt_ranges: Optional[List[str]] = None, exempt_addresses: Optional[List[str]] = None, exempt_ports: Optional[str] = None, local_address: Optional[IPv4Address] = None):
         """
@@ -192,7 +199,8 @@ class Tunnel(AbstractAsyncContextManager):
         self._descriptor, self._tunnel_dev = _SystemUtils._create_tunnel(name)
         logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} created")
 
-        self._iptables_rules = [_SystemUtils._create_allowing_rule(None, f"{new_dns}/32", None, None), _SystemUtils._create_allowing_rule(f"{self._def_iface.ip}/32", seaside_adr_str, def_iface_name, None)]
+        self._nft = Nftables()
+        self._nftables_rules = [_SystemUtils._create_allowing_rule(None, f"{new_dns}/32", None, None), _SystemUtils._create_allowing_rule(f"{self._def_iface.ip}/32", seaside_adr_str, def_iface_name, None)]
         logger.info(f"Allowed packets to {Fore.BLUE}caerulean{Fore.RESET} and to {Fore.BLUE}DNS{Fore.RESET}")
 
         result_capture_interfaces = list() if capture_iface is None else capture_iface
@@ -200,7 +208,7 @@ class Tunnel(AbstractAsyncContextManager):
             result_capture_interfaces += [def_iface_name]
         for interface in result_capture_interfaces:
             iface, _, _ = _SystemUtils._get_interface_info(label=interface)
-            self._iptables_rules += [_SystemUtils._create_marking_rule(iface.with_netmask, interface, None, sva_code, True), _SystemUtils._create_allowing_rule(None, iface.with_netmask, interface, None, True)]
+            self._nftables_rules += [_SystemUtils._create_marking_rule(iface.with_prefixlen, interface, None, sva_code, True), _SystemUtils._create_allowing_rule(None, iface.with_prefixlen, interface, None, True)]
         logger.info(f"Capturing packets from interfaces: {Fore.BLUE}{result_capture_interfaces}{Fore.RESET}")
 
         capture_ranges = (list() if capture_ranges is None else capture_ranges) + (list() if capture_addresses is None else [f"{address}/32" for address in capture_addresses])
@@ -208,21 +216,21 @@ class Tunnel(AbstractAsyncContextManager):
 
         result_capture_ranges = list(set(capture_ranges) - set(exempt_ranges))
         for range in result_capture_ranges:
-            self._iptables_rules += [_SystemUtils._create_marking_rule(range, None, None, sva_code), _SystemUtils._create_allowing_rule(None, range, None, None)]
+            self._nftables_rules += [_SystemUtils._create_marking_rule(range, None, None, sva_code), _SystemUtils._create_allowing_rule(None, range, None, None)]
         logger.info(f"Capturing packets from ranges: {Fore.BLUE}{result_capture_ranges}{Fore.RESET}")
 
         if capture_ports is not None:
-            self._iptables_rules += [_SystemUtils._create_marking_rule(None, None, ("tcp", capture_ports), sva_code), _SystemUtils._create_allowing_rule(None, None, None, ("tcp", capture_ports))]
-            self._iptables_rules += [_SystemUtils._create_marking_rule(None, None, ("udp", capture_ports), sva_code), _SystemUtils._create_allowing_rule(None, None, None, ("udp", capture_ports))]
+            self._nftables_rules += [_SystemUtils._create_marking_rule(None, None, ("tcp", capture_ports), sva_code), _SystemUtils._create_allowing_rule(None, None, None, ("tcp", capture_ports))]
+            self._nftables_rules += [_SystemUtils._create_marking_rule(None, None, ("udp", capture_ports), sva_code), _SystemUtils._create_allowing_rule(None, None, None, ("udp", capture_ports))]
         logger.info(f"Capturing packets from ports: {Fore.BLUE}{capture_ports}{Fore.RESET}")
 
         result_exempt_ranges = list(set(exempt_ranges) - set(capture_ranges))
         for range in result_exempt_ranges:
-            self._iptables_rules += [_SystemUtils._create_allowing_rule(None, range, None, None)]
+            self._nftables_rules += [_SystemUtils._create_allowing_rule(None, range, None, None)]
         logger.info(f"Letting through packets from ranges: {Fore.BLUE}{result_exempt_ranges}{Fore.RESET}")
 
         if exempt_ports is not None:
-            self._iptables_rules += [_SystemUtils._create_allowing_rule(None, None, None, ("tcp", capture_ports)), _SystemUtils._create_allowing_rule(None, None, None, ("udp", capture_ports))]
+            self._nftables_rules += [_SystemUtils._create_allowing_rule(None, None, None, ("tcp", capture_ports)), _SystemUtils._create_allowing_rule(None, None, None, ("udp", capture_ports))]
         logger.info(f"Letting through packets from ports: {Fore.BLUE}{exempt_ports}{Fore.RESET}")
 
         logger.info(f"Packet capturing rules {Fore.GREEN}created{Fore.RESET}")
@@ -251,7 +259,13 @@ class Tunnel(AbstractAsyncContextManager):
         """
         return self._descriptor
 
-    def _setup_iptables_rules(self, chain: str) -> None:
+    def _run_nftables_commands(self, *commands: str) -> None:
+        for command in commands:
+            res, _, err = self._nft.cmd(command)
+            if res != 0:
+                raise ValueError(f"NFTables command '{command}' failed (error code {res}): {err}")
+
+    def _setup_nftables_rules(self, chain: str, type: str, priority: int) -> None:
         """
         Insert forwarding rules into iptables.
         The rules are inserted in the following order:
@@ -261,16 +275,24 @@ class Tunnel(AbstractAsyncContextManager):
 
         :param chain: the iptables chain to insert rules to.
         """
-        for rule in reversed(self._iptables_rules):
-            run(f"iptables -t mangle -I {chain} 1 {rule}", shell=True, text=True, check=True)
+        self._run_nftables_commands(
+            f"add table inet {self._TABLE_NAME}",
+            f"add chain inet {self._TABLE_NAME} {chain} {{ type {type} hook {chain} priority {priority}; }}",
+            *[f"add rule inet {self._TABLE_NAME} {chain} {rule}" for rule in self._nftables_rules]
+        )
 
-    def _reset_iptables_rules(self, chain: str) -> None:
+    def _output_nftables_rules(self) -> str:
+        res, out, err = self._nft.cmd(f"list table inet {self._TABLE_NAME}")
+        if res != 0:
+            raise ValueError(f"NFTables list command failed (error code {res}): {err}")
+        return out
+
+    def _reset_nftables_rules(self) -> None:
         """
         Remove forwarding rules from iptables.
         :param chain: the iptables chain to remove rules from.
         """
-        for rule in self._iptables_rules:
-            run(f"iptables -t mangle -D {chain} {rule}", shell=True, text=True, check=True)
+        self._run_nftables_commands(f"delete table inet {self._TABLE_NAME}")
 
     def up(self) -> None:
         """
@@ -279,8 +301,9 @@ class Tunnel(AbstractAsyncContextManager):
         Afterwards, clear routes in table numbered with seaside viridian algae universal code and add default route to tunnel network interface there.
         Finally, add ip rule to look up routes for packets marked with seaside viridian algae universal code in the corresponding ip route table.
         """
-        self._setup_iptables_rules(_SystemUtils._OUTPUT_CHAIN)
-        self._setup_iptables_rules(_SystemUtils._FORWARD_CHAIN)
+        self._setup_nftables_rules(_SystemUtils._OUTPUT_CHAIN, _SystemUtils._OUTPUT_TYPE, _SystemUtils._OUTPUT_PRIORITY)
+        self._setup_nftables_rules(_SystemUtils._FORWARD_CHAIN, _SystemUtils._FORWARD_TYPE, _SystemUtils._FORWARD_PRIORITY)
+        logger.debug(f"NFTables rules set to:\n\n{self._output_nftables_rules()}")
         logger.info(f"Packet forwarding with mark {Fore.BLUE}{self._sva_code}{Fore.RESET} via table {Fore.BLUE}{self._sva_code}{Fore.RESET} configured")
 
         with IPRoute() as ip:
@@ -304,8 +327,7 @@ class Tunnel(AbstractAsyncContextManager):
         Afterwards, remove ip rule to look up routes for packets marked with seaside viridian algae universal code in the corresponding ip route table.
         Finally, set tunnel interface down.
         """
-        self._reset_iptables_rules(_SystemUtils._OUTPUT_CHAIN)
-        self._reset_iptables_rules(_SystemUtils._FORWARD_CHAIN)
+        self._reset_nftables_rules()
         logger.info(f"Packet forwarding with mark {Fore.BLUE}{self._sva_code}{Fore.RESET} via table {Fore.BLUE}{self._sva_code}{Fore.RESET} removed")
 
         with IPRoute() as ip:
