@@ -56,11 +56,6 @@ jobs:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
 
-      - name: Install Dependencies 🔮
-        if: runner.os == 'Linux'
-        working-directory: viridian/algae
-        run: sudo apt-get install python3-nftables
-
       - name: Setup VPN Server 🖴
         id: setup-test-server
         uses: ./.github/actions/setup-server
