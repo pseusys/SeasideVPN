@@ -49,12 +49,6 @@ runs:
         python-version: "3.11"
 
     - name: Install Dependencies
-      if: runner.os == 'Linux'
-      working-directory: viridian/algae
-      shell: bash
-      run: sudo apt-get install nftables python3-nftables
-
-    - name: Install Python Dependencies
       working-directory: viridian/algae
       shell: bash
       run: |
