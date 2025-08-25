@@ -49,11 +49,11 @@ class _SystemUtils:
 
     _OUTPUT_CHAIN = "output"
     _OUTPUT_TYPE = "route"
-    _OUTPUT_PRIORITY = -100
+    _OUTPUT_PRIORITY = -175
 
     _FORWARD_CHAIN = "forward"
     _FORWARD_TYPE = "filter"
-    _FORWARD_PRIORITY = 0
+    _FORWARD_PRIORITY = -175
 
     @classmethod
     def _create_tunnel(cls, name: str) -> Tuple[int, str]:
