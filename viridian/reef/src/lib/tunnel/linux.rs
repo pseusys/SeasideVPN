@@ -39,7 +39,7 @@ const NFTABLES_SOURCE_PORT: &str = "sport";
 const NFTABLES_SOURCE_ADDRESS: &str = "saddr";
 const NFTABLES_DESTINATION_ADDRESS: &str = "daddr";
 const NFTABLES_PROTOCOL_IPV4: &str = "ip";
-const NFTABLES_PROTOCOL_IPV6: &str = "ip6";
+// const NFTABLES_PROTOCOL_IPV6: &str = "ip6";
 const NFTABLES_PROTOCOL_TCP: &str = "tcp";
 const NFTABLES_PROTOCOL_UDP: &str = "udp";
 
@@ -233,10 +233,10 @@ fn create_firewall_rules<'a>(default_name: &str, default_network: &Ipv4Net, seas
     let mut rules = Vec::new();
 
     if let Some((lowest, highest)) = capture_ports {
-        for proto in &[NFTABLES_PROTOCOL_TCP, NFTABLES_PROTOCOL_TCP] {
+        for proto in &[NFTABLES_PROTOCOL_TCP, NFTABLES_PROTOCOL_UDP] {
             rules.push(Rule {
                 expr: vec![
-                    Statement::Match(Match { left: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::Protocol })), right: Expression::String(Cow::Borrowed(proto)), op: Operator::EQ }),
+                    Statement::Match(Match { left: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::L4proto })), right: Expression::String(Cow::Borrowed(proto)), op: Operator::EQ }),
                     Statement::Match(Match {
                         left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_SOURCE_PORT) }))),
                         right: Expression::Range(Box::new(Range { range: [Expression::Number(lowest as u32), Expression::Number(highest as u32)] })),
@@ -249,7 +249,7 @@ fn create_firewall_rules<'a>(default_name: &str, default_network: &Ipv4Net, seas
             });
             rules.push(Rule {
                 expr: vec![
-                    Statement::Match(Match { left: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::Protocol })), right: Expression::String(Cow::Borrowed(proto)), op: Operator::EQ }),
+                    Statement::Match(Match { left: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::L4proto })), right: Expression::String(Cow::Borrowed(proto)), op: Operator::EQ }),
                     Statement::Match(Match {
                         left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_SOURCE_PORT) }))),
                         right: Expression::Range(Box::new(Range { range: [Expression::Number(lowest as u32), Expression::Number(highest as u32)] })),
@@ -264,7 +264,7 @@ fn create_firewall_rules<'a>(default_name: &str, default_network: &Ipv4Net, seas
     }
 
     for range in capture_ranges {
-        for proto in &[NFTABLES_PROTOCOL_IPV4, NFTABLES_PROTOCOL_IPV6] {
+        for proto in &[NFTABLES_PROTOCOL_IPV4] {
             rules.push(Rule {
                 expr: vec![
                     Statement::Match(Match {
@@ -296,7 +296,7 @@ fn create_firewall_rules<'a>(default_name: &str, default_network: &Ipv4Net, seas
         let (address, cidr) = get_device_address_and_cidr(&iface)?;
         let addr_repr = format!("{address}/{cidr}");
 
-        for proto in &[NFTABLES_PROTOCOL_IPV4, NFTABLES_PROTOCOL_IPV6] {
+        for proto in &[NFTABLES_PROTOCOL_IPV4] {
             let iface_val = iface.clone();
             let addr_repr_val = addr_repr.clone();
 
@@ -333,7 +333,7 @@ fn create_firewall_rules<'a>(default_name: &str, default_network: &Ipv4Net, seas
         for proto in &[NFTABLES_PROTOCOL_TCP, NFTABLES_PROTOCOL_UDP] {
             rules.push(Rule {
                 expr: vec![
-                    Statement::Match(Match { left: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::Protocol })), right: Expression::String(Cow::Borrowed(proto)), op: Operator::EQ }),
+                    Statement::Match(Match { left: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::L4proto })), right: Expression::String(Cow::Borrowed(proto)), op: Operator::EQ }),
                     Statement::Match(Match {
                         left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_SOURCE_PORT) }))),
                         right: Expression::Range(Box::new(Range { range: [Expression::Number(lowest as u32), Expression::Number(highest as u32)] })),
@@ -348,7 +348,7 @@ fn create_firewall_rules<'a>(default_name: &str, default_network: &Ipv4Net, seas
     }
 
     for range in exempt_ranges {
-        for proto in &[NFTABLES_PROTOCOL_IPV4, NFTABLES_PROTOCOL_IPV6] {
+        for proto in &[NFTABLES_PROTOCOL_IPV4] {
             rules.push(Rule {
                 expr: vec![
                     Statement::Match(Match {
@@ -365,7 +365,7 @@ fn create_firewall_rules<'a>(default_name: &str, default_network: &Ipv4Net, seas
     }
 
     if let Some(server) = dns {
-        for proto in &[NFTABLES_PROTOCOL_IPV4, NFTABLES_PROTOCOL_IPV6] {
+        for proto in &[NFTABLES_PROTOCOL_IPV4] {
             rules.push(Rule {
                 expr: vec![
                     Statement::Match(Match {
@@ -381,7 +381,7 @@ fn create_firewall_rules<'a>(default_name: &str, default_network: &Ipv4Net, seas
         }
     }
 
-    for proto in &[NFTABLES_PROTOCOL_IPV4, NFTABLES_PROTOCOL_IPV6] {
+    for proto in &[NFTABLES_PROTOCOL_IPV4] {
         rules.push(Rule {
             expr: vec![
                 Statement::Match(Match { left: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::Oifname })), right: Expression::String(Cow::Owned(default_name.to_string())), op: Operator::EQ }),

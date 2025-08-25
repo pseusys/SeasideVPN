@@ -66,6 +66,7 @@ jobs:
           test-command: ${{ env.TEST_COMMAND }} --local-port 44443
 
       - name: Install Dependencies 🔮
+        if: runner.os == 'Linux'
         working-directory: viridian/algae
         run: sudo apt-get install python3-nftables
 
