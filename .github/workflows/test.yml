@@ -90,7 +90,7 @@ jobs:
       SEASIDE_LOG_LEVEL: reeflib=DEBUG,INFO
       WINDIVERT_PATH: ${{ github.workspace }}/viridian/reef/windivert-bin
       SUDO: ${{ matrix.os == 'ubuntu' && 'sudo -E env "PATH=$PATH"' || '' }}
-      TEST_COMMAND: ${{ matrix.os == 'ubuntu' && 'nft list ruleset' || '& curl.exe -v -I --fail --max-time 15 https://1.1.1.1' }}
+      TEST_COMMAND: ${{ matrix.os == 'ubuntu' && 'curl' || '& curl.exe' }} -v -I --fail --max-time 15 https://1.1.1.1
     strategy:
       fail-fast: false
       matrix:
@@ -130,12 +130,12 @@ jobs:
       - name: Test Viridian Reef PORT (integration) 🧪
         id: test-viridian-reef-port
         working-directory: viridian/reef
-        run: ${{ env.SUDO }} cargo run --features cli-exec --bin cli -- -s port -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-ports ${{ env.TARGET_LOWER_PORT }}:${{ env.TARGET_HIGHER_PORT }} -e "${{ env.TEST_COMMAND }} --local-port 44444"
+        run: ${{ env.SUDO }} cargo run --features cli-exec --bin cli -- -s port -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-ports ${{ env.TARGET_LOWER_PORT }}:${{ env.TARGET_HIGHER_PORT }} -e "nft list ruleset"
 
       - name: Test Viridian Reef TYPHOON (integration) 🧪
         id: test-viridian-reef-typhoon
         working-directory: viridian/reef
-        run: ${{ env.SUDO }} cargo run --features cli-exec --bin cli -- -s typhoon -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-ports ${{ env.TARGET_LOWER_PORT }}:${{ env.TARGET_HIGHER_PORT }} -e "${{ env.TEST_COMMAND }} --local-port 44445"
+        run: ${{ env.SUDO }} cargo run --features cli-exec --bin cli -- -s typhoon -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-ports ${{ env.TARGET_LOWER_PORT }}:${{ env.TARGET_HIGHER_PORT }} -e "nft list ruleset"
 
   caerulean-whirlpool-test:
     name: Test Caerulean Whirlpool
