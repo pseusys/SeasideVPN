@@ -208,7 +208,7 @@ class Tunnel(AbstractAsyncContextManager):
             result_capture_interfaces += [def_iface_name]
         for interface in result_capture_interfaces:
             iface, _, _ = _SystemUtils._get_interface_info(label=interface)
-            self._nftables_rules += [_SystemUtils._create_marking_rule(iface.with_prefixlen, interface, None, sva_code, True)]
+            self._nftables_rules += [_SystemUtils._create_marking_rule(iface.with_prefixlen, interface, None, sva_code, True), _SystemUtils._create_allowing_rule(None, iface.with_prefixlen, interface, None, True)]
         logger.info(f"Capturing packets from interfaces: {Fore.BLUE}{result_capture_interfaces}{Fore.RESET}")
 
         capture_ranges = (list() if capture_ranges is None else capture_ranges) + (list() if capture_addresses is None else [f"{address}/32" for address in capture_addresses])
@@ -216,12 +216,12 @@ class Tunnel(AbstractAsyncContextManager):
 
         result_capture_ranges = list(set(capture_ranges) - set(exempt_ranges))
         for range in result_capture_ranges:
-            self._nftables_rules += [_SystemUtils._create_marking_rule(range, None, None, sva_code)]
+            self._nftables_rules += [_SystemUtils._create_marking_rule(range, None, None, sva_code), _SystemUtils._create_allowing_rule(None, range, None, None)]
         logger.info(f"Capturing packets from ranges: {Fore.BLUE}{result_capture_ranges}{Fore.RESET}")
 
         if capture_ports is not None:
-            self._nftables_rules += [_SystemUtils._create_marking_rule(None, None, ("tcp", capture_ports), sva_code)]
-            self._nftables_rules += [_SystemUtils._create_marking_rule(None, None, ("udp", capture_ports), sva_code)]
+            self._nftables_rules += [_SystemUtils._create_marking_rule(None, None, ("tcp", capture_ports), sva_code), _SystemUtils._create_allowing_rule(None, None, None, ("tcp", capture_ports))]
+            self._nftables_rules += [_SystemUtils._create_marking_rule(None, None, ("udp", capture_ports), sva_code), _SystemUtils._create_allowing_rule(None, None, None, ("udp", capture_ports))]
         logger.info(f"Capturing packets from ports: {Fore.BLUE}{capture_ports}{Fore.RESET}")
 
         result_exempt_ranges = list(set(exempt_ranges) - set(capture_ranges))
@@ -277,12 +277,12 @@ class Tunnel(AbstractAsyncContextManager):
         """
         self._run_nftables_commands(
             f"add table inet {self._TABLE_NAME}",
-            f"add chain inet {self._TABLE_NAME} {chain} {{ type {type} hook {chain} priority {priority}; policy accept; }}",
+            f"add chain inet {self._TABLE_NAME} {chain} {{ type {type} hook {chain} priority {priority}; }}",
             *[f"add rule inet {self._TABLE_NAME} {chain} {rule}" for rule in self._nftables_rules]
         )
 
     def _output_nftables_rules(self) -> str:
-        res, out, err = self._nft.cmd(f"list ruleset")  # table inet {self._TABLE_NAME}
+        res, out, err = self._nft.cmd(f"list table inet {self._TABLE_NAME}")
         if res != 0:
             raise ValueError(f"NFTables list command failed (error code {res}): {err}")
         return out
