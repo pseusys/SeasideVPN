@@ -65,6 +65,10 @@ jobs:
           higher_port: ${{ env.TARGET_HIGHER_PORT }}
           test-command: ${{ env.TEST_COMMAND }} --local-port 44443
 
+      - name: Install Dependencies 🔮
+        working-directory: viridian/algae
+        run: sudo apt install nftables
+
       - name: Test Viridian Algae PORT (standalone) 🧪
         id: test-viridian-algae-port
         working-directory: viridian/algae
