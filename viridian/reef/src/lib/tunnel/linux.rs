@@ -20,7 +20,7 @@ use nftables::expr::{Expression, Meta, MetaKey, NamedExpression, Payload, Payloa
 use nftables::helper::apply_ruleset;
 use nftables::schema::{Chain, NfListObject, Rule, Table};
 use nftables::stmt::{Mangle, Match, Operator, Statement};
-use nftables::types::{NfChainType, NfFamily, NfHook};
+use nftables::types::{NfChainPolicy, NfChainType, NfFamily, NfHook};
 use simple_error::{bail, require_with};
 use tun::{create_as_async, AsyncDevice, Configuration};
 
@@ -247,19 +247,6 @@ fn create_firewall_rules<'a>(default_name: &str, default_network: &Ipv4Net, seas
                 .into(),
                 ..Default::default()
             });
-            rules.push(Rule {
-                expr: vec![
-                    Statement::Match(Match { left: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::L4proto })), right: Expression::String(Cow::Borrowed(proto)), op: Operator::EQ }),
-                    Statement::Match(Match {
-                        left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_SOURCE_PORT) }))),
-                        right: Expression::Range(Box::new(Range { range: [Expression::Number(lowest as u32), Expression::Number(highest as u32)] })),
-                        op: Operator::IN,
-                    }),
-                    Statement::Accept(None),
-                ]
-                .into(),
-                ..Default::default()
-            });
         }
     }
 
@@ -273,18 +260,6 @@ fn create_firewall_rules<'a>(default_name: &str, default_network: &Ipv4Net, seas
                         op: Operator::EQ,
                     }),
                     Statement::Mangle(Mangle { key: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::Mark })), value: Expression::Number(svr_idx as u32) }),
-                ]
-                .into(),
-                ..Default::default()
-            });
-            rules.push(Rule {
-                expr: vec![
-                    Statement::Match(Match {
-                        left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_DESTINATION_ADDRESS) }))),
-                        right: Expression::String(Cow::Owned(range.to_string())),
-                        op: Operator::EQ,
-                    }),
-                    Statement::Accept(None),
                 ]
                 .into(),
                 ..Default::default()
@@ -309,19 +284,6 @@ fn create_firewall_rules<'a>(default_name: &str, default_network: &Ipv4Net, seas
                         op: Operator::NEQ,
                     }),
                     Statement::Mangle(Mangle { key: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::Mark })), value: Expression::Number(svr_idx as u32) }),
-                ]
-                .into(),
-                ..Default::default()
-            });
-            rules.push(Rule {
-                expr: vec![
-                    Statement::Match(Match { left: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::Oifname })), right: Expression::String(Cow::Owned(iface_val)), op: Operator::EQ }),
-                    Statement::Match(Match {
-                        left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_DESTINATION_ADDRESS) }))),
-                        right: Expression::String(Cow::Owned(addr_repr_val)),
-                        op: Operator::NEQ,
-                    }),
-                    Statement::Accept(None),
                 ]
                 .into(),
                 ..Default::default()
@@ -409,7 +371,7 @@ fn enable_firewall(firewall_rules: &Vec<Rule<'_>>) -> Result<(), Box<dyn Error>>
     let mut batch = Batch::new();
     batch.add(NfListObject::Table(Table { family: NfFamily::INet, name: Cow::Borrowed(NFTABLE_NAME), ..Default::default() }));
     for (cn, hk, tp, pri) in [(NFTABLES_OUTPUT_NAME, NfHook::Output, NfChainType::Route, NFTABLES_OUTPUT_PRIORITY), (NFTABLES_FORWARD_NAME, NfHook::Forward, NfChainType::Filter, NFTABLES_FORWARD_PRIORITY)].iter() {
-        batch.add(NfListObject::Chain(Chain { family: NfFamily::INet, table: Cow::Borrowed(NFTABLE_NAME), name: Cow::Borrowed(cn), _type: Some(*tp), hook: Some(*hk), prio: Some(*pri), ..Default::default() }));
+        batch.add(NfListObject::Chain(Chain { family: NfFamily::INet, table: Cow::Borrowed(NFTABLE_NAME), name: Cow::Borrowed(cn), _type: Some(*tp), hook: Some(*hk), prio: Some(*pri), policy: Some(NfChainPolicy::Accept), ..Default::default() }));
         for rule in firewall_rules {
             let mut cloned = rule.clone();
             cloned.family = NfFamily::INet;
