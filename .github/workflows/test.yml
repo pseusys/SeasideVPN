@@ -67,7 +67,7 @@ jobs:
 
       - name: Install Dependencies 🔮
         working-directory: viridian/algae
-        run: sudo apt install nftables
+        run: sudo apt-get install python3-nftables
 
       - name: Test Viridian Algae PORT (standalone) 🧪
         id: test-viridian-algae-port

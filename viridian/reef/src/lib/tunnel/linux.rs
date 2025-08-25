@@ -35,6 +35,15 @@ const NFTABLES_OUTPUT_PRIORITY: i32 = -100;
 const NFTABLES_FORWARD_NAME: &str = "forward";
 const NFTABLES_FORWARD_PRIORITY: i32 = 0;
 
+const NFTABLES_MARK_TARGET: &str = "meta mark";
+const NFTABLES_SOURCE_PORT: &str = "sport";
+const NFTABLES_SOURCE_ADDRESS: &str = "saddr";
+const NFTABLES_DESTINATION_ADDRESS: &str = "daddr";
+const NFTABLES_PROTOCOL_IPV4: &str = "ip";
+const NFTABLES_PROTOCOL_IPV6: &str = "ip6";
+const NFTABLES_PROTOCOL_TCP: &str = "tcp";
+const NFTABLES_PROTOCOL_UDP: &str = "udp";
+
 const FRA_MASK: Rta = Rta::UnrecognizedConst(10);
 const DEFAULT_RESOLV_CONF_PATH: &str = "/etc/resolv.conf";
 
@@ -225,107 +234,174 @@ fn create_firewall_rules<'a>(default_name: &str, default_network: &Ipv4Net, seas
     let mut rules = Vec::new();
 
     if let Some((lowest, highest)) = capture_ports {
-        for proto in &["tcp", "udp"] {
+        for proto in &[NFTABLES_PROTOCOL_TCP, NFTABLES_PROTOCOL_TCP] {
             rules.push(Rule {
                 expr: vec![
                     Statement::Match(Match { left: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::Protocol })), right: Expression::String(Cow::Borrowed(proto)), op: Operator::EQ }),
-                    Statement::Match(Match { left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed("ip"), field: Cow::Borrowed("sport") }))), right: Expression::Range(Box::new(Range { range: [Expression::Number(lowest as u32), Expression::Number(highest as u32)] })), op: Operator::IN }),
-                    Statement::Mangle(Mangle { key: Expression::String(Cow::Borrowed("meta mark")), value: Expression::Number(svr_idx as u32) })
-                ].into(),
+                    Statement::Match(Match {
+                        left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_SOURCE_PORT) }))),
+                        right: Expression::Range(Box::new(Range { range: [Expression::Number(lowest as u32), Expression::Number(highest as u32)] })),
+                        op: Operator::IN,
+                    }),
+                    Statement::Mangle(Mangle { key: Expression::String(Cow::Borrowed(NFTABLES_MARK_TARGET)), value: Expression::Number(svr_idx as u32) }),
+                ]
+                .into(),
                 ..Default::default()
             });
             rules.push(Rule {
                 expr: vec![
                     Statement::Match(Match { left: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::Protocol })), right: Expression::String(Cow::Borrowed(proto)), op: Operator::EQ }),
-                    Statement::Match(Match { left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed("ip"), field: Cow::Borrowed("sport") }))), right: Expression::Range(Box::new(Range { range: [Expression::Number(lowest as u32), Expression::Number(highest as u32)] })), op: Operator::IN }),
-                    Statement::Accept(None)
-                ].into(),
+                    Statement::Match(Match {
+                        left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_SOURCE_PORT) }))),
+                        right: Expression::Range(Box::new(Range { range: [Expression::Number(lowest as u32), Expression::Number(highest as u32)] })),
+                        op: Operator::IN,
+                    }),
+                    Statement::Accept(None),
+                ]
+                .into(),
                 ..Default::default()
             });
         }
     }
 
     for range in capture_ranges {
-        rules.push(Rule {
-            expr: vec![
-                Statement::Match(Match { left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed("ip"), field: Cow::Borrowed("dest") }))), right: Expression::String(Cow::Owned(range.to_string())), op: Operator::EQ }),
-                Statement::Mangle(Mangle { key: Expression::String(Cow::Borrowed("meta mark")), value: Expression::Number(svr_idx as u32) })
-            ].into(),
-            ..Default::default()
-        });
-        rules.push(Rule {
-            expr: vec![
-                Statement::Match(Match { left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed("ip"), field: Cow::Borrowed("dest") }))), right: Expression::String(Cow::Owned(range.to_string())), op: Operator::EQ }),
-                Statement::Accept(None)
-            ].into(),
-            ..Default::default()
-        });
+        for proto in &[NFTABLES_PROTOCOL_IPV4, NFTABLES_PROTOCOL_IPV6] {
+            rules.push(Rule {
+                expr: vec![
+                    Statement::Match(Match {
+                        left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_DESTINATION_ADDRESS) }))),
+                        right: Expression::String(Cow::Owned(range.to_string())),
+                        op: Operator::EQ,
+                    }),
+                    Statement::Mangle(Mangle { key: Expression::String(Cow::Borrowed(NFTABLES_MARK_TARGET)), value: Expression::Number(svr_idx as u32) }),
+                ]
+                .into(),
+                ..Default::default()
+            });
+            rules.push(Rule {
+                expr: vec![
+                    Statement::Match(Match {
+                        left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_DESTINATION_ADDRESS) }))),
+                        right: Expression::String(Cow::Owned(range.to_string())),
+                        op: Operator::EQ,
+                    }),
+                    Statement::Accept(None),
+                ]
+                .into(),
+                ..Default::default()
+            });
+        }
     }
 
     for iface in capture_iface {
         let (address, cidr) = get_device_address_and_cidr(&iface)?;
         let addr_repr = format!("{address}/{cidr}");
 
-        rules.push(Rule {
-            expr: vec![
-                Statement::Match(Match { left: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::Oifname })), right: Expression::String(Cow::Owned(iface.clone())), op: Operator::EQ }),
-                Statement::Match(Match { left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed("ip"), field: Cow::Borrowed("dest") }))), right: Expression::String(Cow::Owned(addr_repr.clone())), op: Operator::NEQ }),
-                Statement::Mangle(Mangle { key: Expression::String(Cow::Borrowed("meta mark")), value: Expression::Number(svr_idx as u32) })
-            ].into(),
-            ..Default::default()
-        });
-        rules.push(Rule {
-            expr: vec![
-                Statement::Match(Match { left: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::Oifname })), right: Expression::String(Cow::Owned(iface)), op: Operator::EQ }),
-                Statement::Match(Match { left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed("ip"), field: Cow::Borrowed("dest") }))), right: Expression::String(Cow::Owned(addr_repr)), op: Operator::NEQ }),
-                Statement::Accept(None)
-            ].into(),
-            ..Default::default()
-        });
+        for proto in &[NFTABLES_PROTOCOL_IPV4, NFTABLES_PROTOCOL_IPV6] {
+            let iface_val = iface.clone();
+            let addr_repr_val = addr_repr.clone();
+
+            rules.push(Rule {
+                expr: vec![
+                    Statement::Match(Match { left: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::Oifname })), right: Expression::String(Cow::Owned(iface_val.clone())), op: Operator::EQ }),
+                    Statement::Match(Match {
+                        left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_DESTINATION_ADDRESS) }))),
+                        right: Expression::String(Cow::Owned(addr_repr_val.clone())),
+                        op: Operator::NEQ,
+                    }),
+                    Statement::Mangle(Mangle { key: Expression::String(Cow::Borrowed(NFTABLES_MARK_TARGET)), value: Expression::Number(svr_idx as u32) }),
+                ]
+                .into(),
+                ..Default::default()
+            });
+            rules.push(Rule {
+                expr: vec![
+                    Statement::Match(Match { left: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::Oifname })), right: Expression::String(Cow::Owned(iface_val)), op: Operator::EQ }),
+                    Statement::Match(Match {
+                        left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_DESTINATION_ADDRESS) }))),
+                        right: Expression::String(Cow::Owned(addr_repr_val)),
+                        op: Operator::NEQ,
+                    }),
+                    Statement::Accept(None),
+                ]
+                .into(),
+                ..Default::default()
+            });
+        }
     }
 
     if let Some((lowest, highest)) = exempt_ports {
-        for proto in &["tcp", "udp"] {
+        for proto in &[NFTABLES_PROTOCOL_TCP, NFTABLES_PROTOCOL_UDP] {
             rules.push(Rule {
                 expr: vec![
                     Statement::Match(Match { left: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::Protocol })), right: Expression::String(Cow::Borrowed(proto)), op: Operator::EQ }),
-                    Statement::Match(Match { left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed("ip"), field: Cow::Borrowed("sport") }))), right: Expression::Range(Box::new(Range { range: [Expression::Number(lowest as u32), Expression::Number(highest as u32)] })), op: Operator::IN }),
-                    Statement::Accept(None)
-                ].into(),
+                    Statement::Match(Match {
+                        left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_SOURCE_PORT) }))),
+                        right: Expression::Range(Box::new(Range { range: [Expression::Number(lowest as u32), Expression::Number(highest as u32)] })),
+                        op: Operator::IN,
+                    }),
+                    Statement::Accept(None),
+                ]
+                .into(),
                 ..Default::default()
             });
         }
     }
 
     for range in exempt_ranges {
-        rules.push(Rule {
-            expr: vec![
-                Statement::Match(Match { left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed("ip"), field: Cow::Borrowed("dest") }))), right: Expression::String(Cow::Owned(range.to_string())), op: Operator::EQ }),
-                Statement::Accept(None)
-            ].into(),
-            ..Default::default()
-        });
+        for proto in &[NFTABLES_PROTOCOL_IPV4, NFTABLES_PROTOCOL_IPV6] {
+            rules.push(Rule {
+                expr: vec![
+                    Statement::Match(Match {
+                        left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_DESTINATION_ADDRESS) }))),
+                        right: Expression::String(Cow::Owned(range.to_string())),
+                        op: Operator::EQ,
+                    }),
+                    Statement::Accept(None),
+                ]
+                .into(),
+                ..Default::default()
+            });
+        }
     }
 
     if let Some(server) = dns {
+        for proto in &[NFTABLES_PROTOCOL_IPV4, NFTABLES_PROTOCOL_IPV6] {
+            rules.push(Rule {
+                expr: vec![
+                    Statement::Match(Match {
+                        left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_DESTINATION_ADDRESS) }))),
+                        right: Expression::String(Cow::Owned(server.clone())),
+                        op: Operator::EQ,
+                    }),
+                    Statement::Accept(None),
+                ]
+                .into(),
+                ..Default::default()
+            });
+        }
+    }
+
+    for proto in &[NFTABLES_PROTOCOL_IPV4, NFTABLES_PROTOCOL_IPV6] {
         rules.push(Rule {
             expr: vec![
-                Statement::Match(Match { left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed("ip"), field: Cow::Borrowed("dest") }))), right: Expression::String(Cow::Owned(server)), op: Operator::EQ }),
-                Statement::Accept(None)
-            ].into(),
+                Statement::Match(Match { left: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::Oifname })), right: Expression::String(Cow::Owned(default_name.to_string())), op: Operator::EQ }),
+                Statement::Match(Match {
+                    left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_SOURCE_ADDRESS) }))),
+                    right: Expression::String(Cow::Owned(default_network.addr().to_string())),
+                    op: Operator::EQ,
+                }),
+                Statement::Match(Match {
+                    left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_DESTINATION_ADDRESS) }))),
+                    right: Expression::String(Cow::Owned(seaside_address.to_string())),
+                    op: Operator::EQ,
+                }),
+                Statement::Accept(None),
+            ]
+            .into(),
             ..Default::default()
         });
     }
-
-    rules.push(Rule {
-        expr: vec![
-            Statement::Match(Match { left: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::Oifname })), right: Expression::String(Cow::Owned(default_name.to_string())), op: Operator::EQ }),
-            Statement::Match(Match { left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed("ip"), field: Cow::Borrowed("src") }))), right: Expression::String(Cow::Owned(default_network.addr().to_string())), op: Operator::EQ }),
-            Statement::Match(Match { left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed("ip"), field: Cow::Borrowed("dest") }))), right: Expression::String(Cow::Owned(seaside_address.to_string())), op: Operator::EQ }),
-            Statement::Accept(None)
-        ].into(),
-        ..Default::default()
-    });
 
     return Ok(rules);
 }
