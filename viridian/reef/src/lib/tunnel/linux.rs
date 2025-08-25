@@ -232,6 +232,44 @@ fn disable_routing(route_message: &Rtmsg, rule_message: &Rtmsg) -> DynResult<()>
 fn create_firewall_rules<'a>(default_name: &str, default_network: &Ipv4Net, seaside_address: &Ipv4Addr, dns: Option<String>, capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, capture_ports: Option<(u16, u16)>, exempt_ports: Option<(u16, u16)>, svr_idx: u8) -> DynResult<Vec<Rule<'a>>> {
     let mut rules = Vec::new();
 
+    if let Some(server) = dns {
+        for proto in &[NFTABLES_PROTOCOL_IPV4] {
+            rules.push(Rule {
+                expr: vec![
+                    Statement::Match(Match {
+                        left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_DESTINATION_ADDRESS) }))),
+                        right: Expression::String(Cow::Owned(server.clone())),
+                        op: Operator::EQ,
+                    }),
+                    Statement::Accept(None),
+                ]
+                .into(),
+                ..Default::default()
+            });
+        }
+    }
+
+    for proto in &[NFTABLES_PROTOCOL_IPV4] {
+        rules.push(Rule {
+            expr: vec![
+                Statement::Match(Match { left: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::Oifname })), right: Expression::String(Cow::Owned(default_name.to_string())), op: Operator::EQ }),
+                Statement::Match(Match {
+                    left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_SOURCE_ADDRESS) }))),
+                    right: Expression::String(Cow::Owned(default_network.addr().to_string())),
+                    op: Operator::EQ,
+                }),
+                Statement::Match(Match {
+                    left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_DESTINATION_ADDRESS) }))),
+                    right: Expression::String(Cow::Owned(seaside_address.to_string())),
+                    op: Operator::EQ,
+                }),
+                Statement::Accept(None),
+            ]
+            .into(),
+            ..Default::default()
+        });
+    }
+
     if let Some((lowest, highest)) = capture_ports {
         for proto in &[NFTABLES_PROTOCOL_TCP, NFTABLES_PROTOCOL_UDP] {
             rules.push(Rule {
@@ -324,44 +362,6 @@ fn create_firewall_rules<'a>(default_name: &str, default_network: &Ipv4Net, seas
                 ..Default::default()
             });
         }
-    }
-
-    if let Some(server) = dns {
-        for proto in &[NFTABLES_PROTOCOL_IPV4] {
-            rules.push(Rule {
-                expr: vec![
-                    Statement::Match(Match {
-                        left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_DESTINATION_ADDRESS) }))),
-                        right: Expression::String(Cow::Owned(server.clone())),
-                        op: Operator::EQ,
-                    }),
-                    Statement::Accept(None),
-                ]
-                .into(),
-                ..Default::default()
-            });
-        }
-    }
-
-    for proto in &[NFTABLES_PROTOCOL_IPV4] {
-        rules.push(Rule {
-            expr: vec![
-                Statement::Match(Match { left: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::Oifname })), right: Expression::String(Cow::Owned(default_name.to_string())), op: Operator::EQ }),
-                Statement::Match(Match {
-                    left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_SOURCE_ADDRESS) }))),
-                    right: Expression::String(Cow::Owned(default_network.addr().to_string())),
-                    op: Operator::EQ,
-                }),
-                Statement::Match(Match {
-                    left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_DESTINATION_ADDRESS) }))),
-                    right: Expression::String(Cow::Owned(seaside_address.to_string())),
-                    op: Operator::EQ,
-                }),
-                Statement::Accept(None),
-            ]
-            .into(),
-            ..Default::default()
-        });
     }
 
     return Ok(rules);

@@ -282,7 +282,7 @@ class Tunnel(AbstractAsyncContextManager):
         )
 
     def _output_nftables_rules(self) -> str:
-        res, out, err = self._nft.cmd(f"list table inet {self._TABLE_NAME}")
+        res, out, err = self._nft.cmd(f"list ruleset")  # table inet {self._TABLE_NAME}
         if res != 0:
             raise ValueError(f"NFTables list command failed (error code {res}): {err}")
         return out
@@ -303,7 +303,7 @@ class Tunnel(AbstractAsyncContextManager):
         """
         self._setup_nftables_rules(_SystemUtils._OUTPUT_CHAIN, _SystemUtils._OUTPUT_TYPE, _SystemUtils._OUTPUT_PRIORITY)
         self._setup_nftables_rules(_SystemUtils._FORWARD_CHAIN, _SystemUtils._FORWARD_TYPE, _SystemUtils._FORWARD_PRIORITY)
-        logger.debug(f"NFTables rules set to:\n\n{self._output_nftables_rules()}")
+        logger.debug(f"NFTables rules set to:\n{self._output_nftables_rules()}")
         logger.info(f"Packet forwarding with mark {Fore.BLUE}{self._sva_code}{Fore.RESET} via table {Fore.BLUE}{self._sva_code}{Fore.RESET} configured")
 
         with IPRoute() as ip:
