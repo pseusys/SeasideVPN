@@ -53,7 +53,7 @@ class _SystemUtils:
 
     _FORWARD_CHAIN = "forward"
     _FORWARD_TYPE = "filter"
-    _FORWARD_PRIORITY = -175
+    _FORWARD_PRIORITY = -50
 
     @classmethod
     def _create_tunnel(cls, name: str) -> Tuple[int, str]:
@@ -282,7 +282,7 @@ class Tunnel(AbstractAsyncContextManager):
         )
 
     def _output_nftables_rules(self) -> str:
-        res, out, err = self._nft.cmd(f"list ruleset")  # table inet {self._TABLE_NAME}
+        res, out, err = self._nft.cmd(f"list table inet {self._TABLE_NAME}")
         if res != 0:
             raise ValueError(f"NFTables list command failed (error code {res}): {err}")
         return out

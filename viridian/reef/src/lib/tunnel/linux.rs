@@ -33,7 +33,7 @@ const NFTABLE_NAME: &str = "seaside";
 const NFTABLES_OUTPUT_NAME: &str = "output";
 const NFTABLES_OUTPUT_PRIORITY: i32 = -175;
 const NFTABLES_FORWARD_NAME: &str = "forward";
-const NFTABLES_FORWARD_PRIORITY: i32 = -175;
+const NFTABLES_FORWARD_PRIORITY: i32 = -50;
 
 const NFTABLES_SOURCE_PORT: &str = "sport";
 const NFTABLES_SOURCE_ADDRESS: &str = "saddr";
