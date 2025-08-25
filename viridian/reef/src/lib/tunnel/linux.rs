@@ -35,7 +35,6 @@ const NFTABLES_OUTPUT_PRIORITY: i32 = -100;
 const NFTABLES_FORWARD_NAME: &str = "forward";
 const NFTABLES_FORWARD_PRIORITY: i32 = 0;
 
-const NFTABLES_MARK_TARGET: &str = "meta mark";
 const NFTABLES_SOURCE_PORT: &str = "sport";
 const NFTABLES_SOURCE_ADDRESS: &str = "saddr";
 const NFTABLES_DESTINATION_ADDRESS: &str = "daddr";
@@ -243,7 +242,7 @@ fn create_firewall_rules<'a>(default_name: &str, default_network: &Ipv4Net, seas
                         right: Expression::Range(Box::new(Range { range: [Expression::Number(lowest as u32), Expression::Number(highest as u32)] })),
                         op: Operator::IN,
                     }),
-                    Statement::Mangle(Mangle { key: Expression::String(Cow::Borrowed(NFTABLES_MARK_TARGET)), value: Expression::Number(svr_idx as u32) }),
+                    Statement::Mangle(Mangle { key: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::Mark })), value: Expression::Number(svr_idx as u32) }),
                 ]
                 .into(),
                 ..Default::default()
@@ -273,7 +272,7 @@ fn create_firewall_rules<'a>(default_name: &str, default_network: &Ipv4Net, seas
                         right: Expression::String(Cow::Owned(range.to_string())),
                         op: Operator::EQ,
                     }),
-                    Statement::Mangle(Mangle { key: Expression::String(Cow::Borrowed(NFTABLES_MARK_TARGET)), value: Expression::Number(svr_idx as u32) }),
+                    Statement::Mangle(Mangle { key: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::Mark })), value: Expression::Number(svr_idx as u32) }),
                 ]
                 .into(),
                 ..Default::default()
@@ -309,7 +308,7 @@ fn create_firewall_rules<'a>(default_name: &str, default_network: &Ipv4Net, seas
                         right: Expression::String(Cow::Owned(addr_repr_val.clone())),
                         op: Operator::NEQ,
                     }),
-                    Statement::Mangle(Mangle { key: Expression::String(Cow::Borrowed(NFTABLES_MARK_TARGET)), value: Expression::Number(svr_idx as u32) }),
+                    Statement::Mangle(Mangle { key: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::Mark })), value: Expression::Number(svr_idx as u32) }),
                 ]
                 .into(),
                 ..Default::default()
