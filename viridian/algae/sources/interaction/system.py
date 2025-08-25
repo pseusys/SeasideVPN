@@ -282,7 +282,7 @@ class Tunnel(AbstractAsyncContextManager):
         )
 
     def _output_nftables_rules(self) -> str:
-        res, out, err = self._nft.cmd(f"list table inet {self._TABLE_NAME}")
+        res, out, err = self._nft.cmd(f"list ruleset")  # table inet {self._TABLE_NAME}
         if res != 0:
             raise ValueError(f"NFTables list command failed (error code {res}): {err}")
         return out
