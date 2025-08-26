@@ -82,7 +82,7 @@ func readSysctlInt(path string) (uint8, error) {
 }
 
 func writeSysctlInt(path string, value uint8) error {
-	data := []byte(strconv.Itoa(int(value)))
+	data := []byte(fmt.Sprintf("%d\n", value))
 	err := os.WriteFile(path, data, DEFAULT_FILE_PERMISSIONS)
 	if err != nil {
 		return fmt.Errorf("failed to write to file at %s: %v", path, err)
@@ -110,7 +110,7 @@ func Preserve() (*TunnelConfig, error) {
 		Default:        defaultNet,
 		mtu:            mtu,
 		name:           name,
-    forwardingIPv4: forwardingIPv4,
+		forwardingIPv4: forwardingIPv4,
 	}
 
 	return &conf, nil
