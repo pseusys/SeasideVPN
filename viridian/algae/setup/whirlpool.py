@@ -156,7 +156,7 @@ class WhirlpoolInstaller(Installer):
         self._logger.debug("Certificates ready!")
 
     def _configure_server(self) -> None:
-        check_install_packages("iptables")
+        check_install_packages("nftables")
         if int(_ACCEPT_IPV6_CONF.read_text()) != 0:
             self._logger.info("Disabling IPv6 for the server...")
             _ACCEPT_IPV6_CONF.write_text("0")

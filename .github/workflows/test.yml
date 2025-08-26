@@ -68,12 +68,12 @@ jobs:
       - name: Test Viridian Algae PORT (standalone) 🧪
         id: test-viridian-algae-port
         working-directory: viridian/algae
-        run: sudo -E env "PATH=$PATH" poetry poe client -s port -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-ports "${{ env.TARGET_LOWER_PORT }}:${{ env.TARGET_HIGHER_PORT }}" -e "${{ env.TEST_COMMAND }} --local-port 44444"
+        run: sudo -E env "PATH=$PATH" poetry poe client -s port -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-ports "${{ env.TARGET_LOWER_PORT }}-${{ env.TARGET_HIGHER_PORT }}" -e "${{ env.TEST_COMMAND }} --local-port 44444"
 
       - name: Test Viridian Algae TYPHOON (standalone) 🧪
         id: test-viridian-algae-typhoon
         working-directory: viridian/algae
-        run: sudo -E env "PATH=$PATH" poetry poe client -s typhoon -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-ports "${{ env.TARGET_LOWER_PORT }}:${{ env.TARGET_HIGHER_PORT }}" -e "${{ env.TEST_COMMAND }} --local-port 44445"
+        run: sudo -E env "PATH=$PATH" poetry poe client -s typhoon -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-ports "${{ env.TARGET_LOWER_PORT }}-${{ env.TARGET_HIGHER_PORT }}" -e "${{ env.TEST_COMMAND }} --local-port 44445"
 
   viridian-reef-test:
     name: Test Viridian Reef
@@ -125,12 +125,12 @@ jobs:
       - name: Test Viridian Reef PORT (integration) 🧪
         id: test-viridian-reef-port
         working-directory: viridian/reef
-        run: ${{ env.SUDO }} cargo run --features cli-exec --bin cli -- -s port -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-ports ${{ env.TARGET_LOWER_PORT }}:${{ env.TARGET_HIGHER_PORT }} -e "${{ env.TEST_COMMAND }} --local-port 44444"
+        run: ${{ env.SUDO }} cargo run --features cli-exec --bin cli -- -s port -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-ports ${{ env.TARGET_LOWER_PORT }}-${{ env.TARGET_HIGHER_PORT }} -e "${{ env.TEST_COMMAND }} --local-port 44444"
 
       - name: Test Viridian Reef TYPHOON (integration) 🧪
         id: test-viridian-reef-typhoon
         working-directory: viridian/reef
-        run: ${{ env.SUDO }} cargo run --features cli-exec --bin cli -- -s typhoon -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-ports ${{ env.TARGET_LOWER_PORT }}:${{ env.TARGET_HIGHER_PORT }} -e "${{ env.TEST_COMMAND }} --local-port 44445"
+        run: ${{ env.SUDO }} cargo run --features cli-exec --bin cli -- -s typhoon -l "${{ steps.setup-test-server.outputs.connection-link }}" --capture-ports ${{ env.TARGET_LOWER_PORT }}-${{ env.TARGET_HIGHER_PORT }} -e "${{ env.TEST_COMMAND }} --local-port 44445"
 
   caerulean-whirlpool-test:
     name: Test Caerulean Whirlpool

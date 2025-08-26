@@ -33,7 +33,7 @@ impl<'a> ByteBuffer<'a> {
 
 impl<'a> ByteBuffer<'a> {
     #[inline]
-    pub fn get(&self, at: usize) -> Ref<u8> {
+    pub fn get(&self, at: usize) -> Ref<'_, u8> {
         Ref::map(self.data.borrow(), |b| &b[self.start + at])
     }
 
@@ -44,47 +44,47 @@ impl<'a> ByteBuffer<'a> {
     }
 
     #[inline]
-    pub fn slice(&self) -> Ref<[u8]> {
+    pub fn slice(&self) -> Ref<'_, [u8]> {
         Ref::map(self.data.borrow(), |b| &b[self.start..self.end])
     }
 
     #[inline]
-    pub fn slice_mut(&self) -> RefMut<[u8]> {
+    pub fn slice_mut(&self) -> RefMut<'_, [u8]> {
         RefMut::map(self.data.borrow_mut(), |b| &mut b[self.start..self.end])
     }
 
     #[inline]
-    pub fn slice_start(&self, start: usize) -> Ref<[u8]> {
+    pub fn slice_start(&self, start: usize) -> Ref<'_, [u8]> {
         Ref::map(self.data.borrow(), |b| &b[self.start + start..self.end])
     }
 
     #[inline]
-    pub fn slice_start_mut(&self, start: usize) -> RefMut<[u8]> {
+    pub fn slice_start_mut(&self, start: usize) -> RefMut<'_, [u8]> {
         RefMut::map(self.data.borrow_mut(), |b| &mut b[self.start + start..self.end])
     }
 
     #[inline]
-    pub fn slice_end(&self, end: usize) -> Ref<[u8]> {
+    pub fn slice_end(&self, end: usize) -> Ref<'_, [u8]> {
         Ref::map(self.data.borrow(), |b| &b[self.start..self.start + end])
     }
 
     #[inline]
-    pub fn slice_end_mut(&self, end: usize) -> RefMut<[u8]> {
+    pub fn slice_end_mut(&self, end: usize) -> RefMut<'_, [u8]> {
         RefMut::map(self.data.borrow_mut(), |b| &mut b[self.start..self.start + end])
     }
 
     #[inline]
-    pub fn slice_both(&self, start: usize, end: usize) -> Ref<[u8]> {
+    pub fn slice_both(&self, start: usize, end: usize) -> Ref<'_, [u8]> {
         Ref::map(self.data.borrow(), |b| &b[self.start + start..self.start + end])
     }
 
     #[inline]
-    pub fn slice_both_mut(&self, start: usize, end: usize) -> RefMut<[u8]> {
+    pub fn slice_both_mut(&self, start: usize, end: usize) -> RefMut<'_, [u8]> {
         RefMut::map(self.data.borrow_mut(), |b| &mut b[self.start + start..self.start + end])
     }
 
     #[inline]
-    pub fn split(&self, divide: usize) -> (Ref<[u8]>, Ref<[u8]>) {
+    pub fn split(&self, divide: usize) -> (Ref<'_, [u8]>, Ref<'_, [u8]>) {
         let new_divide = self.start + divide;
         (Ref::map(self.data.borrow(), |b| &b[self.start..new_divide]), Ref::map(self.data.borrow(), |b| &b[new_divide..self.end]))
     }

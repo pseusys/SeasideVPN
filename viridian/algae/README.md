@@ -14,7 +14,7 @@ Created mainly for development and testing purposes.
   Installation guide can be found [here](https://www.python.org/downloads/).
 2. `poetry` (build system) version >= 2.0
   Installation guide can be found [here](https://python-poetry.org/docs/#installation).
-3. System packages: `iptables`, `iproute2`.
+3. System packages: `nftables`, `iproute2`.
 
 ## Configuration and running
 

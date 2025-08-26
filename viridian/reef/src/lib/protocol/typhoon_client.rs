@@ -308,7 +308,7 @@ impl Clone for TyphoonClient {
 }
 
 impl Reader for TyphoonClient {
-    async fn read_bytes(&mut self) -> DynResult<ByteBuffer> {
+    async fn read_bytes(&mut self) -> DynResult<ByteBuffer<'_>> {
         debug!("Reading started (at {}, from {})...", self.internal.socket.local_addr()?, self.internal.socket.peer_addr()?);
         loop {
             let buffer = get_buffer(None).await;
