@@ -90,7 +90,7 @@ impl<'a> Viridian<'a> {
         let capture_ranges_set = capture_ranges_pre.difference(&exempt_ranges_pre).cloned().collect();
         let exempt_ranges_set = exempt_ranges_pre.difference(&capture_ranges_pre).cloned().collect();
 
-        let port_match = Regex::new(r"^(?P<lowest>\d+):(?P<highest>\d+)$")?;
+        let port_match = Regex::new(r"^(?P<lowest>\d+)-(?P<highest>\d+)$")?;
 
         let capture_port_range = if let None = capture_ports {
             None

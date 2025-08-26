@@ -2,6 +2,7 @@
 #[path = "../../../tests/tunnel/linux.rs"]
 mod linux_test;
 
+use std::borrow::Cow;
 use std::collections::HashSet;
 use std::error::Error;
 use std::fs::{read_to_string, write, File};
@@ -14,6 +15,12 @@ use neli::consts::nl::NlTypeWrapper;
 use neli::consts::rtnl::{Ifa, Ifla, RtTable, Rta, Rtm};
 use neli::rtnl::{Ifinfomsg, Rtmsg};
 use neli::socket::NlSocketHandle;
+use nftables::batch::Batch;
+use nftables::expr::{Expression, Meta, MetaKey, NamedExpression, Payload, PayloadField, Range};
+use nftables::helper::apply_ruleset;
+use nftables::schema::{Chain, NfListObject, Rule, Table};
+use nftables::stmt::{Mangle, Match, Operator, Statement};
+use nftables::types::{NfChainType, NfFamily, NfHook};
 use simple_error::{bail, require_with};
 use tun::{create_as_async, AsyncDevice, Configuration};
 
@@ -21,6 +28,20 @@ use crate::tunnel::nl_utils::{copy_rtmsg, create_address_message, create_attr, c
 use crate::tunnel::{bytes_to_int, bytes_to_ip_address, bytes_to_string, string_to_bytes, Tunnelling};
 use crate::utils::parse_env;
 use crate::DynResult;
+
+const NFTABLE_NAME: &str = "seaside";
+const NFTABLES_OUTPUT_NAME: &str = "output";
+const NFTABLES_OUTPUT_PRIORITY: i32 = -175;
+const NFTABLES_FORWARD_NAME: &str = "forward";
+const NFTABLES_FORWARD_PRIORITY: i32 = -50;
+
+const NFTABLES_SOURCE_PORT: &str = "sport";
+const NFTABLES_SOURCE_ADDRESS: &str = "saddr";
+const NFTABLES_DESTINATION_ADDRESS: &str = "daddr";
+const NFTABLES_PROTOCOL_IPV4: &str = "ip";
+// const NFTABLES_PROTOCOL_IPV6: &str = "ip6";
+const NFTABLES_PROTOCOL_TCP: &str = "tcp";
+const NFTABLES_PROTOCOL_UDP: &str = "udp";
 
 const FRA_MASK: Rta = Rta::UnrecognizedConst(10);
 const DEFAULT_RESOLV_CONF_PATH: &str = "/etc/resolv.conf";
@@ -208,55 +229,202 @@ fn disable_routing(route_message: &Rtmsg, rule_message: &Rtmsg) -> DynResult<()>
     Ok(())
 }
 
-fn create_firewall_rules(default_name: &str, default_network: &Ipv4Net, seaside_address: &Ipv4Addr, dns: Option<String>, capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, capture_ports: Option<(u16, u16)>, exempt_ports: Option<(u16, u16)>, svr_idx: u8) -> DynResult<Vec<String>> {
+fn create_firewall_rules<'a>(default_name: &str, default_network: &Ipv4Net, seaside_address: &Ipv4Addr, dns: Option<String>, capture_iface: HashSet<String>, capture_ranges: HashSet<Ipv4Net>, exempt_ranges: HashSet<Ipv4Net>, capture_ports: Option<(u16, u16)>, exempt_ports: Option<(u16, u16)>, svr_idx: u8) -> DynResult<Vec<Rule<'a>>> {
     let mut rules = Vec::new();
+
+    if let Some(server) = dns {
+        for proto in &[NFTABLES_PROTOCOL_IPV4] {
+            rules.push(Rule {
+                expr: vec![
+                    Statement::Match(Match {
+                        left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_DESTINATION_ADDRESS) }))),
+                        right: Expression::String(Cow::Owned(server.clone())),
+                        op: Operator::EQ,
+                    }),
+                    Statement::Accept(None),
+                ]
+                .into(),
+                ..Default::default()
+            });
+        }
+    }
+
+    for proto in &[NFTABLES_PROTOCOL_IPV4] {
+        rules.push(Rule {
+            expr: vec![
+                Statement::Match(Match { left: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::Oifname })), right: Expression::String(Cow::Owned(default_name.to_string())), op: Operator::EQ }),
+                Statement::Match(Match {
+                    left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_SOURCE_ADDRESS) }))),
+                    right: Expression::String(Cow::Owned(default_network.addr().to_string())),
+                    op: Operator::EQ,
+                }),
+                Statement::Match(Match {
+                    left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_DESTINATION_ADDRESS) }))),
+                    right: Expression::String(Cow::Owned(seaside_address.to_string())),
+                    op: Operator::EQ,
+                }),
+                Statement::Accept(None),
+            ]
+            .into(),
+            ..Default::default()
+        });
+    }
+
     if let Some((lowest, highest)) = capture_ports {
-        rules.push(format!("-p tcp --sport {lowest}:{highest} -j ACCEPT"));
-        rules.push(format!("-p tcp --sport {lowest}:{highest} -j MARK --set-mark {svr_idx}"));
-        rules.push(format!("-p udp --sport {lowest}:{highest} -j ACCEPT"));
-        rules.push(format!("-p udp --sport {lowest}:{highest} -j MARK --set-mark {svr_idx}"));
+        for proto in &[NFTABLES_PROTOCOL_TCP, NFTABLES_PROTOCOL_UDP] {
+            rules.push(Rule {
+                expr: vec![
+                    Statement::Match(Match { left: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::L4proto })), right: Expression::String(Cow::Borrowed(proto)), op: Operator::EQ }),
+                    Statement::Match(Match {
+                        left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_SOURCE_PORT) }))),
+                        right: Expression::Range(Box::new(Range { range: [Expression::Number(lowest as u32), Expression::Number(highest as u32)] })),
+                        op: Operator::IN,
+                    }),
+                    Statement::Mangle(Mangle { key: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::Mark })), value: Expression::Number(svr_idx as u32) }),
+                ]
+                .into(),
+                ..Default::default()
+            });
+            rules.push(Rule {
+                expr: vec![
+                    Statement::Match(Match { left: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::L4proto })), right: Expression::String(Cow::Borrowed(proto)), op: Operator::EQ }),
+                    Statement::Match(Match {
+                        left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_SOURCE_PORT) }))),
+                        right: Expression::Range(Box::new(Range { range: [Expression::Number(lowest as u32), Expression::Number(highest as u32)] })),
+                        op: Operator::IN,
+                    }),
+                    Statement::Accept(None),
+                ]
+                .into(),
+                ..Default::default()
+            });
+        }
     }
+
     for range in capture_ranges {
-        rules.push(format!("-d {range} -j ACCEPT"));
-        rules.push(format!("-d {range} -j MARK --set-mark {svr_idx}"));
+        for proto in &[NFTABLES_PROTOCOL_IPV4] {
+            rules.push(Rule {
+                expr: vec![
+                    Statement::Match(Match {
+                        left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_DESTINATION_ADDRESS) }))),
+                        right: Expression::String(Cow::Owned(range.to_string())),
+                        op: Operator::EQ,
+                    }),
+                    Statement::Mangle(Mangle { key: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::Mark })), value: Expression::Number(svr_idx as u32) }),
+                ]
+                .into(),
+                ..Default::default()
+            });
+            rules.push(Rule {
+                expr: vec![
+                    Statement::Match(Match {
+                        left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_DESTINATION_ADDRESS) }))),
+                        right: Expression::String(Cow::Owned(range.to_string())),
+                        op: Operator::EQ,
+                    }),
+                    Statement::Accept(None),
+                ]
+                .into(),
+                ..Default::default()
+            });
+        }
     }
+
     for iface in capture_iface {
         let (address, cidr) = get_device_address_and_cidr(&iface)?;
-        rules.push(format!("-o {iface} ! -d {address}/{cidr} -j ACCEPT"));
-        rules.push(format!("-o {iface} ! -d {address}/{cidr} -j MARK --set-mark {svr_idx}"));
+        let addr_repr = format!("{address}/{cidr}");
+
+        for proto in &[NFTABLES_PROTOCOL_IPV4] {
+            let iface_val = iface.clone();
+            let addr_repr_val = addr_repr.clone();
+
+            rules.push(Rule {
+                expr: vec![
+                    Statement::Match(Match { left: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::Oifname })), right: Expression::String(Cow::Owned(iface_val.clone())), op: Operator::EQ }),
+                    Statement::Match(Match {
+                        left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_DESTINATION_ADDRESS) }))),
+                        right: Expression::String(Cow::Owned(addr_repr_val.clone())),
+                        op: Operator::NEQ,
+                    }),
+                    Statement::Mangle(Mangle { key: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::Mark })), value: Expression::Number(svr_idx as u32) }),
+                ]
+                .into(),
+                ..Default::default()
+            });
+            rules.push(Rule {
+                expr: vec![
+                    Statement::Match(Match { left: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::Oifname })), right: Expression::String(Cow::Owned(iface_val)), op: Operator::EQ }),
+                    Statement::Match(Match {
+                        left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_DESTINATION_ADDRESS) }))),
+                        right: Expression::String(Cow::Owned(addr_repr_val)),
+                        op: Operator::NEQ,
+                    }),
+                    Statement::Accept(None),
+                ]
+                .into(),
+                ..Default::default()
+            });
+        }
     }
+
     if let Some((lowest, highest)) = exempt_ports {
-        rules.push(format!("-p tcp --sport {lowest}:{highest} -j ACCEPT"));
-        rules.push(format!("-p udp --sport {lowest}:{highest} -j ACCEPT"));
+        for proto in &[NFTABLES_PROTOCOL_TCP, NFTABLES_PROTOCOL_UDP] {
+            rules.push(Rule {
+                expr: vec![
+                    Statement::Match(Match { left: Expression::Named(NamedExpression::Meta(Meta { key: MetaKey::L4proto })), right: Expression::String(Cow::Borrowed(proto)), op: Operator::EQ }),
+                    Statement::Match(Match {
+                        left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_SOURCE_PORT) }))),
+                        right: Expression::Range(Box::new(Range { range: [Expression::Number(lowest as u32), Expression::Number(highest as u32)] })),
+                        op: Operator::IN,
+                    }),
+                    Statement::Accept(None),
+                ]
+                .into(),
+                ..Default::default()
+            });
+        }
     }
+
     for range in exempt_ranges {
-        rules.push(format!("-d {range} -j ACCEPT"));
+        for proto in &[NFTABLES_PROTOCOL_IPV4] {
+            rules.push(Rule {
+                expr: vec![
+                    Statement::Match(Match {
+                        left: Expression::Named(NamedExpression::Payload(Payload::PayloadField(PayloadField { protocol: Cow::Borrowed(proto), field: Cow::Borrowed(NFTABLES_DESTINATION_ADDRESS) }))),
+                        right: Expression::String(Cow::Owned(range.to_string())),
+                        op: Operator::EQ,
+                    }),
+                    Statement::Accept(None),
+                ]
+                .into(),
+                ..Default::default()
+            });
+        }
     }
-    if let Some(server) = dns {
-        rules.push(format!("-d {server} -j ACCEPT"));
-    }
-    rules.push(format!("-o {default_name} -s {} -d {seaside_address} -j ACCEPT", default_network.addr()));
+
     return Ok(rules);
 }
 
-fn enable_firewall(firewall_rules: &Vec<String>) -> Result<(), Box<dyn Error>> {
-    let ipt = iptables::new(false)?;
-    for chain in ["OUTPUT", "FORWARD"].iter() {
-        for rule in firewall_rules.iter() {
-            ipt.insert_unique("mangle", chain, rule, 1)?;
+fn enable_firewall(firewall_rules: &Vec<Rule<'_>>) -> Result<(), Box<dyn Error>> {
+    let mut batch = Batch::new();
+    batch.add(NfListObject::Table(Table { family: NfFamily::INet, name: Cow::Borrowed(NFTABLE_NAME), ..Default::default() }));
+    for (cn, hk, tp, pri) in [(NFTABLES_OUTPUT_NAME, NfHook::Output, NfChainType::Route, NFTABLES_OUTPUT_PRIORITY), (NFTABLES_FORWARD_NAME, NfHook::Forward, NfChainType::Filter, NFTABLES_FORWARD_PRIORITY)].iter() {
+        batch.add(NfListObject::Chain(Chain { family: NfFamily::INet, table: Cow::Borrowed(NFTABLE_NAME), name: Cow::Borrowed(cn), _type: Some(*tp), hook: Some(*hk), prio: Some(*pri), ..Default::default() }));
+        for rule in firewall_rules {
+            let mut cloned = rule.clone();
+            cloned.family = NfFamily::INet;
+            cloned.table = NFTABLE_NAME.into();
+            cloned.chain = Cow::Borrowed(cn);
+            batch.add(NfListObject::Rule(cloned));
         }
     }
-    Ok(())
+    Ok(apply_ruleset(&batch.to_nftables())?)
 }
 
-fn disable_firewall(firewall_rules: &Vec<String>) -> Result<(), Box<dyn Error>> {
-    let ipt = iptables::new(false)?;
-    for chain in ["OUTPUT", "FORWARD"].iter() {
-        for rule in firewall_rules.iter() {
-            ipt.delete("mangle", chain, rule)?;
-        }
-    }
-    Ok(())
+fn disable_firewall() -> Result<(), Box<dyn Error>> {
+    let mut batch = Batch::new();
+    batch.delete(NfListObject::Table(Table { family: NfFamily::INet, name: NFTABLE_NAME.into(), ..Default::default() }));
+    Ok(apply_ruleset(&batch.to_nftables())?)
 }
 
 pub struct TunnelInternal {
@@ -267,7 +435,6 @@ pub struct TunnelInternal {
     svr_data: Vec<Rtmsg>,
     route_message: Rtmsg,
     rule_message: Rtmsg,
-    firewall_table: Vec<String>,
 }
 
 impl TunnelInternal {
@@ -310,7 +477,7 @@ impl TunnelInternal {
         };
 
         debug!("Creating tunnel handle...");
-        Ok(Self { default_address, tunnel_device, resolv_conf, resolv_path, svr_data, route_message, rule_message, firewall_table })
+        Ok(Self { default_address, tunnel_device, resolv_conf, resolv_path, svr_data, route_message, rule_message })
     }
 }
 
@@ -328,7 +495,7 @@ impl Drop for TunnelInternal {
     #[allow(unused_must_use)]
     fn drop(&mut self) {
         debug!("Disabling firewall...");
-        disable_firewall(&self.firewall_table).inspect_err(|e| error!("Error disabling firewall: {e}"));
+        disable_firewall().inspect_err(|e| error!("Error disabling firewall: {e}"));
 
         debug!("Resetting routing...");
         disable_routing(&self.route_message, &self.rule_message).inspect_err(|e| error!("Error resetting routing: {e}"));

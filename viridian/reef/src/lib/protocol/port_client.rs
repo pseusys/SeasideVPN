@@ -102,7 +102,7 @@ pub struct PortClientWriter {
 }
 
 impl Reader for PortClientReader {
-    async fn read_bytes(&mut self) -> DynResult<ByteBuffer> {
+    async fn read_bytes(&mut self) -> DynResult<ByteBuffer<'_>> {
         let buffer = get_buffer(None).await;
 
         let header_end = get_type_size::<AnyOtherHeader>()? + Symmetric::ciphertext_overhead();
