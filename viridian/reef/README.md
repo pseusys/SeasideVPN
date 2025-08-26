@@ -101,6 +101,8 @@ iptables -t mangle -I INPUT 1 -i <INPUT_INTERFACE> -j ACCEPT
 iptables -t mangle -I INPUT 1 -i <INPUT_INTERFACE> -j MARK --set-mark <SVR_CODE>
 ```
 
+And don't forget enabling IPv4 packet forwarding by running: `echo 1 > /proc/sys/net/ipv4/ip_forward`.
+
 ### Windows
 
 Running reef on Windows is not as easy as for Linux.

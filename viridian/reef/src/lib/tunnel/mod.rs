@@ -10,8 +10,6 @@ use crate::{DynResult, Reader, Writer};
 #[cfg(target_os = "linux")]
 mod linux;
 #[cfg(target_os = "linux")]
-mod nl_utils;
-#[cfg(target_os = "linux")]
 use linux::*;
 
 #[cfg(target_os = "windows")]
@@ -20,9 +18,6 @@ mod ptr_utils;
 mod windows;
 #[cfg(target_os = "windows")]
 use windows::*;
-
-mod utils;
-pub use utils::*;
 
 trait Tunnelling {
     async fn recv(&self, buf: &mut [u8]) -> DynResult<usize>;
