@@ -48,7 +48,7 @@ The basic idea behind viridian reef app is the following:
 The most system-dependant part of reef is its **VPN head**, while the rest are mostly written in platform-independent manner.
 
 On linux the head is implemented using fine-grained packet filtering and double forwarding.
-For that, first the packets are "marked" with `iptables` rules and then they are routed by a specific routing table, which sends them to a TUN interface.
+For that, first the packets are "marked" with `nftables` rules and then they are routed by a specific routing table, which sends them to a TUN interface.
 Reef client captures all the packets from the interface and sends them to the server (that is why it's important to configure your system so that it doesn't send any random packets to the newly-created interfaces).
 When a server response needs to be injected into the network stack, it is again written to the tunnel interface, so that it appears as it has been received from outside.
 
@@ -84,6 +84,8 @@ Still, if you have chosen to thread this path, here are some hints (but still, p
 
 ### Linux
 
+> Depends on: `nftables`, `iproute2`
+
 Linux executable is self-contained and relies on system packages only.
 It is advisable to pair it with an environment file, defining all the variables you would like to use (see [sample environment file](./example.conf.env) and [protocol environment file](../algae/typhoon/example.conf.env)).
 The launch command in that case will be something like this:
@@ -104,6 +106,8 @@ iptables -t mangle -I INPUT 1 -i <INPUT_INTERFACE> -j MARK --set-mark <SVR_CODE>
 And don't forget enabling IPv4 packet forwarding by running: `echo 1 > /proc/sys/net/ipv4/ip_forward`.
 
 ### Windows
+
+> Depends on: `WinDivert`, `WMI`, `IP Helper`
 
 Running reef on Windows is not as easy as for Linux.
 

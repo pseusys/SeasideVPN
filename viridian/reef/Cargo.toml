@@ -33,7 +33,7 @@ url = "^2.5.4"
 x25519-dalek = { version = "^2.0.1", features = ["static_secrets"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-iptables = "^0.5.1"
+nftables = "^0.6.3"
 rtnetlink = "^0.17.0"
 tun = { version = "^0.7.1", features = ["async"] }
 

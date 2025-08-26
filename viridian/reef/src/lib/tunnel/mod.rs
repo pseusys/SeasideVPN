@@ -43,7 +43,7 @@ impl Tunnel {
 }
 
 impl Reader for Tunnel {
-    async fn read_bytes(&mut self) -> DynResult<ByteBuffer> {
+    async fn read_bytes(&mut self) -> DynResult<ByteBuffer<'_>> {
         let buffer = get_buffer(None).await;
         let read = match self.tunnel.recv(&mut buffer.slice_mut()).await {
             Ok(res) => res,
