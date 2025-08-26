@@ -92,8 +92,6 @@ Before whirlpool node can be run, the following configuration steps have to be m
 
 - Disable IPv6 router solicitation (for tunnel interface):
   `echo 0 > /proc/sys/net/ipv6/conf/default/accept_ra`
-- Enable IP packet forwarding:
-  `echo 1 > /proc/sys/net/ipv4/ip_forward`
 
 ### Local whirlpool execution
 

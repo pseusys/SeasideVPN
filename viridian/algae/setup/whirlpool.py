@@ -58,7 +58,6 @@ _SEASIDE_IMAGE = "ghcr.io/pseusys/seasidevpn/caerulean-whirlpool"
 _GO_DISTRIBUTION = "https://go.dev/dl/go{ver}.linux-{arch}.tar.gz"
 
 _ACCEPT_IPV6_CONF = Path("/proc/sys/net/ipv6/conf/default/accept_ra")
-_PACKET_FORWARDING_CONF = Path("/proc/sys/net/ipv4/ip_forward")
 
 _SHELL_LOGIN = Path("/etc/profile")
 _GO_ROOT = Path("/usr/local/go")
@@ -163,12 +162,6 @@ class WhirlpoolInstaller(Installer):
             self._logger.info("IPv6 support disabled!")
         else:
             self._logger.debug("IPv6 already disabled!")
-        if int(_PACKET_FORWARDING_CONF.read_text()) != 1:
-            self._logger.info("Enabling packet forwarding for the server...")
-            _PACKET_FORWARDING_CONF.write_text("1")
-            self._logger.info("Packet forwarding enabled!")
-        else:
-            self._logger.debug("Packet forwarding already disabled!")
 
     def _install_go(self) -> Path:
         arch = "arm64" if get_arch() == "arm" else "amd64"

@@ -6,6 +6,9 @@ import (
 	"main/users"
 	"main/utils"
 	"net"
+	"os"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/sirupsen/logrus"
@@ -27,6 +30,10 @@ const (
 	DEFAULT_TYPHOON_PORT = 29384
 
 	REQUIRED_TUNNEL_NETWORK_BITS = 16
+
+	FORWARDING_ENABLED_VALUE = 1
+	DEFAULT_FILE_PERMISSIONS = 0644
+	IPV4_FORWARDING_FILE     = "/proc/sys/net/ipv4/ip_forward"
 )
 
 // Tunnel config object, represents tunnel interface and forwarding setup.
@@ -64,6 +71,34 @@ type TunnelConfig struct {
 
 	// Tunnel name.
 	name string
+
+	// Forwarding value.
+	forwardingIPv4 uint8
+}
+
+func readSysctlInt(path string) (uint8, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return 0, fmt.Errorf("failed to read file at %s: %v", path, err)
+	}
+
+	valueStr := strings.TrimSpace(string(data))
+	value, err := strconv.Atoi(valueStr)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse %s from %s: %v", valueStr, path, err)
+	}
+
+	return uint8(value), nil
+}
+
+func writeSysctlInt(path string, value uint8) error {
+	data := []byte(strconv.Itoa(int(value)))
+	err := os.WriteFile(path, data, DEFAULT_FILE_PERMISSIONS)
+	if err != nil {
+		return fmt.Errorf("failed to write to file at %s: %v", path, err)
+	}
+
+	return nil
 }
 
 // Preserve current iptables configuration in a TunnelConfig object.
@@ -85,6 +120,11 @@ func Preserve() (*TunnelConfig, error) {
 	mtu := int32(utils.GetIntEnv("SEASIDE_TUNNEL_MTU", DEFAULT_TUNNEL_MTU, 32))
 	name := utils.GetEnv("SEASIDE_TUNNEL_NAME", DEFAULT_TUNNEL_NAME)
 
+	forwardingIPv4, err := readSysctlInt(IPV4_FORWARDING_FILE)
+	if err != nil {
+		return nil, fmt.Errorf("error reading system IPv4 forwarding property: %v", err)
+	}
+
 	conf := TunnelConfig{
 		Default:                    defaultNet,
 		vpnDataKbyteLimitRule:      vpnDataKbyteLimitRule,
@@ -92,6 +132,7 @@ func Preserve() (*TunnelConfig, error) {
 		icmpPacketPACKETLimitRules: icmpPacketPACKETLimitRules,
 		mtu:                        mtu,
 		name:                       name,
+		forwardingIPv4:             forwardingIPv4,
 	}
 
 	conf.mutex.Lock()
@@ -108,6 +149,12 @@ func Preserve() (*TunnelConfig, error) {
 func (conf *TunnelConfig) Open() (err error) {
 	conf.mutex.Lock()
 	defer conf.mutex.Unlock()
+
+	// Enable IPv4 packet forwarding
+	err = writeSysctlInt(IPV4_FORWARDING_FILE, FORWARDING_ENABLED_VALUE)
+	if err != nil {
+		return fmt.Errorf("error enabling IPv4 forwarding: %v", err)
+	}
 
 	// Parse IPs and control port number from environment variables
 	intIP := utils.GetEnv("SEASIDE_ADDRESS", conf.Default.IP.String())
@@ -173,5 +220,10 @@ func (conf *TunnelConfig) Close() {
 	conf.Tunnel.Close()
 	if err != nil {
 		logrus.Errorf("Error removing tunnel: %v", err)
+	}
+
+	err = writeSysctlInt(IPV4_FORWARDING_FILE, conf.forwardingIPv4)
+	if err != nil {
+		logrus.Errorf("error restoring IPv4 forwarding: %v", err)
 	}
 }
