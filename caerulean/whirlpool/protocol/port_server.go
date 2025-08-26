@@ -56,7 +56,8 @@ func (p *PortServer) Read(buffer *betterbuf.Buffer, viridianDict *users.Viridian
 	logrus.Debugf("Parsed packet header from viridian %d: type %d, data %d, tail %d", p.peerID, msgType, dataLength, tailLength)
 
 	var value *betterbuf.Buffer
-	if msgType == TYPE_DATA {
+	switch msgType {
+	case TYPE_DATA:
 		dataBuffer := buffer.Rebuffer(encryptedHeaderLength, encryptedHeaderLength+int(dataLength))
 		s, err := io.ReadFull(p.socket, dataBuffer.Slice())
 		if err != nil {
@@ -79,9 +80,9 @@ func (p *PortServer) Read(buffer *betterbuf.Buffer, viridianDict *users.Viridian
 		}
 		logrus.Debugf("Parsed packet data from viridian %d", p.peerID)
 
-	} else if msgType == TYPE_TERMINATION {
+	case TYPE_TERMINATION:
 		return nil, fmt.Errorf("connection with viridian %d terminated", p.peerID)
-	} else {
+	default:
 		return nil, fmt.Errorf("unexpected message type received from viridian %d: %d", p.peerID, msgType)
 	}
 
