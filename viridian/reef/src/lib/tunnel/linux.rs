@@ -12,17 +12,17 @@ use std::net::{IpAddr, Ipv4Addr};
 use futures::TryStreamExt;
 use ipnet::Ipv4Net;
 use log::{debug, error, info};
-use rtnetlink::packet_route::address::AddressAttribute;
-use rtnetlink::packet_route::link::LinkAttribute;
-use rtnetlink::packet_route::route::{RouteAddress, RouteAttribute, RouteMessage, RouteProtocol, RouteScope, RouteType};
-use rtnetlink::packet_route::rule::RuleMessage;
-use rtnetlink::{new_connection, Handle, RouteMessageBuilder};
 use nftables::batch::Batch;
 use nftables::expr::{Expression, Meta, MetaKey, NamedExpression, Payload, PayloadField, Range};
 use nftables::helper::apply_ruleset;
 use nftables::schema::{Chain, NfListObject, Rule, Table};
 use nftables::stmt::{Mangle, Match, Operator, Statement};
 use nftables::types::{NfChainType, NfFamily, NfHook};
+use rtnetlink::packet_route::address::AddressAttribute;
+use rtnetlink::packet_route::link::LinkAttribute;
+use rtnetlink::packet_route::route::{RouteAddress, RouteAttribute, RouteMessage, RouteProtocol, RouteScope, RouteType};
+use rtnetlink::packet_route::rule::RuleMessage;
+use rtnetlink::{new_connection, Handle, RouteMessageBuilder};
 use simple_error::{bail, require_with};
 use tokio::spawn;
 use tun::{create_as_async, AsyncDevice, Configuration};
@@ -50,9 +50,15 @@ const DEFAULT_RESOLV_CONF_PATH: &str = "/etc/resolv.conf";
 async fn get_default_address_and_device(handle: &Handle, target: Ipv4Addr) -> DynResult<(Ipv4Addr, u32)> {
     let req = RouteMessageBuilder::<Ipv4Addr>::new().protocol(RouteProtocol::Unspec).scope(RouteScope::Universe).kind(RouteType::Unspec).destination_prefix(target, FULL_MASK).build();
     while let Some(res) = handle.route().get(req).execute().try_next().await? {
-        let ip = res.attributes.iter().find_map(|a| match a { RouteAttribute::PrefSource(RouteAddress::Inet(address)) => Some(address), _ => None });
-        let dev = res.attributes.iter().find_map(|a| match a { RouteAttribute::Oif(iface) => Some(iface), _ => None });
-        return Ok((*require_with!(ip, "Default IP address was not found!"), *require_with!(dev, "Default network interface was not found!")))
+        let ip = res.attributes.iter().find_map(|a| match a {
+            RouteAttribute::PrefSource(RouteAddress::Inet(address)) => Some(address),
+            _ => None,
+        });
+        let dev = res.attributes.iter().find_map(|a| match a {
+            RouteAttribute::Oif(iface) => Some(iface),
+            _ => None,
+        });
+        return Ok((*require_with!(ip, "Default IP address was not found!"), *require_with!(dev, "Default network interface was not found!")));
     }
     bail!("Couldn't find any route to {target}!")
 }
@@ -66,7 +72,10 @@ async fn get_device_by_local_address(handle: &Handle, target: Ipv4Addr) -> DynRe
 
 async fn get_device_name_and_cidr(handle: &Handle, device: u32) -> DynResult<(String, u8)> {
     while let Some(res) = handle.address().get().set_link_index_filter(device).execute().try_next().await? {
-        let label = res.attributes.iter().find_map(|a| match a { AddressAttribute::Label(label) => Some(label), _ => None });
+        let label = res.attributes.iter().find_map(|a| match a {
+            AddressAttribute::Label(label) => Some(label),
+            _ => None,
+        });
         return Ok((require_with!(label, "Device name was not found!").clone(), res.header.prefix_len));
     }
     bail!("Couldn't find any devices for index {device}!")
@@ -77,10 +86,16 @@ async fn get_device_address_and_cidr(label: &str) -> DynResult<(Ipv4Addr, u8)> {
     spawn(connection);
 
     while let Some(res) = handle.address().get().execute().try_next().await? {
-        let name = res.attributes.iter().find_map(|a| match a { AddressAttribute::Label(label) => Some(label), _ => None });
+        let name = res.attributes.iter().find_map(|a| match a {
+            AddressAttribute::Label(label) => Some(label),
+            _ => None,
+        });
         if name.is_some_and(|n| n == label) {
-            let addr = res.attributes.iter().find_map(|a| match a { AddressAttribute::Address(IpAddr::V4(addr)) => Some(addr), _ => None });
-            return Ok((*require_with!(addr, "Network interface IP address was not resolved!"), res.header.prefix_len))
+            let addr = res.attributes.iter().find_map(|a| match a {
+                AddressAttribute::Address(IpAddr::V4(addr)) => Some(addr),
+                _ => None,
+            });
+            return Ok((*require_with!(addr, "Network interface IP address was not resolved!"), res.header.prefix_len));
         }
     }
 
@@ -89,8 +104,11 @@ async fn get_device_address_and_cidr(label: &str) -> DynResult<(Ipv4Addr, u8)> {
 
 async fn get_device_mtu(handle: &Handle, device: u32) -> DynResult<u32> {
     while let Some(res) = handle.link().get().match_index(device).execute().try_next().await? {
-        let mtu = res.attributes.iter().find_map(|a| match a { LinkAttribute::Mtu(mtu) => Some(mtu), _ => None });
-        return Ok(*require_with!(mtu, "Default network interface MTU was not resolved!"))
+        let mtu = res.attributes.iter().find_map(|a| match a {
+            LinkAttribute::Mtu(mtu) => Some(mtu),
+            _ => None,
+        });
+        return Ok(*require_with!(mtu, "Default network interface MTU was not resolved!"));
     }
     bail!("Couldn't find any links for device {device}!")
 }
@@ -103,8 +121,11 @@ async fn get_address_device(network: Ipv4Net) -> DynResult<u32> {
     req.attributes.push(RouteAttribute::Destination(RouteAddress::Inet(network.broadcast())));
 
     while let Some(res) = handle.route().get(req).execute().try_next().await? {
-        let dev = res.attributes.iter().find_map(|a| match a { RouteAttribute::Oif(iface) => Some(iface), _ => None });
-        return Ok(*require_with!(dev, "Tunnel device number was not resolved!"))
+        let dev = res.attributes.iter().find_map(|a| match a {
+            RouteAttribute::Oif(iface) => Some(iface),
+            _ => None,
+        });
+        return Ok(*require_with!(dev, "Tunnel device number was not resolved!"));
     }
     bail!("Couldn't find any route to {network}!")
 }

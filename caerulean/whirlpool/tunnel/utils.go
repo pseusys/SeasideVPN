@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"os/exec"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -13,20 +12,6 @@ import (
 )
 
 var DEFAULT_IP_ADDRESS = []byte{0, 0, 0, 0}
-
-// Execute console command.
-// Accept executable name and vararg command arguments.
-// Return stdout and stderr as a string, terminate if command execution failed.
-func runCommand(cmd string, args ...string) (string, error) {
-	command := exec.Command(cmd, args...)
-	output, err := command.CombinedOutput()
-	if err != nil {
-		logrus.Errorf("Command %s output: %s", cmd, output)
-		return "", fmt.Errorf("error running command: %v", args)
-	} else {
-		return string(output), nil
-	}
-}
 
 func findDefaultInterface() (*net.IPNet, error) {
 	routes, err := netlink.RouteList(nil, netlink.FAMILY_ALL)
