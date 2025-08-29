@@ -6,6 +6,16 @@ lazy_static! {
 }
 
 #[macro_export]
+macro_rules! run_coroutine_async {
+    ($future:expr) => {{
+        match tokio::runtime::Handle::try_current() {
+            Ok(res) => res.spawn($future),
+            Err(_) => $crate::runtime::LocalTokioRuntime.spawn($future),
+        }
+    }};
+}
+
+#[macro_export]
 macro_rules! run_coroutine_sync {
     ($future:expr) => {{
         match tokio::runtime::Handle::try_current() {

@@ -2,9 +2,10 @@ package tunnel
 
 import (
 	"fmt"
-	"strconv"
+	"os"
 
 	"github.com/sirupsen/logrus"
+	"github.com/vishvananda/netlink"
 )
 
 // Create and open tunnel interface.
@@ -14,7 +15,7 @@ import (
 // Accept external IP address as a string.
 // Return nil if interface opened successfully, error otherwise.
 func (conf *TunnelConfig) openInterface(extIP string) error {
-	// Cast sunnel name, ip and CIDR to string
+	// Cast tunnel name, ip and CIDR to string
 	tunnelName := conf.Tunnel.Name()
 	tunnelString := conf.IP.String()
 	tunnelCIDR, _ := conf.Network.Mask.Size()
@@ -27,28 +28,38 @@ func (conf *TunnelConfig) openInterface(extIP string) error {
 		}
 		conf.mtu = int32(tunnelInterface.MTU)
 	}
-	tunnelMTU := strconv.FormatInt(int64(conf.mtu), 10)
+
+	// Lookup tunnel link by name
+	link, err := netlink.LinkByName(tunnelName)
+	if err != nil {
+		return fmt.Errorf("could not get link %s: %v", tunnelName, err)
+	}
 
 	// Setup tunnel interface MTU
-	_, err := runCommand("ip", "link", "set", "dev", tunnelName, "mtu", tunnelMTU)
-	if err != nil {
+	if err := netlink.LinkSetMTU(link, int(conf.mtu)); err != nil {
 		return fmt.Errorf("error setting tunnel MTU: %v", err)
 	}
 
-	// Setup IP address for tunnel interface
-	_, err = runCommand("ip", "addr", "add", fmt.Sprintf("%s/%d", tunnelString, tunnelCIDR), "dev", tunnelName)
+	// Parse tunnel IP and CIDR
+	addr, err := netlink.ParseAddr(fmt.Sprintf("%s/%d", tunnelString, tunnelCIDR))
 	if err != nil {
-		return fmt.Errorf("error setting tunnel IP address: %v", err)
+		return fmt.Errorf("invalid tunnel address: %v", err)
 	}
 
-	// Enable tunnel interfaces
-	_, err = runCommand("ip", "link", "set", "dev", tunnelName, "up")
-	if err != nil {
+	// Setup IP address for tunnel interface
+	if err := netlink.AddrAdd(link, addr); err != nil {
+		if !os.IsExist(err) {
+			return fmt.Errorf("error adding tunnel address: %v", err)
+		}
+	}
+
+	// Enable tunnel interface
+	if err := netlink.LinkSetUp(link); err != nil {
 		return fmt.Errorf("error setting tunnel UP: %v", err)
 	}
 
 	// Log and return no error
-	logrus.Infof("Interface %s opened (IP: %s, MTU: %s)", tunnelName, tunnelString, tunnelMTU)
+	logrus.Infof("Interface %s opened (IP: %s, MTU: %d)", tunnelName, tunnelString, conf.mtu)
 	return nil
 }
 
@@ -59,14 +70,18 @@ func (conf *TunnelConfig) closeInterface() error {
 	// Receive tunnel name
 	tunnelName := conf.Tunnel.Name()
 
-	// Disable and remove tunnel
-	_, err := runCommand("ip", "link", "set", "dev", tunnelName, "down")
+	// Lookup tunnel link by name
+	link, err := netlink.LinkByName(tunnelName)
 	if err != nil {
+		return fmt.Errorf("could not get link %s: %v", tunnelName, err)
+	}
+
+	// Disable and remove tunnel
+	if err := netlink.LinkSetDown(link); err != nil {
 		return fmt.Errorf("error shutting down tunnel interface: %v", err)
 	}
 
-	_, err = runCommand("ip", "link", "del", "dev", tunnelName)
-	if err != nil {
+	if err := netlink.LinkDel(link); err != nil {
 		return fmt.Errorf("error deleting tunnel interface: %v", err)
 	}
 

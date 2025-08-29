@@ -66,16 +66,16 @@ fn show_route_info(prefix: Option<Ipv4Addr>, table: Option<u8>) -> DynResult<(Op
     parse_route_info_from_output(&route_data)
 }
 
-fn show_address_info(device: &str) -> DynResult<(Option<i32>, Option<i32>, Option<Ipv4Addr>, Option<u32>)> {
+fn show_address_info(device: &str) -> DynResult<(Option<u32>, Option<u32>, Option<Ipv4Addr>, Option<u32>)> {
     let (addr_out, _) = run_command("ip", ["addr", "show", device])?;
 
     let index_regex = Regex::new(r"^(?<index>\d+):")?;
     let index_match = index_regex.captures(&addr_out);
-    let index_res = index_match.and_then(|m| i32::from_str(&m["index"]).ok());
+    let index_res = index_match.and_then(|m| u32::from_str(&m["index"]).ok());
 
     let mtu_regex = Regex::new(r"mtu (?<mtu>\d+)")?;
     let mtu_match = mtu_regex.captures(&addr_out);
-    let mtu_res = mtu_match.and_then(|m| i32::from_str(&m["mtu"]).ok());
+    let mtu_res = mtu_match.and_then(|m| u32::from_str(&m["mtu"]).ok());
 
     let network_regex = Regex::new(r"inet (?<address>\d+\.\d+\.\d+\.\d+)/(?<cidr>\d+)")?;
     let network_match = network_regex.captures(&addr_out);
@@ -88,16 +88,16 @@ fn show_address_info(device: &str) -> DynResult<(Option<i32>, Option<i32>, Optio
     Ok((index_res, mtu_res, address_res, cidr_res))
 }
 
-fn show_rule_info(table: u8) -> DynResult<(Option<i32>, Option<i32>)> {
+fn show_rule_info(table: u8) -> DynResult<(Option<u32>, Option<u32>)> {
     let (rule_out, _) = run_command("ip", ["rule", "show", "table", &table.to_string()]).expect("Error getting rules!");
 
     let fwmark_regex = Regex::new(r"fwmark 0x(?<fwmark>\d+)")?;
     let fwmark_match = fwmark_regex.captures(&rule_out);
-    let fwmark_res = fwmark_match.and_then(|m| i32::from_str_radix(&m["fwmark"], 16).ok());
+    let fwmark_res = fwmark_match.and_then(|m| u32::from_str_radix(&m["fwmark"], 16).ok());
 
     let lookup_regex = Regex::new(r"lookup (?<lookup>\d+)")?;
     let lookup_match = lookup_regex.captures(&rule_out);
-    let lookup_res = lookup_match.and_then(|m| i32::from_str(&m["lookup"]).ok());
+    let lookup_res = lookup_match.and_then(|m| u32::from_str(&m["lookup"]).ok());
 
     Ok((fwmark_res, lookup_res))
 }
@@ -108,7 +108,7 @@ async fn test_get_default_interface() {
     let expected_device = get_route_device_info(external_address).expect("Error reading default interface device name!");
     let (_, expected_mtu, expected_address, expected_cidr) = show_address_info(&expected_device).expect("Error reading default route IP!");
 
-    let (default_address, default_cidr, default_name, default_mtu) = get_default_interface_by_remote_address(external_address).expect("Error getting default address!");
+    let (default_address, default_cidr, default_name, default_mtu) = get_default_interface_by_remote_address(external_address).await.expect("Error getting default address!");
 
     assert_eq!(default_name, expected_device, "Default device name doesn't match!");
     assert!(expected_mtu.is_some_and(|v| v == default_mtu), "Default MTU doesn't match!");
@@ -126,7 +126,7 @@ async fn test_create_tunnel() {
     let _device = create_tunnel(tun_name, tun_address, tun_netmask, tun_mtu).expect("Error creating tunnel!");
 
     let (_, expected_mtu, expected_address, expected_cidr) = show_address_info(tun_name).expect("Error reading default route IP!");
-    assert!(expected_mtu.is_some_and(|v| v == i32::from(tun_mtu)), "Default MTU doesn't match!");
+    assert!(expected_mtu.is_some_and(|v| v == u32::from(tun_mtu)), "Default MTU doesn't match!");
     assert!(expected_address.is_some_and(|v| v == tun_address), "Default IP address doesn't match!");
     assert!(expected_cidr.is_some_and(|v| v == tun_netmask.to_bits().count_ones()), "Default CIDR doesn't match!");
 }
@@ -149,7 +149,7 @@ async fn test_save_restore_table() {
         run_command("ip", ["route", "add", destination, "dev", device, "table", &table_idx.to_string()]).expect("Error creating default route!");
     }
 
-    let mut table_data = save_svr_table(table_idx).expect("Error saving SVR table!");
+    let mut table_data = save_svr_table(table_idx).await.expect("Error saving SVR table!");
 
     for destination in ip_destinations.clone() {
         let (real_destination, real_device, _) = show_route_info(Some(destination), Some(table_idx)).unwrap_or_else(|_| panic!("Parsing route '{destination:?}' failed!"));
@@ -157,7 +157,7 @@ async fn test_save_restore_table() {
         assert!(real_device.is_none(), "Couldn't find device in route '{device:?}'!");
     }
 
-    restore_svr_table(&mut table_data).expect("Error restoring SVR table!");
+    restore_svr_table(&mut table_data).await.expect("Error restoring SVR table!");
 
     for (destination, ip_destination) in destinations.iter().zip(ip_destinations.iter()) {
         let (real_destination, real_device, _) = show_route_info(Some(*ip_destination), Some(table_idx)).unwrap_or_else(|_| panic!("Parsing route '{destination:?}' failed!"));
@@ -177,7 +177,7 @@ async fn test_get_address_device() {
     run_command("ip", ["link", "set", "dev", tun_name, "mtu", &tun_mtu.to_string()]).expect("Error setting MTU for tunnel");
     run_command("ip", ["link", "set", tun_name, "up"]).expect("Error enabling tunnel!");
 
-    let tunnel_device = get_address_device(tun_network).expect("Getting tunnel device failed!");
+    let tunnel_device = get_address_device(tun_network).await.expect("Getting tunnel device failed!");
 
     let (tunnel_index, _, _, _) = show_address_info(tun_name).expect("Reading tunnel address failed!");
     assert!(tunnel_index.is_some_and(|v| v == tunnel_device), "Tunnel index doesn't match!")
@@ -200,7 +200,7 @@ async fn test_enable_disable_routing() {
         Ok((None, _, _, _)) | Err(_) => panic!("Reading tunnel address failed!"),
     };
 
-    let (route_message, rule_message) = enable_routing(tun_network.addr(), tunnel_index, table_idx).expect("Error enabling routing!");
+    let (route_message, rule_message) = enable_routing(tun_network.addr(), tunnel_index, table_idx).await.expect("Error enabling routing!");
 
     let (routing_destination, routing_device, routing_gateway) = show_route_info(None, Some(table_idx)).expect("Error reading routing info!");
     assert!(routing_destination.is_some_and(|v| v == "default"), "Tunnel destination interface doesn't match!");
@@ -208,10 +208,10 @@ async fn test_enable_disable_routing() {
     assert!(routing_gateway.is_some_and(|v| v == tun_network.addr()), "Tunnel name doesn't match!");
 
     let (routing_fwmark, routing_lookup) = show_rule_info(table_idx).expect("Error reading routing rules info!");
-    assert!(routing_fwmark.is_some_and(|v| v == i32::from(table_idx)), "Rule fwmark doesn't match!");
-    assert!(routing_lookup.is_some_and(|v| v == i32::from(table_idx)), "Table number doesn't match!");
+    assert!(routing_fwmark.is_some_and(|v| v == u32::from(table_idx)), "Rule fwmark doesn't match!");
+    assert!(routing_lookup.is_some_and(|v| v == u32::from(table_idx)), "Table number doesn't match!");
 
-    disable_routing(&route_message, &rule_message).expect("Error disabling routing!");
+    disable_routing(&route_message, &rule_message).await.expect("Error disabling routing!");
 
     let (routing_destination, _, _) = show_route_info(None, Some(table_idx)).expect("Error reading routing info!");
     assert!(routing_destination.is_none(), "Routing table {table_idx} not empty!");
