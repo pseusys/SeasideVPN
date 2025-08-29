@@ -26,12 +26,11 @@ use rtnetlink::packet_route::rule::RuleMessage;
 use rtnetlink::packet_route::AddressFamily;
 use rtnetlink::{new_connection, Handle, RouteMessageBuilder};
 use simple_error::{bail, require_with};
-use tokio::spawn;
 use tun::{create_as_async, AsyncDevice, Configuration};
 
 use crate::tunnel::Tunnelling;
 use crate::utils::parse_env;
-use crate::{run_coroutine_sync, DynResult};
+use crate::{run_coroutine_async, run_coroutine_sync, DynResult};
 
 const NFTABLE_NAME: &str = "seaside";
 const NFTABLES_OUTPUT_NAME: &str = "output";
@@ -51,15 +50,27 @@ const DEFAULT_RESOLV_CONF_PATH: &str = "/etc/resolv.conf";
 lazy_static! {
     static ref NETLINK_HANDLE: Handle = {
         let (connection, handle, _) = new_connection().expect("Failed to open RTNETLINK socket!");
-        spawn(connection);
+        run_coroutine_async!(connection);
         handle
     };
 }
 
-async fn get_default_address_and_device(target: Ipv4Addr) -> DynResult<(Ipv4Addr, u32)> {
-    let (connection, handle, _) = new_connection()?;
-    spawn(connection);
+#[inline]
+#[cfg(not(test))]
+fn get_handle() -> Handle {
+    NETLINK_HANDLE.clone()
+}
 
+#[inline]
+#[cfg(test)]
+fn get_handle() -> Handle {
+    let (connection, handle, _) = new_connection().expect("Failed to open RTNETLINK socket!");
+    run_coroutine_async!(connection);
+    handle
+}
+
+async fn get_default_address_and_device(target: Ipv4Addr) -> DynResult<(Ipv4Addr, u32)> {
+    let handle = get_handle();
     let mut stream = handle.route().get(RouteMessageBuilder::<Ipv4Addr>::new().build()).execute();
     while let Some(res) = stream.try_next().await? {
         let dest = res.attributes.iter().find_map(|a| match a {
@@ -81,11 +92,11 @@ async fn get_default_address_and_device(target: Ipv4Addr) -> DynResult<(Ipv4Addr
             }
         }
     }
-
     bail!("Couldn't find any route to {target}!")
 }
 
-async fn get_device_by_local_address(handle: &Handle, target: Ipv4Addr) -> DynResult<u32> {
+async fn get_device_by_local_address(target: Ipv4Addr) -> DynResult<u32> {
+    let handle = get_handle();
     let mut stream = handle.address().get().set_address_filter(IpAddr::V4(target)).execute();
     while let Some(res) = stream.try_next().await? {
         return Ok(res.header.index);
@@ -93,7 +104,8 @@ async fn get_device_by_local_address(handle: &Handle, target: Ipv4Addr) -> DynRe
     bail!("Couldn't find any devices for address {target}!")
 }
 
-async fn get_device_name_and_cidr(handle: &Handle, device: u32) -> DynResult<(String, u8)> {
+async fn get_device_name_and_cidr(device: u32) -> DynResult<(String, u8)> {
+    let handle = get_handle();
     let mut stream = handle.address().get().set_link_index_filter(device).execute();
     while let Some(res) = stream.try_next().await? {
         let label = res.attributes.iter().find_map(|a| match a {
@@ -106,11 +118,8 @@ async fn get_device_name_and_cidr(handle: &Handle, device: u32) -> DynResult<(St
 }
 
 async fn get_device_address_and_cidr(label: &str) -> DynResult<(Ipv4Addr, u8)> {
-    let (connection, handle, _) = new_connection()?;
-    spawn(connection);
-
+    let handle = get_handle();
     let mut stream = handle.address().get().execute();
-
     while let Some(res) = stream.try_next().await? {
         let name = res.attributes.iter().find_map(|a| match a {
             AddressAttribute::Label(label) => Some(label),
@@ -124,11 +133,11 @@ async fn get_device_address_and_cidr(label: &str) -> DynResult<(Ipv4Addr, u8)> {
             return Ok((*require_with!(addr, "Network interface IP address was not resolved!"), res.header.prefix_len));
         }
     }
-
     bail!("Couldn't find any devices for name {label}!")
 }
 
-async fn get_device_mtu(handle: &Handle, device: u32) -> DynResult<u32> {
+async fn get_device_mtu(device: u32) -> DynResult<u32> {
+    let handle = get_handle();
     let mut stream = handle.link().get().match_index(device).execute();
     while let Some(res) = stream.try_next().await? {
         let mtu = res.attributes.iter().find_map(|a| match a {
@@ -141,9 +150,7 @@ async fn get_device_mtu(handle: &Handle, device: u32) -> DynResult<u32> {
 }
 
 async fn get_address_device(network: Ipv4Net) -> DynResult<u32> {
-    let (connection, handle, _) = new_connection()?;
-    spawn(connection);
-
+    let handle = get_handle();
     let broadcast = network.broadcast();
     let mut stream = handle.route().get(RouteMessageBuilder::<Ipv4Addr>::new().build()).execute();
     while let Some(res) = stream.try_next().await? {
@@ -159,31 +166,68 @@ async fn get_address_device(network: Ipv4Net) -> DynResult<u32> {
             return Ok(*require_with!(dev, "Tunnel device number was not resolved!"));
         }
     }
-
     bail!("Couldn't find any route to {network}!")
 }
 
 async fn get_default_interface_by_local_address(local_address: Ipv4Addr) -> DynResult<(u8, String, u32)> {
-    let (connection, handle, _) = new_connection()?;
-    spawn(connection);
-
-    let default_dev = get_device_by_local_address(&handle, local_address).await?;
-    let (default_name, default_cidr) = get_device_name_and_cidr(&handle, default_dev).await?;
-    let default_mtu = get_device_mtu(&handle, default_dev).await?;
-
+    let default_dev = get_device_by_local_address(local_address).await?;
+    let (default_name, default_cidr) = get_device_name_and_cidr(default_dev).await?;
+    let default_mtu = get_device_mtu(default_dev).await?;
     Ok((default_cidr, default_name, default_mtu))
 }
 
 async fn get_default_interface_by_remote_address(seaside_address: Ipv4Addr) -> DynResult<(Ipv4Addr, u8, String, u32)> {
-    let (connection, handle, _) = new_connection()?;
-    spawn(connection);
-
     let (default_ip, default_dev) = get_default_address_and_device(seaside_address).await?;
-    let (default_name, default_cidr) = get_device_name_and_cidr(&handle, default_dev).await?;
-    let default_mtu = get_device_mtu(&handle, default_dev).await?;
-
+    let (default_name, default_cidr) = get_device_name_and_cidr(default_dev).await?;
+    let default_mtu = get_device_mtu(default_dev).await?;
     Ok((default_ip, default_cidr, default_name, default_mtu))
 }
+
+async fn save_svr_table(svr_idx: u8) -> DynResult<Vec<RouteMessage>> {
+    let handle = get_handle();
+    let mut table_data = Vec::new();
+    let mut stream = handle.route().get(RouteMessageBuilder::<Ipv4Addr>::new().build()).execute();
+    while let Some(route) = stream.try_next().await? {
+        if route.header.table == svr_idx {
+            table_data.push(route.clone());
+            handle.route().del(route).execute().await?;
+        }
+    }
+    Ok(table_data)
+}
+
+async fn restore_svr_table(table_data: &mut Vec<RouteMessage>) -> DynResult<()> {
+    let handle = get_handle();
+    while let Some(entry) = table_data.pop() {
+        handle.route().add(entry).execute().await?;
+    }
+    Ok(())
+}
+
+async fn enable_routing(tunnel_address: Ipv4Addr, tunnel_dev: u32, svr_idx: u8) -> DynResult<(RouteMessage, RuleMessage)> {
+    let handle = get_handle();
+
+    let route_msg = RouteMessageBuilder::<Ipv4Addr>::new().table_id(svr_idx as u32).output_interface(tunnel_dev).gateway(tunnel_address).build();
+    handle.route().add(route_msg.clone()).replace().execute().await?;
+
+    let mut rule_request = handle.rule().add().replace().table_id(svr_idx as u32).fw_mark(svr_idx as u32);
+    let rule_msg = rule_request.message_mut();
+    rule_msg.header.family = AddressFamily::Inet;
+    let rule_msg = rule_msg.clone();
+    rule_request.execute().await?;
+
+    Ok((route_msg, rule_msg))
+}
+
+async fn disable_routing(route_message: &RouteMessage, rule_message: &RuleMessage) -> DynResult<()> {
+    let handle = get_handle();
+
+    handle.route().del(route_message.clone()).execute().await?;
+    handle.rule().del(rule_message.clone()).execute().await?;
+
+    Ok(())
+}
+
 
 fn create_tunnel(name: &str, address: Ipv4Addr, netmask: Ipv4Addr, mtu: u16) -> DynResult<AsyncDevice> {
     let mut config = Configuration::default();
@@ -202,7 +246,6 @@ fn create_tunnel(name: &str, address: Ipv4Addr, netmask: Ipv4Addr, mtu: u16) -> 
 fn set_dns_server(resolv_path: &str, dns_server: Option<Ipv4Addr>) -> DynResult<(String, Option<String>)> {
     let resolv_conf_data = read_to_string(resolv_path)?;
     let resolv_conf_lines: Vec<&str> = resolv_conf_data.lines().collect();
-
     if let Some(server) = dns_server {
         let filtered: Vec<&str> = resolv_conf_lines.into_iter().filter(|l| !l.trim_start().starts_with("nameserver")).collect();
         let new_contents = format!("{}\nnameserver {}", filtered.join("\n"), server);
@@ -216,59 +259,6 @@ fn set_dns_server(resolv_path: &str, dns_server: Option<Ipv4Addr>) -> DynResult<
 
 fn reset_dns_server(resolv_path: &str, resolv_conf_data: &str) -> DynResult<()> {
     write(resolv_path, resolv_conf_data)?;
-    Ok(())
-}
-
-async fn save_svr_table(svr_idx: u8) -> DynResult<Vec<RouteMessage>> {
-    let (connection, handle, _) = new_connection()?;
-    spawn(connection);
-
-    let mut table_data = Vec::new();
-    let mut stream = handle.route().get(RouteMessageBuilder::<Ipv4Addr>::new().build()).execute();
-    while let Some(route) = stream.try_next().await? {
-        if route.header.table == svr_idx {
-            table_data.push(route.clone());
-            handle.route().del(route).execute().await?;
-        }
-    }
-
-    Ok(table_data)
-}
-
-async fn restore_svr_table(table_data: &mut Vec<RouteMessage>) -> DynResult<()> {
-    let (connection, handle, _) = new_connection()?;
-    spawn(connection);
-
-    while let Some(entry) = table_data.pop() {
-        handle.route().add(entry).execute().await?;
-    }
-
-    Ok(())
-}
-
-async fn enable_routing(tunnel_address: Ipv4Addr, tunnel_dev: u32, svr_idx: u8) -> DynResult<(RouteMessage, RuleMessage)> {
-    let (connection, handle, _) = new_connection()?;
-    spawn(connection);
-
-    let route_msg = RouteMessageBuilder::<Ipv4Addr>::new().table_id(svr_idx as u32).output_interface(tunnel_dev).gateway(tunnel_address).build();
-    handle.route().add(route_msg.clone()).replace().execute().await?;
-
-    let mut rule_request = handle.rule().add().replace().table_id(svr_idx as u32).fw_mark(svr_idx as u32);
-    let rule_msg = rule_request.message_mut();
-    rule_msg.header.family = AddressFamily::Inet;
-    let rule_msg = rule_msg.clone();
-    rule_request.execute().await?;
-
-    Ok((route_msg, rule_msg))
-}
-
-async fn disable_routing(route_message: &RouteMessage, rule_message: &RuleMessage) -> DynResult<()> {
-    let (connection, handle, _) = new_connection()?;
-    spawn(connection);
-
-    handle.route().del(route_message.clone()).execute().await?;
-    handle.rule().del(rule_message.clone()).execute().await?;
-
     Ok(())
 }
 
