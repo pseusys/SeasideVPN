@@ -37,5 +37,3 @@ pub(crate) fn get_rng() -> impl Rng + CryptoRng {
 pub(crate) fn get_rng() -> impl Rng + CryptoRng {
     rand::rngs::OsRng
 }
-
-

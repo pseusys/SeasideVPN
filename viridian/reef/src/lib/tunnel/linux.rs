@@ -228,7 +228,6 @@ async fn disable_routing(route_message: &RouteMessage, rule_message: &RuleMessag
     Ok(())
 }
 
-
 fn create_tunnel(name: &str, address: Ipv4Addr, netmask: Ipv4Addr, mtu: u16) -> DynResult<AsyncDevice> {
     let mut config = Configuration::default();
     config.address(address).netmask(netmask).tun_name(name).mtu(mtu).up();
