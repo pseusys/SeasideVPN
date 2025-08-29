@@ -88,16 +88,16 @@ fn show_address_info(device: &str) -> DynResult<(Option<u32>, Option<u32>, Optio
     Ok((index_res, mtu_res, address_res, cidr_res))
 }
 
-fn show_rule_info(table: u8) -> DynResult<(Option<i32>, Option<i32>)> {
+fn show_rule_info(table: u8) -> DynResult<(Option<u32>, Option<u32>)> {
     let (rule_out, _) = run_command("ip", ["rule", "show", "table", &table.to_string()]).expect("Error getting rules!");
 
     let fwmark_regex = Regex::new(r"fwmark 0x(?<fwmark>\d+)")?;
     let fwmark_match = fwmark_regex.captures(&rule_out);
-    let fwmark_res = fwmark_match.and_then(|m| i32::from_str_radix(&m["fwmark"], 16).ok());
+    let fwmark_res = fwmark_match.and_then(|m| u32::from_str_radix(&m["fwmark"], 16).ok());
 
     let lookup_regex = Regex::new(r"lookup (?<lookup>\d+)")?;
     let lookup_match = lookup_regex.captures(&rule_out);
-    let lookup_res = lookup_match.and_then(|m| i32::from_str(&m["lookup"]).ok());
+    let lookup_res = lookup_match.and_then(|m| u32::from_str(&m["lookup"]).ok());
 
     Ok((fwmark_res, lookup_res))
 }
@@ -208,8 +208,8 @@ async fn test_enable_disable_routing() {
     assert!(routing_gateway.is_some_and(|v| v == tun_network.addr()), "Tunnel name doesn't match!");
 
     let (routing_fwmark, routing_lookup) = show_rule_info(table_idx).expect("Error reading routing rules info!");
-    assert!(routing_fwmark.is_some_and(|v| v == i32::from(table_idx)), "Rule fwmark doesn't match!");
-    assert!(routing_lookup.is_some_and(|v| v == i32::from(table_idx)), "Table number doesn't match!");
+    assert!(routing_fwmark.is_some_and(|v| v == u32::from(table_idx)), "Rule fwmark doesn't match!");
+    assert!(routing_lookup.is_some_and(|v| v == u32::from(table_idx)), "Table number doesn't match!");
 
     disable_routing(&route_message, &rule_message).await.expect("Error disabling routing!");
 

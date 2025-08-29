@@ -22,7 +22,7 @@ use nftables::types::{NfChainType, NfFamily, NfHook};
 use rtnetlink::packet_route::address::AddressAttribute;
 use rtnetlink::packet_route::link::LinkAttribute;
 use rtnetlink::packet_route::route::{RouteAddress, RouteAttribute, RouteMessage};
-use rtnetlink::packet_route::rule::RuleMessage;
+use rtnetlink::packet_route::rule::{RuleAction, RuleMessage};
 use rtnetlink::packet_route::AddressFamily;
 use rtnetlink::{new_connection, Handle, RouteMessageBuilder};
 use simple_error::{bail, require_with};
@@ -210,7 +210,7 @@ async fn enable_routing(tunnel_address: Ipv4Addr, tunnel_dev: u32, svr_idx: u8) 
     let route_msg = RouteMessageBuilder::<Ipv4Addr>::new().table_id(svr_idx as u32).output_interface(tunnel_dev).gateway(tunnel_address).build();
     handle.route().add(route_msg.clone()).replace().execute().await?;
 
-    let mut rule_request = handle.rule().add().replace().table_id(svr_idx as u32).fw_mark(svr_idx as u32);
+    let mut rule_request = handle.rule().add().replace().v4().action(RuleAction::ToTable).table_id(svr_idx as u32).fw_mark(svr_idx as u32);
     let rule_msg = rule_request.message_mut();
     rule_msg.header.family = AddressFamily::Inet;
     let rule_msg = rule_msg.clone();
