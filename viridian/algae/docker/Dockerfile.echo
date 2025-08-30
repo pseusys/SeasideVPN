@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM python:3.11-alpine AS default
+FROM python:3.11-alpine3.22 AS default
 
 WORKDIR /seaside/echo
 

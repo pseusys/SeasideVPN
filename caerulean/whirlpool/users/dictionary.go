@@ -88,7 +88,7 @@ func (dict *ViridianDict) Add(getViridianID func() (any, uint16, error), viridia
 
 	// If found, resolve deletion timeout
 	var deletionTimeout time.Duration
-	if !token.IsAdmin {
+	if !token.IsAdmin && token.Subscription != nil {
 		now := time.Now()
 		timeout := token.Subscription.AsTime()
 		if timeout.Before(now) {
@@ -107,7 +107,7 @@ func (dict *ViridianDict) Add(getViridianID func() (any, uint16, error), viridia
 
 	// Finally set up deletion timer
 	var deletionTimer *time.Timer
-	if !token.IsAdmin {
+	if deletionTimeout.Nanoseconds() != 0 {
 		deletionTimer = time.AfterFunc(deletionTimeout, func() { dict.Delete(viridianID, true) })
 	} else {
 		deletionTimer = nil

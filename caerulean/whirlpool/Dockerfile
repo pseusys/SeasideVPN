@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # Docker image for building whirlpool executable and testing
-FROM golang:1.23-alpine AS builder
+FROM golang:1.24-alpine3.22 AS builder
 
 WORKDIR /seaside/caerulean
 
@@ -28,7 +28,7 @@ RUN go build -o whirlpool.run ./sources
 
 
 # Docker image for whirlpool executable production running
-FROM alpine:3.17 AS default
+FROM alpine:3.22 AS default
 
 WORKDIR /seaside/caerulean
 
@@ -74,9 +74,9 @@ ENV SEASIDE_CERTIFICATE_PATH=/seaside/caerulean/certificates/caerulean
 
 RUN apk add --no-cache openssl
 RUN mkdir -p /tmp/certificates/caerulean && mkdir -p /tmp/certificates/viridian && cd /tmp/certificates \
-    && openssl req -digest -newkey rsa:2048 -sha256 -nodes -keyout viridian/cert.key -out viridian/cert.csr -subj "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPNViridian" -addext "subjectAltName = IP:${SEASIDE_ADDRESS}" -addext "keyUsage=critical,digitalSignature" -addext "extendedKeyUsage=clientAuth" \
-    && openssl req -digest -newkey rsa:2048 -sha256 -nodes -keyout caerulean/cert.key -out caerulean/cert.csr -subj "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPNCaerulean" -addext "subjectAltName = IP:${SEASIDE_ADDRESS}" -addext "keyUsage=critical,digitalSignature,keyEncipherment" -addext "extendedKeyUsage=serverAuth" \
-    && openssl req -digest -newkey rsa:2048 -sha256 -nodes -new -x509  -keyout caerulean/rootCA.key -out caerulean/rootCA.crt -days 365250 -subj "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPNRootCA" -addext "basicConstraints=critical,CA:true" -addext "keyUsage=critical,keyCertSign,cRLSign" \
+    && openssl req -newkey rsa:2048 -nodes -keyout viridian/cert.key -out viridian/cert.csr -subj "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPNViridian" -addext "subjectAltName = IP:${SEASIDE_ADDRESS}" -addext "keyUsage=critical,digitalSignature" -addext "extendedKeyUsage=clientAuth" \
+    && openssl req -newkey rsa:2048 -nodes -keyout caerulean/cert.key -out caerulean/cert.csr -subj "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPNCaerulean" -addext "subjectAltName = IP:${SEASIDE_ADDRESS}" -addext "keyUsage=critical,digitalSignature,keyEncipherment" -addext "extendedKeyUsage=serverAuth" \
+    && openssl req -newkey rsa:2048 -nodes -new -x509  -keyout caerulean/rootCA.key -out caerulean/rootCA.crt -days 365250 -subj "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPNRootCA" -addext "basicConstraints=critical,CA:true" -addext "keyUsage=critical,keyCertSign,cRLSign" \
     && openssl x509 -req -CA caerulean/rootCA.crt -CAkey caerulean/rootCA.key -in caerulean/cert.csr -out caerulean/cert.crt -days 365250 -copy_extensions=copyall \
     && openssl x509 -req -CA caerulean/rootCA.crt -CAkey caerulean/rootCA.key -in viridian/cert.csr -out viridian/cert.crt -days 365250 -copy_extensions=copyall \
     && chmod 644 */*.key && cp caerulean/rootCA.* viridian/

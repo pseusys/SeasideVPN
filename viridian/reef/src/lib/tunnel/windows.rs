@@ -1,8 +1,10 @@
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
+use std::marker::PhantomData;
 use std::mem::{align_of, replace};
 use std::net::{AddrParseError, Ipv4Addr};
 use std::num::ParseIntError;
+use std::slice::{from_raw_parts, from_raw_parts_mut};
 use std::sync::Arc;
 
 use cached::proc_macro::cached;
@@ -12,7 +14,7 @@ use ipnet::Ipv4Net;
 use log::{debug, error, info};
 use serde::Deserialize;
 use simple_error::{bail, SimpleError};
-use tokio::sync::watch::channel;
+use tokio::sync::watch::{channel, Receiver, Sender};
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
 use windivert::address::WinDivertAddress;
@@ -26,8 +28,6 @@ use windows::Win32::Networking::WinSock::{AF_INET, SOCKADDR_IN};
 use wmi::{COMLibrary, WMIConnection};
 
 use crate::bytes::get_buffer;
-use crate::tunnel::ptr_utils::{ConstSendPtr, LocalConstTunnelTransport, RemoteConstTunnelTransport};
-use crate::tunnel::ptr_utils::{LocalMutTunnelTransport, MutSendPtr, RemoteMutTunnelTransport};
 use crate::tunnel::Tunnelling;
 use crate::{run_coroutine_in_thread, run_coroutine_sync, DynResult};
 
@@ -42,7 +42,7 @@ fn get_default_interface_by_remote_address(destination_ip: Ipv4Addr) -> DynResul
     let src_ip = u32::from(ZERO_IP_ADDRESS).to_be();
 
     let mut route: MIB_IPFORWARDROW = MIB_IPFORWARDROW::default();
-    let result = unsafe { GetBestRoute(dest_ip, src_ip, &mut route) };
+    let result = unsafe { GetBestRoute(dest_ip, Some(src_ip), &mut route) };
 
     if WIN32_ERROR(result) == ERROR_SUCCESS {
         Ok(route.dwForwardIfIndex)
@@ -175,6 +175,90 @@ fn reset_dns_addresses(dns_data: &HashMap<u32, Vec<String>>) -> DynResult<()> {
         wmi_con.exec_method("Win32_NetworkAdapterConfiguration", "SetDNSServerSearchOrder", Some(&in_params))?;
     }
     Ok(())
+}
+
+#[derive(Clone, Copy)]
+struct SendPtr<T> {
+    ptr: T,
+    len: usize,
+    _marker: PhantomData<u8>,
+}
+
+impl<T> SendPtr<T> {
+    fn len(&self) -> usize {
+        self.len
+    }
+}
+
+unsafe impl<T> Send for SendPtr<T> {}
+unsafe impl<T> Sync for SendPtr<T> {}
+
+type MutSendPtr = SendPtr<*mut u8>;
+type ConstSendPtr = SendPtr<*const u8>;
+
+impl MutSendPtr {
+    fn new(buf: &mut [u8]) -> Self {
+        let ptr = buf.as_mut_ptr();
+        Self { ptr, len: buf.len(), _marker: PhantomData }
+    }
+
+    fn recreate(&self) -> &mut [u8] {
+        unsafe { from_raw_parts_mut(self.ptr, self.len) }
+    }
+}
+
+impl ConstSendPtr {
+    fn new(buf: &[u8]) -> Self {
+        let ptr = buf.as_ptr();
+        Self { ptr, len: buf.len(), _marker: PhantomData }
+    }
+
+    fn recreate(&self) -> &[u8] {
+        unsafe { from_raw_parts(self.ptr, self.len) }
+    }
+}
+
+struct TunnelTransport<S, R: Copy> {
+    sender: Sender<Option<S>>,
+    receiver: Receiver<Option<R>>,
+}
+
+type LocalTunnelTransport<T> = TunnelTransport<SendPtr<T>, usize>;
+type RemoteTunnelTransport<T> = TunnelTransport<usize, SendPtr<T>>;
+
+type LocalMutTunnelTransport = LocalTunnelTransport<*mut u8>;
+type LocalConstTunnelTransport = LocalTunnelTransport<*const u8>;
+type RemoteMutTunnelTransport = RemoteTunnelTransport<*mut u8>;
+type RemoteConstTunnelTransport = RemoteTunnelTransport<*const u8>;
+
+impl<S, R: Copy> TunnelTransport<S, R> {
+    fn new(sender: Sender<Option<S>>, receiver: Receiver<Option<R>>) -> Self {
+        Self { sender, receiver }
+    }
+
+    async fn send_internal(&mut self, data: Option<S>) -> DynResult<()> {
+        if let Err(err) = self.sender.send(data) {
+            bail!("Error sending packet to queue: {err}");
+        }
+        Ok(())
+    }
+
+    async fn send(&mut self, data: S) -> DynResult<()> {
+        self.send_internal(Some(data)).await
+    }
+
+    async fn receive(&mut self) -> DynResult<R> {
+        self.receiver.changed().await?;
+        let borrowed = self.receiver.borrow();
+        match *borrowed {
+            Some(res) => Ok(res),
+            None => bail!("Tunnel queue was closed!"),
+        }
+    }
+
+    async fn close(&mut self) -> DynResult<()> {
+        self.send_internal(None).await
+    }
 }
 
 trait PacketExchangeProcess {
