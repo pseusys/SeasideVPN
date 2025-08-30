@@ -28,8 +28,6 @@ use windows::Win32::Networking::WinSock::{AF_INET, SOCKADDR_IN};
 use wmi::{COMLibrary, WMIConnection};
 
 use crate::bytes::get_buffer;
-use crate::tunnel::ptr_utils::{ConstSendPtr, LocalConstTunnelTransport, RemoteConstTunnelTransport};
-use crate::tunnel::ptr_utils::{LocalMutTunnelTransport, MutSendPtr, RemoteMutTunnelTransport};
 use crate::tunnel::Tunnelling;
 use crate::{run_coroutine_in_thread, run_coroutine_sync, DynResult};
 
