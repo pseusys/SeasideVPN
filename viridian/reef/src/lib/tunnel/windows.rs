@@ -42,7 +42,7 @@ fn get_default_interface_by_remote_address(destination_ip: Ipv4Addr) -> DynResul
     let src_ip = u32::from(ZERO_IP_ADDRESS).to_be();
 
     let mut route: MIB_IPFORWARDROW = MIB_IPFORWARDROW::default();
-    let result = unsafe { GetBestRoute(dest_ip, src_ip, &mut route) };
+    let result = unsafe { GetBestRoute(dest_ip, Some(src_ip), &mut route) };
 
     if WIN32_ERROR(result) == ERROR_SUCCESS {
         Ok(route.dwForwardIfIndex)
