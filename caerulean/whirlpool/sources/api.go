@@ -170,7 +170,7 @@ func (server *WhirlpoolServer) Authenticate(ctx context.Context, request *genera
 		return nil, status.Error(codes.PermissionDenied, "wrong payload value")
 	}
 
-	// Create and marshall user token (will be valid for 10 years for non-privileged users)
+	// Create and marshall user token
 	token := &generated.UserToken{
 		Name:         request.Name,
 		Identifier:   request.Identifier,

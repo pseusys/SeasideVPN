@@ -59,7 +59,7 @@ async def is_tcp_available(address: Optional[str] = None, port: int = 853) -> bo
 async def client() -> AsyncGenerator[AlgaeClient, None]:
     address = environ["SEASIDE_ADDRESS"]
     address_port = environ["SEASIDE_API_PORT"]
-    yield AlgaeClient(address, address_port)
+    yield await AlgaeClient.new(address, address_port)
 
 
 # Tests:
@@ -98,7 +98,7 @@ async def test_receive_token(client: AlgaeClient) -> None:
 @pytest.mark.dependency(depends=["test_receive_token"])
 async def test_open_tunnel(client: AlgaeClient) -> None:
     logger.info("Testing opening the tunnel")
-    client._tunnel.up()
+    await client._tunnel.up()
     assert client._tunnel.operational, "Tunnel isn't operational!"
 
 
@@ -137,5 +137,5 @@ async def test_no_vpn_rerequest() -> None:
 @pytest.mark.dependency(depends=["test_no_vpn_rerequest"])
 async def test_close_tunnel(client: AlgaeClient) -> None:
     logger.info("Testing closing viridian connection")
-    client._tunnel.delete()
+    await client._tunnel.delete()
     assert not client._tunnel.operational, "Tunnel is operational!"

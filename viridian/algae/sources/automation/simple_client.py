@@ -70,14 +70,22 @@ parser.add_argument("-e", "--command", default=None, help="Command to execute an
 
 
 class AlgaeClient:
-    def __init__(self, address: str, port: int, dns: IPv4Address = _DEFAULT_CURRENT_DNS, protocol: Optional[Union[Literal["typhoon"], Literal["port"]]] = None, capture_iface: Optional[List[str]] = None, capture_ranges: Optional[List[str]] = None, capture_addresses: Optional[List[str]] = None, capture_ports: Optional[str] = None, exempt_ranges: Optional[List[str]] = None, exempt_addresses: Optional[List[str]] = None, exempt_ports: Optional[str] = None, local_address: Optional[IPv4Address] = None):
-        self._address = address
-        self._port = port
+    def __init__(self) -> None:
+        self._address: str
+        self._port: int
+        self._proto_type: SeasideClient
+        self._tunnel: Tunnel
+
+    @classmethod
+    async def new(cls, address: str, port: int, dns: IPv4Address = _DEFAULT_CURRENT_DNS, protocol: Optional[Union[Literal["typhoon"], Literal["port"]]] = None, capture_iface: Optional[List[str]] = None, capture_ranges: Optional[List[str]] = None, capture_addresses: Optional[List[str]] = None, capture_ports: Optional[str] = None, exempt_ranges: Optional[List[str]] = None, exempt_addresses: Optional[List[str]] = None, exempt_ports: Optional[str] = None, local_address: Optional[IPv4Address] = None) -> "AlgaeClient":
+        client = cls()
+        client._address = address
+        client._port = port
 
         if protocol is None or protocol == "port":
-            self._proto_type = PortClient
+            client._proto_type = PortClient
         elif protocol == "typhoon":
-            self._proto_type = TyphoonClient
+            client._proto_type = TyphoonClient
         else:
             raise ValueError(f"Unknown protocol type: {protocol}")
 
@@ -85,7 +93,8 @@ class AlgaeClient:
         tunnel_address = IPv4Address(getenv("SEASIDE_TUNNEL_ADDRESS", _DEFAULT_TUNNEL_ADDRESS))
         tunnel_netmask = IPv4Address(getenv("SEASIDE_TUNNEL_NETMASK", _DEFAULT_TUNNEL_NETMASK))
         tunnel_sva = int(getenv("SEASIDE_TUNNEL_SVA", _DEFAULT_TUNNEL_SVA))
-        self._tunnel = Tunnel(tunnel_name, tunnel_address, tunnel_netmask, tunnel_sva, IPv4Address(self._address), dns, capture_iface, capture_ranges, capture_addresses, capture_ports, exempt_ranges, exempt_addresses, exempt_ports, local_address)
+        client._tunnel = await Tunnel.new(tunnel_name, tunnel_address, tunnel_netmask, tunnel_sva, IPv4Address(client._address), dns, capture_iface, capture_ranges, capture_addresses, capture_ports, exempt_ranges, exempt_addresses, exempt_ports, local_address)
+        return client
 
     async def _send_to_caerulean(self, connection: SeasideClient, tunnel: int) -> None:
         loop = get_running_loop()
@@ -163,7 +172,7 @@ class AlgaeClient:
 
     async def interrupt(self, terminate: bool = False) -> None:
         logger.debug("Deleting tunnel...")
-        self._tunnel.delete()
+        await self._tunnel.delete()
         logger.warning("Client connection terminated!")
         if terminate:
             exit(1)
@@ -216,7 +225,7 @@ async def main(args: Sequence[str] = argv[1:]) -> None:
         logger.debug(f"Proceeding with user token: {token!r}")
         listener_port = arguments["port"]
 
-    client = AlgaeClient(**arguments)
+    client = await AlgaeClient.new(**arguments)
     logger.debug("Setting up interruption handlers for client...")
     loop.add_signal_handler(SIGTERM, lambda: create_task(client.interrupt(True)))
     loop.add_signal_handler(SIGINT, lambda: create_task(client.interrupt(True)))

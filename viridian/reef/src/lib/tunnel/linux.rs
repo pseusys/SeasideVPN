@@ -236,7 +236,7 @@ fn create_tunnel(name: &str, address: Ipv4Addr, netmask: Ipv4Addr, mtu: u16) -> 
     });
     let tunnel = match create_as_async(&config) {
         Ok(device) => Ok(device),
-        Err(err) => bail!("Error creating tunnel: {}", err),
+        Err(err) => bail!("Error creating tunnel: {err}"),
     };
     File::create(format!("/proc/sys/net/ipv6/conf/{name}/disable_ipv6"))?.write(&[0x31])?;
     tunnel
