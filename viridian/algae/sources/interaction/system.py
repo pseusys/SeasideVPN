@@ -56,7 +56,7 @@ class _SystemUtils:
     _FORWARD_PRIORITY = -50
 
     @classmethod
-    async def _create_tunnel(cls, name: str) -> Tuple[int, str]:
+    async def _create_tunnel(cls, iproute: AsyncIPRoute, name: str) -> Tuple[int, str]:
         """
         Create Unix TUN device with name, owner and group.
         :param name: tunnel interface name.
@@ -69,43 +69,39 @@ class _SystemUtils:
         ioctl(descriptor, cls._UNIX_TUNSETIFF, tunnel_desc)
         ioctl(descriptor, cls._UNIX_TUNSETOWNER, geteuid())
         ioctl(descriptor, cls._UNIX_TUNSETGROUP, getegid())
-        async with AsyncIPRoute() as ip:
-            tunnels = await ip.link_lookup(ifname=name)
-            tunnel_dev = tunnels[0] if tunnels is not None else str(tunnels)
+        tunnels = await iproute.link_lookup(ifname=name)
+        tunnel_dev = tunnels[0] if tunnels is not None else str(tunnels)
         ipv6_descriptor = Path(f"/proc/sys/net/ipv6/conf/{name}/disable_ipv6")
         if ipv6_descriptor.exists():
             ipv6_descriptor.write_text("1")
         return descriptor, tunnel_dev
 
     @classmethod
-    async def _get_interface_info(cls, index: Optional[int] = None, label: Optional[str] = None) -> Tuple[IPv4Interface, str, int]:
-        async with AsyncIPRoute() as ip:
-            arguments = {k: v for k, v in dict(index=index, label=label).items() if v is not None}
-            addr_iface = await anext(await ip.get_addr(**arguments))
-            default_cidr = addr_iface["prefixlen"]
-            default_iface = addr_iface.get_attr("IFA_LABEL")
-            default_ip = addr_iface.get_attr("IFA_ADDRESS")
-            default_mtu = int((await anext(await ip.get_links(index=addr_iface["index"]))).get_attr("IFLA_MTU"))
-            return IPv4Interface(f"{default_ip}/{default_cidr}"), default_iface, default_mtu
+    async def _get_interface_info(cls, iproute: AsyncIPRoute, index: Optional[int] = None, label: Optional[str] = None) -> Tuple[IPv4Interface, str, int]:
+        arguments = {k: v for k, v in dict(index=index, label=label).items() if v is not None}
+        addr_iface = await anext(await iproute.get_addr(**arguments))
+        default_cidr = addr_iface["prefixlen"]
+        default_iface = addr_iface.get_attr("IFA_LABEL")
+        default_ip = addr_iface.get_attr("IFA_ADDRESS")
+        default_mtu = int((await anext(await iproute.get_links(index=addr_iface["index"]))).get_attr("IFLA_MTU"))
+        return IPv4Interface(f"{default_ip}/{default_cidr}"), default_iface, default_mtu
 
     @classmethod
-    async def _get_default_interface(cls, seaside_address: str) -> Tuple[IPv4Interface, str, int]:
+    async def _get_default_interface(cls, iproute: AsyncIPRoute, seaside_address: str) -> Tuple[IPv4Interface, str, int]:
         """
         Get current default network interface, its IP, CIDR and MTU.
         :param seaside_address: address of the seaside VPN node to connect.
         :return: tuple of tunnel interface (network address and CIDR), default interface name and MTU.
         """
-        async with AsyncIPRoute() as ip:
-            caerulean_dev = (await ip.route("get", dst=seaside_address))[0].get_attr("RTA_OIF")
-            return await cls._get_interface_info(index=caerulean_dev)
+        caerulean_dev = (await iproute.route("get", dst=seaside_address))[0].get_attr("RTA_OIF")
+        return await cls._get_interface_info(iproute, index=caerulean_dev)
 
     @classmethod
-    async def _get_interface_by_ip(cls, address: IPv4Address) -> Tuple[IPv4Interface, str, int]:
-        async with AsyncIPRoute() as ip:
-            for addr in await ip.get_addr():
-                if addr.get_attr("IFA_ADDRESS") == str(address):
-                    return await cls._get_interface_info(index=addr["index"])
-            raise ValueError(f"IP address {address} not found among local interfaces!")
+    async def _get_interface_by_ip(cls, iproute: AsyncIPRoute, address: IPv4Address) -> Tuple[IPv4Interface, str, int]:
+        for addr in await iproute.get_addr():
+            if addr.get_attr("IFA_ADDRESS") == str(address):
+                return await cls._get_interface_info(iproute, index=addr["index"])
+        raise ValueError(f"IP address {address} not found among local interfaces!")
 
     @classmethod
     def _set_dns_servers(cls, dns_server: IPv4Address) -> Tuple[str, Optional[str]]:
@@ -170,6 +166,7 @@ class Tunnel(AbstractAsyncContextManager):
 
     def __init__(self) -> None:
         self._name: str
+        self._socket: AsyncIPRoute
         self._tunnel_ip: str
         self._tunnel_cidr: int
         self._def_iface: IPv4Interface
@@ -196,6 +193,7 @@ class Tunnel(AbstractAsyncContextManager):
         """
         tunnel = cls()
         tunnel._name = name
+        tunnel._socket = AsyncIPRoute()
         seaside_adr_str = str(seaside_address)
 
         tunnel_network = IPv4Network(f"{address}/{netmask}", strict=False)
@@ -204,7 +202,7 @@ class Tunnel(AbstractAsyncContextManager):
 
         tunnel._tunnel_ip = str(address)
         tunnel._tunnel_cidr = tunnel_network.prefixlen
-        tunnel._def_iface, def_iface_name, tunnel._mtu = await _SystemUtils._get_default_interface(seaside_adr_str) if local_address is None else await _SystemUtils._get_interface_by_ip(local_address)
+        tunnel._def_iface, def_iface_name, tunnel._mtu = await _SystemUtils._get_default_interface(tunnel._socket, seaside_adr_str) if local_address is None else await _SystemUtils._get_interface_by_ip(tunnel._socket, local_address)
 
         tunnel._sva_code = sva_code
         tunnel._active = True
@@ -213,7 +211,7 @@ class Tunnel(AbstractAsyncContextManager):
         tunnel._resolv_conf_data, new_dns = _SystemUtils._set_dns_servers(dns)
         logger.info(f"Set DNS server to {Fore.BLUE}{new_dns}{Fore.RESET}")
 
-        tunnel._descriptor, tunnel._tunnel_dev = await _SystemUtils._create_tunnel(name)
+        tunnel._descriptor, tunnel._tunnel_dev = await _SystemUtils._create_tunnel(tunnel._socket, name)
         logger.info(f"Tunnel {Fore.BLUE}{tunnel._name}{Fore.RESET} created")
 
         tunnel._nft = Nftables()
@@ -224,7 +222,7 @@ class Tunnel(AbstractAsyncContextManager):
         if (capture_iface is None or len(capture_iface) == 0) and (capture_ranges is None or len(capture_ranges) == 0) and (capture_addresses is None or len(capture_addresses) == 0) and (capture_ports is None):
             result_capture_interfaces += [def_iface_name]
         for interface in result_capture_interfaces:
-            iface, _, _ = await _SystemUtils._get_interface_info(label=interface)
+            iface, _, _ = await _SystemUtils._get_interface_info(tunnel._socket, label=interface)
             tunnel._nftables_rules += [_SystemUtils._create_marking_rule(iface.with_prefixlen, interface, None, sva_code, True), _SystemUtils._create_allowing_rule(None, iface.with_prefixlen, interface, None, True)]
         logger.info(f"Capturing packets from interfaces: {Fore.BLUE}{result_capture_interfaces}{Fore.RESET}")
 
@@ -324,18 +322,18 @@ class Tunnel(AbstractAsyncContextManager):
         logger.debug(f"NFTables rules set to:\n{self._output_nftables_rules()}")
         logger.info(f"Packet forwarding with mark {Fore.BLUE}{self._sva_code}{Fore.RESET} via table {Fore.BLUE}{self._sva_code}{Fore.RESET} configured")
 
-        async with AsyncIPRoute() as ip:
-            await ip.link("set", index=self._tunnel_dev, mtu=self._mtu)
-            logger.info(f"Tunnel MTU set to {Fore.BLUE}{self._mtu}{Fore.RESET}")
-            await ip.addr("replace", index=self._tunnel_dev, address=self._tunnel_ip, prefixlen=self._tunnel_cidr)
-            logger.info(f"Tunnel IP address set to {Fore.BLUE}{self._tunnel_ip}{Fore.RESET}")
-            await ip.link("set", index=self._tunnel_dev, state="up")
-            logger.info(f"Tunnel {Fore.GREEN}enabled{Fore.RESET}")
-            self._sva_routes = await ip.flush_routes(table=self._sva_code)
-            await ip.route("add", table=self._sva_code, dst="default", gateway=self._tunnel_ip, oif=self._tunnel_dev)
-            await ip.rule("add", fwmark=self._sva_code, table=self._sva_code)
-            await _SystemUtils._send_clear_cache_message(ip)
-            logger.info(f"Packet forwarding via tunnel {Fore.GREEN}enabled{Fore.RESET}")
+        await self._socket.link("set", index=self._tunnel_dev, mtu=self._mtu)
+        logger.info(f"Tunnel MTU set to {Fore.BLUE}{self._mtu}{Fore.RESET}")
+        await self._socket.addr("replace", index=self._tunnel_dev, address=self._tunnel_ip, prefixlen=self._tunnel_cidr)
+        logger.info(f"Tunnel IP address set to {Fore.BLUE}{self._tunnel_ip}{Fore.RESET}")
+        await self._socket.link("set", index=self._tunnel_dev, state="up")
+        logger.info(f"Tunnel {Fore.GREEN}enabled{Fore.RESET}")
+        self._sva_routes = await self._socket.flush_routes(table=self._sva_code)
+        await self._socket.route("add", table=self._sva_code, dst="default", gateway=self._tunnel_ip, oif=self._tunnel_dev)
+        await self._socket.rule("add", fwmark=self._sva_code, table=self._sva_code)
+        await _SystemUtils._send_clear_cache_message(self._socket)
+        logger.info(f"Packet forwarding via tunnel {Fore.GREEN}enabled{Fore.RESET}")
+
         self._operational = True
 
     async def down(self) -> None:
@@ -348,13 +346,13 @@ class Tunnel(AbstractAsyncContextManager):
         self._reset_nftables_rules()
         logger.info(f"Packet forwarding with mark {Fore.BLUE}{self._sva_code}{Fore.RESET} via table {Fore.BLUE}{self._sva_code}{Fore.RESET} removed")
 
-        async with AsyncIPRoute() as ip:
-            await ip.rule("remove", fwmark=self._sva_code, table=self._sva_code)
-            await _SystemUtils._restore_table_routes(ip, self._sva_routes)
-            await _SystemUtils._send_clear_cache_message(ip)
-            logger.info(f"Packet forwarding via tunnel {Fore.GREEN}disabled{Fore.RESET}")
-            await ip.link("set", index=self._tunnel_dev, state="down")
-            logger.info(f"Tunnel {Fore.GREEN}disabled{Fore.RESET}")
+        await self._socket.rule("delete", fwmark=self._sva_code, table=self._sva_code)
+        await _SystemUtils._restore_table_routes(self._socket, self._sva_routes)
+        await _SystemUtils._send_clear_cache_message(self._socket)
+        logger.info(f"Packet forwarding via tunnel {Fore.GREEN}disabled{Fore.RESET}")
+        await self._socket.link("set", index=self._tunnel_dev, state="down")
+        logger.info(f"Tunnel {Fore.GREEN}disabled{Fore.RESET}")
+
         self._operational = False
 
     async def delete(self) -> None:
@@ -364,10 +362,10 @@ class Tunnel(AbstractAsyncContextManager):
         if self._operational:
             await self.down()
         if self._active:
-            async with AsyncIPRoute() as ip:
-                await ip.link("del", index=self._tunnel_dev)
+            await self._socket.link("del", index=self._tunnel_dev)
             logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} deleted")
             _SystemUtils._reset_dns_servers(self._resolv_conf_data)
+            self._socket.close()
             self._active = False
         else:
             logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} already deleted")
