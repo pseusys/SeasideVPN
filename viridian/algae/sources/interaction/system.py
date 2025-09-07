@@ -8,7 +8,7 @@ from struct import pack
 from typing import List, Optional, Tuple
 
 from colorama import Fore
-from pyroute2 import IPRoute
+from pyroute2 import AsyncIPRoute
 from pyroute2.netlink import NLM_F_ECHO, NLM_F_REPLACE, NLM_F_REQUEST
 from pyroute2.netlink.rtnl import RTM_NEWROUTE, RTM_NEWRULE
 from pyroute2.netlink.rtnl.rtmsg import rtmsg
@@ -56,7 +56,7 @@ class _SystemUtils:
     _FORWARD_PRIORITY = -50
 
     @classmethod
-    def _create_tunnel(cls, name: str) -> Tuple[int, str]:
+    async def _create_tunnel(cls, name: str) -> Tuple[int, str]:
         """
         Create Unix TUN device with name, owner and group.
         :param name: tunnel interface name.
@@ -69,8 +69,8 @@ class _SystemUtils:
         ioctl(descriptor, cls._UNIX_TUNSETIFF, tunnel_desc)
         ioctl(descriptor, cls._UNIX_TUNSETOWNER, geteuid())
         ioctl(descriptor, cls._UNIX_TUNSETGROUP, getegid())
-        with IPRoute() as ip:
-            tunnels = ip.link_lookup(ifname=name)
+        async with AsyncIPRoute() as ip:
+            tunnels = await ip.link_lookup(ifname=name)
             tunnel_dev = tunnels[0] if tunnels is not None else str(tunnels)
         ipv6_descriptor = Path(f"/proc/sys/net/ipv6/conf/{name}/disable_ipv6")
         if ipv6_descriptor.exists():
@@ -78,33 +78,33 @@ class _SystemUtils:
         return descriptor, tunnel_dev
 
     @classmethod
-    def _get_interface_info(cls, index: Optional[int] = None, label: Optional[str] = None) -> Tuple[IPv4Interface, str, int]:
-        with IPRoute() as ip:
+    async def _get_interface_info(cls, index: Optional[int] = None, label: Optional[str] = None) -> Tuple[IPv4Interface, str, int]:
+        async with AsyncIPRoute() as ip:
             arguments = {k: v for k, v in dict(index=index, label=label).items() if v is not None}
-            addr_iface = list(ip.get_addr(**arguments))[0]
+            addr_iface = await anext(await ip.get_addr(**arguments))
             default_cidr = addr_iface["prefixlen"]
             default_iface = addr_iface.get_attr("IFA_LABEL")
             default_ip = addr_iface.get_attr("IFA_ADDRESS")
-            default_mtu = int(ip.get_links(index=addr_iface["index"])[0].get_attr("IFLA_MTU"))
+            default_mtu = int((await anext(await ip.get_links(index=addr_iface["index"]))).get_attr("IFLA_MTU"))
             return IPv4Interface(f"{default_ip}/{default_cidr}"), default_iface, default_mtu
 
     @classmethod
-    def _get_default_interface(cls, seaside_address: str) -> Tuple[IPv4Interface, str, int]:
+    async def _get_default_interface(cls, seaside_address: str) -> Tuple[IPv4Interface, str, int]:
         """
         Get current default network interface, its IP, CIDR and MTU.
         :param seaside_address: address of the seaside VPN node to connect.
         :return: tuple of tunnel interface (network address and CIDR), default interface name and MTU.
         """
-        with IPRoute() as ip:
-            caerulean_dev = list(ip.route("get", dst=seaside_address))[0].get_attr("RTA_OIF")
-            return cls._get_interface_info(index=caerulean_dev)
+        async with AsyncIPRoute() as ip:
+            caerulean_dev = (await ip.route("get", dst=seaside_address))[0].get_attr("RTA_OIF")
+            return await cls._get_interface_info(index=caerulean_dev)
 
     @classmethod
-    def _get_interface_by_ip(cls, address: IPv4Address) -> Tuple[IPv4Interface, str, int]:
-        with IPRoute() as ip:
-            for addr in ip.get_addr():
+    async def _get_interface_by_ip(cls, address: IPv4Address) -> Tuple[IPv4Interface, str, int]:
+        async with AsyncIPRoute() as ip:
+            for addr in await ip.get_addr():
                 if addr.get_attr("IFA_ADDRESS") == str(address):
-                    return cls._get_interface_info(index=addr["index"])
+                    return await cls._get_interface_info(index=addr["index"])
             raise ValueError(f"IP address {address} not found among local interfaces!")
 
     @classmethod
@@ -149,14 +149,14 @@ class _SystemUtils:
         return " ".join(parts)
 
     @classmethod
-    def _send_clear_cache_message(cls, iproute: IPRoute):
-        iproute.put(rtmsg(), msg_type=RTM_NEWROUTE, msg_flags=NLM_F_REPLACE | NLM_F_ECHO)
-        iproute.put(rtmsg(), msg_type=RTM_NEWRULE, msg_flags=NLM_F_REPLACE | NLM_F_ECHO)
+    async def _send_clear_cache_message(cls, iproute: AsyncIPRoute):
+        await iproute.put(rtmsg(), msg_type=RTM_NEWROUTE, msg_flags=NLM_F_REPLACE | NLM_F_ECHO)
+        await iproute.put(rtmsg(), msg_type=RTM_NEWRULE, msg_flags=NLM_F_REPLACE | NLM_F_ECHO)
 
     @classmethod
-    def _restore_table_routes(cls, iproute: IPRoute, routes: List) -> None:
+    async def _restore_table_routes(cls, iproute: AsyncIPRoute, routes: List) -> None:
         for route in routes:
-            iproute.put(route, msg_type=RTM_NEWROUTE, msg_flags=NLM_F_REQUEST)
+            await iproute.put(route, msg_type=RTM_NEWROUTE, msg_flags=NLM_F_REQUEST)
 
 
 class Tunnel(AbstractAsyncContextManager):
@@ -168,47 +168,64 @@ class Tunnel(AbstractAsyncContextManager):
 
     _TABLE_NAME = "seaside"
 
-    def __init__(self, name: str, address: IPv4Address, netmask: IPv4Address, sva_code: int, seaside_address: IPv4Address, dns: IPv4Address, capture_iface: Optional[List[str]] = None, capture_ranges: Optional[List[str]] = None, capture_addresses: Optional[List[str]] = None, capture_ports: Optional[str] = None, exempt_ranges: Optional[List[str]] = None, exempt_addresses: Optional[List[str]] = None, exempt_ports: Optional[str] = None, local_address: Optional[IPv4Address] = None):
+    def __init__(self) -> None:
+        self._name: str
+        self._tunnel_ip: str
+        self._tunnel_cidr: int
+        self._def_iface: IPv4Interface
+        self._mtu: int
+        self._sva_code: int
+        self._active: bool
+        self._operational: bool
+        self._resolv_conf_data: str
+        self._descriptor: int
+        self._tunnel_dev: str
+        self._nft: Nftables
+        self._nftables_rules: List[str]
+
+    @classmethod
+    async def new(cls, name: str, address: IPv4Address, netmask: IPv4Address, sva_code: int, seaside_address: IPv4Address, dns: IPv4Address, capture_iface: Optional[List[str]] = None, capture_ranges: Optional[List[str]] = None, capture_addresses: Optional[List[str]] = None, capture_ports: Optional[str] = None, exempt_ranges: Optional[List[str]] = None, exempt_addresses: Optional[List[str]] = None, exempt_ports: Optional[str] = None, local_address: Optional[IPv4Address] = None) -> "Tunnel":
         """
         Tunnel constructor.
-        :param self: instance of Tunnel.
+        :param cls: class of Tunnel.
         :param name: tunnel interface name., exempt_ports: Optional[str] = None
         :param address: tunnel interface IP address.
         :param netmask: tunnel interface network mask.
         :param sva_code: seaside-viridian-algae constant.
         :param seaside_address: seaside server address.
         """
-        self._name = name
+        tunnel = cls()
+        tunnel._name = name
         seaside_adr_str = str(seaside_address)
 
         tunnel_network = IPv4Network(f"{address}/{netmask}", strict=False)
         if address == tunnel_network.network_address or address == tunnel_network.broadcast_address:
             raise ValueError(f"Tunnel address {address} is reserved in tunnel network {tunnel_network}!!")
 
-        self._tunnel_ip = str(address)
-        self._tunnel_cidr = tunnel_network.prefixlen
-        self._def_iface, def_iface_name, self._mtu = _SystemUtils._get_default_interface(seaside_adr_str) if local_address is None else _SystemUtils._get_interface_by_ip(local_address)
+        tunnel._tunnel_ip = str(address)
+        tunnel._tunnel_cidr = tunnel_network.prefixlen
+        tunnel._def_iface, def_iface_name, tunnel._mtu = await _SystemUtils._get_default_interface(seaside_adr_str) if local_address is None else await _SystemUtils._get_interface_by_ip(local_address)
 
-        self._sva_code = sva_code
-        self._active = True
-        self._operational = False
+        tunnel._sva_code = sva_code
+        tunnel._active = True
+        tunnel._operational = False
 
-        self._resolv_conf_data, new_dns = _SystemUtils._set_dns_servers(dns)
+        tunnel._resolv_conf_data, new_dns = _SystemUtils._set_dns_servers(dns)
         logger.info(f"Set DNS server to {Fore.BLUE}{new_dns}{Fore.RESET}")
 
-        self._descriptor, self._tunnel_dev = _SystemUtils._create_tunnel(name)
-        logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} created")
+        tunnel._descriptor, tunnel._tunnel_dev = await _SystemUtils._create_tunnel(name)
+        logger.info(f"Tunnel {Fore.BLUE}{tunnel._name}{Fore.RESET} created")
 
-        self._nft = Nftables()
-        self._nftables_rules = [_SystemUtils._create_allowing_rule(None, f"{new_dns}/32", None, None), _SystemUtils._create_allowing_rule(f"{self._def_iface.ip}/32", seaside_adr_str, def_iface_name, None)]
+        tunnel._nft = Nftables()
+        tunnel._nftables_rules = [_SystemUtils._create_allowing_rule(None, f"{new_dns}/32", None, None), _SystemUtils._create_allowing_rule(f"{tunnel._def_iface.ip}/32", seaside_adr_str, def_iface_name, None)]
         logger.info(f"Allowed packets to {Fore.BLUE}caerulean{Fore.RESET} and to {Fore.BLUE}DNS{Fore.RESET}")
 
         result_capture_interfaces = list() if capture_iface is None else capture_iface
         if (capture_iface is None or len(capture_iface) == 0) and (capture_ranges is None or len(capture_ranges) == 0) and (capture_addresses is None or len(capture_addresses) == 0) and (capture_ports is None):
             result_capture_interfaces += [def_iface_name]
         for interface in result_capture_interfaces:
-            iface, _, _ = _SystemUtils._get_interface_info(label=interface)
-            self._nftables_rules += [_SystemUtils._create_marking_rule(iface.with_prefixlen, interface, None, sva_code, True), _SystemUtils._create_allowing_rule(None, iface.with_prefixlen, interface, None, True)]
+            iface, _, _ = await _SystemUtils._get_interface_info(label=interface)
+            tunnel._nftables_rules += [_SystemUtils._create_marking_rule(iface.with_prefixlen, interface, None, sva_code, True), _SystemUtils._create_allowing_rule(None, iface.with_prefixlen, interface, None, True)]
         logger.info(f"Capturing packets from interfaces: {Fore.BLUE}{result_capture_interfaces}{Fore.RESET}")
 
         capture_ranges = (list() if capture_ranges is None else capture_ranges) + (list() if capture_addresses is None else [f"{address}/32" for address in capture_addresses])
@@ -216,24 +233,25 @@ class Tunnel(AbstractAsyncContextManager):
 
         result_capture_ranges = list(set(capture_ranges) - set(exempt_ranges))
         for range in result_capture_ranges:
-            self._nftables_rules += [_SystemUtils._create_marking_rule(range, None, None, sva_code), _SystemUtils._create_allowing_rule(None, range, None, None)]
+            tunnel._nftables_rules += [_SystemUtils._create_marking_rule(range, None, None, sva_code), _SystemUtils._create_allowing_rule(None, range, None, None)]
         logger.info(f"Capturing packets from ranges: {Fore.BLUE}{result_capture_ranges}{Fore.RESET}")
 
         if capture_ports is not None:
-            self._nftables_rules += [_SystemUtils._create_marking_rule(None, None, ("tcp", capture_ports), sva_code), _SystemUtils._create_allowing_rule(None, None, None, ("tcp", capture_ports))]
-            self._nftables_rules += [_SystemUtils._create_marking_rule(None, None, ("udp", capture_ports), sva_code), _SystemUtils._create_allowing_rule(None, None, None, ("udp", capture_ports))]
+            tunnel._nftables_rules += [_SystemUtils._create_marking_rule(None, None, ("tcp", capture_ports), sva_code), _SystemUtils._create_allowing_rule(None, None, None, ("tcp", capture_ports))]
+            tunnel._nftables_rules += [_SystemUtils._create_marking_rule(None, None, ("udp", capture_ports), sva_code), _SystemUtils._create_allowing_rule(None, None, None, ("udp", capture_ports))]
         logger.info(f"Capturing packets from ports: {Fore.BLUE}{capture_ports}{Fore.RESET}")
 
         result_exempt_ranges = list(set(exempt_ranges) - set(capture_ranges))
         for range in result_exempt_ranges:
-            self._nftables_rules += [_SystemUtils._create_allowing_rule(None, range, None, None)]
+            tunnel._nftables_rules += [_SystemUtils._create_allowing_rule(None, range, None, None)]
         logger.info(f"Letting through packets from ranges: {Fore.BLUE}{result_exempt_ranges}{Fore.RESET}")
 
         if exempt_ports is not None:
-            self._nftables_rules += [_SystemUtils._create_allowing_rule(None, None, None, ("tcp", capture_ports)), _SystemUtils._create_allowing_rule(None, None, None, ("udp", capture_ports))]
+            tunnel._nftables_rules += [_SystemUtils._create_allowing_rule(None, None, None, ("tcp", capture_ports)), _SystemUtils._create_allowing_rule(None, None, None, ("udp", capture_ports))]
         logger.info(f"Letting through packets from ports: {Fore.BLUE}{exempt_ports}{Fore.RESET}")
 
         logger.info(f"Packet capturing rules {Fore.GREEN}created{Fore.RESET}")
+        return tunnel
 
     @property
     def operational(self) -> bool:
@@ -294,7 +312,7 @@ class Tunnel(AbstractAsyncContextManager):
         """
         self._run_nftables_commands(f"delete table inet {self._TABLE_NAME}")
 
-    def up(self) -> None:
+    async def up(self) -> None:
         """
         Setup iptables forwarding rules.
         Also set tunnel interface up, set its MTU, IP address and CIDR.
@@ -306,21 +324,21 @@ class Tunnel(AbstractAsyncContextManager):
         logger.debug(f"NFTables rules set to:\n{self._output_nftables_rules()}")
         logger.info(f"Packet forwarding with mark {Fore.BLUE}{self._sva_code}{Fore.RESET} via table {Fore.BLUE}{self._sva_code}{Fore.RESET} configured")
 
-        with IPRoute() as ip:
-            ip.link("set", index=self._tunnel_dev, mtu=self._mtu)
+        async with AsyncIPRoute() as ip:
+            await ip.link("set", index=self._tunnel_dev, mtu=self._mtu)
             logger.info(f"Tunnel MTU set to {Fore.BLUE}{self._mtu}{Fore.RESET}")
-            ip.addr("replace", index=self._tunnel_dev, address=self._tunnel_ip, prefixlen=self._tunnel_cidr)
+            await ip.addr("replace", index=self._tunnel_dev, address=self._tunnel_ip, prefixlen=self._tunnel_cidr)
             logger.info(f"Tunnel IP address set to {Fore.BLUE}{self._tunnel_ip}{Fore.RESET}")
-            ip.link("set", index=self._tunnel_dev, state="up")
+            await ip.link("set", index=self._tunnel_dev, state="up")
             logger.info(f"Tunnel {Fore.GREEN}enabled{Fore.RESET}")
-            self._sva_routes = ip.flush_routes(table=self._sva_code)
-            ip.route("add", table=self._sva_code, dst="default", gateway=self._tunnel_ip, oif=self._tunnel_dev)
-            ip.rule("add", fwmark=self._sva_code, table=self._sva_code)
-            _SystemUtils._send_clear_cache_message(ip)
+            self._sva_routes = await ip.flush_routes(table=self._sva_code)
+            await ip.route("add", table=self._sva_code, dst="default", gateway=self._tunnel_ip, oif=self._tunnel_dev)
+            await ip.rule("add", fwmark=self._sva_code, table=self._sva_code)
+            await _SystemUtils._send_clear_cache_message(ip)
             logger.info(f"Packet forwarding via tunnel {Fore.GREEN}enabled{Fore.RESET}")
         self._operational = True
 
-    def down(self) -> None:
+    async def down(self) -> None:
         """
         Remove iptables forwarding rules.
         Also clear routes in table numbered with seaside viridian algae universal code.
@@ -330,24 +348,24 @@ class Tunnel(AbstractAsyncContextManager):
         self._reset_nftables_rules()
         logger.info(f"Packet forwarding with mark {Fore.BLUE}{self._sva_code}{Fore.RESET} via table {Fore.BLUE}{self._sva_code}{Fore.RESET} removed")
 
-        with IPRoute() as ip:
-            ip.rule("remove", fwmark=self._sva_code, table=self._sva_code)
-            _SystemUtils._restore_table_routes(ip, self._sva_routes)
-            _SystemUtils._send_clear_cache_message(ip)
+        async with AsyncIPRoute() as ip:
+            await ip.rule("remove", fwmark=self._sva_code, table=self._sva_code)
+            await _SystemUtils._restore_table_routes(ip, self._sva_routes)
+            await _SystemUtils._send_clear_cache_message(ip)
             logger.info(f"Packet forwarding via tunnel {Fore.GREEN}disabled{Fore.RESET}")
-            ip.link("set", index=self._tunnel_dev, state="down")
+            await ip.link("set", index=self._tunnel_dev, state="down")
             logger.info(f"Tunnel {Fore.GREEN}disabled{Fore.RESET}")
         self._operational = False
 
-    def delete(self) -> None:
+    async def delete(self) -> None:
         """
         Remove tunnel interface, bring it down if it's still running.
         """
         if self._operational:
-            self.down()
+            await self.down()
         if self._active:
-            with IPRoute() as ip:
-                ip.link("del", index=self._tunnel_dev)
+            async with AsyncIPRoute() as ip:
+                await ip.link("del", index=self._tunnel_dev)
             logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} deleted")
             _SystemUtils._reset_dns_servers(self._resolv_conf_data)
             self._active = False
@@ -355,10 +373,10 @@ class Tunnel(AbstractAsyncContextManager):
             logger.info(f"Tunnel {Fore.BLUE}{self._name}{Fore.RESET} already deleted")
 
     async def __aenter__(self) -> int:
-        self.up()
+        await self.up()
         return self.descriptor
 
     async def __aexit__(self, _, exc_value: Optional[BaseException], __) -> None:
-        self.down()
+        await self.down()
         if exc_value is not None:
             raise exc_value

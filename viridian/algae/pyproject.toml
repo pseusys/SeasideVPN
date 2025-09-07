@@ -60,7 +60,7 @@ client = [
 ]
 
 devel = [
-    "pytest~=8.4.1",
+    "pytest~=8.4.2",
     "pythonping~=1.1.4",
     "dnspython~=2.7.0",
     "pytest-asyncio~=1.1.0",
@@ -78,12 +78,12 @@ codestyle = [
 
 bundle = [
     "tomli~=2.2.1",
-    "zipapps~=2024.8.7"
+    "zipapps~=2025.9.4"
 ]
 
 setup = [
     "colorama~=0.4.6",
-    "cryptography~=45.0.6",
+    "cryptography~=45.0.7",
     "semver~=3.0.2"
 ]
 
