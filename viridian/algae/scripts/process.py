@@ -1,5 +1,6 @@
 from glob import glob
 from logging import getLogger
+from os import makedirs
 from pathlib import Path
 from shutil import rmtree
 from sys import argv
@@ -26,13 +27,15 @@ def generate() -> None:
     """
     from grpc_tools.protoc import _get_resource_file_name, main
 
-    sources_root = ALGAE_ROOT / "sources" / "interaction"
-    rmtree(sources_root / "generated", ignore_errors=True)
+    sources_root = ALGAE_ROOT / "sources" / "interaction" / "generated"
+    rmtree(sources_root, ignore_errors=True)
+    makedirs(sources_root, exist_ok=True)
 
+    generation_settings = "client_generation=async"
     vessels_root = ALGAE_ROOT.parent.parent / "vessels"
     proto_include = _get_resource_file_name("grpc_tools", "_proto")
     vessels = [str(file) for file in glob(f"{str(vessels_root)}/*.proto", recursive=True)]
-    params = [main.__module__, f"-I={proto_include}", f"-I={str(vessels_root)}", f"--python_betterproto_out={str(sources_root)}"]
+    params = [main.__module__, f"-I={proto_include}", f"-I={str(vessels_root)}", f"--python_betterproto2_out={str(sources_root)}", f"--python_betterproto2_opt={generation_settings}"]
     exit(main(params + vessels))
 
 

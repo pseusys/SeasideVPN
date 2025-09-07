@@ -9,7 +9,7 @@ from grpclib.client import Channel
 from grpclib.metadata import Deadline
 
 from ..utils.misc import create_logger, random_number
-from .generated import WhirlpoolAuthenticationRequest, WhirlpoolViridianStub
+from .generated.generated import WhirlpoolAuthenticationRequest, WhirlpoolViridianStub
 
 _DEFAULT_SUBSCRIPTION_DAYS = 30
 _METADATA_TAIL_MAX = 1024

@@ -13,11 +13,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends python3-pip && 
 
 # Export dependencies to a `requirements.txt` install protobuf compiler.
 COPY viridian/algae/pyproject.toml viridian/algae/README.md viridian/algae/__init__.py ./
-RUN pip3 install --no-cache-dir --break-system-packages .
+RUN pip3 install --no-cache-dir --break-system-packages .[devel]
 
 # Copy protobuf files and generate python code.
 COPY vessels ./vessels
-RUN python3 -m grpc_tools.protoc -I=vessels --python_betterproto_out=. vessels/*.proto
+RUN mkdir generated && python3 -m grpc_tools.protoc -I=vessels --python_betterproto2_out=generated --python_betterproto2_opt=client_generation=async vessels/*.proto
 
 
 FROM ubuntu:24.10 AS default

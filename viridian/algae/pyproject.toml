@@ -39,11 +39,6 @@ classifiers = [
     "Topic :: System :: Networking"
 ]
 
-dependencies = [
-    "grpcio-tools~=1.62.0",
-    "betterproto[compiler]~=2.0.0b6"
-]
-
 
 [project.urls]
 repository = "https://github.com/pseusys/SeasideVPN"
@@ -52,17 +47,20 @@ repository = "https://github.com/pseusys/SeasideVPN"
 [project.optional-dependencies]
 client = [
     "ansibleguy-nftables~=1.0.2.post1",
+    "betterproto2~=0.8.0",
     "colorama~=0.4.6",
     "pyroute2~=0.9.4",
-    "betterproto~=2.0.0b6",
     "pymonocypher~=4.0.2.5",
     "semver~=3.0.4"
 ]
 
 devel = [
+    "betterproto2[grpclib,pydantic]~=0.8.0",
+    "betterproto2_compiler~=0.8.0",
+    "grpcio-tools~=1.74.0",
     "pytest~=8.4.2",
     "pythonping~=1.1.4",
-    "dnspython~=2.7.0",
+    "dnspython~=2.8.0",
     "pytest-asyncio~=1.1.0",
     "pytest-timeout~=2.4.0",
     "pytest-dependency~=0.6.0"
@@ -72,7 +70,7 @@ codestyle = [
     "mypy~=1.17.0",
     "flake8~=7.3.0",
     "black~=25.1.0",
-    "isort~=5.13.2",
+    "isort~=6.0.1",
     "types-PyYAML~=6.0.2"
 ]
 

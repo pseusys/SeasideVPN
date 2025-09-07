@@ -32,5 +32,5 @@ message WhirlpoolAuthenticationResponse {
 
 
 service WhirlpoolViridian {
-    rpc Authenticate(WhirlpoolAuthenticationRequest) returns (WhirlpoolAuthenticationResponse) {}
+    rpc Authenticate(WhirlpoolAuthenticationRequest) returns (WhirlpoolAuthenticationResponse);
 }
