@@ -1,0 +1,17 @@
+targets:
+  $default:
+
+    sources:
+      - $package$
+      - lib/**
+      - protos/**
+
+    builders:
+      protobuf_generator:
+        options:
+          protobuf_version: "24.4"
+          proto_root_dir: protos/
+          dart_out_dir: lib/generated
+          generate_grpc: true
+          proto_paths:
+            - protos/

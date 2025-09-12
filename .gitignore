@@ -33,22 +33,21 @@ viridian/algae/.poetry
 viridian/algae/poetry.lock
 
 ## Pyinstaller build:
-viridian/algae/build/
-viridian/algae/dist/
+viridian/algae/build
+viridian/algae/dist
 viridian/algae/**/*.spec
 
 ## Python (and test) cache:
-viridian/algae/**/__pycache__/
-viridian/algae/**/.mypy_cache/
-viridian/algae/**/.pytest-cache/
+viridian/algae/**/__pycache__
+viridian/algae/**/.mypy_cache
+viridian/algae/**/.pytest-cache
 
 ## Python generated files:
-viridian/algae/sources/interaction/generated/
+viridian/algae/sources/interaction/generated
 viridian/algae/*.pyz
 
 ## Test files:
-viridian/algae/certificates/
-.github/certificates/
+viridian/algae/certificates
 
 
 
@@ -81,9 +80,77 @@ viridian/reef/target
 viridian/reef/src/generated
 
 ## Test files:
-viridian/reef/certificates/
+viridian/reef/certificates
 
 ## External dependencies:
 viridian/reef/WinDivert-*.zip
-viridian/reef/windivert-bin/
-viridian/reef/windivert-source/
+viridian/reef/windivert-bin
+viridian/reef/windivert-source
+
+
+
+# Dart (Flutter):
+
+## Not-yet-supported platforms:
+viridian/littoral/android
+viridian/littoral/ios
+viridian/littoral/macos
+viridian/littoral/android
+viridian/littoral/windows
+
+## Copied assets:
+viridian/littoral/protos
+
+## Generated code files
+viridian/littoral/lib/generated
+viridian/littoral/**/*.g.dart
+viridian/littoral/**/*.g.yaml
+
+## Miscellaneous
+viridian/littoral/*.class
+viridian/littoral/*.log
+viridian/littoral/*.pyc
+viridian/littoral/*.swp
+viridian/littoral/.DS_Store
+viridian/littoral/.build
+viridian/littoral/.buildlog
+viridian/littoral/.history
+viridian/littoral/.svn
+viridian/littoral/.swiftpm
+viridian/littoral/migrate_working_dir
+
+## Flutter/Dart/Pub related
+viridian/littoral/**/doc/api
+viridian/littoral/**/ios/Flutter/.last_build_id
+viridian/littoral/.dart_tool
+viridian/littoral/.flutter-plugins-dependencies
+viridian/littoral/.metadata
+viridian/littoral/.pub-cache
+viridian/littoral/.pub
+viridian/littoral/pubspec.lock
+viridian/littoral/build
+viridian/littoral/coverage
+
+## Symbolication related
+viridian/littoral/app.*.symbols
+
+## Obfuscation related
+viridian/littoral/app.*.map.json
+
+## Android Studio will place build artifacts here
+viridian/littoral/android/app/debug
+viridian/littoral/android/app/profile
+viridian/littoral/android/app/release
+
+## Linux build artifacts
+viridian/littoral/linux/flutter/ephemeral
+
+## Windows build artifacts
+viridian/littoral/windows/flutter/ephemeral
+viridian/littoral/windows/*.suo
+viridian/littoral/windows/*.user
+viridian/littoral/windows/*.userosscache
+viridian/littoral/windows/*.sln.docstates
+viridian/littoral/windows/x64
+viridian/littoral/windows/x86
+viridian/littoral/windows/*.[Cc]ache

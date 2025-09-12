@@ -1,0 +1,43 @@
+name: littoral
+description: A production-ready SeasideVPN GUI client for Linux and Windows
+publish_to: none
+
+version: "0.0.4"
+
+environment:
+  sdk: ^3.9.2
+
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  bloc: ^9.0.0
+  cupertino_icons: ^1.0.8
+  file_picker: ^10.3.3
+  flutter_bloc: ^9.1.1
+  grpc: ^4.1.0
+  hive_ce: ^2.12.0
+  hive_ce_flutter: ^2.3.2
+  path_provider: ^2.1.0
+  path: ^1.9.1
+  protobuf: ^4.2.0
+  uuid: ^4.5.1
+
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  protobuf_generator:
+    git:
+      url: https://github.com/pseusys/protobuf_generator.git
+      ref: fe0fb4f28a347a0d5cfd9467c3d0fe1210a2810b
+
+  build_runner: ^2.8.0
+  flutter_lints: ^6.0.0
+  hive_ce_generator: ^1.9.5
+
+
+flutter:
+  uses-material-design: true

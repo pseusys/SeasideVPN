@@ -31,6 +31,7 @@ VERSIONED_FILES=(
     "viridian/algae/README.md" \
     "viridian/algae/sources/version.py" \
     "viridian/algae/setup/whirlpool.py" \
+    "viridian/littoral/pubspec.yaml" \
     "viridian/reef/Cargo.toml" \
     "viridian/reef/README.md" \
     "viridian/reef/src/lib/mod.rs" \

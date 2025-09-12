@@ -5,12 +5,6 @@
 SHELL=/bin/bash
 .SHELLFLAGS=-c -e
 
-BOLD=\033[1m
-BLUE=\033[34m
-GREEN=\033[32m
-YELLOW=\033[33m
-RESET=\033[0m
-
 BUILD_TYPE=debug
 
 WINDIVERT_VERSION=2.2.2
@@ -21,21 +15,16 @@ WINDIVERT_TEMP=windivert-source
 WINDIVERT_SOURCE=WinDivert-$(WINDIVERT_VERSION)-A
 WINDIVERT_URL=https://github.com/basil00/WinDivert/releases/download/v$(WINDIVERT_VERSION)/$(WINDIVERT_SOURCE).zip
 
-
 UNAME_M := $(shell uname -m)
 
 ifeq ($(UNAME_M),x86_64)
 	WINDIVERT_ARCH := x64
-    WINTUN_ARCH := amd64
 else ifeq ($(UNAME_M),i686)
 	WINDIVERT_ARCH := x32
-    WINTUN_ARCH := x86
 else ifeq ($(UNAME_M),aarch64)
 	WINDIVERT_ARCH := x64
-    WINTUN_ARCH := arm64
 else ifeq ($(UNAME_M),armv7l)
 	WINDIVERT_ARCH := x32
-    WINTUN_ARCH := arm
 else
     $(error Unsupported uname architecture: $(UNAME_M))
 endif

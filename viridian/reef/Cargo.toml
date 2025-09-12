@@ -2,7 +2,7 @@
 name = "SeasideVPN-Reef"
 version = "0.0.4"
 edition = "2021"
-description = "A production-ready SeasideVPN client for Linux and Windows"
+description = "A production-ready SeasideVPN CLI client for legacy Linux and Windows"
 authors = [
     "Alexander Sergeev <alexander.sergeev@onmail.com>"
 ]
