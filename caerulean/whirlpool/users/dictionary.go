@@ -75,12 +75,18 @@ func (dict *ViridianDict) Add(getViridianID func() (any, uint16, error), viridia
 	dict.mutex.Lock()
 	defer dict.mutex.Unlock()
 
+	// Extract values from token buffer
+	tokenIsAdmin := token.IsAdmin()
+	tokenName := string(token.Name())
+	tokenIdentifier := string(token.Identifier())
+	tokenSubscription := int64(token.Subscription())
+
 	// Check if there are slots available (or if viridian is already connected)
-	viridian, ok := dict.uniques[token.Identifier]
+	viridian, ok := dict.uniques[tokenIdentifier]
 	if ok {
 		viridian.stop()
 		delete(dict.entries, viridian.peerID)
-	} else if !token.IsAdmin && len(dict.entries) >= int(dict.maxViridians) {
+	} else if !tokenIsAdmin && len(dict.entries) >= int(dict.maxViridians) {
 		return nil, 0, fmt.Errorf("can not connect any more viridians, connected: %d", len(dict.entries))
 	} else if len(dict.entries) == int(dict.maxViridians+dict.maxOverhead) {
 		return nil, 0, fmt.Errorf("can not connect any more admins, connected: %d", len(dict.entries))
@@ -88,9 +94,9 @@ func (dict *ViridianDict) Add(getViridianID func() (any, uint16, error), viridia
 
 	// If found, resolve deletion timeout
 	var deletionTimeout time.Duration
-	if !token.IsAdmin && token.Subscription != nil {
+	if !tokenIsAdmin && tokenSubscription > 0 {
 		now := time.Now()
-		timeout := token.Subscription.AsTime()
+		timeout := time.Unix(tokenSubscription, 0)
 		if timeout.Before(now) {
 			return nil, 0, fmt.Errorf("viridian timeout already expired (%d < %d)", timeout.Unix(), now.Unix())
 		}
@@ -115,17 +121,17 @@ func (dict *ViridianDict) Add(getViridianID func() (any, uint16, error), viridia
 
 	// Create viridian object
 	viridian = &Viridian{
-		Name:       token.Name,
+		Name:       tokenName,
 		Device:     *viridianDevice,
-		Identifier: token.Identifier,
-		admin:      token.IsAdmin,
+		Identifier: tokenIdentifier,
+		admin:      tokenIsAdmin,
 		peerID:     viridianID,
 		protocol:   protocol,
 		reset:      deletionTimer,
 	}
 
 	dict.entries[viridianID] = viridian
-	dict.uniques[token.Identifier] = viridian
+	dict.uniques[tokenIdentifier] = viridian
 	return viridianHandle, viridianID, nil
 }
 

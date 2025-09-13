@@ -13,7 +13,6 @@ import (
 
 	"github.com/pseusys/betterbuf"
 	"github.com/sirupsen/logrus"
-	"google.golang.org/protobuf/proto"
 )
 
 type UDPConnWithPacket struct {
@@ -185,12 +184,8 @@ func (t *TyphoonListener) handleInitMessage(viridianDict *users.ViridianDict, ad
 	}
 	logrus.Debugf("Viridian %v:%v token decrypted: %v", peerIP, peerPort, tokenBytes)
 
-	token := new(generated.UserToken)
-	err = proto.Unmarshal(tokenBytes.Slice(), token)
-	if err != nil {
-		return nil, nil, nil, cipher, TOKEN_PARSE_ERROR, packetNumber, nextIn, fmt.Errorf("error unmarshaling viridian token: %v", err)
-	}
-	logrus.Debugf("Viridian %v:%v token parsed: name %s, identifier %s", peerIP, peerPort, token.Name, token.Identifier)
+	token := generated.GetRootAsUserToken(tokenBytes.Slice(), 0)
+	logrus.Debugf("Viridian %v:%v token parsed: name %s, identifier %s", peerIP, peerPort, token.Name(), token.Identifier())
 
 	handle, peerID, err := viridianDict.Add(func() (any, uint16, error) { return createTyphoonViridianHandle(address) }, viridianName, token, users.PROTOCOL_TYPHOON)
 	if err != nil {

@@ -5,7 +5,6 @@
 SHELL=/bin/bash
 .SHELLFLAGS=-c -e
 
-PROTOGO_PROTOC_VERSION=24.4
 LINKING_FLAGS=""
 
 GOOS=linux
@@ -46,8 +45,8 @@ help:
 
 
 build:
-	@ # Generate protobuf files, install dependencies and build executable
-	protogo mod tidy -- -I=${PROJECT_ROOT} --go_out=. --go-grpc_out=. ${PROJECT_ROOT}/vessels/*.proto
+	@ # Generate flatbuffers files, install dependencies and build executable
+	flatc -g --grpc --reflect-types -I ${PROJECT_ROOT}/vessels ${PROJECT_ROOT}/vessels/*.fbs
 	go build -ldflags ${LINKING_FLAGS} -o build/$(EXEC_NAME) ./sources
 .PHONY: build
 

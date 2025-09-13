@@ -30,10 +30,10 @@ type MetaServer struct {
 func NewMetaServer(viridianDict *users.ViridianDict, tunnelConfig *tunnel.TunnelConfig) (*MetaServer, error) {
 	intIP := utils.GetEnv("SEASIDE_ADDRESS", tunnelConfig.Default.IP.String())
 	apiPort := uint16(utils.GetIntEnv("SEASIDE_API_PORT", tunnel.DEFAULT_API_PORT, 16))
-	portPort := int32(utils.GetIntEnv("SEASIDE_PORT_PORT", tunnel.DEFAULT_PORT_PORT, 32))
-	typhoonPort := int32(utils.GetIntEnv("SEASIDE_TYPHOON_PORT", tunnel.DEFAULT_TYPHOON_PORT, 32))
+	portPort := uint16(utils.GetIntEnv("SEASIDE_PORT_PORT", tunnel.DEFAULT_PORT_PORT, 16))
+	typhoonPort := uint16(utils.GetIntEnv("SEASIDE_TYPHOON_PORT", tunnel.DEFAULT_TYPHOON_PORT, 16))
 
-	if portPort == -1 && typhoonPort == -1 {
+	if portPort == 0 && typhoonPort == 0 {
 		return nil, errors.New("both protocols (TYPHOON and PORT) are disabled, whirlpool is just not sure what to do now")
 	}
 
@@ -44,7 +44,7 @@ func NewMetaServer(viridianDict *users.ViridianDict, tunnelConfig *tunnel.Tunnel
 	}
 
 	var portListener *protocol.PortListener
-	if portPort != -1 {
+	if portPort != 0 {
 		portAddress := fmt.Sprintf("%s:%d", intIP, portPort)
 		portListener, err = protocol.NewPortListener(portAddress, viridianDict)
 		if err != nil {
@@ -53,7 +53,7 @@ func NewMetaServer(viridianDict *users.ViridianDict, tunnelConfig *tunnel.Tunnel
 	}
 
 	var typhoonListener *protocol.TyphoonListener
-	if typhoonPort != -1 {
+	if typhoonPort != 0 {
 		typhoonAddress := fmt.Sprintf("%s:%d", intIP, typhoonPort)
 		typhoonListener, err = protocol.NewTyphoonListener(typhoonAddress, viridianDict)
 		if err != nil {

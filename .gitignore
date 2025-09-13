@@ -62,7 +62,7 @@ caerulean/whirlpool/**/go.work
 caerulean/whirlpool/**/go.sum
 
 ## Go generated files:
-caerulean/whirlpool/**/*.pb.go
+caerulean/whirlpool/generated/*.go
 
 # Server certificates
 caerulean/whirlpool/certificates

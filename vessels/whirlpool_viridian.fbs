@@ -1,0 +1,44 @@
+namespace generated;
+
+
+
+/// User data that is needed for administrator whirlpool node authentication
+table WhirlpoolAuthenticationRequest {
+    /// User non-unique name
+    name: string (required);
+
+    /// User unique identifier
+    identifier: string (required);
+
+    /// Admin key for authentication
+    api_key: string (required);
+
+    /// Optional subscription timestamp (nanoseconds since Unix epoch, 01.01.1970)
+    subscription: uint64;
+}
+
+/// User authentication certificate
+table WhirlpoolAuthenticationResponse {
+    /// Encrypted user token (encrypted generated.UserToken table)
+    token: [ubyte] (required);
+
+    /// Node public key
+    public_key: [ubyte] (required);
+
+    /// Node TYPHOON protocol port
+    typhoon_port: uint16 = 0;
+
+    /// Node PORT protocol port
+    port_port: uint16 = 0;
+
+    /// Suggested DNS server to use
+    dns: string;
+}
+
+
+
+/// Whirlpool <-> Viridian communication
+rpc_service WhirlpoolViridian {
+    /// Create a viridian user (can be invoked by an admin only)
+    Authenticate(WhirlpoolAuthenticationRequest): WhirlpoolAuthenticationResponse;
+}
