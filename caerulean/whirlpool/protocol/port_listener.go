@@ -14,7 +14,6 @@ import (
 
 	"github.com/pseusys/betterbuf"
 	"github.com/sirupsen/logrus"
-	"google.golang.org/protobuf/proto"
 )
 
 type PortListener struct {
@@ -233,13 +232,8 @@ func (p *PortListener) handleInitMessage(viridianDict *users.ViridianDict, conn 
 	}
 	logrus.Debugf("Viridian %v:%v token decrypted twice successfully!", listenIP, listenPort)
 
-	token := new(generated.UserToken)
-	err = proto.Unmarshal(tokenBytes.Slice(), token)
-	if err != nil {
-		registrationCode = TOKEN_PARSE_ERROR
-		return nil, nil, nil, cipher, fmt.Errorf("error unmarshaling viridian token: %v", err)
-	}
-	logrus.Debugf("Viridian %v:%v token parsed: name %s, identifier %s", listenIP, listenPort, token.Name, token.Identifier)
+	token := generated.GetRootAsUserToken(tokenBytes.Slice(), 0)
+	logrus.Debugf("Viridian %v:%v token parsed: name %s, identifier %s", listenIP, listenPort, token.Name(), token.Identifier())
 
 	handle, peerID, err := viridianDict.Add(func() (any, uint16, error) { return createPortViridianHandle(p.address) }, viridianName, token, users.PROTOCOL_PORT)
 	if err != nil {

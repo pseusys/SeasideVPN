@@ -240,7 +240,7 @@ func createMasqueradeRule(chain *nftables.Chain, iface string) *nftables.Rule {
 // Should be applied for TunnelConf object.
 // Accept internal and external IP addresses as strings, seaside, network and control ports as integers.
 // Return error if configuration was not successful, nil otherwise.
-func (conf *TunnelConfig) openForwarding(intIP, extIP string, apiPort uint16, portPort, typhoonPort int32) error {
+func (conf *TunnelConfig) openForwarding(intIP, extIP string, apiPort, portPort, typhoonPort uint16) error {
 	// Look for iptables configurations
 	maxViridians := utils.GetIntEnv("SEASIDE_MAX_VIRIDIANS", users.DEFAULT_MAX_VIRIDIANS, 32)
 	maxAdmins := utils.GetIntEnv("SEASIDE_MAX_ADMINS", users.DEFAULT_MAX_ADMINS, 32)
@@ -299,13 +299,13 @@ func (conf *TunnelConfig) openForwarding(intIP, extIP string, apiPort uint16, po
 	})
 
 	// Add input nftables rules
-	if typhoonPort != -1 && controlPacketLimit > 0 {
+	if typhoonPort > 0 && controlPacketLimit > 0 {
 		port := uint16(typhoonPort)
 		conn.AddRule(createInputRule(chain, intIface.Name, intAddr, &port, controlPacketLimit, controlPacketBurst, "Nftables drop: TYPHOON IPv4 hashlimit: ", UDP_PROTOCOL_NUMBER, false))
 		conn.AddRule(createInputRule(chain, intIface.Name, intAddr, &port, controlPacketLimit, controlPacketBurst, "Nftables drop: TYPHOON IPv6 hashlimit: ", UDP_PROTOCOL_NUMBER, true))
 	}
 
-	if portPort != -1 && controlPacketLimit > 0 {
+	if portPort > 0 && controlPacketLimit > 0 {
 		port := uint16(portPort)
 		conn.AddRule(createInputRule(chain, intIface.Name, intAddr, &port, controlPacketLimit, controlPacketBurst, "Nftables drop: PORT IPv4 hashlimit: ", TCP_PROTOCOL_NUMBER, false))
 		conn.AddRule(createInputRule(chain, intIface.Name, intAddr, &port, controlPacketLimit, controlPacketBurst, "Nftables drop: PORT IPv6 hashlimit: ", TCP_PROTOCOL_NUMBER, true))

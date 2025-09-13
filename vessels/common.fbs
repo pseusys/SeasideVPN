@@ -1,0 +1,52 @@
+namespace generated;
+
+
+
+/// Required data for connection to a seaside node
+/// In case node authentication payload is not provided, very limited functionality will be available only
+table SeasideConnectionAdminCertificate {
+    /// Node IP address
+    address: string (required);
+
+    /// Node gRPC port
+    port: uint16;
+
+    /// Node authentication API key
+    api_key: string;
+}
+
+/// Required data for connection to a seaside whirlpool node
+table SeasideConnectionClientCertificate {
+    /// Node IP address
+    address: string (required);
+
+    /// Encrypted user token (encrypted generated.UserToken table)
+    token: [ubyte] (required);
+
+    /// Node public key
+    public_key: [ubyte] (required);
+
+    /// Node TYPHOON protocol port
+    typhoon_port: uint16 = 0;
+
+    /// Node PORT protocol port
+    port_port: uint16 = 0;
+
+    /// Suggested DNS server to use
+    dns: string;
+}
+
+/// Seaside user token used for connection
+table UserToken {
+    /// User non-unique name
+    name: string (required);
+
+    /// User unique identifier
+    identifier: string (required);
+
+    /// Whether user was added by admin
+    is_admin: bool;
+
+    /// User subscription end timestamp (nanoseconds since Unix epoch, 01.01.1970)
+    subscription: uint64;
+}
