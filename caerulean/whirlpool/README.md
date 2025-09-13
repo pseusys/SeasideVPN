@@ -13,8 +13,8 @@ It doesn't manage payments and authentication.
 
 1. `go` (compiler) version >= 1.22
   Installation guide can be found [here](https://go.dev/doc/install).
-2. `flatc` (`flatbuffers` compiler) version >= 2.0.8
-  Regularly can be downloaded from the [latest release](https://github.com/google/flatbuffers/releases/latest).
+2. `protogo` (`flatbuffers` compiler automated installer) version >= 0.1.10
+  Regularly can be installed with this command: `go install github.com/pseusys/protogo@latest`.
 3. System packages: `nftables`.
 
 ## Whirlpool structure

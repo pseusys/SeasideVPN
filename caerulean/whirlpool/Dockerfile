@@ -9,7 +9,7 @@ ARG RUNNING_IN_CI
 
 # Flatc compiler is required for executable building.
 # Go lint and nftables are required for testing.
-RUN apk add --no-cache make tar wget build-base nftables flatc
+RUN apk add --no-cache nftables && go install github.com/pseusys/protogo@latest
 
 ENV RUNNING_IN_CI=${RUNNING_IN_CI:-0}
 
@@ -18,7 +18,7 @@ COPY caerulean/whirlpool/go.mod ./
 RUN go mod download
 
 COPY vessels ./vessels
-RUN flatc -g --grpc --reflect-types -I vessels vessels/*.fbs
+RUN protogo -- flatc -g --grpc --reflect-types -I vessels vessels/*.fbs
 
 COPY caerulean/whirlpool ./
 RUN go mod tidy
