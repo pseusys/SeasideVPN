@@ -1,16 +1,24 @@
+from argparse import ArgumentParser
 from glob import glob
 from logging import getLogger
 from os import makedirs
 from pathlib import Path
-from shutil import rmtree
+from shutil import copyfileobj, rmtree, unpack_archive
+from stat import S_IRWXU
+from subprocess import CalledProcessError, run
 from sys import argv
 from typing import List, Union
+from urllib.request import urlopen
 
-# Root of algae viridian source files.
+# Different source files roots.
 ALGAE_ROOT = Path(__file__).parent.parent
+_DEFAULT_VESSELS_ROOT = ALGAE_ROOT.parent.parent / "vessels"
+_DEFAULT_GENERATED_ROOT = ALGAE_ROOT / "sources" / "interaction"
 
-# Default algae executable file name.
-_EXECUTABLE_NAME = "algae.run"
+# Flatbuffers compiler downloading coordinates:
+_FLATC_VERSION = "v25.2.10"
+_FLATC_ARCHIVE = "Linux.flatc.binary.g++-13.zip"
+_FLATC_RELEASE_URL = f"https://github.com/google/flatbuffers/releases/download/{_FLATC_VERSION}/{_FLATC_ARCHIVE}"
 
 # Default caerulean installer file name.
 _INSTALLER_NAME = "install.pyz"
@@ -19,24 +27,39 @@ _INSTALLER_NAME = "install.pyz"
 logger = getLogger(__name__)
 
 
-def generate() -> None:
+def generate(vessels_root: Path = _DEFAULT_VESSELS_ROOT, generated_root: Path = _DEFAULT_GENERATED_ROOT) -> None:
     """
-    Generate protobuf source files.
+    Generate flatbuffers source files.
     Previous generation results will be removed.
     Library `betterproto` is used for generation.
     """
-    from grpc_tools.protoc import _get_resource_file_name, main
+    sources_root = ALGAE_ROOT / "flatbuffers-compiler"
+    if not sources_root.exists():
+        logger.debug("Creating cache directory...")
+        makedirs(sources_root, exist_ok=True)
 
-    sources_root = ALGAE_ROOT / "sources" / "interaction" / "generated"
-    rmtree(sources_root, ignore_errors=True)
-    makedirs(sources_root, exist_ok=True)
+    archive_path = sources_root / _FLATC_ARCHIVE
+    if not archive_path.exists():
+        logger.debug("Compiler archive not found, downloading...")
+        with urlopen(_FLATC_RELEASE_URL) as response, open(archive_path, "wb") as out_file:
+            copyfileobj(response, out_file)
 
-    generation_settings = "client_generation=async"
-    vessels_root = ALGAE_ROOT.parent.parent / "vessels"
-    proto_include = _get_resource_file_name("grpc_tools", "_proto")
-    vessels = [str(file) for file in glob(f"{str(vessels_root)}/*.proto", recursive=True)]
-    params = [main.__module__, f"-I={proto_include}", f"-I={str(vessels_root)}", f"--python_betterproto2_out={str(sources_root)}", f"--python_betterproto2_opt={generation_settings}"]
-    exit(main(params + vessels))
+    executable_path = sources_root / "flatc"
+    if not executable_path.exists():
+        logger.debug("Compiler binary not found, unpacking...")
+        unpack_archive(archive_path, sources_root)
+        executable_path.chmod(S_IRWXU)
+
+    makedirs(_DEFAULT_GENERATED_ROOT, exist_ok=True)
+    vessels = [str(file) for file in glob(f"{str(vessels_root)}/*.fbs", recursive=True)]
+    params = ["--python", "--grpc", "--reflect-types", "--gen-mutable", "--gen-object-api", "--gen-compare", "--python-typing", "--grpc-filename-suffix=", "--grpc-python-typed-handlers", "-I", str(vessels_root), "-o", str(generated_root)]
+
+    try:
+        logger.debug(f"Running compiler '{executable_path}' with arguments '{params}' for files '{vessels}'...")
+        run([executable_path] + params + vessels, capture_output=True, check=True, text=True)
+    except CalledProcessError as e:
+        logger.error(f"Code generation error:\n{e.stderr}")
+        exit(e.returncode)
 
 
 def bundle() -> None:
@@ -48,6 +71,7 @@ def bundle() -> None:
 
     pyproject = Path.cwd() / "pyproject.toml"
     dependencies = loads(pyproject.read_text()).get("project", dict()).get("optional-dependencies", dict()).get("setup", list())
+    logger.debug(f"Installer dependencies resolved: {dependencies}")
 
     setup = ALGAE_ROOT / "setup"
     entrypoint = "setup.main:main"
@@ -65,14 +89,16 @@ def clean() -> None:
 
     for path in glob("**/__pycache__", recursive=True):
         rmtree(path, ignore_errors=True)
+    for path in glob("sources/generated/*.fb.*", recursive=True):
+        rmtree(path, ignore_errors=True)
 
     rmtree(".pytest_cache", ignore_errors=True)
     rmtree("build", ignore_errors=True)
     rmtree("dist", ignore_errors=True)
     rmtree("certificates", ignore_errors=True)
-    rmtree("sources/generated", ignore_errors=True)
+    rmtree("flatbuffers-compiler", ignore_errors=True)
+    rmtree("sources/interaction/generated", ignore_errors=True)
 
-    Path(f"{_EXECUTABLE_NAME}.spec").unlink(missing_ok=True)
     Path(_INSTALLER_NAME).unlink(missing_ok=True)
     Path("poetry.lock").unlink(missing_ok=True)
 
@@ -93,3 +119,12 @@ def clean() -> None:
 
     except ImportError:
         logger.info("Skipping clearing Docker artifacts as 'test' extra is not installed!")
+
+
+parser = ArgumentParser()
+parser.add_argument("-s", "--source", default=_DEFAULT_VESSELS_ROOT, type=Path, help=f"Path to the vessels directory (default: {_DEFAULT_VESSELS_ROOT})")
+parser.add_argument("-d", "--destination", default=_DEFAULT_GENERATED_ROOT, type=Path, help=f"Path to the generated files directory (default: {_DEFAULT_GENERATED_ROOT})")
+
+if __name__ == "__main__":
+    arguments = vars(parser.parse_args(argv[1:]))
+    generate(arguments["source"], arguments["destination"])

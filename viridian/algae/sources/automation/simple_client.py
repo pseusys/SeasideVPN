@@ -214,6 +214,8 @@ async def main(args: Sequence[str] = argv[1:]) -> None:
         identifier = token_urlsafe()
         logger.info(f"Authenticating user {identifier}...")
         authority = getenv("SEASIDE_CERTIFICATE_PATH", None)
+        if authority is None:
+            raise RuntimeError("Client certificate path is not defined via 'SEASIDE_CERTIFICATE_PATH' environment variable!")
 
         async with WhirlpoolClient(arguments["address"], arguments["port"], Path(authority)) as conn:
             public, token, typhoon_port, port_port, dns = await conn.authenticate(identifier, key)

@@ -43,6 +43,9 @@ async def supply_viridian(address: str, port: int, key: str, identifier: str, na
     logger.disabled = silent
 
     authority = getenv("SEASIDE_CERTIFICATE_PATH", None)
+    if authority is None:
+            raise RuntimeError("Client certificate path is not defined via 'SEASIDE_CERTIFICATE_PATH' environment variable!")
+
     logger.info(f"Starting client with CA certificate located at: {authority}...")
     client = WhirlpoolClient(address, port, Path(authority))
 

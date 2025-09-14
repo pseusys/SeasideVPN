@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/hex"
 	"fmt"
 	"log"
 	"main/crypto"
@@ -22,7 +21,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -127,7 +125,7 @@ func NewAPIServer(intAddress string, portPort, typhoonPort uint16) (*APIServer, 
 	}
 
 	// Create and start gRPC server
-	grpcServer := grpc.NewServer(grpc.Creds(credentials))
+	grpcServer := grpc.NewServer(grpc.Creds(credentials), grpc.ForceServerCodec(flatbuffers.FlatbuffersCodec{}))
 	generated.RegisterWhirlpoolViridianServer(grpcServer, &whirlpoolServer)
 
 	return &APIServer{
@@ -170,7 +168,7 @@ func (server *WhirlpoolServer) Authenticate(ctx context.Context, request *genera
 	// Check node owner or viridian payload
 	requestApiKey := string(request.ApiKey())
 	if requestApiKey != NODE_OWNER_API_KEY && !slices.Contains(NODE_ADMIN_API_KEYS, requestApiKey) {
-		return nil, status.Error(codes.PermissionDenied, "wrong payload value")
+		return nil, status.Error(codes.PermissionDenied, "wrong API key value")
 	}
 
 	// Create and build user token buffer
@@ -193,8 +191,8 @@ func (server *WhirlpoolServer) Authenticate(ctx context.Context, request *genera
 
 	// Create and build response buffer
 	builderBuffer.Reset()
-	tokenOffset := builderBuffer.CreateByteString(tokenData.Slice())
-	publicKeyOffset := builderBuffer.CreateByteString(crypto.PRIVATE_KEY.PublicKey().Slice())
+	tokenOffset := builderBuffer.CreateByteVector(tokenData.Slice())
+	publicKeyOffset := builderBuffer.CreateByteVector(crypto.PRIVATE_KEY.PublicKey().Slice())
 	dnsOffset := builderBuffer.CreateString(SUGGESTED_DNS_SERVER)
 	generated.WhirlpoolAuthenticationResponseStart(builderBuffer)
 	generated.WhirlpoolAuthenticationResponseAddToken(builderBuffer, tokenOffset)
@@ -202,10 +200,9 @@ func (server *WhirlpoolServer) Authenticate(ctx context.Context, request *genera
 	generated.WhirlpoolAuthenticationResponseAddTyphoonPort(builderBuffer, server.typhoonPort)
 	generated.WhirlpoolAuthenticationResponseAddPortPort(builderBuffer, server.portPort)
 	generated.WhirlpoolAuthenticationResponseAddDns(builderBuffer, dnsOffset)
-	builderBuffer.Finish(generated.WhirlpoolAuthenticationRequestEnd(builderBuffer))
+	builderBuffer.Finish(generated.WhirlpoolAuthenticationResponseEnd(builderBuffer))
 
 	// Add variable length tail to the response
 	logrus.Infof("User %s (id: %s) authenticated", request.Name(), request.Identifier())
-	grpc.SetTrailer(ctx, metadata.Pairs("seaside-tail-bin", hex.EncodeToString(utils.GenerateReliableTail(GRPC_MAX_TAIL_LENGTH).Slice())))
 	return builderBuffer, nil
 }

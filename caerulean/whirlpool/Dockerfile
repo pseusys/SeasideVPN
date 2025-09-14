@@ -18,7 +18,7 @@ COPY caerulean/whirlpool/go.mod ./
 RUN go mod download
 
 COPY vessels ./vessels
-RUN protogo -- flatc -g --grpc --reflect-types -I vessels vessels/*.fbs
+RUN protogo -- flatc --go --grpc --reflect-types -I vessels vessels/*.fbs
 
 COPY caerulean/whirlpool ./
 RUN go mod tidy

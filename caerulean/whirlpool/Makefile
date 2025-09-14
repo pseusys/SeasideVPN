@@ -7,9 +7,7 @@ SHELL=/bin/bash
 
 PROTOGO_FLATC_VERSION=25.2.10
 LINKING_FLAGS=""
-
 GOOS=linux
-CGO_ENABLED=1
 
 BOLD=\033[1m
 BLUE=\033[34m
@@ -47,7 +45,7 @@ help:
 
 build:
 	@ # Generate flatbuffers files, install dependencies and build executable
-	protogo mod tidy -- flatc -g --grpc --reflect-types -I ${PROJECT_ROOT}/vessels ${PROJECT_ROOT}/vessels/*.fbs
+	protogo mod tidy -- flatc --go --grpc --reflect-types -I ${PROJECT_ROOT}/vessels ${PROJECT_ROOT}/vessels/*.fbs
 	go build -ldflags ${LINKING_FLAGS} -o build/$(EXEC_NAME) ./sources
 .PHONY: build
 
