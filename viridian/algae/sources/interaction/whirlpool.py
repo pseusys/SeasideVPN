@@ -41,7 +41,7 @@ class WhirlpoolClient(WhirlpoolViridianStub):
         credentials = ssl_channel_credentials(ca_path.read_bytes(), key_path.read_bytes(), crt_path.read_bytes())
         return secure_channel(f"{host}:{port}", credentials, options)
 
-    async def authenticate(self, identifier: str, api_key: str, name: Optional[str] = None, subscription: int = _DEFAULT_SUBSCRIPTION_DAYS) -> Tuple[bytes, bytes, int, int, str]:
+    async def authenticate(self, identifier: str, api_key: str, name: Optional[str] = None, subscription: int = _DEFAULT_SUBSCRIPTION_DAYS) -> Tuple[bytes, bytes, int, int, str, bytes]:
         name = gethostname() if name is None else name
         subscription = datetime.now(timezone.utc) + timedelta(days=subscription)
         logger.debug(f"User will be initiated with name '{name}', subscription until {subscription} and identifier: {identifier}!")
@@ -55,12 +55,22 @@ class WhirlpoolClient(WhirlpoolViridianStub):
         request_builder = Builder()
         request_builder.Finish(request.Pack(request_builder))
 
-        packed_request = WhirlpoolAuthenticationRequest.WhirlpoolAuthenticationRequest.GetRootAs(request_builder.Output(), 0)
-        packed_response = self.Authenticate(packed_request)
-        response = WhirlpoolAuthenticationResponse.WhirlpoolAuthenticationResponseT.InitFromObj(packed_response)
+        raw_response = self.Authenticate(request_builder.Output())
+        response = WhirlpoolAuthenticationResponse.WhirlpoolAuthenticationResponseT.InitFromBuf(raw_response, 0)
+
+        connection_certificate = SeasideConnectionClientCertificate.SeasideConnectionClientCertificateT()
+        connection_certificate.address = self._address
+        connection_certificate.token = response.token
+        connection_certificate.publicKey = response.publicKey
+        connection_certificate.typhoonPort = response.typhoonPort
+        connection_certificate.portPort = response.portPort
+        connection_certificate.dns = response.dns
+
+        certificate_builder = Builder()
+        certificate_builder.Finish(connection_certificate.Pack(certificate_builder))
 
         logger.debug(f"Symmetric session token received: {bytes(response.token)!r}!")
-        return bytes(response.publicKey), bytes(response.token), response.typhoonPort, response.portPort, response.dns.decode()
+        return bytes(response.publicKey), bytes(response.token), response.typhoonPort, response.portPort, response.dns.decode(), certificate_builder.Output()
 
     def close(self) -> None:
         self._channel.close()

@@ -44,13 +44,13 @@ async def supply_viridian(address: str, port: int, key: str, identifier: str, na
 
     authority = getenv("SEASIDE_CERTIFICATE_PATH", None)
     if authority is None:
-            raise RuntimeError("Client certificate path is not defined via 'SEASIDE_CERTIFICATE_PATH' environment variable!")
+        raise RuntimeError("Client certificate path is not defined via 'SEASIDE_CERTIFICATE_PATH' environment variable!")
 
     logger.info(f"Starting client with CA certificate located at: {authority}...")
     client = WhirlpoolClient(address, port, Path(authority))
 
     logger.info(f"Authenticating user {identifier} (key {key}, name {name}, subscription {days})...")
-    public, token, typhoon_port, port_port, dns = await client.authenticate(identifier, key, name, days)
+    public, token, typhoon_port, port_port, dns, raw_message = await client.authenticate(identifier, key, name, days)
     logger.info(f"Caerulean connection info received: public key {encodebytes(public)!r}, TYPHOON port {typhoon_port}, PORT port {port_port}, DNS {dns}")
 
     if silent:

@@ -52,7 +52,7 @@ def generate(vessels_root: Path = _DEFAULT_VESSELS_ROOT, generated_root: Path = 
 
     makedirs(_DEFAULT_GENERATED_ROOT, exist_ok=True)
     vessels = [str(file) for file in glob(f"{str(vessels_root)}/*.fbs", recursive=True)]
-    params = ["--python", "--grpc", "--reflect-types", "--gen-mutable", "--gen-object-api", "--gen-compare", "--python-typing", "--grpc-filename-suffix=", "--grpc-python-typed-handlers", "-I", str(vessels_root), "-o", str(generated_root)]
+    params = ["--python", "--grpc", "--reflect-types", "--gen-mutable", "--gen-object-api", "--gen-compare", "--python-typing", "--grpc-filename-suffix=", "-I", str(vessels_root), "-o", str(generated_root)]
 
     try:
         logger.debug(f"Running compiler '{executable_path}' with arguments '{params}' for files '{vessels}'...")
