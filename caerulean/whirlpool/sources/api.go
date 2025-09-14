@@ -58,8 +58,8 @@ type APIServer struct {
 type WhirlpoolServer struct {
 	generated.UnimplementedWhirlpoolViridianServer
 
-	portPort    int32
-	typhoonPort int32
+	portPort    uint16
+	typhoonPort uint16
 }
 
 // Load TLS credentials from files.
@@ -105,7 +105,7 @@ func loadTLSCredentials() (credentials.TransportCredentials, error) {
 	return credentials.NewTLS(config), nil
 }
 
-func NewAPIServer(intAddress string, portPort, typhoonPort int32) (*APIServer, error) {
+func NewAPIServer(intAddress string, portPort, typhoonPort uint16) (*APIServer, error) {
 	// Create whirlpool server
 	whirlpoolServer := WhirlpoolServer{
 		portPort:    portPort,
@@ -195,8 +195,8 @@ func (server *WhirlpoolServer) Authenticate(ctx context.Context, request *genera
 	return &generated.WhirlpoolAuthenticationResponse{
 		Token:       tokenData.Slice(),
 		PublicKey:   crypto.PRIVATE_KEY.PublicKey().Slice(),
-		PortPort:    server.portPort,
-		TyphoonPort: server.typhoonPort,
+		PortPort:    int32(server.portPort),
+		TyphoonPort: int32(server.typhoonPort),
 		Dns:         SUGGESTED_DNS_SERVER,
 	}, nil
 }

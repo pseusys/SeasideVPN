@@ -7,9 +7,7 @@ SHELL=/bin/bash
 
 PROTOGO_PROTOC_VERSION=24.4
 LINKING_FLAGS=""
-
 GOOS=linux
-CGO_ENABLED=1
 
 BOLD=\033[1m
 BLUE=\033[34m
@@ -47,7 +45,7 @@ help:
 
 build:
 	@ # Generate protobuf files, install dependencies and build executable
-	protogo mod tidy -- -I=${PROJECT_ROOT} --go_out=. --go-grpc_out=. ${PROJECT_ROOT}/vessels/*.proto
+	protogo mod tidy -- protoc -I=${PROJECT_ROOT} --go_out=. --go-grpc_out=. ${PROJECT_ROOT}/vessels/*.proto
 	go build -ldflags ${LINKING_FLAGS} -o build/$(EXEC_NAME) ./sources
 .PHONY: build
 

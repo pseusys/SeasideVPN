@@ -117,7 +117,6 @@ jobs:
       - name: Install Dependencies 🔮
         working-directory: caerulean/whirlpool
         run: |
-          go install github.com/xlab/c-for-go@latest
           go install github.com/pseusys/protogo@latest
           go install honnef.co/go/tools/cmd/staticcheck@latest
 

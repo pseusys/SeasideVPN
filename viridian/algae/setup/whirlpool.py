@@ -63,7 +63,6 @@ _SHELL_LOGIN = Path("/etc/profile")
 _GO_ROOT = Path("/usr/local/go")
 
 _PROTOGO_PACKAGE = "github.com/pseusys/protogo"
-_C_FOR_GO_PACKAGE = "github.com/xlab/c-for-go"
 
 _logging_type = logging_level(_DEFAULT_LOG_LEVEL, False)
 
@@ -202,7 +201,7 @@ class WhirlpoolInstaller(Installer):
             go_path = None
         go_exec = "go" if go_path is None else str(go_path / "go")
         self._logger.info(f"Installing GO packages with {go_exec} executable...")
-        self._install_go_packages(go_exec, _PROTOGO_PACKAGE, _C_FOR_GO_PACKAGE)
+        self._install_go_packages(go_exec, _PROTOGO_PACKAGE)
         self._logger.info("All the GO packages installed!")
         return go_path
 

@@ -70,7 +70,7 @@ def clean() -> None:
     rmtree("build", ignore_errors=True)
     rmtree("dist", ignore_errors=True)
     rmtree("certificates", ignore_errors=True)
-    rmtree("sources/generated", ignore_errors=True)
+    rmtree("sources/interaction/generated", ignore_errors=True)
 
     Path(f"{_EXECUTABLE_NAME}.spec").unlink(missing_ok=True)
     Path(_INSTALLER_NAME).unlink(missing_ok=True)
