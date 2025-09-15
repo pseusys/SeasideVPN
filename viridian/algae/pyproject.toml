@@ -7,7 +7,7 @@ requires-python = ">=3.11,<3.13"
 
 
 license-files = [
-    "../../LICENSE"
+    "LICENSE"
 ]
 
 authors = [
@@ -135,6 +135,7 @@ client = { script = "sources.automation.simple_client:main", help = "Import and 
 fixture = { script = "sources.automation.whirlpool_fixtures:main", help = "Import and execute one of the whirlpool fixtures, pass console arguments to it" }
 lint = { script = "scripts.codestyle:lint", help = "Lint all python code: run 'flake8', 'black' and 'mypy'" }
 format = { script = "scripts.codestyle:format", help = "Format all python code: change code formatting where possible (using 'black')" }
+prepare = { script = "scripts.process:prepare", help = "Prepare project directory for installation, copy all the files necessary" }
 generate = { script = "scripts.process:generate", help = "Generate protobuf source files, previous generation results will be removed, libraries 'grpcio-tools' and 'betterproto' are used for generation" }
 bundle = { script = "scripts.process:bundle", help = "Bundle caerulean installation script; library 'zipapps' is used for bundling" }
 clean = { script = "scripts.process:clean", help = "Delete all algae generated source files, build files and executables, also remove all related Docker containers, images and networks" }
@@ -148,4 +149,5 @@ setup = { cmd = "python -m setup", help = "Run whirlpool setup package, pass con
 
 
 [tool.poe.poetry_hooks]
+pre_install = "prepare"
 post_install = "generate"

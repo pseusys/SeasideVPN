@@ -3,34 +3,64 @@ package generated;
 
 import "google/protobuf/timestamp.proto";
 
+import "common.proto";
+
 option go_package = "/generated";
 
 
 
-// User data that is needed for administrator whirlpool node authentication
-message WhirlpoolAuthenticationRequest {
+// User data needed for authentication on Seaside Whirlpool node
+message WhirlpoolClientAuthenticationRequest {
+
     // User non-unique name
     string name = 1;
+
     // User unique identifier
     string identifier = 2;
 
-    string api_key = 3;
+    // User subscription end timestamp
+    google.protobuf.Timestamp subscription = 3;
 
-    optional google.protobuf.Timestamp subscription = 4;
+    // Administrator authentication token
+    bytes owner_token = 4;  // generated.AdminToken (with 'is_owner' set to 'true')
 }
 
-// User authentication certificate
-message WhirlpoolAuthenticationResponse {
+// User authentication response from Seaside Whirlpool node
+message WhirlpoolClientAuthenticationResponse {
+
     // Encrypted user token
-    bytes token = 1;
-    bytes public_key = 2;
-    int32 port_port = 3;
-    int32 typhoon_port = 4;
-    string dns = 5;
+    SeasideWhirlpoolClientCertificate certificate = 1;
 }
 
 
 
+// Administrator data needed for authentication on Seaside Whirlpool node
+message WhirlpoolAdminAuthenticationRequest {
+
+    // Administrator non-unique name
+    string name = 1;
+
+    // Owner authentication token
+    bytes owner_token = 2;  // generated.AdminToken
+}
+
+// Administrator authentication response from Seaside Whirlpool node
+message WhirlpoolAdminAuthenticationResponse {
+
+    // Encrypted administrator token
+    SeasideWhirlpoolAdminCertificate certificate = 1;
+}
+
+
+
+// Seaside Whirlpool node API
 service WhirlpoolViridian {
-    rpc Authenticate(WhirlpoolAuthenticationRequest) returns (WhirlpoolAuthenticationResponse);
+
+    // Create a new administrator and retrieve a certificate for them
+    // Available for node owners only
+    rpc AuthenticateAdmin(WhirlpoolClientAuthenticationRequest) returns (WhirlpoolClientAuthenticationResponse);
+
+    // Create a new user and retrieve a certificate for them
+    // Available for node owners and administrators
+    rpc AuthenticateClient(WhirlpoolAdminAuthenticationRequest) returns (WhirlpoolAdminAuthenticationResponse);
 }

@@ -2,7 +2,7 @@ from glob import glob
 from logging import getLogger
 from os import makedirs
 from pathlib import Path
-from shutil import rmtree
+from shutil import rmtree, copyfile
 from sys import argv
 from typing import List, Union
 
@@ -17,6 +17,15 @@ _INSTALLER_NAME = "install.pyz"
 
 # Default logger instance.
 logger = getLogger(__name__)
+
+
+def prepare() -> None:
+    """
+    Prepare project directory for installation.
+    Copy all the files necessary.
+    """
+
+    copyfile(ALGAE_ROOT.parent.parent / "LICENSE", ALGAE_ROOT / "LICENSE")
 
 
 def generate() -> None:

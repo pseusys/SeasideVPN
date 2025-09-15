@@ -48,7 +48,9 @@ viridian/algae/*.pyz
 
 ## Test files:
 viridian/algae/certificates/
-.github/certificates/
+
+## Copied project files:
+viridian/algae/LICENSE
 
 
 
