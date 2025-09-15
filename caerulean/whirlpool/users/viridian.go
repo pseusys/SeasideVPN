@@ -22,7 +22,7 @@ type Viridian struct {
 	Identifier string
 
 	// Flag, whether user is privileged.
-	admin bool
+	privileged bool
 
 	// Peer ID of the viridian.
 	peerID uint16

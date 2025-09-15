@@ -9,7 +9,7 @@ from grpclib.client import Channel
 from grpclib.metadata import Deadline
 
 from ..utils.misc import create_logger, random_number
-from .generated.generated import WhirlpoolAuthenticationRequest, WhirlpoolViridianStub
+from .generated.generated import WhirlpoolAuthenticationRequest, WhirlpoolAuthenticationResponse, WhirlpoolViridianStub
 
 _DEFAULT_SUBSCRIPTION_DAYS = 30
 _METADATA_TAIL_MAX = 1024
@@ -23,8 +23,10 @@ class WhirlpoolClient(WhirlpoolViridianStub):
     def __init__(self, address: str, port: int, cert_path: Optional[Path] = None, timeout: Optional[float] = None, deadline: Optional[Deadline] = None):
         self._channel = self._create_grpc_secure_channel(address, port, cert_path)
         timeout = _DEFAULT_TIMEOUT if timeout is None else timeout
-        metadata = {"seaside-tail-bin": token_bytes(random_number(max=_METADATA_TAIL_MAX))}
-        super().__init__(self._channel, timeout=timeout, deadline=deadline, metadata=metadata)
+        super().__init__(self._channel, timeout=timeout, deadline=deadline)
+
+    def authenticate(self, message: WhirlpoolAuthenticationRequest) -> WhirlpoolAuthenticationResponse:
+        return super().authenticate(message, metadata={"seaside-tail-bin": token_bytes(random_number(max=_METADATA_TAIL_MAX))})
 
     def _create_grpc_secure_channel(self, host: str, port: int, cert_path: Optional[Path] = None, self_signed: bool = False, timeout: Optional[float] = None) -> Channel:
         """

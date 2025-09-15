@@ -58,9 +58,9 @@ service WhirlpoolViridian {
 
     // Create a new administrator and retrieve a certificate for them
     // Available for node owners only
-    rpc AuthenticateAdmin(WhirlpoolClientAuthenticationRequest) returns (WhirlpoolClientAuthenticationResponse);
+    rpc AuthenticateCAdmin(WhirlpoolAdminAuthenticationRequest) returns (WhirlpoolAdminAuthenticationResponse);
 
     // Create a new user and retrieve a certificate for them
     // Available for node owners and administrators
-    rpc AuthenticateClient(WhirlpoolAdminAuthenticationRequest) returns (WhirlpoolAdminAuthenticationResponse);
+    rpc AuthenticateClient(WhirlpoolClientAuthenticationRequest) returns (WhirlpoolClientAuthenticationResponse);
 }

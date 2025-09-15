@@ -71,7 +71,7 @@ func (dict *ViridianDict) MaxConnected() uint16 {
 // Should be applied for ViridianDict object.
 // Accept context, token, viridian address, gateway and port.
 // Return viridian number and nil if added successfully and nil and error otherwise.
-func (dict *ViridianDict) Add(getViridianID func() (any, uint16, error), viridianDevice *string, token *generated.UserToken, protocol ProtocolType) (any, uint16, error) {
+func (dict *ViridianDict) Add(getViridianID func() (any, uint16, error), viridianDevice *string, token *generated.ClientToken, protocol ProtocolType) (any, uint16, error) {
 	dict.mutex.Lock()
 	defer dict.mutex.Unlock()
 
@@ -80,7 +80,7 @@ func (dict *ViridianDict) Add(getViridianID func() (any, uint16, error), viridia
 	if ok {
 		viridian.stop()
 		delete(dict.entries, viridian.peerID)
-	} else if !token.IsAdmin && len(dict.entries) >= int(dict.maxViridians) {
+	} else if !token.IsPrivileged && len(dict.entries) >= int(dict.maxViridians) {
 		return nil, 0, fmt.Errorf("can not connect any more viridians, connected: %d", len(dict.entries))
 	} else if len(dict.entries) == int(dict.maxViridians+dict.maxOverhead) {
 		return nil, 0, fmt.Errorf("can not connect any more admins, connected: %d", len(dict.entries))
@@ -88,7 +88,7 @@ func (dict *ViridianDict) Add(getViridianID func() (any, uint16, error), viridia
 
 	// If found, resolve deletion timeout
 	var deletionTimeout time.Duration
-	if !token.IsAdmin && token.Subscription != nil {
+	if !token.IsPrivileged && token.Subscription != nil {
 		now := time.Now()
 		timeout := token.Subscription.AsTime()
 		if timeout.Before(now) {
@@ -118,7 +118,7 @@ func (dict *ViridianDict) Add(getViridianID func() (any, uint16, error), viridia
 		Name:       token.Name,
 		Device:     *viridianDevice,
 		Identifier: token.Identifier,
-		admin:      token.IsAdmin,
+		privileged: token.IsPrivileged,
 		peerID:     viridianID,
 		protocol:   protocol,
 		reset:      deletionTimer,

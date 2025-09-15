@@ -12,7 +12,6 @@ import (
 	"main/utils"
 	"net"
 	"os"
-	"slices"
 	"strings"
 	"sync"
 
@@ -58,6 +57,7 @@ type APIServer struct {
 type WhirlpoolServer struct {
 	generated.UnimplementedWhirlpoolViridianServer
 
+	address     string
 	portPort    uint16
 	typhoonPort uint16
 }
@@ -108,6 +108,7 @@ func loadTLSCredentials() (credentials.TransportCredentials, error) {
 func NewAPIServer(intAddress string, portPort, typhoonPort uint16) (*APIServer, error) {
 	// Create whirlpool server
 	whirlpoolServer := WhirlpoolServer{
+		address:     intAddress,
 		portPort:    portPort,
 		typhoonPort: typhoonPort,
 	}
@@ -158,23 +159,27 @@ func (server *APIServer) Stop() {
 	server.grpcServer.GracefulStop()
 }
 
-// Authenticate viridian.
+func addMetadata(ctx context.Context) error {
+	err := grpc.SetTrailer(ctx, metadata.Pairs("seaside-tail-bin", hex.EncodeToString(utils.GenerateReliableTail(GRPC_MAX_TAIL_LENGTH).Slice())))
+	if err != nil {
+		return fmt.Errorf("error adding metadata to the gRPC response: %v", err)
+	} else {
+		return nil
+	}
+}
+
+// Authenticate viridian client.
 // Check payload values, create user token and encrypt it with private key.
 // Send the token to user.
 // Should be applied for WhirlpoolServer object.
 // Accept context and authentication request.
 // Return authentication response and nil if authentication successful, otherwise nil and error.
-func (server *WhirlpoolServer) Authenticate(ctx context.Context, request *generated.WhirlpoolAuthenticationRequest) (*generated.WhirlpoolAuthenticationResponse, error) {
-	// Check node owner or viridian payload
-	if request.ApiKey != NODE_OWNER_API_KEY && !slices.Contains(NODE_ADMIN_API_KEYS, request.ApiKey) {
-		return nil, status.Error(codes.PermissionDenied, "wrong payload value")
-	}
-
+func (server *WhirlpoolServer) AuthenticateClient(ctx context.Context, request *generated.WhirlpoolClientAuthenticationRequest) (*generated.WhirlpoolClientAuthenticationResponse, error) {
 	// Create and marshall user token
-	token := &generated.UserToken{
+	token := &generated.ClientToken{
 		Name:         request.Name,
 		Identifier:   request.Identifier,
-		IsAdmin:      true,
+		IsPrivileged: true,
 		Subscription: request.Subscription,
 	}
 	logrus.Infof("User %s (id: %s) autnenticated", token.Name, token.Identifier)
@@ -190,13 +195,22 @@ func (server *WhirlpoolServer) Authenticate(ctx context.Context, request *genera
 		return nil, status.Errorf(codes.Internal, "error encrypting token: %v", err)
 	}
 
+	// Create and marshall user certificate
+	certificate := &generated.SeasideWhirlpoolClientCertificate{
+		Address:       server.address,
+		TyphoonPublic: crypto.PRIVATE_KEY.PublicKey().Slice(),
+		TyphoonPort:   uint32(server.typhoonPort),
+		PortPort:      uint32(server.portPort),
+		Token:         tokenData.Slice(),
+		Dns:           SUGGESTED_DNS_SERVER,
+	}
+
 	// Create and marshall response
-	grpc.SetTrailer(ctx, metadata.Pairs("seaside-tail-bin", hex.EncodeToString(utils.GenerateReliableTail(GRPC_MAX_TAIL_LENGTH).Slice())))
-	return &generated.WhirlpoolAuthenticationResponse{
-		Token:       tokenData.Slice(),
-		PublicKey:   crypto.PRIVATE_KEY.PublicKey().Slice(),
-		PortPort:    int32(server.portPort),
-		TyphoonPort: int32(server.typhoonPort),
-		Dns:         SUGGESTED_DNS_SERVER,
+	err = addMetadata(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "error adding metadata: %v", err)
+	}
+	return &generated.WhirlpoolClientAuthenticationResponse{
+		Certificate: certificate,
 	}, nil
 }
