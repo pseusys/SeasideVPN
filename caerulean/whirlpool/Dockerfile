@@ -18,6 +18,7 @@ COPY caerulean/whirlpool/go.mod ./
 RUN go mod download
 
 COPY vessels ./vessels
+ENV PROTOGO_PROTOC_INCLUDE=standard
 RUN protogo -- protoc -I=vessels --go_out=. --go-grpc_out=. vessels/*.proto
 
 COPY caerulean/whirlpool ./
