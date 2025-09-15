@@ -33,8 +33,7 @@ func NewMetaServer(viridianDict *users.ViridianDict, tunnelConfig *tunnel.Tunnel
 	portPort := uint16(utils.GetIntEnv("SEASIDE_PORT_PORT", tunnel.DEFAULT_PORT_PORT, 16))
 	typhoonPort := uint16(utils.GetIntEnv("SEASIDE_TYPHOON_PORT", tunnel.DEFAULT_TYPHOON_PORT, 16))
 
-	apiAddress := fmt.Sprintf("%s:%d", intIP, apiPort)
-	apiServer, err := NewAPIServer(apiAddress, portPort, typhoonPort)
+	apiServer, err := NewAPIServer(intIP, apiPort, portPort, typhoonPort)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a gRPC API server: %v", err)
 	}

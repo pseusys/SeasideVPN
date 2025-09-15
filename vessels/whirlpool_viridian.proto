@@ -22,7 +22,7 @@ message WhirlpoolClientAuthenticationRequest {
     google.protobuf.Timestamp subscription = 3;
 
     // Administrator authentication token
-    bytes owner_token = 4;  // generated.AdminToken (with 'is_owner' set to 'true')
+    bytes admin_token = 4;  // generated.AdminToken
 }
 
 // User authentication response from Seaside Whirlpool node
@@ -41,7 +41,7 @@ message WhirlpoolAdminAuthenticationRequest {
     string name = 1;
 
     // Owner authentication token
-    bytes owner_token = 2;  // generated.AdminToken
+    bytes owner_token = 2;  // generated.AdminToken (with 'is_owner' set to 'true')
 }
 
 // Administrator authentication response from Seaside Whirlpool node
@@ -58,7 +58,7 @@ service WhirlpoolViridian {
 
     // Create a new administrator and retrieve a certificate for them
     // Available for node owners only
-    rpc AuthenticateCAdmin(WhirlpoolAdminAuthenticationRequest) returns (WhirlpoolAdminAuthenticationResponse);
+    rpc AuthenticateAdmin(WhirlpoolAdminAuthenticationRequest) returns (WhirlpoolAdminAuthenticationResponse);
 
     // Create a new user and retrieve a certificate for them
     // Available for node owners and administrators
