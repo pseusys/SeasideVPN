@@ -185,7 +185,7 @@ func (t *TyphoonListener) handleInitMessage(viridianDict *users.ViridianDict, ad
 	}
 	logrus.Debugf("Viridian %v:%v token decrypted: %v", peerIP, peerPort, tokenBytes)
 
-	token := new(generated.UserToken)
+	token := new(generated.ClientToken)
 	err = proto.Unmarshal(tokenBytes.Slice(), token)
 	if err != nil {
 		return nil, nil, nil, cipher, TOKEN_PARSE_ERROR, packetNumber, nextIn, fmt.Errorf("error unmarshaling viridian token: %v", err)

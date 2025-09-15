@@ -13,7 +13,7 @@ It doesn't manage payments and authentication.
 
 1. `go` (compiler) version >= 1.22
   Installation guide can be found [here](https://go.dev/doc/install).
-2. `protogo` (`protobuf` compiler automated installer) version >= 0.1.0
+2. `protogo` (`protobuf` compiler automated installer) version >= 0.1.10
   Regularly can be installed with this command: `go install github.com/pseusys/protogo@latest`.
 3. System packages: `nftables`.
 

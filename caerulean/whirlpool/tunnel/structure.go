@@ -164,8 +164,8 @@ func (conf *TunnelConfig) Open() (err error) {
 
 	// Setup iptables forwarding rules
 	apiPort := uint16(utils.GetIntEnv("SEASIDE_API_PORT", DEFAULT_API_PORT, 16))
-	portPort := int32(utils.GetIntEnv("SEASIDE_PORT_PORT", DEFAULT_PORT_PORT, 32))
-	typhoonPort := int32(utils.GetIntEnv("SEASIDE_TYPHOON_PORT", DEFAULT_TYPHOON_PORT, 32))
+	portPort := uint16(utils.GetIntEnv("SEASIDE_PORT_PORT", DEFAULT_PORT_PORT, 16))
+	typhoonPort := uint16(utils.GetIntEnv("SEASIDE_TYPHOON_PORT", DEFAULT_TYPHOON_PORT, 16))
 	err = conf.openForwarding(intIP, extIP, apiPort, portPort, typhoonPort)
 	if err != nil {
 		return fmt.Errorf("error creating firewall rules: %v", err)

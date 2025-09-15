@@ -7,10 +7,9 @@ WORKDIR /seaside/caerulean
 
 ARG RUNNING_IN_CI
 
-# Protobuf development library are required for executable building.
-# Go lint and nftables are required for testing.
-ENV PROTOGO_PROTOC_VERSION=24.4
-RUN apk add --no-cache make tar wget build-base nftables protobuf protobuf-dev && go install github.com/pseusys/protogo@latest
+# Protogo library is required for executable building.
+# Nftables are required for testing.
+RUN apk add --no-cache nftables && go install github.com/pseusys/protogo@latest
 
 ENV RUNNING_IN_CI=${RUNNING_IN_CI:-0}
 
@@ -19,7 +18,8 @@ COPY caerulean/whirlpool/go.mod ./
 RUN go mod download
 
 COPY vessels ./vessels
-RUN protogo -- -I=vessels --go_out=. --go-grpc_out=. vessels/*.proto
+ENV PROTOGO_PROTOC_INCLUDE=standard
+RUN protogo -- protoc -I=vessels --go_out=. --go-grpc_out=. vessels/*.proto
 
 COPY caerulean/whirlpool ./
 RUN go mod tidy
@@ -74,12 +74,13 @@ ENV SEASIDE_CERTIFICATE_PATH=/seaside/caerulean/certificates/caerulean
 
 RUN apk add --no-cache openssl
 RUN mkdir -p /tmp/certificates/caerulean && mkdir -p /tmp/certificates/viridian && cd /tmp/certificates \
-    && openssl req -newkey rsa:2048 -nodes -keyout viridian/cert.key -out viridian/cert.csr -subj "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPNViridian" -addext "subjectAltName = IP:${SEASIDE_ADDRESS}" -addext "keyUsage=critical,digitalSignature" -addext "extendedKeyUsage=clientAuth" \
-    && openssl req -newkey rsa:2048 -nodes -keyout caerulean/cert.key -out caerulean/cert.csr -subj "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPNCaerulean" -addext "subjectAltName = IP:${SEASIDE_ADDRESS}" -addext "keyUsage=critical,digitalSignature,keyEncipherment" -addext "extendedKeyUsage=serverAuth" \
-    && openssl req -newkey rsa:2048 -nodes -new -x509  -keyout caerulean/rootCA.key -out caerulean/rootCA.crt -days 365250 -subj "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPNRootCA" -addext "basicConstraints=critical,CA:true" -addext "keyUsage=critical,keyCertSign,cRLSign" \
-    && openssl x509 -req -CA caerulean/rootCA.crt -CAkey caerulean/rootCA.key -in caerulean/cert.csr -out caerulean/cert.crt -days 365250 -copy_extensions=copyall \
-    && openssl x509 -req -CA caerulean/rootCA.crt -CAkey caerulean/rootCA.key -in viridian/cert.csr -out viridian/cert.crt -days 365250 -copy_extensions=copyall \
-    && chmod 644 */*.key && cp caerulean/rootCA.* viridian/
+    && openssl req -newkey ec -pkeyopt ec_paramgen_curve:secp521r1 -nodes -keyout viridian/cert.key -out viridian/cert.csr -subj "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPNViridian" -addext "subjectAltName = IP:${SEASIDE_ADDRESS}" -addext "keyUsage=critical,digitalSignature" -addext "extendedKeyUsage=clientAuth" \
+    && openssl req -newkey ec -pkeyopt ec_paramgen_curve:secp521r1 -nodes -keyout caerulean/cert.key -out caerulean/cert.csr -subj "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPNCaerulean" -addext "subjectAltName = IP:${SEASIDE_ADDRESS}" -addext "keyUsage=critical,digitalSignature,keyEncipherment" -addext "extendedKeyUsage=serverAuth" \
+    && openssl req -newkey ec -pkeyopt ec_paramgen_curve:secp521r1 -nodes -new -x509 -keyout viridian/serverCA.key -out viridian/serverCA.crt -days 365250 -subj "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPNServerCA" -addext "basicConstraints=critical,CA:true" -addext "keyUsage=critical,keyCertSign,cRLSign" \
+    && openssl req -newkey ec -pkeyopt ec_paramgen_curve:secp521r1 -nodes -new -x509 -keyout caerulean/clientCA.key -out caerulean/clientCA.crt -days 365250 -subj "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPNClientCA" -addext "basicConstraints=critical,CA:true" -addext "keyUsage=critical,keyCertSign,cRLSign" \
+    && openssl x509 -req -CA viridian/serverCA.crt -CAkey viridian/serverCA.key -in caerulean/cert.csr -out caerulean/cert.crt -days 365250 -copy_extensions=copyall \
+    && openssl x509 -req -CA caerulean/clientCA.crt -CAkey caerulean/clientCA.key -in viridian/cert.csr -out viridian/cert.crt -days 365250 -copy_extensions=copyall \
+    && chmod 644 */*.key && cp viridian/serverCA.* caerulean/
 
 ENTRYPOINT ["sh", "-c", "cp -r /tmp/certificates ./ && ./whirlpool.run"]
 

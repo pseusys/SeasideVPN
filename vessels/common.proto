@@ -7,41 +7,77 @@ option go_package = "/generated";
 
 
 
-// Required data for connection to a seaside node
-// In case node authentication payload is not provided, very limited functionality will be available only
-message SeasideConnectionAdminCertificate {
-    // Node IP address
+// Required data for administrator connection to a Seaside Whirlpool node
+message SeasideWhirlpoolAdminCertificate {
+
+    // Whirlpool node IP address
     string address = 1;
-    // Node gRPC port
-    string port = 2;
-    // Node authentication API key
-    optional bytes key = 3;
+
+    // Whirlpool node gRPC port number
+    uint32 port = 2;
+
+    // gRPC connection server public key
+    bytes server_certificate_public = 3;
+
+    // gRPC connection client public key
+    bytes client_certificate_public = 4;
+
+    // gRPC connection client private key
+    bytes client_certificate_key = 5;
+
+    // gRPC connection certificate authority
+    bytes certificate_authority = 6;
+
+    // Administrator authentication token
+    bytes token = 7;  // generated.AdminToken
 }
 
-// Required data for connection to a seaside whirlpool node
-message SeasideConnectionClientCertificate {
-    // Node IP address
+// Required data for client connection to a Seaside Whirlpool node
+message SeasideWhirlpoolClientCertificate {
+
+    // Whirlpool node IP address
     string address = 1;
-    // Node public key
-    bytes public = 2;
-    // Node PORT protocol port
-    optional uint32 port = 3;
-    // Node TYPHOON protocol port
-    optional uint32 typhoon = 4;
+
+    // TYPHOON protocol public key
+    bytes typhoon_public = 2;
+
+    // TYPHOON protocol port number
+    uint32 typhoon_port = 3;
+
+    // PORT protocol port number
+    uint32 port_port = 4;
+
     // User authentication token
-    bytes token = 5;
+    bytes token = 5;  // generated.ClientToken
+
     // Suggested DNS server to use
-    optional string dns = 6;
+    string dns = 6;
 }
 
-// Seaside user token used for connection
-message UserToken {
+
+
+// Seaside Whirlpool user token used for connection
+message ClientToken {
+
     // User non-unique name
     string name = 1;
+
     // User unique identifier
     string identifier = 2;
-    // Whether user was added by admin
-    bool is_admin = 3;
+
+    // Whether user is privileged
+    bool is_privileged = 3;
+
     // User subscription end timestamp
-    optional google.protobuf.Timestamp subscription = 4;
+    google.protobuf.Timestamp subscription = 4;
+}
+
+// Seaside Whirlpool administrator token used for connection
+message AdminToken {
+
+    // Administrator non-unique name
+    string name = 1;
+
+    // Whether administrator is owner
+    bool is_owner = 2;
 }
