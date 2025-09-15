@@ -5,11 +5,6 @@ description = "A testing SeasideVPN client and installation script for Linux"
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
 
-
-license-files = [
-    "LICENSE"
-]
-
 authors = [
     { name = "Alexander Sergeev", email = "alexander.sergeev@onmail.com" }
 ]
@@ -39,10 +34,8 @@ classifiers = [
     "Topic :: System :: Networking"
 ]
 
-
 [project.urls]
 repository = "https://github.com/pseusys/SeasideVPN"
-
 
 [project.optional-dependencies]
 client = [
@@ -117,7 +110,6 @@ packages = [
     { include = "__init__.py" }
 ]
 
-
 [tool.poetry.requires-plugins]
 poethepoet = "^0.34.0"
 
@@ -129,13 +121,11 @@ poethepoet = "^0.34.0"
 default_task_type = "script"
 env = { COMPOSE_BAKE = "true" }
 
-
 [tool.poe.tasks]
 client = { script = "sources.automation.simple_client:main", help = "Import and execute main function of algae simple client, pass console arguments to it" }
 fixture = { script = "sources.automation.whirlpool_fixtures:main", help = "Import and execute one of the whirlpool fixtures, pass console arguments to it" }
 lint = { script = "scripts.codestyle:lint", help = "Lint all python code: run 'flake8', 'black' and 'mypy'" }
 format = { script = "scripts.codestyle:format", help = "Format all python code: change code formatting where possible (using 'black')" }
-prepare = { script = "scripts.process:prepare", help = "Prepare project directory for installation, copy all the files necessary" }
 generate = { script = "scripts.process:generate", help = "Generate protobuf source files, previous generation results will be removed, libraries 'grpcio-tools' and 'betterproto' are used for generation" }
 bundle = { script = "scripts.process:bundle", help = "Bundle caerulean installation script; library 'zipapps' is used for bundling" }
 clean = { script = "scripts.process:clean", help = "Delete all algae generated source files, build files and executables, also remove all related Docker containers, images and networks" }
@@ -147,7 +137,5 @@ test-smoke = { sequence = ["test-local", "test-remote"], help = "Run smoke tests
 test-all = { sequence = ["test-unit", "test-integration", "test-local", "test-remote"], help = "Run tests: run all tests (specified above)" }
 setup = { cmd = "python -m setup", help = "Run whirlpool setup package, pass console arguments to it" }
 
-
 [tool.poe.poetry_hooks]
-pre_install = "prepare"
 post_install = "generate"

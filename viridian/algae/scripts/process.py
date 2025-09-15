@@ -19,15 +19,6 @@ _INSTALLER_NAME = "install.pyz"
 logger = getLogger(__name__)
 
 
-def prepare() -> None:
-    """
-    Prepare project directory for installation.
-    Copy all the files necessary.
-    """
-
-    copyfile(ALGAE_ROOT.parent.parent / "LICENSE", ALGAE_ROOT / "LICENSE")
-
-
 def generate() -> None:
     """
     Generate protobuf source files.
