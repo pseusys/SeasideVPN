@@ -45,6 +45,7 @@ const (
 var (
 	GRPC_MAX_TAIL_LENGTH = uint(utils.GetIntEnv("SEASIDE_GRPC_MAX_TAIL_LENGTH", DEFAULT_GRPC_MAX_TAIL_LENGTH, 32))
 	SUGGESTED_DNS_SERVER = utils.GetEnv("SEASIDE_SUGGESTED_DNS", DEFAULT_SUGGESTED_DNS)
+	CERTIFICATES_PATH    = utils.GetEnv("SEASIDE_CERTIFICATE_PATH", DEFAULT_CERTIFICATES_PATH)
 )
 
 // Metaserver structure.
@@ -95,17 +96,14 @@ func decodePEMCertificate(path string) (*x509.Certificate, error) {
 // The client CAs are expected to be in `${SEASIDE_CERTIFICATE_PATH}/clientCA.crt` and `${SEASIDE_CERTIFICATE_PATH}/clientCA.key`.
 // Finally, server certificate and server CA are expected to be in `${SEASIDE_CERTIFICATE_PATH}/serverCA.crt` and `${SEASIDE_CERTIFICATE_PATH}/cert.crt`
 func createClientTLSCredentials(address net.IP) ([]byte, []byte, []byte, []byte, error) {
-	// Receive certificate path
-	certificatesPath := utils.GetEnv("SEASIDE_CERTIFICATE_PATH", DEFAULT_CERTIFICATES_PATH)
-
 	// Decode and parse client certificate authority certificate
-	clientCACert, err := decodePEMCertificate(fmt.Sprintf("%s/clientCA.crt", certificatesPath))
+	clientCACert, err := decodePEMCertificate(fmt.Sprintf("%s/clientCA.crt", CERTIFICATES_PATH))
 	if err != nil {
 		return nil, nil, nil, nil, fmt.Errorf("error parsing client CA certificate: %v", err)
 	}
 
 	// Decode and parse client certificate authority key
-	clientCAKey, err := decodePEMCertificate(fmt.Sprintf("%s/clientCA.key", certificatesPath))
+	clientCAKey, err := decodePEMCertificate(fmt.Sprintf("%s/clientCA.key", CERTIFICATES_PATH))
 	if err != nil {
 		return nil, nil, nil, nil, fmt.Errorf("error parsing client CA key: %v", err)
 	}
@@ -150,13 +148,13 @@ func createClientTLSCredentials(address net.IP) ([]byte, []byte, []byte, []byte,
 	}
 
 	// Decode and parse server certificate
-	serverCert, err := decodePEMCertificate(fmt.Sprintf("%s/cert.crt", certificatesPath))
+	serverCert, err := decodePEMCertificate(fmt.Sprintf("%s/cert.crt", CERTIFICATES_PATH))
 	if err != nil {
 		return nil, nil, nil, nil, fmt.Errorf("error parsing server certificate: %v", err)
 	}
 
 	// Decode and parse server certificate authority certificate
-	serverCA, err := decodePEMCertificate(fmt.Sprintf("%s/serverCA.crt", certificatesPath))
+	serverCA, err := decodePEMCertificate(fmt.Sprintf("%s/serverCA.crt", CERTIFICATES_PATH))
 	if err != nil {
 		return nil, nil, nil, nil, fmt.Errorf("error parsing server CA certificate: %v", err)
 	}
@@ -168,11 +166,8 @@ func createClientTLSCredentials(address net.IP) ([]byte, []byte, []byte, []byte,
 // Certificates are expected to be in `${SEASIDE_CERTIFICATE_PATH}/cert.crt` and `${SEASIDE_CERTIFICATE_PATH}/cert.key` files.
 // Certificates should be valid and contain `subjectAltName` for the current `${SEASIDE_ADDRESS}`.
 func loadServerTLSCredentials() (credentials.TransportCredentials, error) {
-	// Receive certificate path
-	certificatesPath := utils.GetEnv("SEASIDE_CERTIFICATE_PATH", DEFAULT_CERTIFICATES_PATH)
-
 	// Load certificate authority certificate
-	caCertPEM, err := os.ReadFile(fmt.Sprintf("%s/clientCA.crt", certificatesPath))
+	caCertPEM, err := os.ReadFile(fmt.Sprintf("%s/clientCA.crt", CERTIFICATES_PATH))
 	if err != nil {
 		log.Fatalf("error reading client CA certificate: %v", err)
 	}
@@ -184,7 +179,7 @@ func loadServerTLSCredentials() (credentials.TransportCredentials, error) {
 	}
 
 	// Load server's certificate and private key
-	serverCert, err := tls.LoadX509KeyPair(fmt.Sprintf("%s/cert.crt", certificatesPath), fmt.Sprintf("%s/cert.key", certificatesPath))
+	serverCert, err := tls.LoadX509KeyPair(fmt.Sprintf("%s/cert.crt", CERTIFICATES_PATH), fmt.Sprintf("%s/cert.key", CERTIFICATES_PATH))
 	if err != nil {
 		return nil, fmt.Errorf("error reading certificates: %v", err)
 	}
