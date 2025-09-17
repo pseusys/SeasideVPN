@@ -7,19 +7,18 @@ WORKDIR /seaside/caerulean
 
 ARG RUNNING_IN_CI
 
-# Protobuf development library are required for executable building.
+# Flatc compiler is required for executable building.
 # Go lint and nftables are required for testing.
-ENV PROTOGO_PROTOC_VERSION=24.4
-RUN apk add --no-cache make tar wget build-base nftables protobuf protobuf-dev && go install github.com/pseusys/protogo@latest
+RUN apk add --no-cache nftables && go install github.com/pseusys/protogo@latest
 
 ENV RUNNING_IN_CI=${RUNNING_IN_CI:-0}
 
-# Copy whirlpool go.mod, protobuf files and generate protobuf sources.
+# Copy whirlpool go.mod, flatbuffers files and generate flatbuffers sources.
 COPY caerulean/whirlpool/go.mod ./
 RUN go mod download
 
 COPY vessels ./vessels
-RUN protogo -- -I=vessels --go_out=. --go-grpc_out=. vessels/*.proto
+RUN protogo -- flatc --go --grpc --reflect-types -I vessels vessels/*.fbs
 
 COPY caerulean/whirlpool ./
 RUN go mod tidy

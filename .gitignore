@@ -42,7 +42,9 @@ viridian/algae/**/__pycache__/
 viridian/algae/**/.mypy_cache/
 viridian/algae/**/.pytest-cache/
 
-## Python generated files:
+## Python generated files (and compiler binary):
+viridian/algae/flatbuffers-compiler
+viridian/algae/sources/interaction/*_grpc.*
 viridian/algae/sources/interaction/generated/
 viridian/algae/*.pyz
 
@@ -62,7 +64,7 @@ caerulean/whirlpool/**/go.work
 caerulean/whirlpool/**/go.sum
 
 ## Go generated files:
-caerulean/whirlpool/**/*.pb.go
+caerulean/whirlpool/generated/*.go
 
 # Server certificates
 caerulean/whirlpool/certificates

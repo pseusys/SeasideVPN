@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/hex"
 	"fmt"
 	"log"
 	"main/crypto"
@@ -16,19 +15,20 @@ import (
 	"strings"
 	"sync"
 
+	flatbuffers "github.com/google/flatbuffers/go"
 	"github.com/pseusys/betterbuf"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/proto"
 )
 
 const (
 	DEFAULT_CERTIFICATES_PATH = "certificates"
 	DEFAULT_SUGGESTED_DNS     = "8.8.8.8"
+
+	INITIAL_BUFFER_SIZE = 1 << 20
 
 	DEFAULT_ADMIN_KEYS           = ""
 	DEFAULT_GRPC_MAX_TAIL_LENGTH = 256
@@ -58,8 +58,8 @@ type APIServer struct {
 type WhirlpoolServer struct {
 	generated.UnimplementedWhirlpoolViridianServer
 
-	portPort    int32
-	typhoonPort int32
+	portPort    uint16
+	typhoonPort uint16
 }
 
 // Load TLS credentials from files.
@@ -105,7 +105,7 @@ func loadTLSCredentials() (credentials.TransportCredentials, error) {
 	return credentials.NewTLS(config), nil
 }
 
-func NewAPIServer(intAddress string, portPort, typhoonPort int32) (*APIServer, error) {
+func NewAPIServer(intAddress string, portPort, typhoonPort uint16) (*APIServer, error) {
 	// Create whirlpool server
 	whirlpoolServer := WhirlpoolServer{
 		portPort:    portPort,
@@ -125,7 +125,7 @@ func NewAPIServer(intAddress string, portPort, typhoonPort int32) (*APIServer, e
 	}
 
 	// Create and start gRPC server
-	grpcServer := grpc.NewServer(grpc.Creds(credentials))
+	grpcServer := grpc.NewServer(grpc.Creds(credentials), grpc.ForceServerCodec(flatbuffers.FlatbuffersCodec{}))
 	generated.RegisterWhirlpoolViridianServer(grpcServer, &whirlpoolServer)
 
 	return &APIServer{
@@ -164,39 +164,45 @@ func (server *APIServer) Stop() {
 // Should be applied for WhirlpoolServer object.
 // Accept context and authentication request.
 // Return authentication response and nil if authentication successful, otherwise nil and error.
-func (server *WhirlpoolServer) Authenticate(ctx context.Context, request *generated.WhirlpoolAuthenticationRequest) (*generated.WhirlpoolAuthenticationResponse, error) {
+func (server *WhirlpoolServer) Authenticate(ctx context.Context, request *generated.WhirlpoolAuthenticationRequest) (*flatbuffers.Builder, error) {
 	// Check node owner or viridian payload
-	if request.ApiKey != NODE_OWNER_API_KEY && !slices.Contains(NODE_ADMIN_API_KEYS, request.ApiKey) {
-		return nil, status.Error(codes.PermissionDenied, "wrong payload value")
+	requestApiKey := string(request.ApiKey())
+	if requestApiKey != NODE_OWNER_API_KEY && !slices.Contains(NODE_ADMIN_API_KEYS, requestApiKey) {
+		return nil, status.Error(codes.PermissionDenied, "wrong API key value")
 	}
 
-	// Create and marshall user token
-	token := &generated.UserToken{
-		Name:         request.Name,
-		Identifier:   request.Identifier,
-		IsAdmin:      true,
-		Subscription: request.Subscription,
-	}
-	logrus.Infof("User %s (id: %s) autnenticated", token.Name, token.Identifier)
-	marshToken, err := proto.Marshal(token)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "error marshalling token: %v", err)
-	}
+	// Create and build user token buffer
+	builderBuffer := flatbuffers.NewBuilder(INITIAL_BUFFER_SIZE)
+	nameOffset := builderBuffer.CreateByteString(request.Name())
+	identifierOffset := builderBuffer.CreateByteString(request.Identifier())
+	generated.UserTokenStart(builderBuffer)
+	generated.UserTokenAddName(builderBuffer, nameOffset)
+	generated.UserTokenAddIdentifier(builderBuffer, identifierOffset)
+	generated.UserTokenAddIsAdmin(builderBuffer, true)
+	generated.UserTokenAddSubscription(builderBuffer, request.Subscription())
+	builderBuffer.Finish(generated.UserTokenEnd(builderBuffer))
 
 	// Encrypt token
-	tokenBuffer := betterbuf.NewBufferFromCapacityEnsured(marshToken, crypto.NonceSize, crypto.MacSize)
+	tokenBuffer := betterbuf.NewBufferFromCapacityEnsured(builderBuffer.FinishedBytes(), crypto.NonceSize, crypto.MacSize)
 	tokenData, err := crypto.SERVER_KEY.Encrypt(tokenBuffer, nil)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error encrypting token: %v", err)
 	}
 
-	// Create and marshall response
-	grpc.SetTrailer(ctx, metadata.Pairs("seaside-tail-bin", hex.EncodeToString(utils.GenerateReliableTail(GRPC_MAX_TAIL_LENGTH).Slice())))
-	return &generated.WhirlpoolAuthenticationResponse{
-		Token:       tokenData.Slice(),
-		PublicKey:   crypto.PRIVATE_KEY.PublicKey().Slice(),
-		PortPort:    server.portPort,
-		TyphoonPort: server.typhoonPort,
-		Dns:         SUGGESTED_DNS_SERVER,
-	}, nil
+	// Create and build response buffer
+	builderBuffer.Reset()
+	tokenOffset := builderBuffer.CreateByteVector(tokenData.Slice())
+	publicKeyOffset := builderBuffer.CreateByteVector(crypto.PRIVATE_KEY.PublicKey().Slice())
+	dnsOffset := builderBuffer.CreateString(SUGGESTED_DNS_SERVER)
+	generated.WhirlpoolAuthenticationResponseStart(builderBuffer)
+	generated.WhirlpoolAuthenticationResponseAddToken(builderBuffer, tokenOffset)
+	generated.WhirlpoolAuthenticationResponseAddPublicKey(builderBuffer, publicKeyOffset)
+	generated.WhirlpoolAuthenticationResponseAddTyphoonPort(builderBuffer, server.typhoonPort)
+	generated.WhirlpoolAuthenticationResponseAddPortPort(builderBuffer, server.portPort)
+	generated.WhirlpoolAuthenticationResponseAddDns(builderBuffer, dnsOffset)
+	builderBuffer.Finish(generated.WhirlpoolAuthenticationResponseEnd(builderBuffer))
+
+	// Add variable length tail to the response
+	logrus.Infof("User %s (id: %s) authenticated", request.Name(), request.Identifier())
+	return builderBuffer, nil
 }

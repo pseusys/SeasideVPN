@@ -79,9 +79,7 @@ jobs:
 
       - name: Install Dependencies 🔮
         working-directory: caerulean/whirlpool
-        run: |
-          go install github.com/xlab/c-for-go@latest
-          go install github.com/pseusys/protogo@latest
+        run: go install github.com/pseusys/protogo@latest
 
       - name: Build Caerulean Whirlpool 🏗️
         working-directory: caerulean/whirlpool
