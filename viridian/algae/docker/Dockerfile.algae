@@ -9,7 +9,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install python dependencies and build system.
-RUN apt-get -y update && apt-get install -y --no-install-recommends python3 python3-pip && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-pip && rm -rf /var/lib/apt/lists/*
 
 # Export dependencies to a `requirements.txt` install protobuf compiler.
 COPY viridian/algae/pyproject.toml viridian/algae/README.md viridian/algae/__init__.py ./

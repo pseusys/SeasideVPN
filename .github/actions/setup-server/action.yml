@@ -14,6 +14,9 @@ inputs:
     description: The maximum source port number that will be used for testing
     required: true
     default: 44445
+  certificate-file:
+    description: File where client connection certificate will be stored
+    required: true
   test-command:
     description: Test command for no VPN access test
 

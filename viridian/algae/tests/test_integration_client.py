@@ -5,6 +5,7 @@ from os import environ
 from pathlib import Path
 from secrets import token_urlsafe
 from subprocess import run
+from tempfile import NamedTemporaryFile
 from typing import AsyncGenerator, List, Optional
 
 import pytest
@@ -14,7 +15,8 @@ from dns.message import make_query, from_wire
 from dns.rrset import RRset
 from dns.rdatatype import A
 
-from sources.automation.simple_client import AlgaeClient
+from sources.automation.simple_client import AlgaeClient, main as client_main
+from sources.automation.whirlpool_fixtures import main as fixtures_main
 from sources.protocol import PortClient, TyphoonClient
 from sources.interaction.whirlpool import WhirlpoolClient
 
@@ -59,7 +61,17 @@ async def is_tcp_available(address: Optional[str] = None, port: int = 853) -> bo
 async def client() -> AsyncGenerator[AlgaeClient, None]:
     address = environ["SEASIDE_ADDRESS"]
     address_port = environ["SEASIDE_API_PORT"]
-    yield await AlgaeClient.new(address, address_port)
+
+    server_key = environ["SEASIDE_SERVER_KEY"]
+    client_certificate = Path(environ["SEASIDE_CERTIFICATE_PATH"]) / "cert.crt"
+    client_key = Path(environ["SEASIDE_CERTIFICATE_PATH"]) / "cert.key"
+    certificate_authority = Path(environ["SEASIDE_CERTIFICATE_PATH"]) / "serverCA.crt"
+    fixture_args = ["--owner-name", "admin", "--server-key", server_key, "--client-certificate", str(client_certificate), "--client-key", str(client_key), "--certificate-authority", str(certificate_authority)]
+
+    with NamedTemporaryFile() as file:
+        await fixtures_main(["-a", address, "-p", address_port] + fixture_args + ["supply-viridian-client", "-o", file.name])
+        client = await client_main(["-a", address, "--protocol", "typhoon", "--dns", "0.0.0.0", "-f", file.name])
+    yield client
 
 
 # Tests:

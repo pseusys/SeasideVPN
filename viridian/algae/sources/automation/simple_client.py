@@ -41,8 +41,8 @@ logger = create_logger(__name__)
 
 # Command line arguments parser.
 parser = ArgumentParser()
-parser.add_argument("-a", "--address", type=str, help=f"Caerulean IP address")
-parser.add_argument("-p", "--port", type=int, help=f"Caerulean port number")
+parser.add_argument("-a", "--address", default=None, type=str, help=f"Caerulean IP address")
+parser.add_argument("-p", "--port", default=None, type=int, help=f"Caerulean port number")
 parser.add_argument("--protocol", choices={"typhoon", "port"}, default=_DEFAULT_PROTO, help=f"Caerulean control protocol, one of the 'port' or 'typhoon' (default: {_DEFAULT_PROTO})")
 parser.add_argument("--key", default=None, type=Path, help="Caerulean protocol public key file path")
 parser.add_argument("--token", default=None, type=b64decode, help="Caerulean client token (base64 encoded), encrypted 'ClientToken' structure")
@@ -57,7 +57,7 @@ parser.add_argument("--capture-ports", default=None, help="Local ports to captur
 parser.add_argument("--exempt-ports", default=None, help="Local ports to exempt, either one decimal number or a port range, like in 'iptables' (default: none)")
 parser.add_argument("--local-address", default=None, type=IPv4Address, help="The IP address that will be used for talking to caerulean (default: the first IP address on the interface that will be used to access caerulean)")
 parser.add_argument("-v", "--version", action="version", version=f"Seaside Viridian Algae version {__version__}", help="Print algae version number and exit")
-parser.add_argument("-c", "--command", default=None, help="Command to execute and exit (required!)")
+parser.add_argument("-c", "--command", default=None, help="Command to execute and exit, client will be returned and not run if command is not provided")
 
 
 class AlgaeClient:
@@ -173,7 +173,7 @@ class AlgaeClient:
             exit(1)
 
 
-async def main(args: Sequence[str] = argv[1:]) -> None:
+async def main(args: Sequence[str] = argv[1:]) -> Optional[AlgaeClient]:
     loop = get_event_loop()
     arguments = ArgDict.from_namespace(parser.parse_args(args))
     protocol = arguments["protocol"]
@@ -190,10 +190,7 @@ async def main(args: Sequence[str] = argv[1:]) -> None:
     address, port, token, dns = arguments.ext("address", address), arguments.ext("port", port), arguments.ext("token", token), arguments.ext("dns", dns)
 
     command = arguments.pop("command")
-    if command is None:
-        raise RuntimeError("No command provided - nothing to run!")
-    else:
-        logger.debug(f"Initializing client with parameters: {arguments}")
+    logger.debug(f"Initializing client with parameters: {arguments}")
 
     try:
         address = str(IPv4Address(address))
@@ -201,15 +198,19 @@ async def main(args: Sequence[str] = argv[1:]) -> None:
         address = gethostbyname(address)
 
     client = await AlgaeClient.new(address, port, protocol, key, token, dns, arguments["capture_iface"], arguments["capture_ranges"], arguments["capture_addresses"], arguments["capture_ports"], arguments["exempt_ranges"], arguments["exempt_addresses"], arguments["exempt_ports"], arguments["local_address"])
-    logger.debug("Setting up interruption handlers for client...")
-    loop.add_signal_handler(SIGTERM, lambda: create_task(client.interrupt(True)))
-    loop.add_signal_handler(SIGINT, lambda: create_task(client.interrupt(True)))
+    if command is not None:
+        logger.debug("Setting up interruption handlers for client...")
+        loop.add_signal_handler(SIGTERM, lambda: create_task(client.interrupt(True)))
+        loop.add_signal_handler(SIGINT, lambda: create_task(client.interrupt(True)))
 
-    logger.info(f"Running client for command: {command}")
-    await client.start(command)
+        logger.info(f"Running client for command: {command}")
+        await client.start(command)
 
-    logger.info("Done running command, shutting client down!")
-    await client.interrupt(False)
+        logger.info("Done running command, shutting client down!")
+        await client.interrupt(False)
+    else:
+        logger.debug("Command is not provided, returning prepared client...")
+        return client
 
 
 if __name__ == "__main__":
