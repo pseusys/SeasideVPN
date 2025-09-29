@@ -75,41 +75,41 @@ type WhirlpoolServer struct {
 // Return certificate and nil if decoded successfully, nil and error otherwise.
 func decodePEMCertificate(path string) (*x509.Certificate, error) {
 	// Load certificate
-	caCertPEM, err := os.ReadFile(path)
+	certPEM, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("error reading certificate: %v", err)
 	}
 
 	// Decode and parse certificate
-	caCertBlock, _ := pem.Decode(caCertPEM)
-	caCert, err := x509.ParseCertificate(caCertBlock.Bytes)
+	certBlock, _ := pem.Decode(certPEM)
+	cert, err := x509.ParseCertificate(certBlock.Bytes)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing certificate: %v", err)
 	}
 
 	// Return certificate
-	return caCert, nil
+	return cert, nil
 }
 
 // Load and decode PEM elliptic curve key from file.
 // Accept key path.
 // Return key and nil if decoded successfully, nil and error otherwise.
-func decodeECKey(path string) (*ecdsa.PrivateKey, error) {
+func decodeECKey(path string) (any, error) {
 	// Load key
-	caCertPEM, err := os.ReadFile(path)
+	keyPEM, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("error reading key: %v", err)
 	}
 
 	// Decode and parse key or key
-	caCertBlock, _ := pem.Decode(caCertPEM)
-	data, err := x509.ParseECPrivateKey(caCertBlock.Bytes)
+	keyBlock, _ := pem.Decode(keyPEM)
+	key, err := x509.ParsePKCS8PrivateKey(keyBlock.Bytes)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing key: %v", err)
 	}
 
 	// Return key
-	return data, nil
+	return key, nil
 }
 
 // Load and generate client TLS credentials from files.
