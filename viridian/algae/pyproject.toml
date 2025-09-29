@@ -120,7 +120,7 @@ poethepoet = "^0.34.0"
 
 [tool.poe]
 default_task_type = "script"
-# env = { COMPOSE_BAKE = "true" }
+env = { COMPOSE_BAKE = "true" }
 
 [tool.poe.tasks]
 client = { script = "sources.automation.simple_client:main", help = "Import and execute main function of algae simple client, pass console arguments to it" }
