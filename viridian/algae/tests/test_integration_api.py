@@ -7,7 +7,9 @@ from typing import AsyncGenerator
 import pytest
 import pytest_asyncio
 
+from sources.generated.generated import AdminToken
 from sources.interaction.whirlpool import WhirlpoolClient
+from sources.utils.crypto import Symmetric
 
 logger = getLogger(__name__)
 
@@ -18,8 +20,11 @@ logger = getLogger(__name__)
 async def api_client() -> AsyncGenerator[WhirlpoolClient, None]:
     address = environ["SEASIDE_ADDRESS"]
     api_port = int(environ["SEASIDE_API_PORT"])
-    authority = environ["SEASIDE_CERTIFICATE_PATH"]
-    yield WhirlpoolClient(address, api_port, Path(authority))
+    token = Symmetric(environ["SEASIDE_SERVER_KEY"]).encrypt(bytes(AdminToken("admin", True)))
+    client_certificate = Path(environ["SEASIDE_CERTIFICATE_PATH"]) / "cert.crt"
+    client_key = Path(environ["SEASIDE_CERTIFICATE_PATH"]) / "cert.key"
+    certificate_authority = Path(environ["SEASIDE_CERTIFICATE_PATH"]) / "serverCA.crt"
+    yield WhirlpoolClient(address, api_port, token, (client_certificate, client_key), certificate_authority)
 
 
 # TODO: time + crypto keys generation
