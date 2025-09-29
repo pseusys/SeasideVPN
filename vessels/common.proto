@@ -16,20 +16,17 @@ message SeasideWhirlpoolAdminCertificate {
     // Whirlpool node gRPC port number
     uint32 port = 2;
 
-    // gRPC connection server public key
-    bytes server_certificate_public = 3;
+    // gRPC connection client certificate
+    bytes client_certificate = 3;
 
-    // gRPC connection client public key
-    bytes client_certificate_public = 4;
-
-    // gRPC connection client private key
-    bytes client_certificate_key = 5;
+    // gRPC connection client key
+    bytes client_key = 4;
 
     // gRPC connection certificate authority
-    bytes certificate_authority = 6;
+    bytes certificate_authority = 5;
 
     // Administrator authentication token
-    bytes token = 7;  // generated.AdminToken
+    bytes token = 6;  // generated.AdminToken
 }
 
 // Required data for client connection to a Seaside Whirlpool node

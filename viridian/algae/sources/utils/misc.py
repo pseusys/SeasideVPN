@@ -1,13 +1,12 @@
+from argparse import Namespace
 from asyncio import FIRST_COMPLETED, CancelledError, Future, sleep, wait
-from base64 import urlsafe_b64decode, urlsafe_b64encode
 from contextlib import suppress
-from ipaddress import IPv4Address
 from logging import Formatter, Logger, StreamHandler, getLogger
 from os import getenv
 from secrets import randbelow
 from sys import stdout
-from typing import Any, Callable, Dict, List, Literal, Optional, TypedDict, TypeVar, Union
-from urllib.parse import parse_qs, urlparse
+from tempfile import _TemporaryFileWrapper, NamedTemporaryFile
+from typing import Any, Optional, TypeVar, Union
 
 _T = TypeVar("_T")
 
@@ -85,97 +84,33 @@ async def select(*tasks: Future[Union[None, _T]], timeout: Optional[float] = Non
     return result
 
 
-# CONNECTION LINK:
+# TEMPORARY FILE:
 
 
-SurfaceConnectionLinkDict = TypedDict(
-    "ConnectionLinkDict",
-    {
-        "link_type": Union[Literal["admin"]],
-        "address": str,
-        "port": int,
-        "key": Optional[bytes]
-    },
-)
+class ChargedTempFile:
+    def __init__(self, data: Optional[bytes] = None):
+        self._tempfile = None
+        self._data = data
 
-WhirlpoolConnectionLinkDict = TypedDict(
-    "ConnectionLinkDict",
-    {
-        "link_type": Literal["client"],
-        "address": str,
-        "public": bytes,
-        "port": Optional[int],
-        "typhoon": Optional[int],
-        "token": bytes,
-        "dns": Optional[IPv4Address]
-    },
-)
+    def __enter__(self) -> _TemporaryFileWrapper:
+        self._tempfile = NamedTemporaryFile()
+        if self._data is not None:
+            self._tempfile.write(self._data)
+            self._tempfile.flush()
+        return self._tempfile
+
+    def __exit__(self, _, __, ___):
+        if self._tempfile is not None:
+            self._tempfile.close()
 
 
-def urlsafe_b64encode_nopad(data: bytes) -> str:
-    return urlsafe_b64encode(data).decode("ascii").strip().rstrip("=")
+# DICTIONARY:
 
 
-def urlsafe_b64decode_nopad(encoded: str) -> bytes:
-    return urlsafe_b64decode(f"{encoded}{'=' * (-len(encoded) % 4)}")
+class ArgDict(dict):
+    @classmethod
+    def from_namespace(cls, namespace: Namespace) -> "ArgDict":
+        return cls(vars(namespace))
 
-
-def _extract_from_query(query_params: Dict[Any, List[str]], name: str, cast: Callable[[Any], _T], optional: bool = False) -> _T:
-    if optional:
-        value = query_params.get(name, [None])[0]
-    else:
-        value = query_params[name][0]
-    return None if value is None else cast(value)
-
-
-def parse_connection_link(link: str) -> Union[SurfaceConnectionLinkDict, WhirlpoolConnectionLinkDict]:
-    """
-    Parse connection link and return contained data as dict.
-    All the link parts are included into output dictionary.
-    :param link: connection link for parsing.
-    :return: parameters dictionary, string keys are mapped to values.
-    """
-    parsed = urlparse(link, allow_fragments=False)
-    if parsed.scheme.count("+") != 1 or not parsed.scheme.startswith("seaside"):
-        raise RuntimeError(f"Unknown connection link scheme: {parsed.scheme}")
-
-    link_type = parsed.scheme.split("+")[1]
-    query_params = parse_qs(parsed.query, encoding="ascii")
-
-    result = dict()
-    result["address"] = str(parsed.hostname)
-    result["link_type"] = link_type
-
-    if link_type == "admin":
-        result["port"] = int(parsed.port)
-        result["key"] = _extract_from_query(query_params, "key", urlsafe_b64decode_nopad)
-    elif link_type == "client":
-        result["public"] = _extract_from_query(query_params, "public", urlsafe_b64decode_nopad)
-        result["port"] = _extract_from_query(query_params, "port", int, True)
-        result["typhoon"] = _extract_from_query(query_params, "typhoon", int, True)
-        result["token"] = _extract_from_query(query_params, "token", urlsafe_b64decode_nopad)
-        result["dns"] = _extract_from_query(query_params, "dns", IPv4Address, True)
-    else:
-        raise RuntimeError(f"Unknown connection link node type scheme: {link_type}")
-    return result
-
-
-def create_connection_link(link: Union[SurfaceConnectionLinkDict, WhirlpoolConnectionLinkDict]) -> str:
-    if set(link.keys()) == SurfaceConnectionLinkDict.__required_keys__:
-        link_body = f"seaside+admin://{link['address']}:{link['port']}"
-        if "key" in link.keys():
-            link_body = f"{link_body}?key={urlsafe_b64encode_nopad(link['key'])}"
-        return link_body
-    elif set(link.keys()) == WhirlpoolConnectionLinkDict.__required_keys__:
-        link_public = urlsafe_b64encode_nopad(link["public"])
-        link_token = urlsafe_b64encode_nopad(link["token"])
-        link_body = f"seaside+client://{link['address']}?public={link_public}&token={link_token}"
-        if "port" in link.keys():
-            link_body = f"{link_body}&port={link['port']}"
-        if "typhoon" in link.keys():
-            link_body = f"{link_body}&typhoon={link['typhoon']}"
-        if "dns" in link.keys():
-            link_body = f"{link_body}&dns={link['dns']}"
-        return link_body
-    else:
-        raise RuntimeError(f"Unknown link arguments: {link.keys()}")
+    def ext(self, key: str, default: Any) -> Any:
+        return self[key] if key in self and self[key] is not None else default

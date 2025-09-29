@@ -40,29 +40,30 @@ repository = "https://github.com/pseusys/SeasideVPN"
 [project.optional-dependencies]
 client = [
     "ansibleguy-nftables~=1.0.2.post1",
-    "betterproto2~=0.8.0",
+    "betterproto2[grpclib]~=0.9.0",
     "colorama~=0.4.6",
     "pyroute2~=0.9.4",
-    "pymonocypher~=4.0.2.5",
+    "pymonocypher~=4.0.2.5",  # TODO: replace with 'pycryptodome'
+    "cryptography~=46.0.1",
     "semver~=3.0.4"
 ]
 
 devel = [
-    "betterproto2[grpclib,pydantic]~=0.8.0",
-    "betterproto2_compiler~=0.8.0",
-    "grpcio-tools~=1.74.0",
+    "betterproto2[grpclib]~=0.9.0",
+    "betterproto2_compiler~=0.9.0",
+    "grpcio-tools~=1.75.1",
     "pytest~=8.4.2",
     "pythonping~=1.1.4",
     "dnspython~=2.8.0",
-    "pytest-asyncio~=1.1.0",
+    "pytest-asyncio~=1.2.0",
     "pytest-timeout~=2.4.0",
     "pytest-dependency~=0.6.0"
 ]
 
 codestyle = [
-    "mypy~=1.17.0",
+    "mypy~=1.18.2",
     "flake8~=7.3.0",
-    "black~=25.1.0",
+    "black~=25.9.0",
     "isort~=6.0.1",
     "types-PyYAML~=6.0.2"
 ]
@@ -74,7 +75,7 @@ bundle = [
 
 setup = [
     "colorama~=0.4.6",
-    "cryptography~=45.0.7",
+    "cryptography~=46.0.1",
     "semver~=3.0.2"
 ]
 
@@ -119,7 +120,7 @@ poethepoet = "^0.34.0"
 
 [tool.poe]
 default_task_type = "script"
-env = { COMPOSE_BAKE = "true" }
+# env = { COMPOSE_BAKE = "true" }
 
 [tool.poe.tasks]
 client = { script = "sources.automation.simple_client:main", help = "Import and execute main function of algae simple client, pass console arguments to it" }

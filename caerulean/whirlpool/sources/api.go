@@ -95,29 +95,29 @@ func decodePEMCertificate(path string) (*x509.Certificate, error) {
 // Client certificate and key will be generated and signed using client CAs.
 // The client CAs are expected to be in `${SEASIDE_CERTIFICATE_PATH}/clientCA.crt` and `${SEASIDE_CERTIFICATE_PATH}/clientCA.key`.
 // Finally, server certificate and server CA are expected to be in `${SEASIDE_CERTIFICATE_PATH}/serverCA.crt` and `${SEASIDE_CERTIFICATE_PATH}/cert.crt`
-func createClientTLSCredentials(address net.IP) ([]byte, []byte, []byte, []byte, error) {
+func createClientTLSCredentials(address net.IP) ([]byte, []byte, []byte, error) {
 	// Decode and parse client certificate authority certificate
 	clientCACert, err := decodePEMCertificate(fmt.Sprintf("%s/clientCA.crt", CERTIFICATES_PATH))
 	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("error parsing client CA certificate: %v", err)
+		return nil, nil, nil, fmt.Errorf("error parsing client CA certificate: %v", err)
 	}
 
 	// Decode and parse client certificate authority key
 	clientCAKey, err := decodePEMCertificate(fmt.Sprintf("%s/clientCA.key", CERTIFICATES_PATH))
 	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("error parsing client CA key: %v", err)
+		return nil, nil, nil, fmt.Errorf("error parsing client CA key: %v", err)
 	}
 
 	// Generate a key for the new certificate
 	private, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("error creating a secp384r1 key for client certificate: %v", err)
+		return nil, nil, nil, fmt.Errorf("error creating a secp384r1 key for client certificate: %v", err)
 	}
 
 	// Generate certificate serial number
 	serial, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
 	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("error generating a serial number for client certificate: %v", err)
+		return nil, nil, nil, fmt.Errorf("error generating a serial number for client certificate: %v", err)
 	}
 
 	// Create a certificate template
@@ -138,28 +138,22 @@ func createClientTLSCredentials(address net.IP) ([]byte, []byte, []byte, []byte,
 	// Sign the certificate with the CA
 	certBytes, err := x509.CreateCertificate(rand.Reader, &template, clientCACert, &private.PublicKey, clientCAKey)
 	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("error creating or signing client certificate: %v", err)
+		return nil, nil, nil, fmt.Errorf("error creating or signing client certificate: %v", err)
 	}
 
 	// Save the private key
-	keyBytes, err := x509.MarshalECPrivateKey(private)
+	keyBytes, err := x509.MarshalPKCS8PrivateKey(private)
 	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("error marshalling client certificate key: %v", err)
-	}
-
-	// Decode and parse server certificate
-	serverCert, err := decodePEMCertificate(fmt.Sprintf("%s/cert.crt", CERTIFICATES_PATH))
-	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("error parsing server certificate: %v", err)
+		return nil, nil, nil, fmt.Errorf("error marshalling client certificate key: %v", err)
 	}
 
 	// Decode and parse server certificate authority certificate
 	serverCA, err := decodePEMCertificate(fmt.Sprintf("%s/serverCA.crt", CERTIFICATES_PATH))
 	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("error parsing server CA certificate: %v", err)
+		return nil, nil, nil, fmt.Errorf("error parsing server CA certificate: %v", err)
 	}
 
-	return serverCert.Raw, serverCA.Raw, certBytes, keyBytes, nil
+	return serverCA.Raw, certBytes, keyBytes, nil
 }
 
 // Load server TLS credentials from files.
@@ -305,20 +299,19 @@ func (server *WhirlpoolServer) AuthenticateAdmin(ctx context.Context, request *g
 	}
 
 	// Create and load client credentials
-	serverCert, serverCA, clientCert, clientKey, err := createClientTLSCredentials(server.address)
+	serverCA, clientCert, clientKey, err := createClientTLSCredentials(server.address)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error generating client certificate: %v", err)
 	}
 
 	// Create and marshall user certificate
 	certificate := &generated.SeasideWhirlpoolAdminCertificate{
-		Address:                 server.address.String(),
-		Port:                    uint32(server.apiPort),
-		ServerCertificatePublic: serverCert,
-		ClientCertificatePublic: clientCert,
-		ClientCertificateKey:    clientKey,
-		CertificateAuthority:    serverCA,
-		Token:                   tokenData.Slice(),
+		Address:              server.address.String(),
+		Port:                 uint32(server.apiPort),
+		ClientCertificate:    clientCert,
+		ClientKey:            clientKey,
+		CertificateAuthority: serverCA,
+		Token:                tokenData.Slice(),
 	}
 
 	// Create and marshall response

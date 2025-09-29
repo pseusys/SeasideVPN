@@ -1,7 +1,5 @@
 from logging import getLogger
 
-from sources.utils.misc import parse_connection_link
-
 logger = getLogger(__file__)
 
 CONNECTION_NODETYPE = "client"

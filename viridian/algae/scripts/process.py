@@ -27,7 +27,7 @@ def generate() -> None:
     """
     from grpc_tools.protoc import _get_resource_file_name, main
 
-    sources_root = ALGAE_ROOT / "sources" / "interaction" / "generated"
+    sources_root = ALGAE_ROOT / "sources" / "generated"
     rmtree(sources_root, ignore_errors=True)
     makedirs(sources_root, exist_ok=True)
 
@@ -70,7 +70,7 @@ def clean() -> None:
     rmtree("build", ignore_errors=True)
     rmtree("dist", ignore_errors=True)
     rmtree("certificates", ignore_errors=True)
-    rmtree("sources/interaction/generated", ignore_errors=True)
+    rmtree("sources/generated", ignore_errors=True)
 
     Path(f"{_EXECUTABLE_NAME}.spec").unlink(missing_ok=True)
     Path(_INSTALLER_NAME).unlink(missing_ok=True)
