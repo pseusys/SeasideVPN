@@ -91,6 +91,27 @@ func decodePEMCertificate(path string) (*x509.Certificate, error) {
 	return caCert, nil
 }
 
+// Load and decode PEM elliptic curve key from file.
+// Accept key path.
+// Return key and nil if decoded successfully, nil and error otherwise.
+func decodeECKey(path string) (*ecdsa.PrivateKey, error) {
+	// Load key
+	caCertPEM, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("error reading key: %v", err)
+	}
+
+	// Decode and parse key or key
+	caCertBlock, _ := pem.Decode(caCertPEM)
+	data, err := x509.ParseECPrivateKey(caCertBlock.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing key: %v", err)
+	}
+
+	// Return key
+	return data, nil
+}
+
 // Load and generate client TLS credentials from files.
 // Client certificate and key will be generated and signed using client CAs.
 // The client CAs are expected to be in `${SEASIDE_CERTIFICATE_PATH}/clientCA.crt` and `${SEASIDE_CERTIFICATE_PATH}/clientCA.key`.
@@ -103,7 +124,7 @@ func createClientTLSCredentials(address net.IP) ([]byte, []byte, []byte, error) 
 	}
 
 	// Decode and parse client certificate authority key
-	clientCAKey, err := decodePEMCertificate(fmt.Sprintf("%s/clientCA.key", CERTIFICATES_PATH))
+	clientCAKey, err := decodeECKey(fmt.Sprintf("%s/clientCA.key", CERTIFICATES_PATH))
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error parsing client CA key: %v", err)
 	}
