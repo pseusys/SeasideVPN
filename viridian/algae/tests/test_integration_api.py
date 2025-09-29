@@ -1,3 +1,4 @@
+from base64 import b64decode
 from logging import getLogger
 from os import environ
 from pathlib import Path
@@ -20,7 +21,7 @@ logger = getLogger(__name__)
 async def api_client() -> AsyncGenerator[WhirlpoolClient, None]:
     address = environ["SEASIDE_ADDRESS"]
     api_port = int(environ["SEASIDE_API_PORT"])
-    token = Symmetric(environ["SEASIDE_SERVER_KEY"]).encrypt(bytes(AdminToken("admin", True)))
+    token = Symmetric(b64decode(environ["SEASIDE_SERVER_KEY"])).encrypt(bytes(AdminToken("admin", True)))
     client_certificate = Path(environ["SEASIDE_CERTIFICATE_PATH"]) / "cert.crt"
     client_key = Path(environ["SEASIDE_CERTIFICATE_PATH"]) / "cert.key"
     certificate_authority = Path(environ["SEASIDE_CERTIFICATE_PATH"]) / "serverCA.crt"

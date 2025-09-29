@@ -44,7 +44,7 @@ parser.add_argument("-c", "--command", default=None, help="Command to execute an
 async def main(args: Sequence[str] = argv[1:]) -> None:
     arguments = ArgDict.from_namespace(parser.parse_args(args))
 
-    server_key = arguments.ext("server_key", getenv(_SERVER_KEY_ENV_VAR))
+    server_key = arguments.ext("server_key", b64decode(getenv(_SERVER_KEY_ENV_VAR)))
     client_certificate = arguments.ext("client_certificate", Path(getenv(_CERTIFICATE_PATH_ENV_VAR)) / "cert.crt")
     client_key = arguments.ext("client_key", Path(getenv(_CERTIFICATE_PATH_ENV_VAR)) / "cert.key")
     certificate_authority = arguments.ext("certificate_authority", Path(getenv(_CERTIFICATE_PATH_ENV_VAR)) / "serverCA.crt")
