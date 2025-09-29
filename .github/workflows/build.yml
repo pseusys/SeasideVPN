@@ -48,8 +48,6 @@ jobs:
 
       - name: Save Artifact 🏺
         uses: actions/upload-artifact@v4
-        env:
-          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
         with:
           name: viridian-algae-executable-${{ steps.branch-name.outputs.value }}
           retention-days: 3
@@ -101,8 +99,6 @@ jobs:
 
       - name: Save Artifact 🏺
         uses: actions/upload-artifact@v4
-        env:
-          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
         with:
           name: caerulean-whirlpool-executable-${{ steps.branch-name.outputs.value }}-${{ matrix.arch }}
           path: caerulean/whirlpool/build/caerulean_whirlpool_executable_*.run

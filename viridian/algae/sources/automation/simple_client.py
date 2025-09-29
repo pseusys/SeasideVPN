@@ -18,12 +18,6 @@ from ..utils.asyncos import os_read, os_write
 from ..utils.misc import ArgDict, create_logger
 from ..version import __version__
 
-# Default tunnel interface IP address.
-_DEFAULT_ADDRESS = "127.0.0.1"
-
-# Default seaside network network port number.
-_DEFAULT_PORT = 8587
-
 # Default control protocol.
 _DEFAULT_PROTO = "typhoon"
 
@@ -40,20 +34,19 @@ _DEFAULT_TUNNEL_NETMASK = "255.255.255.0"
 _DEFAULT_TUNNEL_SVA = 65
 
 _DEFAULT_CURRENT_DNS = IPv4Address("0.0.0.0")
-
-_DEFAULT_UNIVERSAL_DNS = IPv4Address("8.8.8.8")
+_DEFAULT_GOOD_DNS = IPv4Address("0.0.0.0")
 
 logger = create_logger(__name__)
 
 
 # Command line arguments parser.
 parser = ArgumentParser()
-parser.add_argument("-a", "--address", default=_DEFAULT_ADDRESS, type=str, help=f"Caerulean IP address (default: {_DEFAULT_ADDRESS})")
-parser.add_argument("-p", "--port", default=_DEFAULT_PORT, type=int, help=f"Caerulean port number (default: {_DEFAULT_PORT})")
+parser.add_argument("-a", "--address", type=str, help=f"Caerulean IP address")
+parser.add_argument("-p", "--port", type=int, help=f"Caerulean port number")
 parser.add_argument("--protocol", choices={"typhoon", "port"}, default=_DEFAULT_PROTO, help=f"Caerulean control protocol, one of the 'port' or 'typhoon' (default: {_DEFAULT_PROTO})")
 parser.add_argument("--key", default=None, type=Path, help="Caerulean protocol public key file path")
 parser.add_argument("--token", default=None, type=b64decode, help="Caerulean client token (base64 encoded), encrypted 'ClientToken' structure")
-parser.add_argument("--dns", default=_DEFAULT_UNIVERSAL_DNS, type=IPv4Address, help=f"DNS server to use when connected to VPN (use '{_DEFAULT_CURRENT_DNS}' to use the current DNS server, default: {_DEFAULT_UNIVERSAL_DNS})")
+parser.add_argument("--dns", type=IPv4Address, help=f"DNS server to use when connected to VPN (use '{_DEFAULT_CURRENT_DNS}' to use the current DNS server or {_DEFAULT_GOOD_DNS} for a good default)")
 parser.add_argument("-f", "--file", default=None, type=Path, help="Caerulean client certificate file path, will be used instead of other arguments if specified")
 parser.add_argument("--capture-iface", default=None, nargs="*", help="Network interfaces to capture, multiple allowed (default: the same interface that will be used to access caerulean)")
 parser.add_argument("--capture-ranges", nargs="*", help="IP address ranges to capture, multiple allowed (default: none)")
@@ -193,7 +186,7 @@ async def main(args: Sequence[str] = argv[1:]) -> None:
     else:
         port, address, key, token, dns = None, None, None, None, None
 
-    key = arguments["key"] if arguments["key"] is None else Path(key).read_bytes()
+    key = Path(arguments["key"]).read_bytes() if arguments["key"] is not None else key
     address, port, token, dns = arguments.ext("address", address), arguments.ext("port", port), arguments.ext("token", token), arguments.ext("dns", dns)
 
     command = arguments.pop("command")

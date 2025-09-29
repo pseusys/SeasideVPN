@@ -52,7 +52,7 @@ async def main(args: Sequence[str] = argv[1:]) -> None:
 
     with NamedTemporaryFile() as file:
         await fixtures_main(["-a", arguments["address"], "-p", arguments["port"]] + fixture_args + ["supply-viridian-client", "-o", file.name])
-        await client_main(["-a", arguments["address"], "-p", arguments["port"], "--dns", arguments["dns"], "-f", file.name, "-c", arguments["command"]])
+        await client_main(["-a", arguments["address"], "--dns", arguments["dns"], "-f", file.name, "-c", arguments["command"]])
 
 
 if __name__ == "__main__":
