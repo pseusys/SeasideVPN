@@ -173,7 +173,7 @@ class AlgaeClient:
             exit(1)
 
 
-async def main(args: Sequence[str] = argv[1:]) -> Optional[AlgaeClient]:
+async def main(args: Sequence[str] = argv[1:]) -> None:
     loop = get_event_loop()
     arguments = ArgDict.from_namespace(parser.parse_args(args))
     protocol = arguments["protocol"]
@@ -197,20 +197,18 @@ async def main(args: Sequence[str] = argv[1:]) -> Optional[AlgaeClient]:
     except AddressValueError:
         address = gethostbyname(address)
 
+    logger.debug("Creating algae client...")
     client = await AlgaeClient.new(address, port, protocol, key, token, dns, arguments["capture_iface"], arguments["capture_ranges"], arguments["capture_addresses"], arguments["capture_ports"], arguments["exempt_ranges"], arguments["exempt_addresses"], arguments["exempt_ports"], arguments["local_address"])
-    if command is not None:
-        logger.debug("Setting up interruption handlers for client...")
-        loop.add_signal_handler(SIGTERM, lambda: create_task(client.interrupt(True)))
-        loop.add_signal_handler(SIGINT, lambda: create_task(client.interrupt(True)))
 
-        logger.info(f"Running client for command: {command}")
-        await client.start(command)
+    logger.debug("Setting up interruption handlers for client...")
+    loop.add_signal_handler(SIGTERM, lambda: create_task(client.interrupt(True)))
+    loop.add_signal_handler(SIGINT, lambda: create_task(client.interrupt(True)))
 
-        logger.info("Done running command, shutting client down!")
-        await client.interrupt(False)
-    else:
-        logger.debug("Command is not provided, returning prepared client...")
-        return client
+    logger.info(f"Running client for command: {command}")
+    await client.start(command)
+
+    logger.info("Done running command, shutting client down!")
+    await client.interrupt(False)
 
 
 if __name__ == "__main__":

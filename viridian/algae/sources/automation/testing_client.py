@@ -1,58 +1,64 @@
 from argparse import ArgumentParser
 from asyncio import run
-from base64 import b64decode, b64encode
+from base64 import b64decode
+from datetime import datetime, timedelta, timezone
 from ipaddress import IPv4Address
-from os import getenv
+from os import environ
 from pathlib import Path
+from socket import gethostname
 from sys import argv
-from tempfile import NamedTemporaryFile
-from typing import Sequence
+from typing import Optional, Sequence
 
 from .simple_client import main as client_main
-from .whirlpool_fixtures import main as fixtures_main
-from ..utils.misc import ArgDict
+from ..generated.generated import AdminToken, ClientToken, SeasideWhirlpoolAdminCertificate, SeasideWhirlpoolClientCertificate
+from ..utils.crypto import Asymmetric, Symmetric
+from ..utils.misc import ArgDict, ChargedTempFile
 
-# Default tunnel interface IP address.
-_DEFAULT_ADDRESS = "127.0.0.1"
-
-# Default seaside network network port number.
-_DEFAULT_PORT = 8587
-
-_DEFAULT_CURRENT_DNS = IPv4Address("0.0.0.0")
-
-_DEFAULT_UNIVERSAL_DNS = IPv4Address("8.8.8.8")
-
-_DEFAULT_OWNER_NAME = "admin"
-
-_SERVER_KEY_ENV_VAR = "SEASIDE_SERVER_KEY"
-
-_CERTIFICATE_PATH_ENV_VAR = "SEASIDE_CERTIFICATE_PATH"
+_DEFAULT_SUBSCRIPTION_DAYS = 30
+_DEFAULT_PROTO = "typhoon"
 
 
 parser = ArgumentParser()
-parser.add_argument("-a", "--address", default=_DEFAULT_ADDRESS, help=f"Caerulean IP address (default: {_DEFAULT_ADDRESS})")
-parser.add_argument("-p", "--port", default=_DEFAULT_PORT, help=f"Caerulean port number (default: {_DEFAULT_PORT})")
-parser.add_argument("--dns", default=_DEFAULT_UNIVERSAL_DNS, help=f"DNS server to use when connected to VPN (use '{_DEFAULT_CURRENT_DNS}' to use the current DNS server, default: {_DEFAULT_UNIVERSAL_DNS})")
-parser.add_argument("--owner-name", default=_DEFAULT_OWNER_NAME, help=f"Caerulean owner name, will be used to craft token in case it's not provided (default: {_DEFAULT_OWNER_NAME})")
-parser.add_argument("--server-key", default=None, type=b64decode, help="Caerulean server key, will be used to craft token in case it's not provided")
-parser.add_argument("--client-certificate", default=None, type=Path, help="Caerulean gRPC client certificate path (PEM encoded)")
-parser.add_argument("--client-key", default=None, type=Path, help="Key for caerulean gRPC client certificate path (PEM encoded)")
-parser.add_argument("--certificate-authority", default=None, type=Path, help="Caerulean gRPC server certificate authority certificate path (PEM encoded, not required)")
+parser.add_argument("--protocol", choices={"typhoon", "port"}, default=_DEFAULT_PROTO, help=f"Caerulean control protocol, one of the 'port' or 'typhoon' (default: {_DEFAULT_PROTO})")
 parser.add_argument("-c", "--command", default=None, help="Command to execute and exit (required!)")
+
+
+def create_admin_certificate_from_env(address: Optional[IPv4Address] = None, port: Optional[int] = None, certificate_path: Optional[Path] = None, client_certificate: Optional[bytes] = None, client_key: Optional[bytes] = None, certificate_authority: Optional[bytes] = None, name: str = "test_admin", is_owner: bool = True, server_key: Optional[bytes] = None) -> SeasideWhirlpoolAdminCertificate:
+    server_key = b64decode(environ["SEASIDE_SERVER_KEY"]) if server_key is None else server_key
+    admin_token = Symmetric(server_key).encrypt(bytes(AdminToken(name, is_owner)))
+
+    address = str(IPv4Address(environ["SEASIDE_ADDRESS"]) if address is None else address)
+    port = int(environ["SEASIDE_API_PORT"] if port is None else port)
+
+    certificate_path = Path(environ["SEASIDE_CERTIFICATE_PATH"]) if certificate_path is None else certificate_path
+    client_certificate = (certificate_path / "cert.crt").read_bytes() if client_certificate is None else client_certificate
+    client_key = (certificate_path / "cert.key").read_bytes() if client_key is None else client_key
+    certificate_authority = (certificate_path / "serverCA.crt").read_bytes() if certificate_authority is None else certificate_authority
+
+    return SeasideWhirlpoolAdminCertificate(address, port, client_certificate, client_key, certificate_authority, admin_token)
+
+
+def create_client_certificate_from_env(address: Optional[IPv4Address] = None, typhoon_port: Optional[int] = None, port_port: Optional[int] = None, typhoon_private: Optional[bytes] = None, dns: Optional[IPv4Address] = None, name: str = "test_client", identifier: Optional[str] = None, is_privileged: bool = False, subscription: Optional[datetime] = None, server_key: Optional[bytes] = None) -> SeasideWhirlpoolClientCertificate:
+    server_key = b64decode(environ["SEASIDE_SERVER_KEY"]) if server_key is None else server_key
+    identifier = gethostname() if identifier is None else identifier
+    subscription = datetime.now(timezone.utc) + timedelta(days=_DEFAULT_SUBSCRIPTION_DAYS if subscription is None else subscription)
+    client_token = Symmetric(server_key).encrypt(bytes(ClientToken(name, identifier, is_privileged, subscription)))
+
+    typhoon_private = b64decode(environ["SEASIDE_PRIVATE_KEY"]) if typhoon_private is None else typhoon_private
+    typhoon_public = Asymmetric(typhoon_private).public_key
+
+    address = str(IPv4Address(environ["SEASIDE_ADDRESS"]) if address is None else address)
+    typhoon_port = int(environ["SEASIDE_TYPHOON_PORT"] if typhoon_port is None else typhoon_port)
+    port_port = int(environ["SEASIDE_PORT_PORT"] if port_port is None else port_port)
+    dns = str(IPv4Address(environ["SEASIDE_SUGGESTED_DNS"]) if dns is None else dns)
+
+    return SeasideWhirlpoolClientCertificate(address, typhoon_public, typhoon_port, port_port, client_token, dns)
 
 
 async def main(args: Sequence[str] = argv[1:]) -> None:
     arguments = ArgDict.from_namespace(parser.parse_args(args))
-
-    server_key = arguments.ext("server_key", b64decode(getenv(_SERVER_KEY_ENV_VAR)))
-    client_certificate = arguments.ext("client_certificate", Path(getenv(_CERTIFICATE_PATH_ENV_VAR)) / "cert.crt")
-    client_key = arguments.ext("client_key", Path(getenv(_CERTIFICATE_PATH_ENV_VAR)) / "cert.key")
-    certificate_authority = arguments.ext("certificate_authority", Path(getenv(_CERTIFICATE_PATH_ENV_VAR)) / "serverCA.crt")
-    fixture_args = ["--owner-name", arguments["owner_name"], "--server-key", b64encode(server_key).decode(), "--client-certificate", str(client_certificate), "--client-key", str(client_key), "--certificate-authority", str(certificate_authority)]
-
-    with NamedTemporaryFile() as file:
-        await fixtures_main(["-a", arguments["address"], "-p", arguments["port"]] + fixture_args + ["supply-viridian-client", "-o", file.name])
-        await client_main(["-a", arguments["address"], "--dns", arguments["dns"], "-f", file.name, "-c", arguments["command"]])
+    with ChargedTempFile(bytes(create_client_certificate_from_env())) as f:
+        await client_main(["--protocol", arguments["protocol"], "--file", f.name, "-c", arguments["command"]])
 
 
 if __name__ == "__main__":
