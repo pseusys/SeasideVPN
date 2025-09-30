@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 from asyncio import run
-from base64 import b64decode
+from base64 import b64decode, b64encode
 from ipaddress import IPv4Address
 from os import getenv
 from pathlib import Path
@@ -48,7 +48,7 @@ async def main(args: Sequence[str] = argv[1:]) -> None:
     client_certificate = arguments.ext("client_certificate", Path(getenv(_CERTIFICATE_PATH_ENV_VAR)) / "cert.crt")
     client_key = arguments.ext("client_key", Path(getenv(_CERTIFICATE_PATH_ENV_VAR)) / "cert.key")
     certificate_authority = arguments.ext("certificate_authority", Path(getenv(_CERTIFICATE_PATH_ENV_VAR)) / "serverCA.crt")
-    fixture_args = ["--owner-name", arguments["owner_name"], "--server-key", server_key, "--client-certificate", str(client_certificate), "--client-key", str(client_key), "--certificate-authority", str(certificate_authority)]
+    fixture_args = ["--owner-name", arguments["owner_name"], "--server-key", b64encode(server_key).decode(), "--client-certificate", str(client_certificate), "--client-key", str(client_key), "--certificate-authority", str(certificate_authority)]
 
     with NamedTemporaryFile() as file:
         await fixtures_main(["-a", arguments["address"], "-p", arguments["port"]] + fixture_args + ["supply-viridian-client", "-o", file.name])
