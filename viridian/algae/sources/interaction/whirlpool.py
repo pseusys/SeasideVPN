@@ -33,10 +33,10 @@ def _load_any_x509_certificate(data: bytes) -> Certificate:
 
 def _load_any_private_key(data: bytes) -> PrivateKeyTypes:
     try:
-        return load_der_private_key(data)
+        return load_der_private_key(data, None)
     except ValueError:
         try:
-            return load_pem_private_key(data)
+            return load_pem_private_key(data, None)
         except ValueError:
             raise ValueError("Requested key is neither DER nor PEM!")
 
