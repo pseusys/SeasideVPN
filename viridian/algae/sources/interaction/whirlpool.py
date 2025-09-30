@@ -48,7 +48,7 @@ def _create_ssl_context(certificate_authority_path: Optional[Path] = None, certi
 
     if certificate_authority_data is not None:
         certificate_authority_pem = _load_any_x509_certificate(certificate_authority_data).public_bytes(Encoding.PEM)
-        context.load_verify_locations(cadata=certificate_authority_pem)
+        context.load_verify_locations(cadata=certificate_authority_pem.decode())
 
     elif certificate_authority_path is not None:
         context.load_verify_locations(cafile=str(certificate_authority_path))
