@@ -5,8 +5,9 @@ from socket import gethostname
 from ssl import CERT_REQUIRED, PROTOCOL_TLS_CLIENT, SSLContext
 from typing import Dict, Optional, Tuple, Union
 
-from cryptography.x509 import load_der_x509_certificate
-from cryptography.hazmat.primitives.serialization import Encoding, NoEncryption, PrivateFormat, load_der_private_key
+from cryptography.x509 import Certificate, load_der_x509_certificate, load_pem_x509_certificate
+from cryptography.hazmat.primitives.asymmetric.types import PrivateKeyTypes
+from cryptography.hazmat.primitives.serialization import Encoding, NoEncryption, PrivateFormat, load_der_private_key, load_pem_private_key
 from grpclib.client import Channel
 from grpclib.metadata import Deadline
 
@@ -20,13 +21,33 @@ _DEFAULT_TIMEOUT = 30
 logger = create_logger(__name__)
 
 
+def _load_any_x509_certificate(data: bytes) -> Certificate:
+    try:
+        return load_der_x509_certificate(data)
+    except ValueError:
+        try:
+            return load_pem_x509_certificate(data)
+        except ValueError:
+            raise ValueError("Requested certificate is neither DER nor PEM!")
+
+
+def _load_any_private_key(data: bytes) -> PrivateKeyTypes:
+    try:
+        return load_der_private_key(data)
+    except ValueError:
+        try:
+            return load_pem_private_key(data)
+        except ValueError:
+            raise ValueError("Requested key is neither DER nor PEM!")
+
+
 def _create_ssl_context(certificate_authority_path: Optional[Path] = None, certificate_authority_data: Optional[bytes] = None, client_certificate_path: Optional[Tuple[Path, Path]] = None, client_certificate_data: Optional[Tuple[bytes, bytes]] = None) -> SSLContext:
     context = SSLContext(PROTOCOL_TLS_CLIENT)
     context.verify_mode = CERT_REQUIRED
     context.check_hostname = True
 
     if certificate_authority_data is not None:
-        certificate_authority_pem = load_der_x509_certificate(certificate_authority_data).public_bytes(Encoding.PEM)
+        certificate_authority_pem = _load_any_x509_certificate(certificate_authority_data).public_bytes(Encoding.PEM)
         context.load_verify_locations(cadata=certificate_authority_pem)
 
     elif certificate_authority_path is not None:
@@ -34,8 +55,8 @@ def _create_ssl_context(certificate_authority_path: Optional[Path] = None, certi
 
     if client_certificate_data is not None:
         certificate_data, key_data = client_certificate_data
-        certificate_pem = load_der_x509_certificate(certificate_data).public_bytes(Encoding.PEM)
-        key_pem = load_der_private_key(key_data).private_bytes(Encoding.PEM, PrivateFormat.PKCS8, NoEncryption())
+        certificate_pem = _load_any_x509_certificate(certificate_data).public_bytes(Encoding.PEM)
+        key_pem = _load_any_private_key(key_data).private_bytes(Encoding.PEM, PrivateFormat.PKCS8, NoEncryption())
         with ChargedTempFile(certificate_pem) as cert_file, ChargedTempFile(key_pem) as key_file:
             context.load_cert_chain(certfile=str(cert_file.name), keyfile=str(key_file.name))
 
