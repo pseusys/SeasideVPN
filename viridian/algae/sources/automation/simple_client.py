@@ -34,7 +34,7 @@ _DEFAULT_TUNNEL_NETMASK = "255.255.255.0"
 _DEFAULT_TUNNEL_SVA = 65
 
 _DEFAULT_CURRENT_DNS = IPv4Address("0.0.0.0")
-_DEFAULT_GOOD_DNS = IPv4Address("0.0.0.0")
+_DEFAULT_GOOD_DNS = IPv4Address("8.8.8.8")
 
 logger = create_logger(__name__)
 
@@ -182,7 +182,7 @@ async def main(args: Sequence[str] = argv[1:]) -> None:
     if connection_file is not None:
         client_certificate = SeasideWhirlpoolClientCertificate.parse(connection_file.read_bytes())
         port = client_certificate.typhoon_port if protocol == "typhoon" else client_certificate.port_port
-        address, key, token, dns = client_certificate.address, client_certificate.typhoon_public, client_certificate.token, client_certificate.dns
+        address, key, token, dns = client_certificate.address, client_certificate.typhoon_public, client_certificate.token, IPv4Address(client_certificate.dns)
     else:
         port, address, key, token, dns = None, None, None, None, None
 
