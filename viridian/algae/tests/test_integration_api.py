@@ -5,7 +5,7 @@ from typing import AsyncGenerator
 import pytest
 import pytest_asyncio
 
-from sources.automation.testing_client import create_admin_certificate_from_env
+from sources.automation.whirlpool_fixtures import create_admin_certificate_from_env
 from sources.interaction.whirlpool import WhirlpoolClient
 
 logger = getLogger(__name__)

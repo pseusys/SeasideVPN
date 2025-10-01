@@ -2,20 +2,22 @@ from argparse import ArgumentParser
 from asyncio import FIRST_EXCEPTION, CancelledError, Task, create_subprocess_shell, create_task, current_task, get_event_loop, get_running_loop, run, wait
 from base64 import b64decode
 from contextlib import asynccontextmanager
-from ipaddress import AddressValueError, IPv4Address
-from os import getenv
+from datetime import datetime, timedelta, timezone
+from ipaddress import IPv4Address
+from os import environ, getenv
 from pathlib import Path
 from signal import SIGINT, SIGTERM
-from socket import gethostbyname
+from socket import gethostname
 from subprocess import PIPE
 from sys import argv, exit
 from typing import AsyncIterator, List, Literal, Optional, Sequence, Union
 
-from ..generated.generated import SeasideWhirlpoolClientCertificate
+from ..generated.generated import ClientToken, SeasideWhirlpoolClientCertificate
 from ..interaction.system import Tunnel
 from ..protocol import PortClient, SeasideClient, ProtocolBaseError, TyphoonClient
 from ..utils.asyncos import os_read, os_write
-from ..utils.misc import ArgDict, create_logger
+from ..utils.crypto import Asymmetric, Symmetric
+from ..utils.misc import ArgDict, create_logger, resolve_address
 from ..version import __version__
 
 # Default control protocol.
@@ -32,6 +34,8 @@ _DEFAULT_TUNNEL_NETMASK = "255.255.255.0"
 
 # Default tunnel interface seaside-viridian-algae code.
 _DEFAULT_TUNNEL_SVA = 65
+
+_DEFAULT_SUBSCRIPTION_DAYS = 30
 
 _DEFAULT_CURRENT_DNS = IPv4Address("0.0.0.0")
 _DEFAULT_GOOD_DNS = IPv4Address("8.8.8.8")
@@ -173,6 +177,23 @@ class AlgaeClient:
             exit(1)
 
 
+def create_client_certificate_from_env(address: Optional[IPv4Address] = None, typhoon_port: Optional[int] = None, port_port: Optional[int] = None, typhoon_private: Optional[bytes] = None, dns: Optional[IPv4Address] = None, name: str = "test_client", identifier: Optional[str] = None, is_privileged: bool = False, subscription: Optional[datetime] = None, server_key: Optional[bytes] = None) -> SeasideWhirlpoolClientCertificate:
+    server_key = b64decode(environ["SEASIDE_SERVER_KEY"]) if server_key is None else server_key
+    identifier = gethostname() if identifier is None else identifier
+    subscription = datetime.now(timezone.utc) + timedelta(days=_DEFAULT_SUBSCRIPTION_DAYS if subscription is None else subscription)
+    client_token = Symmetric(server_key).encrypt(bytes(ClientToken(name, identifier, is_privileged, subscription)))
+
+    typhoon_private = b64decode(environ["SEASIDE_PRIVATE_KEY"]) if typhoon_private is None else typhoon_private
+    typhoon_public = Asymmetric(typhoon_private).public_key
+
+    address = str(IPv4Address(environ["SEASIDE_ADDRESS"]) if address is None else address)
+    typhoon_port = int(environ["SEASIDE_TYPHOON_PORT"] if typhoon_port is None else typhoon_port)
+    port_port = int(environ["SEASIDE_PORT_PORT"] if port_port is None else port_port)
+    dns = str(IPv4Address(environ["SEASIDE_SUGGESTED_DNS"]) if dns is None else dns)
+
+    return SeasideWhirlpoolClientCertificate(address, typhoon_public, typhoon_port, port_port, client_token, dns)
+
+
 async def main(args: Sequence[str] = argv[1:]) -> None:
     loop = get_event_loop()
     arguments = ArgDict.from_namespace(parser.parse_args(args))
@@ -181,21 +202,16 @@ async def main(args: Sequence[str] = argv[1:]) -> None:
     connection_file = arguments["file"]
     if connection_file is not None:
         client_certificate = SeasideWhirlpoolClientCertificate.parse(connection_file.read_bytes())
-        port = client_certificate.typhoon_port if protocol == "typhoon" else client_certificate.port_port
-        address, key, token, dns = client_certificate.address, client_certificate.typhoon_public, client_certificate.token, IPv4Address(client_certificate.dns)
     else:
-        port, address, key, token, dns = None, None, None, None, None
+        client_certificate = create_client_certificate_from_env()
 
-    key = Path(arguments["key"]).read_bytes() if arguments["key"] is not None else key
-    address, port, token, dns = arguments.ext("address", address), arguments.ext("port", port), arguments.ext("token", token), arguments.ext("dns", dns)
-
+    address = resolve_address(arguments.ext("address", client_certificate.address))
+    port = arguments.ext("port", client_certificate.typhoon_port if protocol == "typhoon" else client_certificate.port_port)
+    key = Path(arguments["key"]).read_bytes() if arguments["key"] is not None else client_certificate.typhoon_public
+    token = arguments.ext("token", client_certificate.token)
+    dns = arguments.ext("dns", IPv4Address(client_certificate.dns))
     command = arguments.pop("command")
-    logger.debug(f"Initializing client with parameters: {arguments}")
-
-    try:
-        address = str(IPv4Address(address))
-    except AddressValueError:
-        address = gethostbyname(address)
+    logger.debug(f"Initializing simple client with parameters - address: {address}, port {port}, key {key}, token {token}, dns {dns}, command '{command}'...")
 
     logger.debug("Creating algae client...")
     client = await AlgaeClient.new(address, port, protocol, key, token, dns, arguments["capture_iface"], arguments["capture_ranges"], arguments["capture_addresses"], arguments["capture_ports"], arguments["exempt_ranges"], arguments["exempt_addresses"], arguments["exempt_ports"], arguments["local_address"])

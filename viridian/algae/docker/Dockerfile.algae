@@ -49,7 +49,7 @@ ENV LOGGING_LEVEL=${RUNNING_IN_CI:+ERROR}
 ENV LOGGING_LEVEL=${RUNNING_IN_CI:-DEBUG}
 
 ENV TEST_COMMAND="python3 -m pytest --log-cli-level=$LOGGING_LEVEL tests/$TEST_FILE"
-ENV VPN_COMMAND="python3 -m sources.automation.testing_client -c \"\$TEST_COMMAND\""
+ENV VPN_COMMAND="python3 -m sources.automation.simple_client -c \"\$TEST_COMMAND\""
 
 # Just sleep - run nothing.
 ENTRYPOINT ["sh", "-c", "eval \"$VPN_COMMAND\""]

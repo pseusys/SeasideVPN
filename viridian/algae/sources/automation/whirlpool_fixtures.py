@@ -1,6 +1,8 @@
 from argparse import ArgumentParser
 from asyncio import run
 from base64 import b64decode
+from ipaddress import IPv4Address
+from os import environ
 from pathlib import Path
 from socket import gethostname
 from sys import argv, stdout
@@ -9,7 +11,7 @@ from typing import Optional, Sequence
 from ..generated.generated import AdminToken, SeasideWhirlpoolAdminCertificate
 from ..interaction.whirlpool import WhirlpoolClient
 from ..utils.crypto import Symmetric
-from ..utils.misc import ArgDict, create_logger
+from ..utils.misc import ArgDict, create_logger, resolve_address
 
 # Default tunnel interface IP address.
 _DEFAULT_ADDRESS = "127.0.0.1"
@@ -51,6 +53,21 @@ supply_client_parser.add_argument("-d", "--days", type=int, default=_DEFAULT_SUB
 supply_client_parser.add_argument("-o", "--output", type=Path, help="File path to store the received admin certificate message (default: STDOUT)")
 
 
+def create_admin_certificate_from_env(address: Optional[IPv4Address] = None, port: Optional[int] = None, certificate_path: Optional[Path] = None, client_certificate: Optional[bytes] = None, client_key: Optional[bytes] = None, certificate_authority: Optional[bytes] = None, name: str = "test_admin", is_owner: bool = True, server_key: Optional[bytes] = None) -> SeasideWhirlpoolAdminCertificate:
+    server_key = b64decode(environ["SEASIDE_SERVER_KEY"]) if server_key is None else server_key
+    admin_token = Symmetric(server_key).encrypt(bytes(AdminToken(name, is_owner)))
+
+    address = str(IPv4Address(environ["SEASIDE_ADDRESS"]) if address is None else address)
+    port = int(environ["SEASIDE_API_PORT"] if port is None else port)
+
+    certificate_path = Path(environ["SEASIDE_CERTIFICATE_PATH"]) if certificate_path is None else certificate_path
+    client_certificate = (certificate_path / "cert.crt").read_bytes() if client_certificate is None else client_certificate
+    client_key = (certificate_path / "cert.key").read_bytes() if client_key is None else client_key
+    certificate_authority = (certificate_path / "serverCA.crt").read_bytes() if certificate_authority is None else certificate_authority
+
+    return SeasideWhirlpoolAdminCertificate(address, port, client_certificate, client_key, certificate_authority, admin_token)
+
+
 async def supply_viridian_admin(client: WhirlpoolClient, name: Optional[str], output: Optional[Path]) -> None:
     logger.info(f"Authenticating admin {name}...")
     certificate = await client.authenticate_admin(name)
@@ -85,20 +102,15 @@ async def main(args: Sequence[str] = argv[1:]) -> None:
     connection_file = arguments["file"]
     if connection_file is not None:
         admin_certificate = SeasideWhirlpoolAdminCertificate.parse(connection_file.read_bytes())
-        address, port, token = admin_certificate.address, admin_certificate.port, admin_certificate.token
-        client_certificate = (admin_certificate.client_certificate, admin_certificate.client_key)
-        certificate_authority = admin_certificate.certificate_authority
     else:
-        address, port, token = None, None, None
+        admin_certificate = create_admin_certificate_from_env(name=arguments["owner_name"], server_key=arguments["server_key"])
 
-    address, port, token = arguments.ext("address", address), arguments.ext("port", port), arguments.ext("token", token)
-    if arguments["client_certificate"] is not None and arguments["client_key"] is not None:
-        client_certificate = (arguments["client_certificate"], arguments["client_key"])
-        certificate_authority = arguments["certificate_authority"]
-
-    if token is None and arguments["server_key"] is not None:
-        raw_token = AdminToken(arguments["owner_name"], True)
-        token = Symmetric(arguments["server_key"]).encrypt(bytes(raw_token))
+    address = resolve_address(arguments.ext("address", admin_certificate.address))
+    port = arguments.ext("port", admin_certificate.port)
+    token = arguments.ext("token", admin_certificate.token)
+    client_certificate = (arguments.ext("client_certificate", admin_certificate.client_certificate), arguments.ext("client_key", admin_certificate.client_key))
+    certificate_authority = arguments.ext("certificate_authority", admin_certificate.certificate_authority)
+    logger.debug(f"Initializing whirlpool client with parameters - address: {address}, port {port}, token {token}, client certificate {client_certificate}, certificate authority '{certificate_authority}'...")
 
     logger.info("Starting client...")
     async with WhirlpoolClient(address, port, token, client_certificate, certificate_authority) as client:

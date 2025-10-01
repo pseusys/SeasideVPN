@@ -1,9 +1,11 @@
 from argparse import Namespace
 from asyncio import FIRST_COMPLETED, CancelledError, Future, sleep, wait
 from contextlib import suppress
+from ipaddress import AddressValueError, IPv4Address
 from logging import Formatter, Logger, StreamHandler, getLogger
 from os import getenv
 from secrets import randbelow
+from socket import gethostbyname
 from sys import stdout
 from tempfile import _TemporaryFileWrapper, NamedTemporaryFile
 from typing import Any, Optional, TypeVar, Union
@@ -114,3 +116,12 @@ class ArgDict(dict):
 
     def ext(self, key: str, default: Any) -> Any:
         return self[key] if key in self and self[key] is not None else default
+
+
+# INTERNET:
+
+def resolve_address(address: str) -> IPv4Address:
+    try:
+        return str(IPv4Address(address))
+    except AddressValueError:
+        return gethostbyname(address)
