@@ -123,6 +123,11 @@ func (t *TyphoonServer) Read(buffer *betterbuf.Buffer, viridianDict *users.Virid
 		if t.previousSent > 0 {
 			t.updateTimeout(uint32((math.MaxUint32 + uint64(getTimestamp()-t.previousSent-t.previousNextIn)) % math.MaxUint32))
 		}
+
+		if data == nil {
+			logrus.Debug("Empty HDSK packet received, skipping data processing")
+			return nil, nil, nil
+		}
 	} else {
 		logrus.Debugf("Data packet of length %d from viridian %d", data.Length(), t.peerID)
 	}
