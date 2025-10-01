@@ -41,6 +41,8 @@ COPY viridian/algae/sources/ ./sources/
 COPY --from=builder /seaside/algae/generated/ ./sources/generated/
 COPY viridian/algae/tests/ ./tests/
 
+ENV SEASIDE_TUNNEL_NAME=seatun
+
 ENV TEST_FILE=$RUNNING_TEST_FILE
 ENV RUNNING_IN_CI=${RUNNING_IN_CI:-0}
 ENV LOGGING_LEVEL=${RUNNING_IN_CI:+ERROR}
