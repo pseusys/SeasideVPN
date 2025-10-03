@@ -62,7 +62,7 @@ async def client() -> AsyncGenerator[AlgaeClient, None]:
         port = cert.port_port
     else:
         raise ValueError(f"Unexpected protocol value: {protocol}")
-    yield await AlgaeClient.new(cert.address, port, "typhoon", cert.typhoon_public, cert.token, cert.dns)
+    yield await AlgaeClient.new(cert.address, port, protocol, cert.typhoon_public, cert.token, cert.dns)
 
 
 # Tests:

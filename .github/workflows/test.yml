@@ -68,12 +68,12 @@ jobs:
       - name: Test Viridian Algae PORT (standalone) 🧪
         id: test-viridian-algae-port
         working-directory: viridian/algae
-        run: sudo -E env "PATH=$PATH" poetry poe client -s port -f "${{ steps.setup-test-server.outputs.connection-certificate }}" --capture-ports "${{ env.TARGET_LOWER_PORT }}-${{ env.TARGET_HIGHER_PORT }}" -c "${{ env.TEST_COMMAND }} --local-port 44444"
+        run: sudo -E env "PATH=$PATH" poetry poe client -m port -f "${{ steps.setup-test-server.outputs.connection-certificate }}" --capture-ports "${{ env.TARGET_LOWER_PORT }}-${{ env.TARGET_HIGHER_PORT }}" -c "${{ env.TEST_COMMAND }} --local-port 44444"
 
       - name: Test Viridian Algae TYPHOON (standalone) 🧪
         id: test-viridian-algae-typhoon
         working-directory: viridian/algae
-        run: sudo -E env "PATH=$PATH" poetry poe client -s typhoon -f "${{ steps.setup-test-server.outputs.connection-certificate }}" --capture-ports "${{ env.TARGET_LOWER_PORT }}-${{ env.TARGET_HIGHER_PORT }}" -c "${{ env.TEST_COMMAND }} --local-port 44445"
+        run: sudo -E env "PATH=$PATH" poetry poe client -m typhoon -f "${{ steps.setup-test-server.outputs.connection-certificate }}" --capture-ports "${{ env.TARGET_LOWER_PORT }}-${{ env.TARGET_HIGHER_PORT }}" -c "${{ env.TEST_COMMAND }} --local-port 44445"
 
   viridian-reef-test:
     name: Test Viridian Reef
