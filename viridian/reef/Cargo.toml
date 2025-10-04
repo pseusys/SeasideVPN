@@ -23,7 +23,7 @@ ipnet = "^2.10.1"
 lazy_static = "^1.5.0"
 log = "^0.4.22"
 num_enum = "^0.7.3"
-prost = { version = "^0.14.1", optional = true }
+prost = "^0.14.1"
 rand = "^0.8.5"
 regex = "^1.11.1"
 simple-error = "^0.3.1"
@@ -56,7 +56,7 @@ zip = "^4.5.0"
 
 
 [features]
-cli-exec = ["structopt", "prost"]
+cli-exec = ["structopt"]
 
 
 
