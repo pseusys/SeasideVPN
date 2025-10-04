@@ -1,8 +1,6 @@
 syntax = "proto3";
 package generated;
 
-import "google/protobuf/timestamp.proto";
-
 option go_package = "/generated";
 
 
@@ -49,32 +47,4 @@ message SeasideWhirlpoolClientCertificate {
 
     // Suggested DNS server to use
     string dns = 6;
-}
-
-
-
-// Seaside Whirlpool user token used for connection
-message ClientToken {
-
-    // User non-unique name
-    string name = 1;
-
-    // User unique identifier
-    string identifier = 2;
-
-    // Whether user is privileged
-    bool is_privileged = 3;
-
-    // User subscription end timestamp
-    google.protobuf.Timestamp subscription = 4;
-}
-
-// Seaside Whirlpool administrator token used for connection
-message AdminToken {
-
-    // Administrator non-unique name
-    string name = 1;
-
-    // Whether administrator is owner
-    bool is_owner = 2;
 }
