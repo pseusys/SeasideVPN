@@ -247,6 +247,7 @@ class TyphoonClient(_TyphoonPeer, SeasideClient):
             sleeping_timeout = self._previous_next_in + self.timeout
             self._logger.debug(f"Waiting for server response for {sleeping_timeout} milliseconds...")
             await self._sleep(self._read_server_init(loop, key), sleeping_timeout)
+            current_retries += 1
         raise TimeoutError("Listener connection timeout!")
 
     async def _run_connect(self, loop: AbstractEventLoop) -> int:

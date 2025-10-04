@@ -233,7 +233,7 @@ func (p *PortListener) handleInitMessage(viridianDict *users.ViridianDict, conn 
 	}
 	logrus.Debugf("Viridian %v:%v token decrypted twice successfully!", listenIP, listenPort)
 
-	token := new(generated.UserToken)
+	token := new(generated.ClientToken)
 	err = proto.Unmarshal(tokenBytes.Slice(), token)
 	if err != nil {
 		registrationCode = TOKEN_PARSE_ERROR

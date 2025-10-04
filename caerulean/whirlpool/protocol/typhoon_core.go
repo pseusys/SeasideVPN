@@ -228,25 +228,25 @@ func parseTyphoonClientProtocolMessageType(cipher *crypto.Symmetric, packet *bet
 
 	var packetNumber, nextIn *uint32
 	var data *betterbuf.Buffer
-	var hdsk bool
+	var has_data bool
 
 	if flags == byte(FLAG_HDSK|FLAG_DATA) {
-		hdsk = true
+		has_data = true
 	} else if flags == byte(FLAG_HDSK) {
-		hdsk = false
+		has_data = false
 	} else if flags == byte(FLAG_TERM) {
 		return nil, nil, false, nil, errors.New("connection terminated")
 	} else {
 		return nil, nil, false, nil, fmt.Errorf("message flags malformed: %d", flags)
 	}
 
-	packetNumber, nextIn, data, err = parseTyphoonClientHDSK(remainder, hdsk)
+	packetNumber, nextIn, data, err = parseTyphoonClientHDSK(remainder, has_data)
 	if *nextIn > TYPHOON_MAX_NEXT_IN || *nextIn < TYPHOON_MIN_NEXT_IN {
 		return nil, nil, false, nil, fmt.Errorf("error handling message, extreme next in value: %d not in (%d, %d)", *nextIn, TYPHOON_MIN_NEXT_IN, TYPHOON_MAX_NEXT_IN)
 	} else if err != nil {
 		return nil, nil, false, nil, fmt.Errorf("error parsing HDSK message: %v", err)
 	} else {
-		return packetNumber, nextIn, hdsk, data, nil
+		return packetNumber, nextIn, flags&byte(FLAG_HDSK) != 0, data, nil
 	}
 }
 

@@ -118,8 +118,12 @@ func (t *TyphoonServer) Read(buffer *betterbuf.Buffer, viridianDict *users.Virid
 	var consistencyPart *TyphoonConsistencyPart
 	if hdsk {
 		consistencyPart = &TyphoonConsistencyPart{packetNumber: *packetNumber, nextIn: *nextIn}
-		logrus.Debugf("HDSK packet of length %d (next in %d) from viridian %d", data.Length(), *nextIn, t.peerID)
+		if data == nil {
+			logrus.Debug("Empty HDSK packet received, skipping data processing")
+			return nil, nil, nil
+		}
 
+		logrus.Debugf("HDSK packet of length %d (next in %d) from viridian %d", data.Length(), *nextIn, t.peerID)
 		if t.previousSent > 0 {
 			t.updateTimeout(uint32((math.MaxUint32 + uint64(getTimestamp()-t.previousSent-t.previousNextIn)) % math.MaxUint32))
 		}
