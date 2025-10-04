@@ -213,10 +213,10 @@ async def main(args: Sequence[str] = argv[1:]) -> None:
     client_certificate.token = arguments.ext("token", client_certificate.token)
     client_certificate.dns = arguments.ext("dns", client_certificate.dns)
     command = arguments.pop("command")
-    logger.debug(f"Initializing simple client with parameters: {client_certificate}, command: '{command}'...")
+    logger.debug(f"Initializing simple client ({protocol} protocol) with parameters: {client_certificate}, command: '{command}'...")
 
     logger.debug("Creating algae client...")
-    client = await AlgaeClient.new(client_certificate, arguments["capture_iface"], arguments["capture_ranges"], arguments["capture_addresses"], arguments["capture_ports"], arguments["exempt_ranges"], arguments["exempt_addresses"], arguments["exempt_ports"], arguments["local_address"])
+    client = await AlgaeClient.new(client_certificate, protocol, arguments["capture_iface"], arguments["capture_ranges"], arguments["capture_addresses"], arguments["capture_ports"], arguments["exempt_ranges"], arguments["exempt_addresses"], arguments["exempt_ports"], arguments["local_address"])
 
     logger.debug("Setting up interruption handlers for client...")
     loop.add_signal_handler(SIGTERM, lambda: create_task(client.interrupt(True)))
