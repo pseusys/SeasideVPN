@@ -97,7 +97,6 @@ async def main(args: Sequence[str] = argv[1:]) -> None:
     fixture = arguments["fixture"]
     if fixture is None:
         raise ValueError("No fixture selected!")
-    client_certificate, certificate_authority = None, None
 
     connection_file = arguments["file"]
     if connection_file is not None:
@@ -105,15 +104,16 @@ async def main(args: Sequence[str] = argv[1:]) -> None:
     else:
         admin_certificate = create_admin_certificate_from_env(name=arguments["owner_name"], server_key=arguments["server_key"])
 
-    address = resolve_address(arguments.ext("address", admin_certificate.address))
-    port = arguments.ext("port", admin_certificate.port)
-    token = arguments.ext("token", admin_certificate.token)
-    client_certificate = (arguments.ext("client_certificate", admin_certificate.client_certificate), arguments.ext("client_key", admin_certificate.client_key))
-    certificate_authority = arguments.ext("certificate_authority", admin_certificate.certificate_authority)
-    logger.debug(f"Initializing whirlpool client with parameters - address: {address}, port {port}, token {token}, client certificate {client_certificate}, certificate authority '{certificate_authority}'...")
+    admin_certificate.address = str(resolve_address(arguments.ext("address", admin_certificate.address)))
+    admin_certificate.port = arguments.ext("port", admin_certificate.port)
+    admin_certificate.token = arguments.ext("token", admin_certificate.token)
+    admin_certificate.client_certificate = Path(arguments["client_certificate"]).read_bytes() if arguments["client_certificate"] is not None else admin_certificate.client_certificate
+    admin_certificate.client_key = Path(arguments["client_key"]).read_bytes() if arguments["client_key"] is not None else admin_certificate.client_key
+    admin_certificate.certificate_authority = Path(arguments["certificate_authority"]).read_bytes() if arguments["certificate_authority"] is not None else admin_certificate.certificate_authority
+    logger.debug(f"Initializing whirlpool client with parameters: {admin_certificate}")
 
     logger.info("Starting client...")
-    async with WhirlpoolClient(address, port, token, client_certificate, certificate_authority) as client:
+    async with WhirlpoolClient(admin_certificate) as client:
         if fixture == "supply-viridian-admin":
             await supply_viridian_admin(client, arguments["name"], arguments["output"])
         elif fixture == "supply-viridian-client":

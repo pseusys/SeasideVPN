@@ -54,15 +54,7 @@ async def is_tcp_available(address: Optional[str] = None, port: int = 853) -> bo
 
 @pytest_asyncio.fixture(scope="session", loop_scope="session")
 async def client() -> AsyncGenerator[AlgaeClient, None]:
-    cert = create_client_certificate_from_env()
-    protocol = "typhoon"
-    if protocol == "typhoon":
-        port = cert.typhoon_port
-    elif protocol == "port":
-        port = cert.port_port
-    else:
-        raise ValueError(f"Unexpected protocol value: {protocol}")
-    yield await AlgaeClient.new(cert.address, port, protocol, cert.typhoon_public, cert.token, cert.dns)
+    yield await AlgaeClient.new(create_client_certificate_from_env(), "typhoon")
 
 
 # Tests:

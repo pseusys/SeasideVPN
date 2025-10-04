@@ -15,8 +15,7 @@ logger = getLogger(__name__)
 
 @pytest_asyncio.fixture(scope="function", loop_scope="session")
 async def api_client() -> AsyncGenerator[WhirlpoolClient, None]:
-    cert = create_admin_certificate_from_env()
-    yield WhirlpoolClient(cert.address, cert.port, cert.token, (cert.client_certificate, cert.client_key), cert.certificate_authority)
+    yield WhirlpoolClient(create_admin_certificate_from_env())
 
 
 # TODO: time + crypto keys generation

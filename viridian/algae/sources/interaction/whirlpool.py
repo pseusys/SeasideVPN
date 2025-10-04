@@ -1,9 +1,8 @@
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from secrets import token_bytes
 from socket import gethostname
 from ssl import CERT_REQUIRED, PROTOCOL_TLS_CLIENT, SSLContext
-from typing import Dict, Optional, Tuple, Union
+from typing import Dict, Optional, Union
 
 from cryptography.x509 import Certificate, load_der_x509_certificate, load_pem_x509_certificate
 from cryptography.hazmat.primitives.asymmetric.types import PrivateKeyTypes
@@ -41,44 +40,27 @@ def _load_any_private_key(data: bytes) -> PrivateKeyTypes:
             raise ValueError("Requested key is neither DER nor PEM!")
 
 
-def _create_ssl_context(certificate_authority_path: Optional[Path] = None, certificate_authority_data: Optional[bytes] = None, client_certificate_path: Optional[Tuple[Path, Path]] = None, client_certificate_data: Optional[Tuple[bytes, bytes]] = None) -> SSLContext:
+def _create_ssl_context(certificate_authority: bytes, client_certificate: bytes, client_key: bytes) -> SSLContext:
     context = SSLContext(PROTOCOL_TLS_CLIENT)
     context.verify_mode = CERT_REQUIRED
     context.check_hostname = True
 
-    if certificate_authority_data is not None:
-        certificate_authority_pem = _load_any_x509_certificate(certificate_authority_data).public_bytes(Encoding.PEM)
-        context.load_verify_locations(cadata=certificate_authority_pem.decode())
+    certificate_authority_pem = _load_any_x509_certificate(certificate_authority).public_bytes(Encoding.PEM)
+    context.load_verify_locations(cadata=certificate_authority_pem.decode())
 
-    elif certificate_authority_path is not None:
-        context.load_verify_locations(cafile=str(certificate_authority_path))
-
-    if client_certificate_data is not None:
-        certificate_data, key_data = client_certificate_data
-        certificate_pem = _load_any_x509_certificate(certificate_data).public_bytes(Encoding.PEM)
-        key_pem = _load_any_private_key(key_data).private_bytes(Encoding.PEM, PrivateFormat.PKCS8, NoEncryption())
-        with ChargedTempFile(certificate_pem) as cert_file, ChargedTempFile(key_pem) as key_file:
-            context.load_cert_chain(certfile=str(cert_file.name), keyfile=str(key_file.name))
-
-    elif client_certificate_path is not None:
-        certificate_path, key_path = client_certificate_path
-        context.load_cert_chain(certfile=str(certificate_path), keyfile=str(key_path))
-
-    else:
-        raise ValueError("Client certificates were not provided!")
+    certificate_pem = _load_any_x509_certificate(client_certificate).public_bytes(Encoding.PEM)
+    key_pem = _load_any_private_key(client_key).private_bytes(Encoding.PEM, PrivateFormat.PKCS8, NoEncryption())
+    with ChargedTempFile(certificate_pem) as cert_file, ChargedTempFile(key_pem) as key_file:
+        context.load_cert_chain(certfile=str(cert_file.name), keyfile=str(key_file.name))
 
     context.set_alpn_protocols(["h2"])
     return context
 
 
 class WhirlpoolClient(WhirlpoolViridianStub):
-    def __init__(self, address: str, port: int, token: bytes, cert: Union[Tuple[Path, Path], Tuple[bytes, bytes]], ca: Optional[Union[Path, bytes]] = None, timeout: Optional[float] = None, deadline: Optional[Deadline] = None):
-        self._token = token
-        ca_path = ca if ca is not None and isinstance(ca, Path) else None
-        ca_bytes = ca if ca is not None and isinstance(ca, bytes) else None
-        cert_path = cert if cert is not None and isinstance(cert[0], Path) and isinstance(cert[1], Path) else None
-        cert_bytes = cert if cert is not None and isinstance(cert[0], bytes) and isinstance(cert[1], bytes) else None
-        self._channel = Channel(address, port, ssl=_create_ssl_context(ca_path, ca_bytes, cert_path, cert_bytes))
+    def __init__(self, certificate: SeasideWhirlpoolAdminCertificate, timeout: Optional[float] = None, deadline: Optional[Deadline] = None):
+        self._token = certificate.token
+        self._channel = Channel(certificate.address, certificate.port, ssl=_create_ssl_context(certificate.certificate_authority, certificate.client_certificate, certificate.client_key))
         super().__init__(self._channel, timeout=_DEFAULT_TIMEOUT if timeout is None else timeout, deadline=deadline)
 
     def _generate_metadata(self) -> Dict[str, Union[str, bytes]]:

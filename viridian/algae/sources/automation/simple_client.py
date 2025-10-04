@@ -66,7 +66,7 @@ parser.add_argument("-c", "--command", default=None, help="Command to execute an
 
 class AlgaeClient:
     def __init__(self) -> None:
-        self._address: str
+        self._address: IPv4Address
         self._port: int
         self._proto_type: SeasideClient
         self._tunnel: Tunnel
@@ -74,17 +74,18 @@ class AlgaeClient:
         self._token: bytes
 
     @classmethod
-    async def new(cls, address: str, port: int, protocol: Union[Literal["typhoon"], Literal["port"]], key: bytes, token: bytes, dns: IPv4Address = _DEFAULT_CURRENT_DNS, capture_iface: Optional[List[str]] = None, capture_ranges: Optional[List[str]] = None, capture_addresses: Optional[List[str]] = None, capture_ports: Optional[str] = None, exempt_ranges: Optional[List[str]] = None, exempt_addresses: Optional[List[str]] = None, exempt_ports: Optional[str] = None, local_address: Optional[IPv4Address] = None) -> "AlgaeClient":
+    async def new(cls, certificate: SeasideWhirlpoolClientCertificate, protocol: Union[Literal["typhoon"], Literal["port"]], capture_iface: Optional[List[str]] = None, capture_ranges: Optional[List[str]] = None, capture_addresses: Optional[List[str]] = None, capture_ports: Optional[str] = None, exempt_ranges: Optional[List[str]] = None, exempt_addresses: Optional[List[str]] = None, exempt_ports: Optional[str] = None, local_address: Optional[IPv4Address] = None) -> "AlgaeClient":
         client = cls()
-        client._address = address
-        client._port = port
-        client._key = key
-        client._token = token
+        client._address = IPv4Address(certificate.address)
+        client._key = certificate.typhoon_public
+        client._token = certificate.token
 
         if protocol == "typhoon":
             client._proto_type = TyphoonClient
+            client._port = certificate.typhoon_port
         elif protocol == "port":
             client._proto_type = PortClient
+            client._port = certificate.port_port
         else:
             raise ValueError(f"Unknown protocol type: {protocol}")
 
@@ -92,7 +93,7 @@ class AlgaeClient:
         tunnel_address = IPv4Address(getenv("SEASIDE_TUNNEL_ADDRESS", _DEFAULT_TUNNEL_ADDRESS))
         tunnel_netmask = IPv4Address(getenv("SEASIDE_TUNNEL_NETMASK", _DEFAULT_TUNNEL_NETMASK))
         tunnel_sva = int(getenv("SEASIDE_TUNNEL_SVA", _DEFAULT_TUNNEL_SVA))
-        client._tunnel = await Tunnel.new(tunnel_name, tunnel_address, tunnel_netmask, tunnel_sva, IPv4Address(client._address), dns, capture_iface, capture_ranges, capture_addresses, capture_ports, exempt_ranges, exempt_addresses, exempt_ports, local_address)
+        client._tunnel = await Tunnel.new(tunnel_name, tunnel_address, tunnel_netmask, tunnel_sva, client._address, IPv4Address(certificate.dns), capture_iface, capture_ranges, capture_addresses, capture_ports, exempt_ranges, exempt_addresses, exempt_ports, local_address)
         return client
 
     async def _send_to_caerulean(self, connection: SeasideClient, tunnel: int) -> None:
@@ -205,16 +206,17 @@ async def main(args: Sequence[str] = argv[1:]) -> None:
     else:
         client_certificate = create_client_certificate_from_env()
 
-    address = resolve_address(arguments.ext("address", client_certificate.address))
-    port = arguments.ext("port", client_certificate.typhoon_port if protocol == "typhoon" else client_certificate.port_port)
-    key = Path(arguments["key"]).read_bytes() if arguments["key"] is not None else client_certificate.typhoon_public
-    token = arguments.ext("token", client_certificate.token)
-    dns = arguments.ext("dns", IPv4Address(client_certificate.dns))
+    client_certificate.address = str(resolve_address(arguments.ext("address", client_certificate.address)))
+    client_certificate.typhoon_public = Path(arguments["key"]).read_bytes() if arguments["key"] is not None else client_certificate.typhoon_public
+    client_certificate.typhoon_port = arguments["port"] if arguments["port"] is not None and protocol == "typhoon" else client_certificate.typhoon_port
+    client_certificate.port_port = arguments["port"] if arguments["port"] is not None and protocol == "port" else client_certificate.port_port
+    client_certificate.token = arguments.ext("token", client_certificate.token)
+    client_certificate.dns = arguments.ext("dns", client_certificate.dns)
     command = arguments.pop("command")
-    logger.debug(f"Initializing simple client with parameters - address: {address}, port {port}, key {key}, token {token}, dns {dns}, command '{command}'...")
+    logger.debug(f"Initializing simple client with parameters: {client_certificate}, command: '{command}'...")
 
     logger.debug("Creating algae client...")
-    client = await AlgaeClient.new(address, port, protocol, key, token, dns, arguments["capture_iface"], arguments["capture_ranges"], arguments["capture_addresses"], arguments["capture_ports"], arguments["exempt_ranges"], arguments["exempt_addresses"], arguments["exempt_ports"], arguments["local_address"])
+    client = await AlgaeClient.new(client_certificate, arguments["capture_iface"], arguments["capture_ranges"], arguments["capture_addresses"], arguments["capture_ports"], arguments["exempt_ranges"], arguments["exempt_addresses"], arguments["exempt_ports"], arguments["local_address"])
 
     logger.debug("Setting up interruption handlers for client...")
     loop.add_signal_handler(SIGTERM, lambda: create_task(client.interrupt(True)))
