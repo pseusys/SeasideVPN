@@ -23,6 +23,8 @@ ipnet = "^2.10.1"
 lazy_static = "^1.5.0"
 log = "^0.4.22"
 num_enum = "^0.7.3"
+prost = { version = "^0.14.1", optional = true }
+prost-types = { version = "^0.14.1", optional = true }
 rand = "^0.8.5"
 regex = "^1.11.1"
 simple-error = "^0.3.1"
@@ -44,6 +46,9 @@ windivert = "^0.6.0"
 windows = { version = "^0.61.3", features = ["Win32_Foundation", "Win32_NetworkManagement_IpHelper", "Win32_Networking_WinSock", "Win32_NetworkManagement_Ndis"] }
 wmi = "^0.17.2"
 
+[build-dependencies]
+prost-build = "^0.14.1"
+
 [target.'cfg(target_os = "windows")'.build-dependencies]
 reqwest = { version = "^0.12.23", features = ["blocking", "json"] }
 zip = "^4.5.0"
@@ -51,7 +56,7 @@ zip = "^4.5.0"
 
 
 [features]
-cli-exec = ["structopt"]
+cli-exec = ["structopt", "prost", "prost-types"]
 
 
 

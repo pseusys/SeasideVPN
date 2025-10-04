@@ -12,9 +12,10 @@ use tokio::{select, try_join};
 
 use crate::bytes::ByteBuffer;
 use crate::general::create_handle;
+use crate::generated::SeasideWhirlpoolClientCertificate;
 use crate::protocol::ProtocolType;
 use crate::tunnel::Tunnel;
-use crate::utils::{parse_env, parse_str_env};
+use crate::utils::{parse_address, parse_env, parse_str_env};
 use crate::DynResult;
 
 #[cfg(target_os = "linux")]
@@ -44,7 +45,7 @@ pub struct Viridian<'a> {
 }
 
 impl<'a> Viridian<'a> {
-    pub async fn new(address: Ipv4Addr, port: u16, token: ByteBuffer<'a>, key: ByteBuffer<'a>, protocol: ProtocolType, mut dns: Option<Ipv4Addr>, capture_iface: Option<Vec<String>>, capture_ranges: Option<Vec<String>>, exempt_ranges: Option<Vec<String>>, capture_addresses: Option<Vec<String>>, exempt_addresses: Option<Vec<String>>, capture_ports: Option<String>, exempt_ports: Option<String>, local_address: Option<Ipv4Addr>) -> DynResult<Self> {
+    pub async fn new(certificate: SeasideWhirlpoolClientCertificate, protocol: ProtocolType, capture_iface: Option<Vec<String>>, capture_ranges: Option<Vec<String>>, exempt_ranges: Option<Vec<String>>, capture_addresses: Option<Vec<String>>, exempt_addresses: Option<Vec<String>>, capture_ports: Option<String>, exempt_ports: Option<String>, local_address: Option<Ipv4Addr>) -> DynResult<Self> {
         let tunnel_name = parse_str_env("SEASIDE_TUNNEL_NAME", Some(DEFAULT_TUNNEL_NAME));
         let tunnel_address = parse_env("SEASIDE_TUNNEL_ADDRESS", Some(DEFAULT_TUNNEL_ADDRESS));
         let tunnel_netmask = parse_env("SEASIDE_TUNNEL_NETMASK", Some(DEFAULT_TUNNEL_NETMASK));
@@ -55,9 +56,15 @@ impl<'a> Viridian<'a> {
             bail!("Tunnel address {tunnel_address} is reserved in tunnel network {tunnel_network}!");
         }
 
+        let mut dns = Some(parse_address(&certificate.dns)?);
         if dns.is_some_and(|a| a == DEFAULT_DNS_ADDRESS) {
             dns = None;
         }
+
+        let port = match protocol {
+            ProtocolType::PORT => certificate.port_port as u16,
+            ProtocolType::TYPHOON => certificate.typhoon_port as u16,
+        };
 
         let capture_iface_set = if let Some(ifaces) = capture_iface { HashSet::from_iter(ifaces) } else { HashSet::new() };
 
@@ -110,11 +117,12 @@ impl<'a> Viridian<'a> {
             Some((port_number, port_number))
         };
 
+        let address = parse_address(&certificate.address)?;
         debug!("Creating tunnel with seaside address {address}, tunnel name {tunnel_name}, tunnel network {tunnel_address}/{tunnel_netmask}, SVR index {svr_index}...");
         let tunnel = Tunnel::new(address, &tunnel_name, tunnel_network, svr_index, dns, capture_iface_set, capture_ranges_set, exempt_ranges_set, capture_port_range, exempt_port_range, local_address).await?;
 
         let default_ip = tunnel.default_ip();
-        Ok(Viridian { key, token, address, port, tunnel, client_type: protocol, local_address: default_ip })
+        Ok(Viridian { key: ByteBuffer::from(certificate.typhoon_public), token: ByteBuffer::from(certificate.token), address, port, tunnel, client_type: protocol, local_address: default_ip })
     }
 
     async fn run_vpn_command(&self, command: Option<String>) -> DynResult<ExitStatus> {
