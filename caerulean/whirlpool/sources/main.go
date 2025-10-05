@@ -12,7 +12,7 @@ import (
 	"io"
 	"log/syslog"
 	"main/protocol"
-	"main/tunnel" // TODO: optionally depend on nftables instead of iptables
+	"main/tunnel"
 	"main/users"
 	"main/utils"
 	"os"
