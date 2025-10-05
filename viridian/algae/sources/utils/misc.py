@@ -3,7 +3,7 @@ from asyncio import FIRST_COMPLETED, CancelledError, Future, sleep, wait
 from contextlib import suppress
 from ipaddress import AddressValueError, IPv4Address
 from logging import Formatter, Logger, StreamHandler, getLogger
-from os import getenv
+from os import getenv, remove
 from secrets import randbelow
 from socket import gethostbyname
 from sys import stdout
@@ -95,15 +95,17 @@ class ChargedTempFile:
         self._data = data
 
     def __enter__(self) -> _TemporaryFileWrapper:
-        self._tempfile = NamedTemporaryFile()
+        self._tempfile = NamedTemporaryFile(delete=False)
         if self._data is not None:
             self._tempfile.write(self._data)
             self._tempfile.flush()
+        self._tempfile.close()
         return self._tempfile
 
     def __exit__(self, _, __, ___):
         if self._tempfile is not None:
             self._tempfile.close()
+            remove(self._tempfile.name)
 
 
 # DICTIONARY:
