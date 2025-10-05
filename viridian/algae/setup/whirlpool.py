@@ -78,8 +78,6 @@ class WhirlpoolInstaller(Installer):
         parser.add_argument("-r", "--distribution-type", choices=(_DT_COMPILE, _DT_DOCKER, _DT_BINARY), default=_DEFAULT_DISTRIBUTION_TYPE, help=f"Distribution type to run ('{_DT_COMPILE}' for compiling from source, '{_DT_DOCKER}' for running in Docker, '{_DT_BINARY}' for running a binary, default: {_DEFAULT_DISTRIBUTION_TYPE})")
         parser.add_argument("-k", "--server-key", type=bytes_value(_SERVER_KEY_SIZE, True), default=DEFAULT_GENERATED_VALUE, help=f"Server key that will be used for user authentication and uniquely identifies a server (should be a secure long ASCII string, default: [will be generated])")
         parser.add_argument("-p", "--private-key", type=bytes_value(_PUBLIC_KEY_SIZE, True), default=DEFAULT_GENERATED_VALUE, help=f"Server key that will be used for user authentication and uniquely identifies a server (should be a secure long ASCII string, default: [will be generated])")
-        parser.add_argument("-o", "--api-key-owner", type=bytes_value(_ADMIN_KEY_SIZE), default=DEFAULT_GENERATED_VALUE, help="Whirlpool owner payload value (should be a secure long ASCII string, default: [will be generated])")
-        parser.add_argument("-v", "--api-key-admin", nargs="*", action="extend", default=list(), help="Whirlpool viridian payload value (should be secure long ASCII strings, default: empty list)")
         parser.add_argument("-a", "--internal-address", type=local_ip(True), default=DEFAULT_GENERATED_VALUE, help="Internal whirlpool address (default: first host address)")
         parser.add_argument("-e", "--external-address", type=local_ip(True), default=DEFAULT_GENERATED_VALUE, help="External whirlpool address (default: first host address)")
         parser.add_argument("-i", "--api-port", type=port_number(_MIN_PORT_VALUE, _MAX_PORT_VALUE), default=DEFAULT_GENERATED_VALUE, help=f"Seaside control port number (default: random, between {_MIN_PORT_VALUE} and {_MAX_PORT_VALUE})")
@@ -120,8 +118,6 @@ class WhirlpoolInstaller(Installer):
         environment = dict()
         environment["SEASIDE_SERVER_KEY"] = self._args["server_key"]
         environment["SEASIDE_PRIVATE_KEY"] = self._args["private_key"]
-        environment["SEASIDE_API_KEY_OWNER"] = self._args["api_key_owner"]
-        environment["SEASIDE_API_KEY_ADMIN"] = ":".join(self._args["api_key_admin"])
         environment["SEASIDE_ADDRESS"] = self._args["internal_address"]
         environment["SEASIDE_EXTERNAL"] = self._args["external_address"]
         environment["SEASIDE_API_PORT"] = self._args["api_port"]
