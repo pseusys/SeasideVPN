@@ -285,14 +285,14 @@ func (server *WhirlpoolServer) AuthenticateAdmin(ctx context.Context, request *g
 	// Decrypt admin token
 	identityBytes, err := crypto.SERVER_KEY.Decrypt(betterbuf.NewBufferFromSlice(request.OwnerToken), nil)
 	if err != nil {
-		return nil, status.Errorf(codes.PermissionDenied, "error decrypting admin token: %v", err)
+		return nil, status.Errorf(codes.PermissionDenied, "error decrypting owner token: %v", err)
 	}
 
 	// Create and decrypt admin token
 	identity := &generated.AdminToken{}
 	err = proto.Unmarshal(identityBytes.Slice(), identity)
 	if err != nil {
-		return nil, status.Errorf(codes.PermissionDenied, "error decrypting admin token: %v", err)
+		return nil, status.Errorf(codes.PermissionDenied, "error parsing owner token: %v", err)
 	}
 
 	// Check if performed by owner
@@ -362,7 +362,7 @@ func (server *WhirlpoolServer) AuthenticateClient(ctx context.Context, request *
 	identity := &generated.AdminToken{}
 	err = proto.Unmarshal(identityBytes.Slice(), identity)
 	if err != nil {
-		return nil, status.Errorf(codes.PermissionDenied, "error decrypting admin token: %v", err)
+		return nil, status.Errorf(codes.PermissionDenied, "error parsing admin token: %v", err)
 	}
 
 	// Log new token parameters
