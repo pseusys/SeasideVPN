@@ -3,7 +3,7 @@ from ipaddress import IPv4Address
 from os import getcwd
 from pathlib import Path
 from shutil import rmtree
-from tempfile import TemporaryDirectory
+from tempfile import mkdtemp
 from typing import List, Optional, Union
 
 from cryptography.hazmat.primitives.asymmetric.ec import SECP384R1, EllipticCurvePrivateKey, generate_private_key
@@ -108,10 +108,12 @@ def generate_certificates(address: Union[IPv4Address, str], caerulean_cert_path:
     logger = Logging.logger_for(__name__)
 
     rmtree(caerulean_cert_path, ignore_errors=True)
+    caerulean_cert_path.mkdir(parents=True, exist_ok=True)
     if viridian_cert_path is None:
-        viridian_cert_path = TemporaryDirectory()
+        viridian_cert_path = Path(mkdtemp())
     else:
         rmtree(viridian_cert_path, ignore_errors=True)
+        viridian_cert_path.mkdir(parents=True, exist_ok=True)
 
     logger.debug(f"Certificates for {address} will be created...")
     altnames = IPAddress(address) if isinstance(address, IPv4Address) else DNSName(address)
@@ -141,6 +143,3 @@ def generate_certificates(address: Union[IPv4Address, str], caerulean_cert_path:
     server_cert_sign_request = _create_csr(server_cert_private_key, caerulean_subject, [altnames], True)
     server_signed_cert = _sign_csr(server_ca_private_key, server_ca_cert, server_cert_sign_request, _GENERATE_CERTIFICATES_VALIDITY)
     _save_cert_and_key_to_file(server_signed_cert, server_cert_private_key, caerulean_cert_path / "APIcert.crt", caerulean_cert_path / "APIcert.key")
-
-    if isinstance(viridian_cert_path, TemporaryDirectory):
-        viridian_cert_path.cleanup()
