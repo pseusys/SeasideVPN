@@ -11,7 +11,7 @@ from ..utils.crypto import Asymmetric, Symmetric
 from ..utils.misc import MAX_FOUR_BYTES_VALUE, MAX_TWO_BYTES_VALUE, random_number
 from .socket import ConnectionCallback, ReceiveCallback, SeasideClient, SeasideListener, SeasidePeer, ServeCallback
 from .typhoon_core import TyphoonCore
-from .utils import _ProtocolBase, ProtocolBaseError, ProtocolFlag, ProtocolMessageType, ProtocolReturnCode, ProtocolTerminationError, TyphoonInterrupted, TyphoonShutdown
+from .utils import ProtocolBaseError, ProtocolFlag, ProtocolMessageType, ProtocolReturnCode, ProtocolTerminationError, TyphoonInterrupted, TyphoonShutdown, _ProtocolBase
 
 
 class _TyphoonPeer(_ProtocolBase, ABC):

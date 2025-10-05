@@ -9,7 +9,7 @@ from ..utils.crypto import Asymmetric, Symmetric
 from ..utils.misc import create_logger
 from .port_core import PortCore
 from .socket import ConnectionCallback, ReceiveCallback, SeasideClient, SeasideListener, SeasidePeer, ServeCallback
-from .utils import _ProtocolBase, ProtocolBaseError, ProtocolMessageType, ProtocolParseError, ProtocolReturnCode, ProtocolTerminationError
+from .utils import ProtocolBaseError, ProtocolMessageType, ProtocolParseError, ProtocolReturnCode, ProtocolTerminationError, _ProtocolBase
 
 
 class _PortPeer(_ProtocolBase):

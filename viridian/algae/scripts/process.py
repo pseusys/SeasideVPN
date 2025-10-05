@@ -2,7 +2,7 @@ from glob import glob
 from logging import getLogger
 from os import makedirs
 from pathlib import Path
-from shutil import rmtree, copyfile
+from shutil import copyfile, rmtree
 from sys import argv
 from typing import List, Union
 

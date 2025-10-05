@@ -13,7 +13,7 @@ from semver import Version
 
 from .base import Installer
 from .certificates import GENERATE_CERTIFICATES_PATH, generate_certificates
-from .default import DEFAULT_GENERATED_VALUE, current_dns, local_ip, logging_level, bytes_value, port_number
+from .default import DEFAULT_GENERATED_VALUE, bytes_value, current_dns, local_ip, logging_level, port_number
 from .specific import check_install_packages, check_package, get_arch
 from .utils import run_command
 

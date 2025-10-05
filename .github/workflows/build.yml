@@ -130,6 +130,7 @@ jobs:
         with:
           toolchain: stable
           target: ${{ env.TARGET }}
+          rust-src-dir: viridian/reef
           override: true
 
       - name: Download Dependencies 🔮

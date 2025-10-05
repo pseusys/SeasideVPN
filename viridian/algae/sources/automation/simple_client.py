@@ -14,7 +14,7 @@ from typing import AsyncIterator, List, Literal, Optional, Sequence, Union
 
 from ..generated.generated import ClientToken, SeasideWhirlpoolClientCertificate
 from ..interaction.system import Tunnel
-from ..protocol import PortClient, SeasideClient, ProtocolBaseError, TyphoonClient
+from ..protocol import PortClient, ProtocolBaseError, SeasideClient, TyphoonClient
 from ..utils.asyncos import os_read, os_write
 from ..utils.crypto import Asymmetric, Symmetric
 from ..utils.misc import ArgDict, create_logger, resolve_address

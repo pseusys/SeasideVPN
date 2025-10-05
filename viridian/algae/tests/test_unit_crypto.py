@@ -4,8 +4,9 @@ from unittest.mock import patch
 
 import pytest
 
-from .conftest import mock_random_bytes
 from sources.utils.crypto import Asymmetric, Symmetric
+
+from .conftest import mock_random_bytes
 
 logger = getLogger(__file__)
 
@@ -15,10 +16,11 @@ logger = getLogger(__file__)
 SAMPLE_DATA = b"Sample data for encryption"
 ADDITIONAL_DATA = b"Sample additional data for encryption"
 
-SAMPLE_ENCRYPTED_MESSAGE = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00+\xff\xfb\xf9\x89E\xad\x1b\xb8\x95\x92\xe5\xd3[mh\x8av\xc2L8\xf9\xec\xc4\xb5\xb3\xd6\x97&|\x8dVVmh}\xd3\xbe\xb6\x05i\xe5'
+SAMPLE_ENCRYPTED_MESSAGE = b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00+\xff\xfb\xf9\x89E\xad\x1b\xb8\x95\x92\xe5\xd3[mh\x8av\xc2L8\xf9\xec\xc4\xb5\xb3\xd6\x97&|\x8dVVmh}\xd3\xbe\xb6\x05i\xe5"
 
 
 # Fixtures:
+
 
 @pytest.fixture(scope="function")
 def manual_asymmetric() -> Generator[Asymmetric, None, None]:
@@ -37,6 +39,7 @@ def manual_symmetric() -> Generator[Symmetric, None, None]:
 
 
 # Tests for client initial message cycle:
+
 
 def test_symmetric_encrypt(manual_symmetric: Symmetric):
     encrypted_message = manual_symmetric.encrypt(SAMPLE_DATA, ADDITIONAL_DATA)

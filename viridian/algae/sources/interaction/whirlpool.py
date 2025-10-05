@@ -4,14 +4,14 @@ from socket import gethostname
 from ssl import CERT_REQUIRED, PROTOCOL_TLS_CLIENT, SSLContext
 from typing import Dict, Optional, Union
 
-from cryptography.x509 import Certificate, load_der_x509_certificate, load_pem_x509_certificate
 from cryptography.hazmat.primitives.asymmetric.types import PrivateKeyTypes
 from cryptography.hazmat.primitives.serialization import Encoding, NoEncryption, PrivateFormat, load_der_private_key, load_pem_private_key
+from cryptography.x509 import Certificate, load_der_x509_certificate, load_pem_x509_certificate
 from grpclib.client import Channel
 from grpclib.metadata import Deadline
 
-from ..utils.misc import ChargedTempFile, create_logger, random_number
 from ..generated.generated import SeasideWhirlpoolAdminCertificate, SeasideWhirlpoolClientCertificate, WhirlpoolAdminAuthenticationRequest, WhirlpoolClientAuthenticationRequest, WhirlpoolViridianStub
+from ..utils.misc import ChargedTempFile, create_logger, random_number
 
 _DEFAULT_SUBSCRIPTION_DAYS = 30
 _METADATA_TAIL_MAX = 1024

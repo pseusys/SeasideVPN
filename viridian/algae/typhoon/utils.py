@@ -8,24 +8,23 @@ from json import dumps, loads
 from math import floor
 from os import environ, strerror
 from pathlib import Path
-from subprocess import CalledProcessError, Popen, PIPE, run
+from subprocess import PIPE, CalledProcessError, Popen, run
 from sys import executable
 from threading import Event
 from time import time
 from typing import AsyncIterator, Callable, List, Optional, Tuple
 
-from ipywidgets import Password, Button, Output
 from IPython.display import display
+from ipywidgets import Button, Output, Password
 from matplotlib import pyplot as plt
 from matplotlib.patches import Patch
-from scapy.all import AsyncSniffer, PacketList, Packet
-from scapy.layers.inet import TCP, UDP, IP
+from scapy.all import AsyncSniffer, Packet, PacketList
+from scapy.layers.inet import IP, TCP, UDP
 
-from sources.utils.crypto import Asymmetric, Symmetric
-from sources.protocol.utils import ProtocolFlag
 from sources.protocol import SeasideClient
 from sources.protocol.port_core import PortCore
-
+from sources.protocol.utils import ProtocolFlag
+from sources.utils.crypto import Asymmetric, Symmetric
 
 # Constants
 
@@ -43,8 +42,10 @@ CAPABILITY_U32S = 2
 
 # Enums and classes:
 
+
 class CapHeader(Structure):
     _fields_ = [("version", c_uint32), ("pid", c_int)]
+
 
 class CapData(Structure):
     _fields_ = [("effective", c_uint32), ("permitted", c_uint32), ("inheritable", c_uint32)]
@@ -114,8 +115,10 @@ class SequenceConfig:
 
     def _generate_sequence(self, base_delay: Optional[float] = None, modifier: float = 0.01) -> Callable[[float], float]:
         base_delay = self.base_delay() if base_delay is None else base_delay
+
         def sequence(delay: float) -> float:
             return base_delay * (1 + delay * modifier)
+
         return sequence
 
     def _print(self, will_print: bool, message: str) -> None:
@@ -132,14 +135,14 @@ class SequenceConfig:
         self._client_messages_received += 1
         will_print = self._client_messages_received % self._print_every == 0
         self._print(will_print, f"Message returned: {self._decode_message(message) + 1} ({self._client_messages_received})")
-    
+
     async def seq_server_callback(self, _: int, message: bytes) -> bytes:
         self._server_messages_received += 1
         will_print = self._server_messages_received % self._print_every == 0
         self._print(will_print, f"Message received: {self._decode_message(message) + 1} ({self._server_messages_received})")
         await sleep(self._server_sequence(self._server_messages_received))
         return message
-    
+
     async def process(self, client: SeasideClient) -> None:
         messages_sent = 0
         delay = self._start_from
@@ -153,6 +156,7 @@ class SequenceConfig:
 
 
 # Private functions:
+
 
 def _get_packet_data(packet: Packet, protocol: str) -> bytes:
     return bytes(packet[UDP if protocol == "typhoon" else TCP].payload)
@@ -347,6 +351,7 @@ def _setup_traffic_control(tc_config: str, interface: str, client_ip: str, serve
 
 # Public functions:
 
+
 def configure_ambient_permissions() -> None:
     idx = CAP_NET_ADMIN // 32
     bit = 1 << (CAP_NET_ADMIN % 32)
@@ -493,6 +498,7 @@ def show_sequence_graph(packets: PacketList, client: str, server: str, protocol:
 
 
 # Context managers:
+
 
 @asynccontextmanager
 async def sniff(visual_conf: Optional[VisualConf] = None, tc_config: Optional[str] = None, protocol: str = environ["PROTOCOL_NAME"], template_interface: str = "vethest", template_address: str = "192.168.111", effective_interface: str = "lo") -> AsyncIterator[SnifferWrapper]:

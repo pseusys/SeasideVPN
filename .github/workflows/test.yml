@@ -100,7 +100,7 @@ jobs:
         with:
           toolchain: stable
           target: ${{ matrix.os == 'ubuntu' && 'x86_64-unknown-linux-gnu' || 'x86_64-pc-windows-msvc' }}
-          cache-workspaces: viridian/reef
+          rust-src-dir: viridian/reef
           override: true
 
       - name: Download Dependencies 🔮

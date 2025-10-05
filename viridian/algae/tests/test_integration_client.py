@@ -6,19 +6,18 @@ from typing import AsyncGenerator, List, Optional
 
 import pytest
 import pytest_asyncio
-
-from dns.message import make_query, from_wire
-from dns.rrset import RRset
+from dns.message import from_wire, make_query
 from dns.rdatatype import A
+from dns.rrset import RRset
 
-from sources.automation.simple_client import AlgaeClient
-from sources.automation.simple_client import create_client_certificate_from_env
+from sources.automation.simple_client import AlgaeClient, create_client_certificate_from_env
 from sources.protocol import PortClient, TyphoonClient
 
 logger = getLogger(__name__)
 
 
 # Utility functions:
+
 
 async def write_dns_request(writer: StreamWriter, address: str = "example.com") -> None:
     query = make_query(address, A)
@@ -52,12 +51,14 @@ async def is_tcp_available(address: Optional[str] = None, port: int = 853) -> bo
 
 # Fixtures:
 
+
 @pytest_asyncio.fixture(scope="session", loop_scope="session")
 async def client() -> AsyncGenerator[AlgaeClient, None]:
     yield await AlgaeClient.new(create_client_certificate_from_env(), "typhoon")
 
 
 # Tests:
+
 
 @pytest.mark.asyncio(loop_scope="session")
 @pytest.mark.dependency()

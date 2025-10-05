@@ -85,7 +85,7 @@ fn init_logging() {
 async fn main() -> DynResult<()> {
     init_logging();
     let opt = Opt::from_args();
-    
+
     let protocol = ProtocolType::from_str(&opt.protocol)?;
     let certificate = match read(opt.certificate) {
         Ok(res) => SeasideWhirlpoolClientCertificate::decode(&*res)?,

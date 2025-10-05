@@ -7,7 +7,7 @@ from os import getenv
 from secrets import randbelow
 from socket import gethostbyname
 from sys import stdout
-from tempfile import _TemporaryFileWrapper, NamedTemporaryFile
+from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
 from typing import Any, Optional, TypeVar, Union
 
 _T = TypeVar("_T")
@@ -119,6 +119,7 @@ class ArgDict(dict):
 
 
 # INTERNET:
+
 
 def resolve_address(address: str) -> IPv4Address:
     try:

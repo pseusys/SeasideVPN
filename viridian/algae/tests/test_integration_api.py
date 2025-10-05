@@ -13,6 +13,7 @@ logger = getLogger(__name__)
 
 # Fixtures:
 
+
 @pytest_asyncio.fixture(scope="function", loop_scope="session")
 async def api_client() -> AsyncGenerator[WhirlpoolClient, None]:
     yield WhirlpoolClient(create_admin_certificate_from_env())
@@ -22,6 +23,7 @@ async def api_client() -> AsyncGenerator[WhirlpoolClient, None]:
 
 
 # Tests:
+
 
 @pytest.mark.asyncio(loop_scope="session")
 async def test_receive_token_admin(api_client: WhirlpoolClient) -> None:

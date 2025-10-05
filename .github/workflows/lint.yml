@@ -95,7 +95,7 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
-          cache-workspaces: viridian/reef
+          rust-src-dir: viridian/reef
 
       - name: Lint Viridian Reef 🧪
         working-directory: viridian/reef
