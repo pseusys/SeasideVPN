@@ -90,7 +90,7 @@ def _save_cert_and_key_to_file(certificate: Certificate, private_key: EllipticCu
     """
     cert_path.write_bytes(certificate.public_bytes(Encoding.PEM))
     if key_path is not None:
-        key_path.write_bytes(private_key.private_bytes(Encoding.PEM, PrivateFormat.TraditionalOpenSSL, BestAvailableEncryption(password) if password is not None else NoEncryption()))
+        key_path.write_bytes(private_key.private_bytes(Encoding.PEM, PrivateFormat.PKCS8, BestAvailableEncryption(password) if password is not None else NoEncryption()))
 
 
 def generate_certificates(address: Union[IPv4Address, str], cert_path: Path = GENERATE_CERTIFICATES_PATH) -> None:

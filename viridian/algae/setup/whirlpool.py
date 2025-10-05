@@ -149,6 +149,7 @@ class WhirlpoolInstaller(Installer):
         generate_certificates(self._args["internal_address"])
         self._logger.debug(f"Copying certificates to the certificate path '{cert_path}'...")
         caerulean_certs = GENERATE_CERTIFICATES_PATH / "caerulean"
+        rmtree(caerulean_certs, ignore_errors=True)
         copytree(caerulean_certs, cert_path)
         self._logger.debug("Certificates ready!")
 
