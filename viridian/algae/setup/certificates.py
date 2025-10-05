@@ -3,7 +3,6 @@ from ipaddress import IPv4Address
 from os import getcwd
 from pathlib import Path
 from shutil import rmtree
-from tempfile import mkdtemp
 from typing import List, Optional, Union
 
 from cryptography.hazmat.primitives.asymmetric.ec import SECP384R1, EllipticCurvePrivateKey, generate_private_key
@@ -94,7 +93,7 @@ def _save_cert_and_key_to_file(certificate: Certificate, private_key: EllipticCu
         key_path.write_bytes(private_key.private_bytes(Encoding.PEM, PrivateFormat.PKCS8, BestAvailableEncryption(password) if password is not None else NoEncryption()))
 
 
-def generate_certificates(address: Union[IPv4Address, str], caerulean_cert_path: Path = GENERATE_CERTIFICATES_PATH / "caerulean", viridian_cert_path: Optional[Path] = GENERATE_CERTIFICATES_PATH / "viridian") -> None:
+def generate_certificates(address: Union[IPv4Address, str], caerulean_cert_path: Path = GENERATE_CERTIFICATES_PATH / "caerulean", viridian_cert_path: Path = GENERATE_CERTIFICATES_PATH / "viridian") -> None:
     """
     Generate all the certificates for the given IP address or host name.
     Include API certificates, keys, server and client certificate authorities.
@@ -108,12 +107,10 @@ def generate_certificates(address: Union[IPv4Address, str], caerulean_cert_path:
     logger = Logging.logger_for(__name__)
 
     rmtree(caerulean_cert_path, ignore_errors=True)
+    rmtree(viridian_cert_path, ignore_errors=True)
+
     caerulean_cert_path.mkdir(parents=True, exist_ok=True)
-    if viridian_cert_path is None:
-        viridian_cert_path = Path(mkdtemp())
-    else:
-        rmtree(viridian_cert_path, ignore_errors=True)
-        viridian_cert_path.mkdir(parents=True, exist_ok=True)
+    viridian_cert_path.mkdir(parents=True, exist_ok=True)
 
     logger.debug(f"Certificates for {address} will be created...")
     altnames = IPAddress(address) if isinstance(address, IPv4Address) else DNSName(address)

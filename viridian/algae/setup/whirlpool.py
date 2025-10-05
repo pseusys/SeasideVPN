@@ -1,14 +1,13 @@
 from argparse import ArgumentParser, _SubParsersAction
 from os import environ
 from pathlib import Path
-from shutil import copytree, move, rmtree
+from shutil import move, rmtree
 from subprocess import DEVNULL, CalledProcessError, Popen, run
 from tarfile import open as open_tar
 from typing import Dict, Optional
 from urllib.request import urlretrieve
 
 from colorama import Fore, Style
-from colorama.ansi import code_to_chars
 from semver import Version
 
 from .base import Installer
@@ -29,7 +28,6 @@ _DEFAULT_DOCKER_LABEL = "latest"
 _DEFAULT_BINARY_NAME = "latest"
 _DEFAULT_DISTRIBUTION_TYPE = _DT_BINARY
 
-_ADMIN_KEY_SIZE = 16
 _SERVER_KEY_SIZE = 32
 _PUBLIC_KEY_SIZE = 40
 _MIN_PORT_VALUE = 1024
@@ -37,6 +35,7 @@ _MAX_PORT_VALUE = (1 << 16) - 1
 
 _DEFAULT_SUGGESTED_DNS = "8.8.8.8"
 _DEFAULT_CERTIFICATES_PATH = "certificates"
+_DEFAULT_CLIENT_CERTIFICATES_PATH = "client-certificates"
 _DEFAULT_LOG_PATH = "log"
 _DEFAULT_MAX_VIRIDIANS = 10
 _DEFAULT_MAX_ADMINS = 5
@@ -83,8 +82,9 @@ class WhirlpoolInstaller(Installer):
         parser.add_argument("-i", "--api-port", type=port_number(_MIN_PORT_VALUE, _MAX_PORT_VALUE), default=DEFAULT_GENERATED_VALUE, help=f"Seaside control port number (default: random, between {_MIN_PORT_VALUE} and {_MAX_PORT_VALUE})")
         parser.add_argument("--port-port", type=port_number(_MIN_PORT_VALUE, _MAX_PORT_VALUE), default=DEFAULT_GENERATED_VALUE, help=f"Seaside control port number (default: random, between {_MIN_PORT_VALUE} and {_MAX_PORT_VALUE})")
         parser.add_argument("--typhoon-port", type=port_number(_MIN_PORT_VALUE, _MAX_PORT_VALUE), default=DEFAULT_GENERATED_VALUE, help=f"Seaside control port number (default: random, between {_MIN_PORT_VALUE} and {_MAX_PORT_VALUE})")
-        parser.add_argument("--certificates-path", type=str, default=_DEFAULT_CERTIFICATES_PATH, help=f"Path for storing certificates, two files should be present there, 'cert.crt' and 'key.crt' (default: {_DEFAULT_CERTIFICATES_PATH})")
-        parser.add_argument("--suggested-dns", type=current_dns(_DEFAULT_SUGGESTED_DNS), default=DEFAULT_GENERATED_VALUE, help=f"Path for storing certificates, two files should be present there, 'cert.crt' and 'key.crt' (default: {_DEFAULT_CERTIFICATES_PATH})")
+        parser.add_argument("--certificates-path", type=str, default=_DEFAULT_CERTIFICATES_PATH, help=f"Path for storing server certificates (default: {_DEFAULT_CERTIFICATES_PATH})")
+        parser.add_argument("--client-certificates-path", type=str, default=_DEFAULT_CLIENT_CERTIFICATES_PATH, help=f"Path for storing client certificates (default: {_DEFAULT_CLIENT_CERTIFICATES_PATH})")
+        parser.add_argument("--suggested-dns", type=current_dns(_DEFAULT_SUGGESTED_DNS), default=DEFAULT_GENERATED_VALUE, help=f"DNS suggested by the server, local DNS preferred (default: {_DEFAULT_SUGGESTED_DNS})")
         parser.add_argument("--max-viridians", type=int, default=_DEFAULT_MAX_VIRIDIANS, help=f"Maximum network viridian number (default: {_DEFAULT_MAX_VIRIDIANS})")
         parser.add_argument("--max-admins", type=int, default=_DEFAULT_MAX_ADMINS, help=f"Maximum privileged viridian number (default: {_DEFAULT_MAX_ADMINS})")
         parser.add_argument("--tunnel-mtu", type=int, default=_DEFAULT_TUNNEL_MTU, help=f"VPN tunnel interface MTU (default: {_DEFAULT_TUNNEL_MTU})")
@@ -141,8 +141,9 @@ class WhirlpoolInstaller(Installer):
 
     def refresh_certificates(self) -> None:
         cert_path = Path(self._args["certificates_path"])
-        self._logger.debug(f"Generating certificates to the certificate path '{cert_path}'...")
-        generate_certificates(self._args["internal_address"], cert_path, None)
+        client_cert_path = Path(self._args["client_certificates_path"])
+        self._logger.debug(f"Generating certificates to the certificate path '{cert_path}' (client certificates to '{client_cert_path}')...")
+        generate_certificates(self._args["internal_address"], cert_path, client_cert_path)
         self._logger.debug("Certificates ready!")
 
     def _configure_server(self) -> None:
@@ -265,19 +266,13 @@ class WhirlpoolInstaller(Installer):
         self._configure_server()
         self._logger.info("Server configured!")
 
-    def print_info(self, hide: bool) -> None:
+    def print_info(self) -> None:
         """Print configuration of the node that will be applied upon running."""
-        underscored = code_to_chars(4)
-        owner_payload = "***" if hide else self._args["api_key_owner"]
-        admin_payload = ":".join(["***"] * len(self._args["api_key_admin"])) if hide else self._args["api_key_admin"]
         host_name = f"{self._args['internal_address']}:{self._args['api_port']}"
         print("\n\n>> ================================================ >>")
         print(f"{Style.BRIGHT}{Fore.GREEN}Seaside Whirlpool node version {_VERSION} successfully configured!{Style.RESET_ALL}")
         print(f"The node address is: {Fore.GREEN}{host_name}{Style.RESET_ALL}")
-        print(f"The administrator payload is: {Fore.BLUE}{owner_payload}{Style.RESET_ALL}")
-        print(f"\tNode is available at: {underscored}{Fore.YELLOW}{host_name}{Style.RESET_ALL}")
-        if len(self._args["api_key_admin"]) > 0:
-            print(f"The viridian payloads are: {Fore.BLUE}{admin_payload}{Style.RESET_ALL}")
+        print(f"The (client) certificates for accessing the node are located at: {Fore.GREEN}{self._args['client_certificates_path']}{Style.RESET_ALL}")
         print(f"{Style.BRIGHT}{Fore.RED}NB! In order to replicate the server, store and reuse the ./conf.env file!{Style.RESET_ALL}")
         print("<< ================================================ <<\n\n")
 

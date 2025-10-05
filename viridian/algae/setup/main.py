@@ -84,7 +84,7 @@ def main(args: Sequence[str] = argv[1:]) -> None:
 
     logger.info(f"Installing with {type(installer).__name__} installer...")
     installer.install()
-    installer.print_info(namespace["verbose"] > _logging_type(_DEFAULT_LOG_LEVEL))
+    installer.print_info()
     logger.info("Caerulean installed!")
 
     if namespace["run_after_config"] != _RAC_NO:

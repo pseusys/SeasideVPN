@@ -70,11 +70,9 @@ class Installer(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def print_info(self, hide: bool) -> None:
+    def print_info(self) -> None:
         """
         Print the current caerulean installation information.
-        Hide sensitive information if a special flag is passed.
-        :param hide: hide caerulean sensitive information.
         """
         raise NotImplementedError
 
