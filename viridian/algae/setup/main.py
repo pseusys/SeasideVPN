@@ -76,7 +76,7 @@ def main(args: Sequence[str] = argv[1:]) -> None:
         logger.info("Environment file ready!")
 
     if namespace["certificates"]:
-        logger.info("Refreshing certificates if they are not present...")
+        logger.info("Refreshing certificates...")
         installer.refresh_certificates()
         logger.info("Certificates generated successfully!")
     else:
