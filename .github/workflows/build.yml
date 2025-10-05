@@ -48,8 +48,6 @@ jobs:
 
       - name: Save Artifact 🏺
         uses: actions/upload-artifact@v4
-        env:
-          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
         with:
           name: viridian-algae-executable-${{ steps.branch-name.outputs.value }}
           retention-days: 3
@@ -76,12 +74,11 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "^1.23.0"
+          cache-dependency-path: caerulean/whirlpool
 
       - name: Install Dependencies 🔮
         working-directory: caerulean/whirlpool
-        run: |
-          go install github.com/xlab/c-for-go@latest
-          go install github.com/pseusys/protogo@latest
+        run: go install github.com/pseusys/protogo@latest
 
       - name: Build Caerulean Whirlpool 🏗️
         working-directory: caerulean/whirlpool
@@ -103,8 +100,6 @@ jobs:
 
       - name: Save Artifact 🏺
         uses: actions/upload-artifact@v4
-        env:
-          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
         with:
           name: caerulean-whirlpool-executable-${{ steps.branch-name.outputs.value }}-${{ matrix.arch }}
           path: caerulean/whirlpool/build/caerulean_whirlpool_executable_*.run
@@ -136,6 +131,7 @@ jobs:
         with:
           toolchain: stable
           target: ${{ env.TARGET }}
+          rust-src-dir: viridian/reef
           override: true
 
       - name: Download Dependencies 🔮

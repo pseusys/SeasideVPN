@@ -1,32 +1,27 @@
 from argparse import ArgumentParser
 from asyncio import FIRST_EXCEPTION, CancelledError, Task, create_subprocess_shell, create_task, current_task, get_event_loop, get_running_loop, run, wait
-from base64 import decodebytes
+from base64 import b64decode
 from contextlib import asynccontextmanager
-from ipaddress import AddressValueError, IPv4Address
-from os import getenv
+from datetime import datetime, timedelta, timezone
+from ipaddress import IPv4Address
+from os import environ, getenv
 from pathlib import Path
-from secrets import token_urlsafe
 from signal import SIGINT, SIGTERM
-from socket import gethostbyname
+from socket import gethostname
 from subprocess import PIPE
 from sys import argv, exit
 from typing import AsyncIterator, List, Literal, Optional, Sequence, Union
 
+from ..generated.generated import ClientToken, SeasideWhirlpoolClientCertificate
 from ..interaction.system import Tunnel
-from ..interaction.whirlpool import WhirlpoolClient
-from ..protocol import PortClient, SeasideClient, ProtocolBaseError, TyphoonClient
+from ..protocol import PortClient, ProtocolBaseError, SeasideClient, TyphoonClient
 from ..utils.asyncos import os_read, os_write
-from ..utils.misc import create_logger, parse_connection_link
+from ..utils.crypto import Asymmetric, Symmetric
+from ..utils.misc import ArgDict, create_logger, resolve_address
 from ..version import __version__
 
-# Default tunnel interface IP address.
-_DEFAULT_ADDRESS = "127.0.0.1"
-
-# Default seaside network network port number.
-_DEFAULT_PORT = 8587
-
 # Default control protocol.
-_DEFAULT_PROTO = "port"
+_DEFAULT_PROTO = "typhoon"
 
 # Default tunnel interface name.
 _DEFAULT_TUNNEL_NAME = "seatun"
@@ -40,23 +35,23 @@ _DEFAULT_TUNNEL_NETMASK = "255.255.255.0"
 # Default tunnel interface seaside-viridian-algae code.
 _DEFAULT_TUNNEL_SVA = 65
 
-_DEFAULT_CURRENT_DNS = IPv4Address("0.0.0.0")
+_DEFAULT_SUBSCRIPTION_DAYS = 30
 
-_DEFAULT_UNIVERSAL_DNS = IPv4Address("8.8.8.8")
+_DEFAULT_CURRENT_DNS = IPv4Address("0.0.0.0")
+_DEFAULT_GOOD_DNS = IPv4Address("8.8.8.8")
 
 logger = create_logger(__name__)
 
 
 # Command line arguments parser.
 parser = ArgumentParser()
-parser.add_argument("-a", "--address", default=_DEFAULT_ADDRESS, type=str, help=f"Caerulean remote IP address (default: {_DEFAULT_ADDRESS})")
-parser.add_argument("-p", "--port", default=_DEFAULT_PORT, type=int, help=f"Caerulean API port number (default: {_DEFAULT_PORT})")
-parser.add_argument("-k", "--key", default=None, type=str, help="Caerulean API key (will be used in admin authentication fixture in case token is missing)")
-parser.add_argument("-t", "--token", default=None, type=decodebytes, help="Caerulean API token (base64 encoded, will be used directly during VPN connection if provided)")
-parser.add_argument("-r", "--public", default=None, type=decodebytes, help="Caerulean public key (base64 encoded, will be used directly during VPN connection if provided)")
-parser.add_argument("-s", "--protocol", default=None, help=f"Caerulean control protocol, one of the 'port' or 'typhoon' (default: {_DEFAULT_PROTO})")
-parser.add_argument("-d", "--dns", default=_DEFAULT_UNIVERSAL_DNS, type=IPv4Address, help=f"DNS server to use when connected to VPN (use '{_DEFAULT_CURRENT_DNS}' to use the current DNS server, default: {_DEFAULT_UNIVERSAL_DNS})")
-parser.add_argument("-l", "--link", default=None, help="Connection link, will be used instead of other arguments if specified")
+parser.add_argument("-a", "--address", default=None, type=str, help=f"Caerulean IP address")
+parser.add_argument("-p", "--port", default=None, type=int, help=f"Caerulean port number")
+parser.add_argument("-m", "--protocol", choices={"typhoon", "port"}, default=_DEFAULT_PROTO, help=f"Caerulean control protocol, one of the 'port' or 'typhoon' (default: {_DEFAULT_PROTO})")
+parser.add_argument("--key", default=None, type=Path, help="Caerulean protocol public key file path")
+parser.add_argument("--token", default=None, type=b64decode, help="Caerulean client token (base64 encoded), encrypted 'ClientToken' structure")
+parser.add_argument("--dns", type=IPv4Address, help=f"DNS server to use when connected to VPN (use '{_DEFAULT_CURRENT_DNS}' to use the current DNS server or {_DEFAULT_GOOD_DNS} for a good default)")
+parser.add_argument("-f", "--file", default=None, type=Path, help="Caerulean client certificate file path, will be used instead of other arguments if specified")
 parser.add_argument("--capture-iface", default=None, nargs="*", help="Network interfaces to capture, multiple allowed (default: the same interface that will be used to access caerulean)")
 parser.add_argument("--capture-ranges", nargs="*", help="IP address ranges to capture, multiple allowed (default: none)")
 parser.add_argument("--exempt-ranges", nargs="*", help="IP address ranges to exempt, multiple allowed (default: none)")
@@ -66,26 +61,31 @@ parser.add_argument("--capture-ports", default=None, help="Local ports to captur
 parser.add_argument("--exempt-ports", default=None, help="Local ports to exempt, either one decimal number or a port range, like in 'iptables' (default: none)")
 parser.add_argument("--local-address", default=None, type=IPv4Address, help="The IP address that will be used for talking to caerulean (default: the first IP address on the interface that will be used to access caerulean)")
 parser.add_argument("-v", "--version", action="version", version=f"Seaside Viridian Algae version {__version__}", help="Print algae version number and exit")
-parser.add_argument("-e", "--command", default=None, help="Command to execute and exit (required!)")
+parser.add_argument("-c", "--command", default=None, help="Command to execute and exit, client will be returned and not run if command is not provided")
 
 
 class AlgaeClient:
     def __init__(self) -> None:
-        self._address: str
+        self._address: IPv4Address
         self._port: int
         self._proto_type: SeasideClient
         self._tunnel: Tunnel
+        self._key: bytes
+        self._token: bytes
 
     @classmethod
-    async def new(cls, address: str, port: int, dns: IPv4Address = _DEFAULT_CURRENT_DNS, protocol: Optional[Union[Literal["typhoon"], Literal["port"]]] = None, capture_iface: Optional[List[str]] = None, capture_ranges: Optional[List[str]] = None, capture_addresses: Optional[List[str]] = None, capture_ports: Optional[str] = None, exempt_ranges: Optional[List[str]] = None, exempt_addresses: Optional[List[str]] = None, exempt_ports: Optional[str] = None, local_address: Optional[IPv4Address] = None) -> "AlgaeClient":
+    async def new(cls, certificate: SeasideWhirlpoolClientCertificate, protocol: Union[Literal["typhoon"], Literal["port"]], capture_iface: Optional[List[str]] = None, capture_ranges: Optional[List[str]] = None, capture_addresses: Optional[List[str]] = None, capture_ports: Optional[str] = None, exempt_ranges: Optional[List[str]] = None, exempt_addresses: Optional[List[str]] = None, exempt_ports: Optional[str] = None, local_address: Optional[IPv4Address] = None) -> "AlgaeClient":
         client = cls()
-        client._address = address
-        client._port = port
+        client._address = IPv4Address(certificate.address)
+        client._key = certificate.typhoon_public
+        client._token = certificate.token
 
-        if protocol is None or protocol == "port":
-            client._proto_type = PortClient
-        elif protocol == "typhoon":
+        if protocol == "typhoon":
             client._proto_type = TyphoonClient
+            client._port = certificate.typhoon_port
+        elif protocol == "port":
+            client._proto_type = PortClient
+            client._port = certificate.port_port
         else:
             raise ValueError(f"Unknown protocol type: {protocol}")
 
@@ -93,7 +93,7 @@ class AlgaeClient:
         tunnel_address = IPv4Address(getenv("SEASIDE_TUNNEL_ADDRESS", _DEFAULT_TUNNEL_ADDRESS))
         tunnel_netmask = IPv4Address(getenv("SEASIDE_TUNNEL_NETMASK", _DEFAULT_TUNNEL_NETMASK))
         tunnel_sva = int(getenv("SEASIDE_TUNNEL_SVA", _DEFAULT_TUNNEL_SVA))
-        client._tunnel = await Tunnel.new(tunnel_name, tunnel_address, tunnel_netmask, tunnel_sva, IPv4Address(client._address), dns, capture_iface, capture_ranges, capture_addresses, capture_ports, exempt_ranges, exempt_addresses, exempt_ports, local_address)
+        client._tunnel = await Tunnel.new(tunnel_name, tunnel_address, tunnel_netmask, tunnel_sva, client._address, IPv4Address(certificate.dns), capture_iface, capture_ranges, capture_addresses, capture_ports, exempt_ranges, exempt_addresses, exempt_ports, local_address)
         return client
 
     async def _send_to_caerulean(self, connection: SeasideClient, tunnel: int) -> None:
@@ -140,10 +140,10 @@ class AlgaeClient:
             receiver_task.cancel()
 
     @asynccontextmanager
-    async def _start_vpn_loop(self, token: bytes, public_key: bytes, port: int, descriptor: int) -> AsyncIterator[None]:
+    async def _start_vpn_loop(self, descriptor: int) -> AsyncIterator[None]:
         connection, monitor_task = None, None
         try:
-            connection = self._proto_type(public_key, token, self._address, port, self._tunnel.default_ip)
+            connection = self._proto_type(self._key, self._token, self._address, self._port, self._tunnel.default_ip)
             await connection.connect()
             receiver = create_task(self._send_to_caerulean(connection, descriptor), name="sender_task")
             sender = create_task(self._receive_from_caerulean(connection, descriptor), name="receiver_task")
@@ -155,9 +155,9 @@ class AlgaeClient:
             if connection is not None:
                 await connection.close()
 
-    async def start(self, command: str, port: Optional[str] = None, token: Optional[bytes] = None, public: Optional[bytes] = None) -> None:
+    async def start(self, command: str) -> None:
         logger.info(f"Executing command: {command}")
-        async with self._tunnel as tunnel_fd, self._start_vpn_loop(token, public, port, tunnel_fd):
+        async with self._tunnel as tunnel_fd, self._start_vpn_loop(tunnel_fd):
             proc = await create_subprocess_shell(command, stdout=PIPE, stderr=PIPE)
             stdout, stderr = await proc.communicate()
             retcode = proc.returncode
@@ -178,60 +178,52 @@ class AlgaeClient:
             exit(1)
 
 
+def create_client_certificate_from_env(address: Optional[IPv4Address] = None, typhoon_port: Optional[int] = None, port_port: Optional[int] = None, typhoon_private: Optional[bytes] = None, dns: Optional[IPv4Address] = None, name: str = "test_client", identifier: Optional[str] = None, is_privileged: bool = False, subscription: Optional[datetime] = None, server_key: Optional[bytes] = None) -> SeasideWhirlpoolClientCertificate:
+    server_key = b64decode(environ["SEASIDE_SERVER_KEY"]) if server_key is None else server_key
+    identifier = gethostname() if identifier is None else identifier
+    subscription = datetime.now(timezone.utc) + timedelta(days=_DEFAULT_SUBSCRIPTION_DAYS if subscription is None else subscription)
+    client_token = Symmetric(server_key).encrypt(bytes(ClientToken(name, identifier, is_privileged, subscription)))
+
+    typhoon_private = b64decode(environ["SEASIDE_PRIVATE_KEY"]) if typhoon_private is None else typhoon_private
+    typhoon_public = Asymmetric(typhoon_private).public_key
+
+    address = str(IPv4Address(environ["SEASIDE_ADDRESS"]) if address is None else address)
+    typhoon_port = int(environ["SEASIDE_TYPHOON_PORT"] if typhoon_port is None else typhoon_port)
+    port_port = int(environ["SEASIDE_PORT_PORT"] if port_port is None else port_port)
+    dns = str(IPv4Address(environ["SEASIDE_SUGGESTED_DNS"]) if dns is None else dns)
+
+    return SeasideWhirlpoolClientCertificate(address, typhoon_public, typhoon_port, port_port, client_token, dns)
+
+
 async def main(args: Sequence[str] = argv[1:]) -> None:
     loop = get_event_loop()
-    arguments = vars(parser.parse_args(args))
+    arguments = ArgDict.from_namespace(parser.parse_args(args))
+    protocol = arguments["protocol"]
 
-    connection_link = arguments.pop("link")
-    if connection_link is not None:
-        link_dict = parse_connection_link(connection_link)
-        if link_dict.pop("link_type") == "client":
-            if arguments.get("protocol", "port") == "port":
-                link_dict["port"], _ = link_dict.pop("port"), link_dict.pop("typhoon")
-            else:
-                link_dict["port"], _ = link_dict.pop("typhoon"), link_dict.pop("port")
-        arguments.update(link_dict)
+    connection_file = arguments["file"]
+    if connection_file is not None:
+        client_certificate = SeasideWhirlpoolClientCertificate.parse(connection_file.read_bytes())
+    else:
+        client_certificate = create_client_certificate_from_env()
 
+    client_certificate.address = str(resolve_address(arguments.ext("address", client_certificate.address)))
+    client_certificate.typhoon_public = Path(arguments["key"]).read_bytes() if arguments["key"] is not None else client_certificate.typhoon_public
+    client_certificate.typhoon_port = arguments["port"] if arguments["port"] is not None and protocol == "typhoon" else client_certificate.typhoon_port
+    client_certificate.port_port = arguments["port"] if arguments["port"] is not None and protocol == "port" else client_certificate.port_port
+    client_certificate.token = arguments.ext("token", client_certificate.token)
+    client_certificate.dns = arguments.ext("dns", client_certificate.dns)
     command = arguments.pop("command")
-    if command is None:
-        raise RuntimeError("No command provided - nothing to run!")
-    else:
-        logger.debug(f"Initializing client with parameters: {arguments}")
+    logger.debug(f"Initializing simple client ({protocol} protocol) with parameters: {client_certificate}, command: '{command}'...")
 
-    key = arguments.pop("key")
-    token = arguments.pop("token")
-    public = arguments.pop("public")
+    logger.debug("Creating algae client...")
+    client = await AlgaeClient.new(client_certificate, protocol, arguments["capture_iface"], arguments["capture_ranges"], arguments["capture_addresses"], arguments["capture_ports"], arguments["exempt_ranges"], arguments["exempt_addresses"], arguments["exempt_ports"], arguments["local_address"])
 
-    try:
-        arguments["address"] = str(IPv4Address(arguments["address"]))
-    except AddressValueError:
-        arguments["address"] = gethostbyname(arguments["address"])
-
-    if token is None or public is None:
-        if key is None:
-            raise RuntimeError("All the connection parameters (key, token, public) are None - there is no known way to connect!")
-
-        identifier = token_urlsafe()
-        logger.info(f"Authenticating user {identifier}...")
-        authority = getenv("SEASIDE_CERTIFICATE_PATH", None)
-
-        async with WhirlpoolClient(arguments["address"], arguments["port"], Path(authority)) as conn:
-            public, token, typhoon_port, port_port, dns = await conn.authenticate(identifier, key)
-            listener_port = typhoon_port if arguments["protocol"] == "typhoon" else port_port
-            arguments["dns"] = IPv4Address(dns)
-
-        logger.debug(f"User {identifier} token received: {token!r}")
-    else:
-        logger.debug(f"Proceeding with user token: {token!r}")
-        listener_port = arguments["port"]
-
-    client = await AlgaeClient.new(**arguments)
     logger.debug("Setting up interruption handlers for client...")
     loop.add_signal_handler(SIGTERM, lambda: create_task(client.interrupt(True)))
     loop.add_signal_handler(SIGINT, lambda: create_task(client.interrupt(True)))
 
     logger.info(f"Running client for command: {command}")
-    await client.start(command, listener_port, token, public)
+    await client.start(command)
 
     logger.info("Done running command, shutting client down!")
     await client.interrupt(False)

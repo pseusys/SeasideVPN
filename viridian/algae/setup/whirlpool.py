@@ -1,19 +1,18 @@
 from argparse import ArgumentParser, _SubParsersAction
 from os import environ
 from pathlib import Path
-from shutil import copy, move, rmtree
+from shutil import move, rmtree
 from subprocess import DEVNULL, CalledProcessError, Popen, run
 from tarfile import open as open_tar
 from typing import Dict, Optional
 from urllib.request import urlretrieve
 
 from colorama import Fore, Style
-from colorama.ansi import code_to_chars
 from semver import Version
 
 from .base import Installer
 from .certificates import GENERATE_CERTIFICATES_PATH, generate_certificates
-from .default import DEFAULT_GENERATED_VALUE, current_dns, local_ip, logging_level, bytes_value, port_number
+from .default import DEFAULT_GENERATED_VALUE, bytes_value, current_dns, local_ip, logging_level, port_number
 from .specific import check_install_packages, check_package, get_arch
 from .utils import run_command
 
@@ -29,7 +28,6 @@ _DEFAULT_DOCKER_LABEL = "latest"
 _DEFAULT_BINARY_NAME = "latest"
 _DEFAULT_DISTRIBUTION_TYPE = _DT_BINARY
 
-_ADMIN_KEY_SIZE = 16
 _SERVER_KEY_SIZE = 32
 _PUBLIC_KEY_SIZE = 40
 _MIN_PORT_VALUE = 1024
@@ -37,6 +35,7 @@ _MAX_PORT_VALUE = (1 << 16) - 1
 
 _DEFAULT_SUGGESTED_DNS = "8.8.8.8"
 _DEFAULT_CERTIFICATES_PATH = "certificates"
+_DEFAULT_CLIENT_CERTIFICATES_PATH = "client-certificates"
 _DEFAULT_LOG_PATH = "log"
 _DEFAULT_MAX_VIRIDIANS = 10
 _DEFAULT_MAX_ADMINS = 5
@@ -63,7 +62,6 @@ _SHELL_LOGIN = Path("/etc/profile")
 _GO_ROOT = Path("/usr/local/go")
 
 _PROTOGO_PACKAGE = "github.com/pseusys/protogo"
-_C_FOR_GO_PACKAGE = "github.com/xlab/c-for-go"
 
 _logging_type = logging_level(_DEFAULT_LOG_LEVEL, False)
 
@@ -79,15 +77,14 @@ class WhirlpoolInstaller(Installer):
         parser.add_argument("-r", "--distribution-type", choices=(_DT_COMPILE, _DT_DOCKER, _DT_BINARY), default=_DEFAULT_DISTRIBUTION_TYPE, help=f"Distribution type to run ('{_DT_COMPILE}' for compiling from source, '{_DT_DOCKER}' for running in Docker, '{_DT_BINARY}' for running a binary, default: {_DEFAULT_DISTRIBUTION_TYPE})")
         parser.add_argument("-k", "--server-key", type=bytes_value(_SERVER_KEY_SIZE, True), default=DEFAULT_GENERATED_VALUE, help=f"Server key that will be used for user authentication and uniquely identifies a server (should be a secure long ASCII string, default: [will be generated])")
         parser.add_argument("-p", "--private-key", type=bytes_value(_PUBLIC_KEY_SIZE, True), default=DEFAULT_GENERATED_VALUE, help=f"Server key that will be used for user authentication and uniquely identifies a server (should be a secure long ASCII string, default: [will be generated])")
-        parser.add_argument("-o", "--api-key-owner", type=bytes_value(_ADMIN_KEY_SIZE), default=DEFAULT_GENERATED_VALUE, help="Whirlpool owner payload value (should be a secure long ASCII string, default: [will be generated])")
-        parser.add_argument("-v", "--api-key-admin", nargs="*", action="extend", default=list(), help="Whirlpool viridian payload value (should be secure long ASCII strings, default: empty list)")
         parser.add_argument("-a", "--internal-address", type=local_ip(True), default=DEFAULT_GENERATED_VALUE, help="Internal whirlpool address (default: first host address)")
         parser.add_argument("-e", "--external-address", type=local_ip(True), default=DEFAULT_GENERATED_VALUE, help="External whirlpool address (default: first host address)")
         parser.add_argument("-i", "--api-port", type=port_number(_MIN_PORT_VALUE, _MAX_PORT_VALUE), default=DEFAULT_GENERATED_VALUE, help=f"Seaside control port number (default: random, between {_MIN_PORT_VALUE} and {_MAX_PORT_VALUE})")
         parser.add_argument("--port-port", type=port_number(_MIN_PORT_VALUE, _MAX_PORT_VALUE), default=DEFAULT_GENERATED_VALUE, help=f"Seaside control port number (default: random, between {_MIN_PORT_VALUE} and {_MAX_PORT_VALUE})")
         parser.add_argument("--typhoon-port", type=port_number(_MIN_PORT_VALUE, _MAX_PORT_VALUE), default=DEFAULT_GENERATED_VALUE, help=f"Seaside control port number (default: random, between {_MIN_PORT_VALUE} and {_MAX_PORT_VALUE})")
-        parser.add_argument("--certificates-path", type=str, default=_DEFAULT_CERTIFICATES_PATH, help=f"Path for storing certificates, two files should be present there, 'cert.crt' and 'key.crt' (default: {_DEFAULT_CERTIFICATES_PATH})")
-        parser.add_argument("--suggested-dns", type=current_dns(_DEFAULT_SUGGESTED_DNS), default=DEFAULT_GENERATED_VALUE, help=f"Path for storing certificates, two files should be present there, 'cert.crt' and 'key.crt' (default: {_DEFAULT_CERTIFICATES_PATH})")
+        parser.add_argument("--certificates-path", type=str, default=_DEFAULT_CERTIFICATES_PATH, help=f"Path for storing server certificates (default: {_DEFAULT_CERTIFICATES_PATH})")
+        parser.add_argument("--client-certificates-path", type=str, default=_DEFAULT_CLIENT_CERTIFICATES_PATH, help=f"Path for storing client certificates (default: {_DEFAULT_CLIENT_CERTIFICATES_PATH})")
+        parser.add_argument("--suggested-dns", type=current_dns(_DEFAULT_SUGGESTED_DNS), default=DEFAULT_GENERATED_VALUE, help=f"DNS suggested by the server, local DNS preferred (default: {_DEFAULT_SUGGESTED_DNS})")
         parser.add_argument("--max-viridians", type=int, default=_DEFAULT_MAX_VIRIDIANS, help=f"Maximum network viridian number (default: {_DEFAULT_MAX_VIRIDIANS})")
         parser.add_argument("--max-admins", type=int, default=_DEFAULT_MAX_ADMINS, help=f"Maximum privileged viridian number (default: {_DEFAULT_MAX_ADMINS})")
         parser.add_argument("--tunnel-mtu", type=int, default=_DEFAULT_TUNNEL_MTU, help=f"VPN tunnel interface MTU (default: {_DEFAULT_TUNNEL_MTU})")
@@ -121,8 +118,6 @@ class WhirlpoolInstaller(Installer):
         environment = dict()
         environment["SEASIDE_SERVER_KEY"] = self._args["server_key"]
         environment["SEASIDE_PRIVATE_KEY"] = self._args["private_key"]
-        environment["SEASIDE_API_KEY_OWNER"] = self._args["api_key_owner"]
-        environment["SEASIDE_API_KEY_ADMIN"] = ":".join(self._args["api_key_admin"])
         environment["SEASIDE_ADDRESS"] = self._args["internal_address"]
         environment["SEASIDE_EXTERNAL"] = self._args["external_address"]
         environment["SEASIDE_API_PORT"] = self._args["api_port"]
@@ -146,12 +141,9 @@ class WhirlpoolInstaller(Installer):
 
     def refresh_certificates(self) -> None:
         cert_path = Path(self._args["certificates_path"])
-        self._logger.debug("Generating certificates...")
-        generate_certificates(self._args["internal_address"], remove_existing=True)
-        self._logger.debug(f"Copying certificates to the certificate path '{cert_path}'...")
-        caerulean_certs = GENERATE_CERTIFICATES_PATH / "caerulean"
-        copy(caerulean_certs / "cert.key", cert_path)
-        copy(caerulean_certs / "cert.crt", cert_path)
+        client_cert_path = Path(self._args["client_certificates_path"])
+        self._logger.debug(f"Generating certificates to the certificate path '{cert_path}' (client certificates to '{client_cert_path}')...")
+        generate_certificates(self._args["internal_address"], cert_path, client_cert_path)
         self._logger.debug("Certificates ready!")
 
     def _configure_server(self) -> None:
@@ -202,7 +194,7 @@ class WhirlpoolInstaller(Installer):
             go_path = None
         go_exec = "go" if go_path is None else str(go_path / "go")
         self._logger.info(f"Installing GO packages with {go_exec} executable...")
-        self._install_go_packages(go_exec, _PROTOGO_PACKAGE, _C_FOR_GO_PACKAGE)
+        self._install_go_packages(go_exec, _PROTOGO_PACKAGE)
         self._logger.info("All the GO packages installed!")
         return go_path
 
@@ -274,19 +266,13 @@ class WhirlpoolInstaller(Installer):
         self._configure_server()
         self._logger.info("Server configured!")
 
-    def print_info(self, hide: bool) -> None:
+    def print_info(self) -> None:
         """Print configuration of the node that will be applied upon running."""
-        underscored = code_to_chars(4)
-        owner_payload = "***" if hide else self._args["api_key_owner"]
-        admin_payload = ":".join(["***"] * len(self._args["api_key_admin"])) if hide else self._args["api_key_admin"]
         host_name = f"{self._args['internal_address']}:{self._args['api_port']}"
         print("\n\n>> ================================================ >>")
         print(f"{Style.BRIGHT}{Fore.GREEN}Seaside Whirlpool node version {_VERSION} successfully configured!{Style.RESET_ALL}")
         print(f"The node address is: {Fore.GREEN}{host_name}{Style.RESET_ALL}")
-        print(f"The administrator payload is: {Fore.BLUE}{owner_payload}{Style.RESET_ALL}")
-        print(f"\tNode is available at: {underscored}{Fore.YELLOW}{host_name}{Style.RESET_ALL}")
-        if len(self._args["api_key_admin"]) > 0:
-            print(f"The viridian payloads are: {Fore.BLUE}{admin_payload}{Style.RESET_ALL}")
+        print(f"The (client) certificates for accessing the node are located at: {Fore.GREEN}{self._args['client_certificates_path']}{Style.RESET_ALL}")
         print(f"{Style.BRIGHT}{Fore.RED}NB! In order to replicate the server, store and reuse the ./conf.env file!{Style.RESET_ALL}")
         print("<< ================================================ <<\n\n")
 

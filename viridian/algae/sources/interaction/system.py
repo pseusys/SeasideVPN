@@ -1,20 +1,19 @@
 from contextlib import AbstractAsyncContextManager
 from fcntl import ioctl
 from ipaddress import IPv4Address, IPv4Interface, IPv4Network
-from nftables import Nftables
 from os import O_RDWR, getegid, getenv, geteuid, open
 from pathlib import Path
 from struct import pack
 from typing import List, Optional, Tuple
 
 from colorama import Fore
+from nftables import Nftables
 from pyroute2 import AsyncIPRoute
 from pyroute2.netlink import NLM_F_ECHO, NLM_F_REPLACE, NLM_F_REQUEST
 from pyroute2.netlink.rtnl import RTM_NEWROUTE, RTM_NEWRULE
 from pyroute2.netlink.rtnl.rtmsg import rtmsg
 
 from ..utils.misc import create_logger
-
 
 logger = create_logger(__name__)
 
@@ -291,11 +290,7 @@ class Tunnel(AbstractAsyncContextManager):
 
         :param chain: the iptables chain to insert rules to.
         """
-        self._run_nftables_commands(
-            f"add table inet {self._TABLE_NAME}",
-            f"add chain inet {self._TABLE_NAME} {chain} {{ type {type} hook {chain} priority {priority}; }}",
-            *[f"add rule inet {self._TABLE_NAME} {chain} {rule}" for rule in self._nftables_rules]
-        )
+        self._run_nftables_commands(f"add table inet {self._TABLE_NAME}", f"add chain inet {self._TABLE_NAME} {chain} {{ type {type} hook {chain} priority {priority}; }}", *[f"add rule inet {self._TABLE_NAME} {chain} {rule}" for rule in self._nftables_rules])
 
     def _output_nftables_rules(self) -> str:
         res, out, err = self._nft.cmd(f"list table inet {self._TABLE_NAME}")

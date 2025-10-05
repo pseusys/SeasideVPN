@@ -11,7 +11,7 @@ from ..utils.crypto import Asymmetric, Symmetric
 from ..utils.misc import MAX_FOUR_BYTES_VALUE, MAX_TWO_BYTES_VALUE, random_number
 from .socket import ConnectionCallback, ReceiveCallback, SeasideClient, SeasideListener, SeasidePeer, ServeCallback
 from .typhoon_core import TyphoonCore
-from .utils import _ProtocolBase, ProtocolBaseError, ProtocolFlag, ProtocolMessageType, ProtocolReturnCode, ProtocolTerminationError, TyphoonInterrupted, TyphoonShutdown
+from .utils import ProtocolBaseError, ProtocolFlag, ProtocolMessageType, ProtocolReturnCode, ProtocolTerminationError, TyphoonInterrupted, TyphoonShutdown, _ProtocolBase
 
 
 class _TyphoonPeer(_ProtocolBase, ABC):
@@ -247,6 +247,7 @@ class TyphoonClient(_TyphoonPeer, SeasideClient):
             sleeping_timeout = self._previous_next_in + self.timeout
             self._logger.debug(f"Waiting for server response for {sleeping_timeout} milliseconds...")
             await self._sleep(self._read_server_init(loop, key), sleeping_timeout)
+            current_retries += 1
         raise TimeoutError("Listener connection timeout!")
 
     async def _run_connect(self, loop: AbstractEventLoop) -> int:

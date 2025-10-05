@@ -6,8 +6,8 @@ from typing import Type
 
 import pytest
 
+from sources.protocol import PortClient, PortListener, SeasideClient, SeasideListener, TyphoonClient, TyphoonListener
 from sources.utils.crypto import Asymmetric
-from sources.protocol import SeasideClient, SeasideListener, PortClient, PortListener, TyphoonClient, TyphoonListener
 
 logger = getLogger(__file__)
 
@@ -20,6 +20,7 @@ PARAMETERS = [(PortListener, PortClient), (TyphoonListener, TyphoonClient)]
 
 
 # Utility functions:
+
 
 async def echo_server_callback(user_id: int, data: bytes) -> bytes:
     logger.info(f"Received data from client {user_id}: {data}")
@@ -42,6 +43,7 @@ async def process(client: SeasideClient, messages_limit: int = 8) -> None:
 
 # Tests:
 
+
 @pytest.mark.asyncio(loop_scope="session")
 @pytest.mark.parametrize("listener,client", PARAMETERS)
 async def test_simple_connection(listener: Type[SeasideListener], client: Type[SeasideClient]) -> None:
@@ -50,7 +52,7 @@ async def test_simple_connection(listener: Type[SeasideListener], client: Type[S
             request = b"Hi server!"
             await c.write(request)
             response = await c.read()
-            assert(request == response)
+            assert request == response
 
 
 @pytest.mark.asyncio(loop_scope="session")

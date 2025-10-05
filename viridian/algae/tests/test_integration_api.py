@@ -1,12 +1,11 @@
 from logging import getLogger
-from os import environ
-from pathlib import Path
 from secrets import token_urlsafe
 from typing import AsyncGenerator
 
 import pytest
 import pytest_asyncio
 
+from sources.automation.whirlpool_fixtures import create_admin_certificate_from_env
 from sources.interaction.whirlpool import WhirlpoolClient
 
 logger = getLogger(__name__)
@@ -14,12 +13,10 @@ logger = getLogger(__name__)
 
 # Fixtures:
 
+
 @pytest_asyncio.fixture(scope="function", loop_scope="session")
 async def api_client() -> AsyncGenerator[WhirlpoolClient, None]:
-    address = environ["SEASIDE_ADDRESS"]
-    api_port = int(environ["SEASIDE_API_PORT"])
-    authority = environ["SEASIDE_CERTIFICATE_PATH"]
-    yield WhirlpoolClient(address, api_port, Path(authority))
+    yield WhirlpoolClient(create_admin_certificate_from_env())
 
 
 # TODO: time + crypto keys generation
@@ -27,12 +24,25 @@ async def api_client() -> AsyncGenerator[WhirlpoolClient, None]:
 
 # Tests:
 
+
 @pytest.mark.asyncio(loop_scope="session")
-async def test_receive_token(api_client: WhirlpoolClient) -> None:
-    logger.info("Testing receiving user token")
-    identifier = token_urlsafe()
-    logger.info(f"Authenticating user {identifier}...")
-    public, token, typhoon_port, port_port, dns = await api_client.authenticate(identifier, environ["SEASIDE_API_KEY_OWNER"])
-    logger.info(f"Server data received: public key {public!r}, token {token!r}, TYPHOON port {typhoon_port}, PORT port {port_port}, DNS {dns}")
+async def test_receive_token_admin(api_client: WhirlpoolClient) -> None:
+    logger.info("Testing receiving admin token")
+    name = "sample_name"
+    logger.info(f"Authenticating admin {name}...")
+    certificate = await api_client.authenticate_admin(name)
+    logger.info(f"Server data received: address {certificate.address!r}, port {certificate.port!r}, certificate {certificate.client_certificate!r}, key {certificate.client_key!r}, CA {certificate.certificate_authority!r}, token {certificate.token!r}")
     api_client.close()
-    assert len(token) > 0, "Session token was not received!"
+    assert len(certificate.token) > 0, "Token was not received!"
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_receive_token_client(api_client: WhirlpoolClient) -> None:
+    logger.info("Testing receiving client token")
+    name = "sample_name"
+    identifier = token_urlsafe()
+    logger.info(f"Authenticating client {identifier} (name: {name})...")
+    certificate = await api_client.authenticate_client(identifier, name)
+    logger.info(f"Server data received: address {certificate.address!r}, public key {certificate.typhoon_public!r}, TYPHOON port {certificate.typhoon_port!r}, PORT port {certificate.port_port!r}, token {certificate.token!r}, DNS {certificate.dns!r}")
+    api_client.close()
+    assert len(certificate.token) > 0, "Token was not received!"

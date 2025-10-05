@@ -1,69 +1,42 @@
 use std::env::{set_var, var};
-use std::net::{IpAddr, Ipv4Addr, ToSocketAddrs};
+use std::fs::read;
+use std::net::Ipv4Addr;
+use std::path::PathBuf;
 use std::str::FromStr;
 
-use base64::engine::general_purpose::URL_SAFE_NO_PAD;
-use base64::engine::Engine;
 use env_logger::init;
 use log::{debug, info};
+use prost::Message;
+use reeflib::generated::SeasideWhirlpoolClientCertificate;
 use reeflib::protocol::ProtocolType;
 use simple_error::bail;
 use structopt::StructOpt;
 
-use reeflib::bytes::ByteBuffer;
-use reeflib::link::parse_client_link;
+use reeflib::utils::parse_address;
 use reeflib::viridian::Viridian;
 use reeflib::DynResult;
 
-const DEFAULT_CAERULEAN_ADDRESS: &str = "127.0.0.1";
-const DEFAULT_DNS_ADDRESS: &str = "8.8.8.8";
-const DEFAULT_CAERULEAN_PORT: &str = "8587";
 const DEFAULT_LOG_LEVEL: &str = "INFO";
 
-fn parse_address(address: &str) -> DynResult<Ipv4Addr> {
-    match (address, 0).to_socket_addrs()?.next() {
-        Some(socket_addr) => match socket_addr.ip() {
-            IpAddr::V4(ipv4) => Ok(ipv4),
-            IpAddr::V6(ipv6) => bail!("IPv6 address {ipv6} is not supported!"),
-        },
-        None => bail!("Could not resolve address: {address}"),
+fn parse_path(string: &str) -> DynResult<PathBuf> {
+    let path = PathBuf::from(string.to_string());
+    if path.exists() {
+        Ok(path)
+    } else {
+        bail!("Connection certificate does not exist at: {string}");
     }
-}
-
-fn parse_bytes<'a>(string: String) -> DynResult<ByteBuffer<'a>> {
-    Ok(ByteBuffer::from(URL_SAFE_NO_PAD.decode(&string)?))
 }
 
 #[derive(StructOpt, Debug)]
 #[structopt(rename_all = "kebab-case")]
 struct Opt {
-    /// Caerulean remote IP address (default: [`DEFAULT_CAERULEAN_ADDRESS`])
-    #[structopt(short = "a", long, default_value = DEFAULT_CAERULEAN_ADDRESS, parse(try_from_str = parse_address))]
-    address: Ipv4Addr,
-
-    /// Caerulean port number (default: [`DEFAULT_CAERULEAN_PORT`])
-    #[structopt(short = "p", long, default_value = DEFAULT_CAERULEAN_PORT)]
-    port: u16,
-
-    /// Caerulean token value (required, if not provided by 'link' argument!)
-    #[structopt(short = "t", long)]
-    token: Option<String>,
-
-    /// Caerulean public key (required, if not provided by 'link' argument!)
-    #[structopt(short = "r", long)]
-    public: Option<String>,
-
-    /// Caerulean protocol (required, if not provided by 'link' argument!)
-    #[structopt(short = "s", long)]
-    protocol: Option<String>,
-
-    /// Caerulean suggested DNS server (required, if not provided by 'link' argument!)
-    #[structopt(short = "d", long, default_value = DEFAULT_DNS_ADDRESS, parse(try_from_str = parse_address))]
-    dns: Ipv4Addr,
-
     /// Connection link, will be used instead of other arguments if specified
-    #[structopt(short = "l", long)]
-    link: Option<String>,
+    #[structopt(short = "f", long, parse(try_from_str = parse_path))]
+    certificate: PathBuf,
+
+    /// Caerulean protocol
+    #[structopt(short = "m", long, default_value = "typhoon")]
+    protocol: String,
 
     #[structopt(long)]
     capture_iface: Vec<String>,
@@ -90,7 +63,7 @@ struct Opt {
     local_address: Option<Ipv4Addr>,
 
     /// Install VPN connection, run command and exit after command is finished
-    #[structopt(short = "e", long)]
+    #[structopt(short = "c", long)]
     command: Option<String>,
 }
 
@@ -108,66 +81,20 @@ fn init_logging() {
     init();
 }
 
-fn process_link<'a>(link: Option<String>) -> DynResult<(Option<String>, Option<ByteBuffer<'a>>, Option<u16>, Option<u16>, Option<ByteBuffer<'a>>, Option<String>)> {
-    match link {
-        Some(res) => {
-            let (a, p, pp, pt, t, d) = parse_client_link(res)?;
-            Ok((Some(a), Some(p), pp, pt, Some(t), d))
-        }
-        None => Ok((None, None, None, None, None, None)),
-    }
-}
-
 #[tokio::main]
 async fn main() -> DynResult<()> {
     init_logging();
     let opt = Opt::from_args();
-    let (link_address, link_public, link_port, link_typhoon, link_token, link_dns) = process_link(opt.link)?;
 
-    let public = match link_public {
-        Some(res) => res,
-        None => match opt.public {
-            Some(res) => parse_bytes(res)?,
-            None => bail!("Caerulean public key was not specified!"),
-        },
-    };
-
-    let token = match link_token {
-        Some(res) => res,
-        None => match opt.token {
-            Some(res) => parse_bytes(res)?,
-            None => bail!("Caerulean token was not specified!"),
-        },
-    };
-
-    let protocol = match opt.protocol {
-        Some(res) => ProtocolType::from_str(&res)?,
-        None => bail!("Caerulean protocol was not specified!"),
-    };
-
-    let link_port_number = match protocol {
-        ProtocolType::PORT => link_port,
-        ProtocolType::TYPHOON => link_typhoon,
-    };
-
-    let port = match link_port_number {
-        Some(res) => res,
-        None => opt.port,
-    };
-
-    let address = match link_address {
-        Some(res) => parse_address(&res)?,
-        None => opt.address,
-    };
-
-    let dns = match link_dns {
-        Some(res) => parse_address(&res)?,
-        None => opt.dns,
+    let protocol = ProtocolType::from_str(&opt.protocol)?;
+    let certificate = match read(opt.certificate) {
+        Ok(res) => SeasideWhirlpoolClientCertificate::decode(&*res)?,
+        Err(err) => bail!("Error reading certificate file: {err}"),
     };
 
     info!("Creating reef client...");
-    debug!("Parameters for reef client: address {address}, port {port}, protocol {protocol:?}, token length {}, public key length {}, dns {dns}", token.len(), public.len());
-    let mut constructor = Viridian::new(address, port, token, public, protocol, Some(dns), Some(opt.capture_iface), Some(opt.capture_ranges), Some(opt.exempt_ranges), Some(opt.capture_addresses), Some(opt.exempt_addresses), opt.capture_ports, opt.exempt_ports, opt.local_address).await?;
+    debug!("Parameters for reef client: protocol {protocol:?}, certificate {certificate:?}");
+    let mut constructor = Viridian::new(certificate, protocol, Some(opt.capture_iface), Some(opt.capture_ranges), Some(opt.exempt_ranges), Some(opt.capture_addresses), Some(opt.exempt_addresses), opt.capture_ports, opt.exempt_ports, opt.local_address).await?;
 
     info!("Starting reef Viridian...");
     constructor.start(opt.command).await?;

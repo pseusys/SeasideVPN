@@ -2,36 +2,23 @@ from datetime import datetime, timedelta, timezone
 from ipaddress import IPv4Address
 from os import getcwd
 from pathlib import Path
-from secrets import token_bytes
 from shutil import rmtree
-from typing import List, Union
+from typing import List, Optional, Union
 
 from cryptography.hazmat.primitives.asymmetric.ec import SECP384R1, EllipticCurvePrivateKey, generate_private_key
 from cryptography.hazmat.primitives.hashes import SHA256
-from cryptography.hazmat.primitives.serialization import Encoding, NoEncryption, BestAvailableEncryption, PrivateFormat
+from cryptography.hazmat.primitives.serialization import BestAvailableEncryption, Encoding, NoEncryption, PrivateFormat
 from cryptography.x509 import BasicConstraints, Certificate, CertificateBuilder, CertificateSigningRequest, CertificateSigningRequestBuilder, DNSName, ExtendedKeyUsage, IPAddress, KeyUsage, Name, NameAttribute, SubjectAlternativeName, random_serial_number
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
 from .utils import Logging
 
-_KEY_ENCRYPTION_PASSWORD_BYTES = 32
 _GENERATE_CERTIFICATES_VALIDITY = 365250
 _GENERATE_CERTIFICATES_ISSUER_CA = "SeasideVPN Trustable Issuer"
 _GENERATE_CERTIFICATES_ISSUER_VIRIDIAN = "SeasideVPN Test Viridian"
 _GENERATE_CERTIFICATES_ISSUER_CAERULEAN = "SeasideVPN Test Caerulean"
 
 GENERATE_CERTIFICATES_PATH = Path(getcwd()) / "certificates"
-
-
-def check_certificates(cert_path: Path = GENERATE_CERTIFICATES_PATH) -> bool:
-    """
-    Check if certificate and its key are available at the given path.
-    :param cert_path: path to search certificates, `${PWD}/certificates` by default.
-    :return: `True` if certificates were found, `False` otherwise.
-    """
-    cert_key = cert_path / "cert.key"
-    cert_cert = cert_path / "cert.crt"
-    return cert_key.exists() and cert_cert.exists()
 
 
 def _create_self_signed_cert(private_key: EllipticCurvePrivateKey, subject: Name, validity_days: int) -> Certificate:
@@ -93,7 +80,7 @@ def _sign_csr(ca_private_key: EllipticCurvePrivateKey, ca_cert: Certificate, csr
     return builder.sign(ca_private_key, SHA256())
 
 
-def _save_cert_and_key_to_file(certificate: Certificate, private_key: EllipticCurvePrivateKey, cert_path: Path, key_path: Path, encrypt: bool = False) -> None:
+def _save_cert_and_key_to_file(certificate: Certificate, private_key: EllipticCurvePrivateKey, cert_path: Path, key_path: Optional[Path] = None, password: Optional[bytes] = None) -> None:
     """
     Save certificate and its private key to files.
     :param certificate: certificate to save.
@@ -101,30 +88,17 @@ def _save_cert_and_key_to_file(certificate: Certificate, private_key: EllipticCu
     :param cert_path: path to save certificate.
     :param key_path: path to save private key.
     """
-    encryption_password = token_bytes(_KEY_ENCRYPTION_PASSWORD_BYTES)
     cert_path.write_bytes(certificate.public_bytes(Encoding.PEM))
-    key_path.write_bytes(private_key.private_bytes(Encoding.PEM, PrivateFormat.TraditionalOpenSSL, BestAvailableEncryption(encryption_password) if encrypt else NoEncryption()))
+    if key_path is not None:
+        key_path.write_bytes(private_key.private_bytes(Encoding.PEM, PrivateFormat.PKCS8, BestAvailableEncryption(password) if password is not None else NoEncryption()))
 
 
-def generate_certificates(address: Union[IPv4Address, str], cert_path: Path = GENERATE_CERTIFICATES_PATH, remove_existing: bool = False) -> None:
+def generate_certificates(address: Union[IPv4Address, str], caerulean_cert_path: Path = GENERATE_CERTIFICATES_PATH / "caerulean", viridian_cert_path: Path = GENERATE_CERTIFICATES_PATH / "viridian") -> None:
     """
-    Generate certificates for the given IP address or host name.
-    Also generate CA and sign certificates with it.
+    Generate all the certificates for the given IP address or host name.
+    Include API certificates, keys, server and client certificate authorities.
     Optionally, remove any previous certificates found.
-    The following file tree will be generated:
-    ```txt
-    --- cert_path
-     |--- viridian
-     | |--- cert.key
-     | |--- cert.crt
-     | |--- rootCA.key
-     | '--- rootCA.crt
-     '--- caerulean
-       |--- cert.key
-       |--- cert.crt
-       |--- rootCA.key
-       '--- rootCA.crt
-    ```
+    See Seaside Whirlpool readme for certificate directory structure.
     Some additional generation artifact files may be present in the directories.
     :param address: host name or IP address for certificate generation.
     :param cert_path: path to store the generated certificates, `${PWD}/certificates` by default.
@@ -132,37 +106,37 @@ def generate_certificates(address: Union[IPv4Address, str], cert_path: Path = GE
     """
     logger = Logging.logger_for(__name__)
 
-    if not remove_existing and check_certificates(cert_path):
-        logger.debug("Certificate files exist and recreation not requested, proceeding with doing nothing...")
-        return
+    rmtree(caerulean_cert_path, ignore_errors=True)
+    rmtree(viridian_cert_path, ignore_errors=True)
 
-    viridian_dir = cert_path / "viridian"
-    caerulean_dir = cert_path / "caerulean"
+    caerulean_cert_path.mkdir(parents=True, exist_ok=True)
+    viridian_cert_path.mkdir(parents=True, exist_ok=True)
 
-    rmtree(cert_path, ignore_errors=True)
-    viridian_dir.mkdir(parents=True, exist_ok=True)
-    caerulean_dir.mkdir(parents=True, exist_ok=True)
-
-    logger.debug(f"Certificates for {address} will be created in {cert_path} directory...")
+    logger.debug(f"Certificates for {address} will be created...")
     altnames = IPAddress(address) if isinstance(address, IPv4Address) else DNSName(address)
     ca_subject = Name([NameAttribute(NameOID.COMMON_NAME, _GENERATE_CERTIFICATES_ISSUER_CA)])
     viridian_subject = Name([NameAttribute(NameOID.COMMON_NAME, _GENERATE_CERTIFICATES_ISSUER_VIRIDIAN)])
     caerulean_subject = Name([NameAttribute(NameOID.COMMON_NAME, _GENERATE_CERTIFICATES_ISSUER_CAERULEAN)])
 
-    logger.debug("Creating certificate authority key...")
-    ca_private_key = generate_private_key(SECP384R1())
-    ca_cert = _create_self_signed_cert(ca_private_key, ca_subject, _GENERATE_CERTIFICATES_VALIDITY)
-    _save_cert_and_key_to_file(ca_cert, ca_private_key, viridian_dir / "rootCA.crt", viridian_dir / "rootCA.key")
-    _save_cert_and_key_to_file(ca_cert, ca_private_key, caerulean_dir / "rootCA.crt", caerulean_dir / "rootCA.key")
+    logger.debug("Creating server certificate authority key...")
+    server_ca_private_key = generate_private_key(SECP384R1())
+    server_ca_cert = _create_self_signed_cert(server_ca_private_key, ca_subject, _GENERATE_CERTIFICATES_VALIDITY)
+    _save_cert_and_key_to_file(server_ca_cert, server_ca_private_key, viridian_cert_path / "APIserverCA.crt")
+    _save_cert_and_key_to_file(server_ca_cert, server_ca_private_key, caerulean_cert_path / "APIserverCA.crt", caerulean_cert_path / "APIserverCA.key")
+
+    logger.debug("Creating client certificate authority key...")
+    client_ca_private_key = generate_private_key(SECP384R1())
+    client_ca_cert = _create_self_signed_cert(client_ca_private_key, ca_subject, _GENERATE_CERTIFICATES_VALIDITY)
+    _save_cert_and_key_to_file(client_ca_cert, client_ca_private_key, caerulean_cert_path / "APIclientCA.crt", caerulean_cert_path / "APIclientCA.key")
 
     logger.debug("Signing viridian certificates signed with CA...")
-    cert_private_key = generate_private_key(SECP384R1())
-    cert_sign_request = _create_csr(cert_private_key, viridian_subject, [altnames], False)
-    signed_cert = _sign_csr(ca_private_key, ca_cert, cert_sign_request, _GENERATE_CERTIFICATES_VALIDITY)
-    _save_cert_and_key_to_file(signed_cert, cert_private_key, viridian_dir / "cert.crt", viridian_dir / "cert.key")
+    client_cert_private_key = generate_private_key(SECP384R1())
+    client_cert_sign_request = _create_csr(client_cert_private_key, viridian_subject, [altnames], False)
+    client_signed_cert = _sign_csr(client_ca_private_key, client_ca_cert, client_cert_sign_request, _GENERATE_CERTIFICATES_VALIDITY)
+    _save_cert_and_key_to_file(client_signed_cert, client_cert_private_key, viridian_cert_path / "APIcert.crt", viridian_cert_path / "APIcert.key")
 
     logger.debug("Signing caerulean certificates signed with CA...")
-    cert_private_key = generate_private_key(SECP384R1())
-    cert_sign_request = _create_csr(cert_private_key, caerulean_subject, [altnames], True)
-    signed_cert = _sign_csr(ca_private_key, ca_cert, cert_sign_request, _GENERATE_CERTIFICATES_VALIDITY)
-    _save_cert_and_key_to_file(signed_cert, cert_private_key, caerulean_dir / "cert.crt", caerulean_dir / "cert.key")
+    server_cert_private_key = generate_private_key(SECP384R1())
+    server_cert_sign_request = _create_csr(server_cert_private_key, caerulean_subject, [altnames], True)
+    server_signed_cert = _sign_csr(server_ca_private_key, server_ca_cert, server_cert_sign_request, _GENERATE_CERTIFICATES_VALIDITY)
+    _save_cert_and_key_to_file(server_signed_cert, server_cert_private_key, caerulean_cert_path / "APIcert.crt", caerulean_cert_path / "APIcert.key")

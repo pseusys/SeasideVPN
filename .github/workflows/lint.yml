@@ -95,7 +95,7 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
-          cache-workspaces: viridian/reef
+          rust-src-dir: viridian/reef
 
       - name: Lint Viridian Reef 🧪
         working-directory: viridian/reef
@@ -113,11 +113,11 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "^1.23.0"
+          cache-dependency-path: caerulean/whirlpool
 
       - name: Install Dependencies 🔮
         working-directory: caerulean/whirlpool
         run: |
-          go install github.com/xlab/c-for-go@latest
           go install github.com/pseusys/protogo@latest
           go install honnef.co/go/tools/cmd/staticcheck@latest
 

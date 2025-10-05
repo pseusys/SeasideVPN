@@ -96,6 +96,7 @@ test:
 .PHONY: test
 
 lint: build
+	@ # Perform format check of all the rust code
 	cargo fmt --all -- --check
 .PHONY: lint
 

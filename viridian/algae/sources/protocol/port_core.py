@@ -6,10 +6,10 @@ from typing import Tuple
 
 from semver import Version
 
-from ..version import __version__
 from ..utils.crypto import Asymmetric, Symmetric
 from ..utils.misc import classproperty, random_number
-from .utils import ProtocolMessageType, ProtocolFlag, ProtocolInitializationError, ProtocolParseError, ProtocolReturnCode, ProtocolTypes
+from ..version import __version__
+from .utils import ProtocolFlag, ProtocolInitializationError, ProtocolMessageType, ProtocolParseError, ProtocolReturnCode, ProtocolTypes
 
 
 class PortCore:

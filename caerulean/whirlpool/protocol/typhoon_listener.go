@@ -171,7 +171,7 @@ func (t *TyphoonListener) handleInitMessage(viridianDict *users.ViridianDict, ad
 	if err != nil {
 		return nil, nil, nil, nil, UNKNOWN_ERROR, nil, nil, fmt.Errorf("error parsing viridian packet: %v", err)
 	}
-	logrus.Debugf("Viridian %v:%v packet received with info: name %s, symmetric key, packet number %d, next in %d, encrypted token %v", peerIP, peerPort, *viridianName, *packetNumber, *nextIn, encryptedToken)
+	logrus.Debugf("Viridian %v:%v packet received with info: name %s, symmetric key, packet number %d, next in %d, encrypted token length %d", peerIP, peerPort, *viridianName, *packetNumber, *nextIn, encryptedToken.Length())
 
 	cipher, err := crypto.NewSymmetric(key)
 	if err != nil {
@@ -185,7 +185,7 @@ func (t *TyphoonListener) handleInitMessage(viridianDict *users.ViridianDict, ad
 	}
 	logrus.Debugf("Viridian %v:%v token decrypted: %v", peerIP, peerPort, tokenBytes)
 
-	token := new(generated.UserToken)
+	token := new(generated.ClientToken)
 	err = proto.Unmarshal(tokenBytes.Slice(), token)
 	if err != nil {
 		return nil, nil, nil, cipher, TOKEN_PARSE_ERROR, packetNumber, nextIn, fmt.Errorf("error unmarshaling viridian token: %v", err)

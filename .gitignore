@@ -43,12 +43,14 @@ viridian/algae/**/.mypy_cache/
 viridian/algae/**/.pytest-cache/
 
 ## Python generated files:
-viridian/algae/sources/interaction/generated/
+viridian/algae/sources/generated/
 viridian/algae/*.pyz
 
 ## Test files:
 viridian/algae/certificates/
-.github/certificates/
+
+## Copied project files:
+viridian/algae/sources/automation/cache
 
 
 

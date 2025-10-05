@@ -1,0 +1,50 @@
+syntax = "proto3";
+package generated;
+
+option go_package = "/generated";
+
+
+
+// Required data for administrator connection to a Seaside Whirlpool node
+message SeasideWhirlpoolAdminCertificate {
+
+    // Whirlpool node IP address
+    string address = 1;
+
+    // Whirlpool node gRPC port number
+    uint32 port = 2;
+
+    // gRPC connection client certificate
+    bytes client_certificate = 3;
+
+    // gRPC connection client key
+    bytes client_key = 4;
+
+    // gRPC connection certificate authority
+    bytes certificate_authority = 5;
+
+    // Administrator authentication token
+    bytes token = 6;  // generated.AdminToken
+}
+
+// Required data for client connection to a Seaside Whirlpool node
+message SeasideWhirlpoolClientCertificate {
+
+    // Whirlpool node IP address
+    string address = 1;
+
+    // TYPHOON protocol public key
+    bytes typhoon_public = 2;
+
+    // TYPHOON protocol port number
+    uint32 typhoon_port = 3;
+
+    // PORT protocol port number
+    uint32 port_port = 4;
+
+    // User authentication token
+    bytes token = 5;  // generated.ClientToken
+
+    // Suggested DNS server to use
+    string dns = 6;
+}

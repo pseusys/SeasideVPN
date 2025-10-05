@@ -24,6 +24,16 @@ All required python dependencies can be installed with this command:
 poetry install --all-extras
 ```
 
+## Required certificates
+
+```txt
+--- cert_path
+  '--- viridian
+    |--- APIcert.key
+    |--- APIcert.crt
+    '--- APIserverCA.crt
+```
+
 ## Sample client
 
 > Requires `client` extra.
