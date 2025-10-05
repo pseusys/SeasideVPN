@@ -82,6 +82,19 @@ flowchart LR
   external[\External interface/] --> internet(((Internet)))
 ```
 
+## Required certificates
+
+```txt
+--- cert_path
+  '--- caerulean
+    |--- APIcert.key
+    |--- APIcert.crt
+    |--- APIclientCA.key
+    |--- APIclientCA.crt
+    |--- APIserverCA.key
+    '--- APIserverCA.crt
+```
+
 ## Whirlpool to surface connection
 
 🚧 Under construction! 🚧

@@ -114,17 +114,17 @@ func decodeECKey(path string) (any, error) {
 
 // Load and generate client TLS credentials from files.
 // Client certificate and key will be generated and signed using client CAs.
-// The client CAs are expected to be in `${SEASIDE_CERTIFICATE_PATH}/clientCA.crt` and `${SEASIDE_CERTIFICATE_PATH}/clientCA.key`.
-// Finally, server certificate and server CA are expected to be in `${SEASIDE_CERTIFICATE_PATH}/serverCA.crt` and `${SEASIDE_CERTIFICATE_PATH}/cert.crt`
+// The client CAs are expected to be in `${SEASIDE_CERTIFICATE_PATH}/APIclientCA.crt` and `${SEASIDE_CERTIFICATE_PATH}/APIclientCA.key`.
+// Finally, server certificate and server CA are expected to be in `${SEASIDE_CERTIFICATE_PATH}/APIserverCA.crt` and `${SEASIDE_CERTIFICATE_PATH}/APIcert.crt`
 func createClientTLSCredentials(address net.IP) ([]byte, []byte, []byte, error) {
 	// Decode and parse client certificate authority certificate
-	clientCACert, err := decodePEMCertificate(fmt.Sprintf("%s/clientCA.crt", CERTIFICATES_PATH))
+	clientCACert, err := decodePEMCertificate(fmt.Sprintf("%s/APIclientCA.crt", CERTIFICATES_PATH))
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error parsing client CA certificate: %v", err)
 	}
 
 	// Decode and parse client certificate authority key
-	clientCAKey, err := decodeECKey(fmt.Sprintf("%s/clientCA.key", CERTIFICATES_PATH))
+	clientCAKey, err := decodeECKey(fmt.Sprintf("%s/APIclientCA.key", CERTIFICATES_PATH))
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error parsing client CA key: %v", err)
 	}
@@ -169,7 +169,7 @@ func createClientTLSCredentials(address net.IP) ([]byte, []byte, []byte, error) 
 	}
 
 	// Decode and parse server certificate authority certificate
-	serverCA, err := decodePEMCertificate(fmt.Sprintf("%s/serverCA.crt", CERTIFICATES_PATH))
+	serverCA, err := decodePEMCertificate(fmt.Sprintf("%s/APIserverCA.crt", CERTIFICATES_PATH))
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error parsing server CA certificate: %v", err)
 	}
@@ -178,11 +178,11 @@ func createClientTLSCredentials(address net.IP) ([]byte, []byte, []byte, error) 
 }
 
 // Load server TLS credentials from files.
-// Certificates are expected to be in `${SEASIDE_CERTIFICATE_PATH}/cert.crt` and `${SEASIDE_CERTIFICATE_PATH}/cert.key` files.
+// Certificates are expected to be in `${SEASIDE_CERTIFICATE_PATH}/APIcert.crt` and `${SEASIDE_CERTIFICATE_PATH}/APIcert.key` files.
 // Certificates should be valid and contain `subjectAltName` for the current `${SEASIDE_ADDRESS}`.
 func loadServerTLSCredentials() (credentials.TransportCredentials, error) {
 	// Load certificate authority certificate
-	caCertPEM, err := os.ReadFile(fmt.Sprintf("%s/clientCA.crt", CERTIFICATES_PATH))
+	caCertPEM, err := os.ReadFile(fmt.Sprintf("%s/APIclientCA.crt", CERTIFICATES_PATH))
 	if err != nil {
 		log.Fatalf("error reading client CA certificate: %v", err)
 	}
@@ -194,7 +194,7 @@ func loadServerTLSCredentials() (credentials.TransportCredentials, error) {
 	}
 
 	// Load server's certificate and private key
-	serverCert, err := tls.LoadX509KeyPair(fmt.Sprintf("%s/cert.crt", CERTIFICATES_PATH), fmt.Sprintf("%s/cert.key", CERTIFICATES_PATH))
+	serverCert, err := tls.LoadX509KeyPair(fmt.Sprintf("%s/APIcert.crt", CERTIFICATES_PATH), fmt.Sprintf("%s/APIcert.key", CERTIFICATES_PATH))
 	if err != nil {
 		return nil, fmt.Errorf("error reading certificates: %v", err)
 	}

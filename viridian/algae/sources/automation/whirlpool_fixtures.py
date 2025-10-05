@@ -61,9 +61,9 @@ def create_admin_certificate_from_env(address: Optional[IPv4Address] = None, por
     port = int(environ["SEASIDE_API_PORT"] if port is None else port)
 
     certificate_path = Path(environ["SEASIDE_CERTIFICATE_PATH"]) if certificate_path is None else certificate_path
-    client_certificate = (certificate_path / "cert.crt").read_bytes() if client_certificate is None else client_certificate
-    client_key = (certificate_path / "cert.key").read_bytes() if client_key is None else client_key
-    certificate_authority = (certificate_path / "serverCA.crt").read_bytes() if certificate_authority is None else certificate_authority
+    client_certificate = (certificate_path / "APIcert.crt").read_bytes() if client_certificate is None else client_certificate
+    client_key = (certificate_path / "APIcert.key").read_bytes() if client_key is None else client_key
+    certificate_authority = (certificate_path / "APIserverCA.crt").read_bytes() if certificate_authority is None else certificate_authority
 
     return SeasideWhirlpoolAdminCertificate(address, port, client_certificate, client_key, certificate_authority, admin_token)
 

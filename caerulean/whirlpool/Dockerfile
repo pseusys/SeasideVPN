@@ -72,18 +72,14 @@ ENV SEASIDE_ADDRESS=$SEASIDE_ADDRESS
 
 ENV SEASIDE_CERTIFICATE_PATH=/seaside/caerulean/certificates/caerulean
 
-RUN apk add --no-cache openssl
-RUN mkdir -p /tmp/certificates/caerulean && mkdir -p /tmp/certificates/viridian && cd /tmp/certificates \
-    && openssl req -newkey ec -pkeyopt ec_paramgen_curve:secp521r1 -nodes -keyout viridian/cert.key -out viridian/cert.csr -subj "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPNViridian" -addext "subjectAltName = IP:${SEASIDE_ADDRESS}" -addext "keyUsage=critical,digitalSignature" -addext "extendedKeyUsage=clientAuth" \
-    && openssl req -newkey ec -pkeyopt ec_paramgen_curve:secp521r1 -nodes -keyout caerulean/cert.key -out caerulean/cert.csr -subj "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPNCaerulean" -addext "subjectAltName = IP:${SEASIDE_ADDRESS}" -addext "keyUsage=critical,digitalSignature,keyEncipherment" -addext "extendedKeyUsage=serverAuth" \
-    && openssl req -newkey ec -pkeyopt ec_paramgen_curve:secp521r1 -nodes -new -x509 -keyout viridian/serverCA.key -out viridian/serverCA.crt -days 365250 -subj "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPNServerCA" -addext "basicConstraints=critical,CA:true" -addext "keyUsage=critical,keyCertSign,cRLSign" \
-    && openssl req -newkey ec -pkeyopt ec_paramgen_curve:secp521r1 -nodes -new -x509 -keyout caerulean/clientCA.key -out caerulean/clientCA.crt -days 365250 -subj "/C=TS/ST=TestState/L=PC/O=SeasideVPN/OU=seaside/CN=SeasideVPNClientCA" -addext "basicConstraints=critical,CA:true" -addext "keyUsage=critical,keyCertSign,cRLSign" \
-    && openssl x509 -req -CA viridian/serverCA.crt -CAkey viridian/serverCA.key -in caerulean/cert.csr -out caerulean/cert.crt -days 365250 -copy_extensions=copyall \
-    && openssl x509 -req -CA caerulean/clientCA.crt -CAkey caerulean/clientCA.key -in viridian/cert.csr -out viridian/cert.crt -days 365250 -copy_extensions=copyall \
-    && chmod 644 */*.key && cp viridian/serverCA.* caerulean/
+COPY viridian/algae /tmp/seaside-algae
 
-ENTRYPOINT ["sh", "-c", "cp -r /tmp/certificates ./ && ./whirlpool.run"]
+RUN apk add --no-cache python3 py3-pip && cd /tmp/seaside-algae && \
+    pip3 install --no-cache-dir --break-system-packages .[setup] && \
+    python3 -m setup --just-certs ${SEASIDE_ADDRESS} && \
+    apk --purge del python3 py3-pip
 
+ENTRYPOINT ["sh", "-c", "cp -r /tmp/seaside-algae/certificates ./ && ./whirlpool.run"]
 
 FROM default-certified AS default-routed
 
@@ -91,4 +87,4 @@ ARG NETWORK_GATEWAY
 ENV ARG_NETWORK_GATEWAY=$NETWORK_GATEWAY
 
 # Setup default route IP and run viridian algae with command.
-ENTRYPOINT ["sh", "-c", "ip route replace default via $ARG_NETWORK_GATEWAY && cp -r /tmp/certificates ./ && ./whirlpool.run"]
+ENTRYPOINT ["sh", "-c", "ip route replace default via $ARG_NETWORK_GATEWAY && cp -r /tmp/seaside-algae/certificates ./ && ./whirlpool.run"]
