@@ -113,8 +113,8 @@ func decodeECKey(path string) (any, error) {
 }
 
 // Load and generate client TLS credentials from files.
-// Client certificate and key will be generated and signed using client CAs.
-// The client CAs are expected to be in `${SEASIDE_CERTIFICATE_PATH}/APIclientCA.crt` and `${SEASIDE_CERTIFICATE_PATH}/APIclientCA.key`.
+// Client certificate and key will be generated and signed using client certificate authoritiess.
+// The client certificate authorities are expected to be in `${SEASIDE_CERTIFICATE_PATH}/APIclientCA.crt` and `${SEASIDE_CERTIFICATE_PATH}/APIclientCA.key`.
 // Finally, server certificate and server CA are expected to be in `${SEASIDE_CERTIFICATE_PATH}/APIserverCA.crt` and `${SEASIDE_CERTIFICATE_PATH}/APIcert.crt`
 func createClientTLSCredentials(address net.IP) ([]byte, []byte, []byte, error) {
 	// Decode and parse client certificate authority certificate
