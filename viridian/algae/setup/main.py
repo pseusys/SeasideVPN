@@ -5,7 +5,7 @@ from sys import argv
 from typing import Sequence
 
 from .base import Installer
-from .certificates import check_certificates, generate_certificates
+from .certificates import generate_certificates
 from .default import DEFAULT_GENERATED_VALUE, DefaultOptionalAction, local_ip, logging_level
 from .specific import is_64_bit, is_admin, is_linux
 from .utils import Logging
@@ -46,7 +46,7 @@ def main(args: Sequence[str] = argv[1:]) -> None:
     certs_address = namespace.pop("just_certs", None)
     if certs_address is not None:
         logger.info(f"Just generating certificates for {certs_address}...")
-        generate_certificates(certs_address, remove_existing=True)
+        generate_certificates(certs_address)
         logger.info("Certificates generated successfully!")
         exit(0)
 
@@ -79,8 +79,8 @@ def main(args: Sequence[str] = argv[1:]) -> None:
         logger.info("Refreshing certificates if they are not present...")
         installer.refresh_certificates()
         logger.info("Certificates generated successfully!")
-    elif not check_certificates():
-        logger.error("Certificates not found, consider adding 'cert.key' and 'cert.crt' to 'certificates' directory!")
+    else:
+        logger.error("Certificates creation skipped!")
 
     logger.info(f"Installing with {type(installer).__name__} installer...")
     installer.install()

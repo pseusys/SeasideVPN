@@ -1,7 +1,7 @@
 from argparse import ArgumentParser, _SubParsersAction
 from os import environ
 from pathlib import Path
-from shutil import copy, move, rmtree
+from shutil import copytree, move, rmtree
 from subprocess import DEVNULL, CalledProcessError, Popen, run
 from tarfile import open as open_tar
 from typing import Dict, Optional
@@ -146,11 +146,10 @@ class WhirlpoolInstaller(Installer):
     def refresh_certificates(self) -> None:
         cert_path = Path(self._args["certificates_path"])
         self._logger.debug("Generating certificates...")
-        generate_certificates(self._args["internal_address"], remove_existing=True)
+        generate_certificates(self._args["internal_address"])
         self._logger.debug(f"Copying certificates to the certificate path '{cert_path}'...")
         caerulean_certs = GENERATE_CERTIFICATES_PATH / "caerulean"
-        copy(caerulean_certs / "cert.key", cert_path)
-        copy(caerulean_certs / "cert.crt", cert_path)
+        copytree(caerulean_certs, cert_path)
         self._logger.debug("Certificates ready!")
 
     def _configure_server(self) -> None:

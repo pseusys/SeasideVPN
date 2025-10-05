@@ -13,24 +13,12 @@ from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
 from .utils import Logging
 
-_KEY_ENCRYPTION_PASSWORD_BYTES = 32
 _GENERATE_CERTIFICATES_VALIDITY = 365250
 _GENERATE_CERTIFICATES_ISSUER_CA = "SeasideVPN Trustable Issuer"
 _GENERATE_CERTIFICATES_ISSUER_VIRIDIAN = "SeasideVPN Test Viridian"
 _GENERATE_CERTIFICATES_ISSUER_CAERULEAN = "SeasideVPN Test Caerulean"
 
 GENERATE_CERTIFICATES_PATH = Path(getcwd()) / "certificates"
-
-
-def check_certificates(cert_path: Path = GENERATE_CERTIFICATES_PATH) -> bool:
-    """
-    Check if certificate and its key are available at the given path.
-    :param cert_path: path to search certificates, `${PWD}/certificates` by default.
-    :return: `True` if certificates were found, `False` otherwise.
-    """
-    cert_key = cert_path / "cert.key"
-    cert_cert = cert_path / "cert.crt"
-    return cert_key.exists() and cert_cert.exists()
 
 
 def _create_self_signed_cert(private_key: EllipticCurvePrivateKey, subject: Name, validity_days: int) -> Certificate:
@@ -105,7 +93,7 @@ def _save_cert_and_key_to_file(certificate: Certificate, private_key: EllipticCu
         key_path.write_bytes(private_key.private_bytes(Encoding.PEM, PrivateFormat.TraditionalOpenSSL, BestAvailableEncryption(password) if password is not None else NoEncryption()))
 
 
-def generate_certificates(address: Union[IPv4Address, str], cert_path: Path = GENERATE_CERTIFICATES_PATH, remove_existing: bool = False) -> None:
+def generate_certificates(address: Union[IPv4Address, str], cert_path: Path = GENERATE_CERTIFICATES_PATH) -> None:
     """
     Generate all the certificates for the given IP address or host name.
     Include API certificates, keys, server and client certificate authorities.
@@ -117,11 +105,6 @@ def generate_certificates(address: Union[IPv4Address, str], cert_path: Path = GE
     :param remove_existing: remove any existing certificates found at `cert_path`, `False` by default.
     """
     logger = Logging.logger_for(__name__)
-
-    if not remove_existing and check_certificates(cert_path):
-        logger.debug("Certificate files exist and recreation not requested, proceeding with doing nothing...")
-        return
-
     viridian_dir = cert_path / "viridian"
     caerulean_dir = cert_path / "caerulean"
 
@@ -150,7 +133,7 @@ def generate_certificates(address: Union[IPv4Address, str], cert_path: Path = GE
     client_cert_private_key = generate_private_key(SECP384R1())
     client_cert_sign_request = _create_csr(client_cert_private_key, viridian_subject, [altnames], False)
     client_signed_cert = _sign_csr(client_ca_private_key, client_ca_cert, client_cert_sign_request, _GENERATE_CERTIFICATES_VALIDITY)
-    _save_cert_and_key_to_file(client_signed_cert, client_cert_private_key, viridian_dir / "APIcert.crt")
+    _save_cert_and_key_to_file(client_signed_cert, client_cert_private_key, viridian_dir / "APIcert.crt", viridian_dir / "APIcert.key")
 
     logger.debug("Signing caerulean certificates signed with CA...")
     server_cert_private_key = generate_private_key(SECP384R1())
