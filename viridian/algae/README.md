@@ -16,6 +16,8 @@ Created mainly for development and testing purposes.
   Installation guide can be found [here](https://python-poetry.org/docs/#installation).
 3. System packages: `nftables`, `iproute2`.
 
+TODO: install without devel and protobuf building.
+
 ## Configuration and running
 
 All required python dependencies can be installed with this command:
