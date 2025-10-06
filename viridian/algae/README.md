@@ -26,7 +26,7 @@ All required python dependencies can be installed with this command:
 poetry install --all-extras
 ```
 
-## Required certificates
+## Debug certificates bundle
 
 ```txt
 --- cert_path

@@ -93,7 +93,7 @@ def _save_cert_and_key_to_file(certificate: Certificate, private_key: EllipticCu
         key_path.write_bytes(private_key.private_bytes(Encoding.PEM, PrivateFormat.PKCS8, BestAvailableEncryption(password) if password is not None else NoEncryption()))
 
 
-def generate_certificates(address: Union[IPv4Address, str], caerulean_cert_path: Path = GENERATE_CERTIFICATES_PATH / "caerulean", viridian_cert_path: Path = GENERATE_CERTIFICATES_PATH / "viridian") -> None:
+def generate_certificates(address: Union[IPv4Address, str], caerulean_cert_path: Path = GENERATE_CERTIFICATES_PATH / "caerulean", viridian_cert_path: Optional[Path] = GENERATE_CERTIFICATES_PATH / "viridian") -> None:
     """
     Generate all the certificates for the given IP address or host name.
     Include API certificates, keys, server and client certificate authorities.
@@ -107,10 +107,10 @@ def generate_certificates(address: Union[IPv4Address, str], caerulean_cert_path:
     logger = Logging.logger_for(__name__)
 
     rmtree(caerulean_cert_path, ignore_errors=True)
-    rmtree(viridian_cert_path, ignore_errors=True)
-
     caerulean_cert_path.mkdir(parents=True, exist_ok=True)
-    viridian_cert_path.mkdir(parents=True, exist_ok=True)
+    if viridian_cert_path is not None:
+        rmtree(viridian_cert_path, ignore_errors=True)
+        viridian_cert_path.mkdir(parents=True, exist_ok=True)
 
     logger.debug(f"Certificates for {address} will be created...")
     altnames = IPAddress(address) if isinstance(address, IPv4Address) else DNSName(address)
@@ -121,8 +121,9 @@ def generate_certificates(address: Union[IPv4Address, str], caerulean_cert_path:
     logger.debug("Creating server certificate authority key...")
     server_ca_private_key = generate_private_key(SECP384R1())
     server_ca_cert = _create_self_signed_cert(server_ca_private_key, ca_subject, _GENERATE_CERTIFICATES_VALIDITY)
-    _save_cert_and_key_to_file(server_ca_cert, server_ca_private_key, viridian_cert_path / "APIserverCA.crt")
     _save_cert_and_key_to_file(server_ca_cert, server_ca_private_key, caerulean_cert_path / "APIserverCA.crt", caerulean_cert_path / "APIserverCA.key")
+    if viridian_cert_path is not None:
+        _save_cert_and_key_to_file(server_ca_cert, server_ca_private_key, viridian_cert_path / "APIserverCA.crt")
 
     logger.debug("Creating client certificate authority key...")
     client_ca_private_key = generate_private_key(SECP384R1())
@@ -133,7 +134,8 @@ def generate_certificates(address: Union[IPv4Address, str], caerulean_cert_path:
     client_cert_private_key = generate_private_key(SECP384R1())
     client_cert_sign_request = _create_csr(client_cert_private_key, viridian_subject, [altnames], False)
     client_signed_cert = _sign_csr(client_ca_private_key, client_ca_cert, client_cert_sign_request, _GENERATE_CERTIFICATES_VALIDITY)
-    _save_cert_and_key_to_file(client_signed_cert, client_cert_private_key, viridian_cert_path / "APIcert.crt", viridian_cert_path / "APIcert.key")
+    if viridian_cert_path is not None:
+        _save_cert_and_key_to_file(client_signed_cert, client_cert_private_key, viridian_cert_path / "APIcert.crt", viridian_cert_path / "APIcert.key")
 
     logger.debug("Signing caerulean certificates signed with CA...")
     server_cert_private_key = generate_private_key(SECP384R1())
