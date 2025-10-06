@@ -34,6 +34,12 @@ classifiers = [
     "Topic :: System :: Networking"
 ]
 
+dependencies = [
+    "betterproto2[grpclib]~=0.9.0",
+    "betterproto2_compiler~=0.9.0",
+    "grpcio-tools~=1.75.1"
+]
+
 [project.urls]
 repository = "https://github.com/pseusys/SeasideVPN"
 
