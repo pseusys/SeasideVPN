@@ -1,0 +1,1 @@
+> `build-essential libglib2.0-dev libglib2.0-dev-bin libnm-dev pkg-config`

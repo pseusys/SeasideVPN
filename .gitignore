@@ -80,7 +80,7 @@ viridian/reef/Cargo.lock
 viridian/reef/target
 
 ## Rust generated files:
-viridian/reef/src/generated
+viridian/reef/shared_library/include
 
 ## Test files:
 viridian/reef/certificates/
@@ -89,3 +89,10 @@ viridian/reef/certificates/
 viridian/reef/WinDivert-*.zip
 viridian/reef/windivert-bin/
 viridian/reef/windivert-source/
+
+
+
+# C and C++:
+
+## Binary build:
+viridian/barnacles/network-manager/build

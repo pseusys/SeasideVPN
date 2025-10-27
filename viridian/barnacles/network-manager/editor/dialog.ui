@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <object class="GtkBox" id="root_box">
+    <property name="orientation">vertical</property>
+    <property name="spacing">6</property>
+
+    <child>
+      <object class="GtkLabel" id="label_certificate">
+        <property name="label">Certificate file (.sea):</property>
+        <property name="halign">start</property>
+      </object>
+    </child>
+
+    <child>
+      <object class="GtkFileChooserButton" id="filechooser_certificate">
+        <property name="title">Select Seaside Certificate</property>
+        <property name="action">open</property>
+        <property name="show-hidden">false</property>
+      </object>
+    </child>
+  </object>
+</interface>
