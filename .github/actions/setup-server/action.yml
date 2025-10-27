@@ -94,7 +94,7 @@ runs:
         echo "connection-certificate=${CONNECTION_CERTIFICATE_FILE}" >> $GITHUB_OUTPUT
 
     - name: Test Echo Server Access (no VPN)
-      if: ${{ inputs.test-command != '' }}
+      if: ${{ inputs.test-command }}
       shell: bash
       env:
         RUNNER: ${{ runner.os == 'Linux' && 'bash -c' || 'powershell -Command' }}
