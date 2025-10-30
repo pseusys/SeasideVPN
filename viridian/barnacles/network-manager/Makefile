@@ -89,6 +89,15 @@ install: build
 	sudo systemctl restart NetworkManager
 .PHONY: install
 
+run: install
+	cd $(SERVICE_DIR)
+ifeq ($(BUILD_TYPE),debug)
+	sudo -E G_MESSAGES_DEBUG=all nm-$(PLUGIN_NAME)-service
+else
+	sudo nm-$(PLUGIN_NAME)-service
+endif
+.PHONY: install
+
 
 
 # Artifact cleaning:

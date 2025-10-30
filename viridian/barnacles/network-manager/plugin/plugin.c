@@ -1,4 +1,5 @@
 #define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,6 +10,7 @@
 #include <stdint.h>
 
 #include <glib.h>
+#include <glib-unix.h>
 #include <NetworkManager.h>
 
 #include "plugin.h"
@@ -46,7 +48,7 @@ seaside_load_library(NMSeasidePluginPrivate *priv, GError **error)
         g_set_error (error,
                      NM_VPN_PLUGIN_ERROR,
                      NM_VPN_PLUGIN_ERROR_LAUNCH_FAILED,
-                     "Failed to load libseaside: %s", dlerror());
+                     "Error loading libseaside: %s", dlerror());
         return FALSE;
     }
 
@@ -59,7 +61,7 @@ seaside_load_library(NMSeasidePluginPrivate *priv, GError **error)
         g_set_error (error,
                      NM_VPN_PLUGIN_ERROR,
                      NM_VPN_PLUGIN_ERROR_LAUNCH_FAILED,
-                     "libseaside missing required symbols");
+                     "Error reading libseaside symbols");
         dlclose(priv->lib_handle);
         priv->lib_handle = NULL;
         return FALSE;
@@ -111,31 +113,41 @@ seaside_set_ip4_from_vpnconfig(NMVpnServicePlugin *plugin, const VPNConfig *cfg)
 static gboolean
 real_connect(NMVpnServicePlugin *plugin, NMConnection *connection, GError **error)
 {
+    g_debug("DBUS connect: Starting...");
     NMSeasidePluginPrivate *priv = nm_seaside_plugin_get_instance_private(NM_SEASIDE_PLUGIN(plugin));
     NMSettingVpn *s_vpn = nm_connection_get_setting_vpn(connection);
 
     if (!s_vpn) {
+        g_warning("DBUS connect: Error extracting settings");
         g_set_error(error, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_INVALID_CONNECTION,
-                    "No VPN setting present");
+                    "Error extracting settings");
         return FALSE;
     }
 
+    g_debug("DBUS connect: Reading configuration data...");
     const char *certificate = nm_setting_vpn_get_data_item(s_vpn, NM_SEASIDE_KEY_CERTIFICATE);
     const char *protocol = nm_setting_vpn_get_data_item(s_vpn, NM_SEASIDE_KEY_PROTOCOL);
 
     if (!certificate) {
+        g_warning("DBUS connect: Error extracting 'certificate' parameter");
         g_set_error(error, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_BAD_ARGUMENTS,
-                    "Missing 'certificate' parameter");
+                    "Error extracting 'certificate' parameter");
         return FALSE;
-    }
-    if (!protocol) {
-        g_set_error(error, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_BAD_ARGUMENTS,
-                    "Missing 'protocol' parameter");
-        return FALSE;
-    }
+    } else g_debug("DBUS connect: Certificate parameter read: %s", certificate);
 
-    if (!seaside_load_library(priv, error))
+    if (!protocol) {
+        g_warning("DBUS connect: Error extracting 'protocol' parameter");
+        g_set_error(error, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_BAD_ARGUMENTS,
+                    "Error extracting 'protocol' parameter");
         return FALSE;
+    } else g_debug("DBUS connect: Protocol parameter read: %s", protocol);
+
+    if (!seaside_load_library(priv, error)) {
+        g_warning("DBUS connect: Error loading Seaside Reef DLL");
+        g_set_error(error, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_LAUNCH_FAILED,
+                    "Error loading Seaside Reef DLL");
+        return FALSE;
+    } else g_debug("DBUS connect: Seaside Reef DLL loaded!");
 
     VPNConfig cfg;
     memset(&cfg, 0, sizeof(cfg));
@@ -144,23 +156,29 @@ real_connect(NMVpnServicePlugin *plugin, NMConnection *connection, GError **erro
     char *err_string;
 
     /* Synchronous initialization: library fills VPNConfig */
+    g_debug("DBUS connect: Initializing viridian...");
     if (!priv->vpn_init(certificate, protocol, &cfg, &viridian, &err_string)) {
-        g_set_error(error, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_LAUNCH_FAILED, "libseaside: vpn_init() failed: %s", err_string);
+        g_warning("DBUS connect: Error initializing viridian: %s", err_string);
+        g_set_error(error, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_LAUNCH_FAILED, "Error initializing viridian: %s", err_string);
         free(err_string);
         return FALSE;
-    }
+    } else g_debug("DBUS connect: Viridian initialized!");
 
     /* Tell NetworkManager about the IP config we want applied */
+    g_debug("DBUS connect: Setting IPv4 parameters...");
     seaside_set_ip4_from_vpnconfig(plugin, &cfg);
 
     /* Start engine in background; pass plugin pointer so callbacks are instance-specific */
+    g_debug("DBUS connect: Starting viridian...");
     if (!priv->vpn_start(viridian, &priv->coordinator, &err_string)) {
-        g_set_error(error, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_LAUNCH_FAILED, "libseaside: vpn_start() failed: %s", err_string);
+        g_warning("DBUS connect: Error starting viridian: %s", err_string);
+        g_set_error(error, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_LAUNCH_FAILED, "Error starting viridian: %s", err_string);
         free(err_string);
         return FALSE;
-    }
+    } else g_debug("DBUS connect: Viridian started!");
 
     priv->running = TRUE;
+    g_debug("DBUS connect: Success!");
     return TRUE;
 }
 
@@ -168,21 +186,25 @@ real_connect(NMVpnServicePlugin *plugin, NMConnection *connection, GError **erro
 static gboolean
 real_disconnect(NMVpnServicePlugin *plugin, GError **error)
 {
+    g_debug("DBUS disconnect: Starting...");
     NMSeasidePluginPrivate *priv = nm_seaside_plugin_get_instance_private(NM_SEASIDE_PLUGIN(plugin));
 
     if (priv->coordinator && priv->running && priv->vpn_stop) {
         char *err_string;
 
+        g_debug("DBUS disconnect: Stopping SeasideVPN interface...");
         if (!priv->vpn_stop(priv->coordinator, &err_string)) {
-            g_warning("libseaside: vpn_stop() returned false or failed: %s", err_string);
+            g_warning("DBUS disconnect: Error stopping SeasideVPN interface: %s", err_string);
+            g_set_error(error, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_FAILED, "Error stopping SeasideVPN interface: %s", err_string);
             free(err_string);
-        }
+        } else g_debug("DBUS disconnect: SeasideVPN interface stopped successfully!");
 
         priv->coordinator = NULL;
         priv->running = FALSE;
-    }
+    } else g_debug("DBUS disconnect: SeasideVPN interface was never run!");
 
     nm_vpn_service_plugin_disconnect(plugin, NULL);
+    g_debug("DBUS disconnect: Success!");
     return TRUE;
 }
 
@@ -217,23 +239,36 @@ nm_seaside_plugin_new(void)
                                              NM_DBUS_SERVICE_SEASIDE,
                                              NULL);
     if (!plugin) {
-        g_warning("Failed to initialize plugin instance: %s", error ? error->message : "unknown");
+        g_warning("Error creating SeasideVPN NM plugin: %s", error ? error->message : "unknown");
         g_clear_error(&error);
     }
     return plugin;
 }
 
+static gboolean
+signal_handler (gpointer user_data)
+{
+	g_main_loop_quit (user_data);
+	return G_SOURCE_REMOVE;
+}
+
 /* Minimal main: instantiate plugin and run main loop */
 int main(int argc, char *argv[])
 {
+    g_debug("Starting SeasideVPN NM plugin...");
     NMSeasidePlugin *plugin = nm_seaside_plugin_new();
     if (!plugin) return EXIT_FAILURE;
 
+    g_debug("Starting SeasideVPN NM plugin main loop...");
     GMainLoop *loop = g_main_loop_new(NULL, FALSE);
     g_signal_connect(plugin, "quit", G_CALLBACK(g_main_loop_quit), loop);
-    g_main_loop_run(loop);
-    g_main_loop_unref(loop);
 
+    g_unix_signal_add (SIGTERM, signal_handler, loop);
+	g_unix_signal_add (SIGINT, signal_handler, loop);
+    g_main_loop_run(loop);
+
+    g_debug("SeasideVPN NM plugin main loop stopped!");
+    g_main_loop_unref(loop);
     g_object_unref(plugin);
     return EXIT_SUCCESS;
 }
