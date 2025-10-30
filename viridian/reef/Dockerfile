@@ -10,23 +10,29 @@ RUN wget -qO- https://sh.rustup.rs | sh -s -- --default-toolchain 1.86.0 -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 COPY vessels vessels
-COPY viridian/reef/Cargo.toml viridian/reef/Cargo.toml
-RUN cargo build --manifest-path viridian/reef/Cargo.toml --all-features --bin cli || true
+COPY viridian/reef/Cargo.toml viridian/reef/
+COPY viridian/reef/cli_executable/Cargo.toml viridian/reef/cli_executable/
+COPY viridian/reef/rust_library/Cargo.toml viridian/reef/rust_library/
+COPY viridian/reef/shared_library/Cargo.toml viridian/reef/shared_library/
+COPY viridian/reef/test_library/Cargo.toml viridian/reef/test_library/
+RUN cargo build --manifest-path viridian/reef/Cargo.toml --bin cli --lib || true
 
-COPY viridian/reef/src viridian/reef/src
+COPY viridian/reef/cli_executable/ viridian/reef/cli_executable/
+COPY viridian/reef/rust_library/ viridian/reef/rust_library/
+COPY viridian/reef/shared_library/ viridian/reef/shared_library/
+COPY viridian/reef/test_library/ viridian/reef/test_library/
 
 
 FROM downloader AS builder
 
-RUN cargo build --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml
+RUN cargo build --manifest-path viridian/reef/Cargo.toml --bin cli --lib
 
 
 FROM downloader AS tester
 
-ENV RUST_BACKTRACE=1
+ENV RUST_BACKTRACE=full
 RUN apt-get update && apt-get install -y --no-install-recommends net-tools uml-utilities iptables iproute2 && rm -rf /var/lib/apt/lists/*
 
-COPY viridian/reef/tests viridian/reef/tests
 WORKDIR /seaside/viridian/reef
 
 
@@ -37,7 +43,7 @@ WORKDIR /seaside/viridian
 ARG NETWORK_GATEWAY
 ENV ARG_NETWORK_GATEWAY="$NETWORK_GATEWAY"
 
-ENV RUST_BACKTRACE=1
+ENV RUST_BACKTRACE=full
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV DEBIAN_FRONTEND=noninteractive

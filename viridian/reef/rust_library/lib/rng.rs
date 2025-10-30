@@ -1,10 +1,10 @@
 use rand::CryptoRng;
 use rand::Rng;
 
-#[cfg(test)]
+#[cfg(any(feature = "test", test))]
 struct MockRng;
 
-#[cfg(test)]
+#[cfg(any(feature = "test", test))]
 impl rand::RngCore for MockRng {
     fn next_u32(&mut self) -> u32 {
         0u32
@@ -23,17 +23,17 @@ impl rand::RngCore for MockRng {
     }
 }
 
-#[cfg(test)]
+#[cfg(any(feature = "test", test))]
 impl CryptoRng for MockRng {}
 
 #[inline]
-#[cfg(test)]
+#[cfg(any(feature = "test", test))]
 pub(crate) fn get_rng() -> impl Rng + CryptoRng {
     MockRng
 }
 
 #[inline]
-#[cfg(not(test))]
+#[cfg(not(any(feature = "test", test)))]
 pub(crate) fn get_rng() -> impl Rng + CryptoRng {
     rand::rngs::OsRng
 }

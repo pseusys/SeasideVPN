@@ -1,0 +1,37 @@
+[package]
+name = "cli"
+version = "0.0.4"
+edition = "2021"
+description = "A production-ready SeasideVPN client for Linux and Windows"
+authors = [
+    "Alexander Sergeev <alexander.sergeev@onmail.com>"
+]
+
+
+
+[dependencies]
+reeflib = { path = "../rust_library" }
+env_logger = "^0.11.5"
+futures = "^0.3.31"
+ipnet = "^2.10.1"
+log = "^0.4.22"
+prost = "^0.14.1"
+regex = "^1.11.1"
+simple-error = "^0.3.1"
+structopt = "^0.3.26"
+tokio = { version = "^1.47.1", features = ["full"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+nftables = "^0.6.3"
+rtnetlink = "^0.18.0"
+tun = { version = "^0.8.3", features = ["async"] }
+
+[dev-dependencies]
+reeflib = { path = "../rust_library", features = ["test"] }
+reeftest = { path = "../test_library" }
+
+
+
+[[bin]]
+name = "cli"
+path = "src/mod.rs"

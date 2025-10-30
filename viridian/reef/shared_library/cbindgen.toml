@@ -1,0 +1,6 @@
+language = "C"
+
+include_guard = "SEASIDE_H"
+cpp_compat = true
+
+line_length = 256

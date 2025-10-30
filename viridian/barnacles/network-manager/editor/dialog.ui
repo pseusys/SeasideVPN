@@ -18,5 +18,33 @@
         <property name="show-hidden">false</property>
       </object>
     </child>
+
+    <child>
+      <object class="GtkLabel" id="label_protocol">
+        <property name="label">Protocol:</property>
+        <property name="halign">start</property>
+      </object>
+    </child>
+
+    <child>
+      <object class="GtkBox" id="box_protocol">
+        <property name="orientation">horizontal</property>
+        <property name="spacing">6</property>
+
+        <child>
+          <object class="GtkRadioButton" id="radio_typhoon">
+            <property name="label">TYPHOON</property>
+            <property name="active">true</property>
+          </object>
+        </child>
+
+        <child>
+          <object class="GtkRadioButton" id="radio_port">
+            <property name="label">PORT</property>
+            <property name="group">radio_typhoon</property>
+          </object>
+        </child>
+      </object>
+    </child>
   </object>
 </interface>

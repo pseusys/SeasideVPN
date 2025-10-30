@@ -2,43 +2,11 @@
 .EXPORT_ALL_VARIABLES:
 .DEFAULT_GOAL := help
 
-SHELL=/bin/bash
-.SHELLFLAGS=-c -e
+SHELL := /bin/bash
+.SHELLFLAGS := -c -e
 
-BOLD=\033[1m
-BLUE=\033[34m
-GREEN=\033[32m
-YELLOW=\033[33m
-RESET=\033[0m
-
-BUILD_TYPE=debug
-
-WINDIVERT_VERSION=2.2.2
-WINDIVERT_PATH=windivert-bin
-BINARY_PATH=target/$(BUILD_TYPE)/
-
-WINDIVERT_TEMP=windivert-source
-WINDIVERT_SOURCE=WinDivert-$(WINDIVERT_VERSION)-A
-WINDIVERT_URL=https://github.com/basil00/WinDivert/releases/download/v$(WINDIVERT_VERSION)/$(WINDIVERT_SOURCE).zip
-
-
-UNAME_M := $(shell uname -m)
-
-ifeq ($(UNAME_M),x86_64)
-	WINDIVERT_ARCH := x64
-    WINTUN_ARCH := amd64
-else ifeq ($(UNAME_M),i686)
-	WINDIVERT_ARCH := x32
-    WINTUN_ARCH := x86
-else ifeq ($(UNAME_M),aarch64)
-	WINDIVERT_ARCH := x64
-    WINTUN_ARCH := arm64
-else ifeq ($(UNAME_M),armv7l)
-	WINDIVERT_ARCH := x32
-    WINTUN_ARCH := arm
-else
-    $(error Unsupported uname architecture: $(UNAME_M))
-endif
+BUILD_TYPE := debug
+BINARY_PATH := target/$(BUILD_TYPE)
 
 
 
@@ -49,8 +17,33 @@ help:
 
 
 
+# Building and dependency management:
+
+WINDIVERT_VERSION := 2.2.2
+WINDIVERT_PATH := windivert-bin
+
+WINDIVERT_TEMP := windivert-source
+WINDIVERT_SOURCE := WinDivert-$(WINDIVERT_VERSION)-A
+WINDIVERT_URL := https://github.com/basil00/WinDivert/releases/download/v$(WINDIVERT_VERSION)/$(WINDIVERT_SOURCE).zip
+
+
+UNAME_M := $(shell uname -m)
+
+ifeq ($(UNAME_M),x86_64)
+	WINDIVERT_ARCH := x64
+else ifeq ($(UNAME_M),i686)
+	WINDIVERT_ARCH := x32
+else ifeq ($(UNAME_M),aarch64)
+	WINDIVERT_ARCH := x64
+else ifeq ($(UNAME_M),armv7l)
+	WINDIVERT_ARCH := x32
+else
+    $(error Unsupported uname architecture: $(UNAME_M))
+endif
+
+
 dependencies:
-	@ # Download and unpack dependencies
+	@ # Download and unpack standalone dependencies
 ifeq ($(OS),Windows_NT)
 	echo "Downloading WinDivert library version $(WINDIVERT_VERSION)..."
 	curl -sSL -o $(WINDIVERT_SOURCE).zip $(WINDIVERT_URL)
@@ -59,40 +52,53 @@ ifeq ($(OS),Windows_NT)
 	mkdir -p $(WINDIVERT_PATH)
 	mv $(WINDIVERT_TEMP)/$(WINDIVERT_SOURCE)/$(WINDIVERT_ARCH)/* $(WINDIVERT_PATH)/
 	rm -rf $(WINDIVERT_TEMP)
-	echo "All dependencies ready!"
+	echo "All standalone dependencies ready!"
 endif
 .PHONY: dependencies
 
 runtime:
-	@ # Move dependencies next to the executable
+	@ # Move standalone dependencies next to the executable
 ifeq ($(OS),Windows_NT)
 	echo "Copying dependencies next to the executable..."
 	mkdir -p $(BINARY_PATH)
 	cp $(WINDIVERT_PATH)/*.dll $(WINDIVERT_PATH)/*.sys $(BINARY_PATH)
-	echo "All dependencies in place!"
+	echo "All standalone dependencies in place!"
 endif
 .PHONY: runtime
 
 build: dependencies
-	@ # Build reef locally TODO: add feature strict, checking warnings, docs, removing debug info
+	@ # Build standalone reef locally TODO: add feature strict, checking warnings, docs, removing debug info
 ifeq ($(BUILD_TYPE),release)
-	cargo build --all-features --release
+	cargo build --release --bin cli
 else
-	cargo build --all-features
+	cargo build --bin cli
 endif
 .PHONY: build
 
 run: build runtime
-	@ # Run reef locally
-	cargo run --features cli-exec --bin cli
+	@ # Run standalone reef locally
+	cargo run --bin cli
 .PHONY: run
 
 
 
+build-lib:
+	@ # Build standalone reef locally TODO: add feature strict, checking warnings, docs, removing debug info
+ifeq ($(BUILD_TYPE),release)
+	cargo build --release --lib
+else
+	cargo build --lib
+endif
+.PHONY: build-lib
+
+
+
+# Testing and code quality:
+
 test:
 	@ # Run tests inside of the testing docker container
 	docker build -f Dockerfile --target tester -t seaside-reef-test ../..
-	docker run --privileged --rm --name seaside-reef-test --sysctl net.ipv6.conf.all.disable_ipv6=1 --entrypoint cargo seaside-reef-test test --package SeasideVPN-Reef --lib -- --nocapture --show-output
+	docker run --privileged --rm --name seaside-reef-test --sysctl net.ipv6.conf.all.disable_ipv6=1 --entrypoint cargo seaside-reef-test test --workspace -- --nocapture --show-output
 .PHONY: test
 
 lint: build
@@ -102,9 +108,12 @@ lint: build
 
 
 
+# Artifact cleaning:
+
 clean:
-	@ # Clean all reef build artifacts
-	rm -rf target certificates
+	@ # Clean all the artifacts for any targets
+	cargo clean
 	rm -f Cargo.lock
+	rm -rf shared_library/include
 	docker rmi -f seaside-reef-test
 .PHONY: clean

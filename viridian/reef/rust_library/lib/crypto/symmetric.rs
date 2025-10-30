@@ -1,5 +1,5 @@
 #[cfg(test)]
-#[path = "../../../tests/crypto/symmetric.rs"]
+#[path = "../../tests/crypto/symmetric.rs"]
 mod test_symmetric;
 
 use chacha20poly1305::aead::AeadMutInPlace;

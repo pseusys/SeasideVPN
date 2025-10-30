@@ -4,8 +4,8 @@ use std::{net::Ipv4Addr, sync::Arc};
 use ipnet::Ipv4Net;
 use simple_error::bail;
 
-use crate::bytes::{get_buffer, ByteBuffer};
-use crate::{DynResult, Reader, Writer};
+use reeflib::bytes::{get_buffer, ByteBuffer};
+use reeflib::{DynResult, Reader, Writer};
 
 #[cfg(target_os = "linux")]
 mod linux;

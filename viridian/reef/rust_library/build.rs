@@ -7,7 +7,7 @@ use protoc_bin_vendored::{include_path, protoc_bin_path};
 const CERTIFICATES_PROTO: &str = "certificates.proto";
 
 fn main() {
-    let proto_dir = PathBuf::from(var("CARGO_MANIFEST_DIR").unwrap()).parent().unwrap().parent().unwrap().join("vessels");
+    let proto_dir = PathBuf::from(var("CARGO_MANIFEST_DIR").unwrap()).parent().unwrap().parent().unwrap().parent().unwrap().join("vessels");
     let proto_certificates_file = proto_dir.join(CERTIFICATES_PROTO);
     assert!(proto_certificates_file.exists(), "Certificates protobuf definition doesn't exist!");
 

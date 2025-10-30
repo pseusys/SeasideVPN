@@ -1,20 +1,24 @@
-use std::env::{set_var, var};
 use std::fs::read;
 use std::net::Ipv4Addr;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use env_logger::init;
-use log::{debug, info};
-use prost::Message;
-use reeflib::generated::SeasideWhirlpoolClientCertificate;
-use reeflib::protocol::ProtocolType;
-use simple_error::bail;
+use env_logger::{Env, init_from_env};
 use structopt::StructOpt;
 
+use log::{debug, info};
+use prost::Message;
+use simple_error::bail;
+
+use reeflib::generated::SeasideWhirlpoolClientCertificate;
+use reeflib::protocol::ProtocolType;
 use reeflib::utils::parse_address;
-use reeflib::viridian::Viridian;
 use reeflib::DynResult;
+
+use crate::viridian::Viridian;
+
+mod tunnel;
+mod viridian;
 
 const DEFAULT_LOG_LEVEL: &str = "INFO";
 
@@ -67,23 +71,9 @@ struct Opt {
     command: Option<String>,
 }
 
-fn init_logging() {
-    set_var(
-        "RUST_LOG",
-        match var("SEASIDE_LOG_LEVEL") {
-            Ok(level) => level,
-            _ => match var("RUST_LOG") {
-                Ok(level) => level,
-                _ => DEFAULT_LOG_LEVEL.to_string(),
-            },
-        },
-    );
-    init();
-}
-
 #[tokio::main]
 async fn main() -> DynResult<()> {
-    init_logging();
+    init_from_env(Env::new().filter_or("SEASIDE_LOG_LEVEL", DEFAULT_LOG_LEVEL));
     let opt = Opt::from_args();
 
     let protocol = ProtocolType::from_str(&opt.protocol)?;

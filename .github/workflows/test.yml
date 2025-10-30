@@ -111,7 +111,7 @@ jobs:
 
       - name: Test Viridian Reef (unit) 🧪
         working-directory: viridian/reef
-        run: ${{ env.SUDO }} cargo test --package SeasideVPN-Reef --lib -- --nocapture --show-output
+        run: ${{ env.SUDO }} cargo test --workspace -- --nocapture --show-output
 
       - name: Setup VPN Server 🖴
         id: setup-test-server

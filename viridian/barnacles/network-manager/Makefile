@@ -25,16 +25,20 @@ PLUGIN_NAME := seasidevpn
 SERVICE_NAME := org.freedesktop.NetworkManager.$(PLUGIN_NAME)
 
 LIB_DIR := /usr/lib/NetworkManager/VPN
-PLUGIN_DIR := /usr/lib/$(BUILD_ARCH)/NetworkManager
+BIN_DIR := /usr/lib/$(BUILD_ARCH)
+PLUGIN_DIR := $(BIN_DIR)/NetworkManager
 SERVICE_DIR := /usr/libexec
 NM_DBUS_DIR := /usr/share/dbus-1/system.d
 
+REEF_DIR := ../../reef
 NM_CONFIGURATION_DIR := configuration
 NM_PLUGIN_DIR := plugin
 NM_EDITOR_DIR := editor
 NM_BUILD_DIR := build
+NM_BIN_DIR := $(REEF_DIR)/target/$(BUILD_TYPE)
 
-INSTALL_BIN := $(SERVICE_DIR)/nm-$(PLUGIN_NAME)-service
+INSTALL_BIN := $(BIN_DIR)/libseaside.so
+INSTALL_PLUGIN := $(SERVICE_DIR)/nm-$(PLUGIN_NAME)-service
 INSTALL_NAME := $(LIB_DIR)/nm-$(PLUGIN_NAME)-service.name
 INSTALL_CONF := $(NM_DBUS_DIR)/nm-$(PLUGIN_NAME)-service.conf
 INSTALL_EDITOR := $(PLUGIN_DIR)/libnm-vpn-plugin-$(PLUGIN_NAME).so
@@ -59,6 +63,7 @@ editor-build: dir-build
 
 plugin-build: dir-build
 	@ # Build network manager reef plugin
+	$(MAKE) -C $(REEF_DIR) -s --no-print-directory build-lib
 	gcc -fPIC $(NM_PLUGIN_DIR)/plugin.c $(NM_PLUGIN_DIR)/plugin.h -o $(NM_BUILD_DIR)/plugin $(G_C_FLAGS)
 .PHONY: plugin-build
 
@@ -66,7 +71,7 @@ config-build: dir-build
 	@ # Build network manager reef configuration
 	sed "s|SEASIDE-PLUGIN-NAME|$(PLUGIN_NAME)|" $(NM_CONFIGURATION_DIR)/descriptor.ini > $(NM_BUILD_DIR)/descriptor.ini.gen
 	sed -i "s|DBUS-SERVICE-NAME|$(SERVICE_NAME)|" $(NM_BUILD_DIR)/descriptor.ini.gen
-	sed -i "s|PATH-TO-SEASIDEVPN-BIN|$(INSTALL_BIN)|" $(NM_BUILD_DIR)/descriptor.ini.gen
+	sed -i "s|PATH-TO-SEASIDEVPN-PLUGIN|$(INSTALL_PLUGIN)|" $(NM_BUILD_DIR)/descriptor.ini.gen
 	sed -i "s|PATH-TO-SEASIDEVPN-EDITOR|$(INSTALL_EDITOR)|" $(NM_BUILD_DIR)/descriptor.ini.gen
 .PHONY: config-build
 
@@ -76,10 +81,11 @@ build: editor-build plugin-build config-build
 
 install: build
 	@ # Install network manager reef plugin
-	# sudo install -D -m 755 $(NM_BUILD_DIR)/plugin $(INSTALL_BIN)
+	sudo install -D -m 755 $(NM_BUILD_DIR)/plugin $(INSTALL_PLUGIN)
 	sudo install -D -m 644 $(NM_BUILD_DIR)/descriptor.ini.gen $(INSTALL_NAME)
 	sudo install -D -m 644 $(NM_CONFIGURATION_DIR)/service.conf $(INSTALL_CONF)
 	sudo install -D -m 644 $(NM_BUILD_DIR)/editor.so $(INSTALL_EDITOR)
+	sudo install -D -m 644 $(NM_BIN_DIR)/libseaside.so $(INSTALL_BIN)
 	sudo systemctl restart NetworkManager
 .PHONY: install
 
@@ -90,5 +96,5 @@ install: build
 clean: rust-clean
 	@ # Clean network manager plugin build artifacts
 	rm -f $(NM_BUILD_DIR)
-	sudo rm -f $(INSTALL_BIN) $(INSTALL_NAME) $(INSTALL_CONF) $(INSTALL_EDITOR)
+	sudo rm -f $(INSTALL_PLUGIN) $(INSTALL_NAME) $(INSTALL_CONF) $(INSTALL_EDITOR) $(INSTALL_BIN)
 .PHONY: clean

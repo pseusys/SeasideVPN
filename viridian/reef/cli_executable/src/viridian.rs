@@ -3,36 +3,25 @@ use std::net::{AddrParseError, Ipv4Addr};
 use std::process::ExitStatus;
 
 use futures::stream::{FuturesUnordered, StreamExt};
-use ipnet::{Ipv4Net, PrefixLenError};
+use ipnet::{self, Ipv4Net, PrefixLenError};
 use log::{debug, info};
 use regex::Regex;
 use simple_error::{bail, require_with, SimpleError};
 use tokio::process::Command;
 use tokio::{select, try_join};
 
-use crate::bytes::ByteBuffer;
-use crate::general::create_handle;
-use crate::generated::SeasideWhirlpoolClientCertificate;
-use crate::protocol::ProtocolType;
+use reeflib::bytes::ByteBuffer;
+use reeflib::general::create_handle;
+use reeflib::generated::SeasideWhirlpoolClientCertificate;
+use reeflib::protocol::ProtocolType;
+use reeflib::utils::{parse_address, parse_env, parse_str_env};
+use reeflib::viridian::{create_signal_handlers, DEFAULT_DNS_ADDRESS, DEFAULT_SVR_INDEX, DEFAULT_TUNNEL_ADDRESS, DEFAULT_TUNNEL_NAME, DEFAULT_TUNNEL_NETMASK};
+use reeflib::DynResult;
+
 use crate::tunnel::Tunnel;
-use crate::utils::{parse_address, parse_env, parse_str_env};
-use crate::DynResult;
 
-#[cfg(target_os = "linux")]
-mod linux;
-#[cfg(target_os = "linux")]
-use linux::*;
-
-#[cfg(target_os = "windows")]
-mod windows;
-#[cfg(target_os = "windows")]
-use windows::*;
-
-const DEFAULT_TUNNEL_NAME: &str = "seatun";
-const DEFAULT_DNS_ADDRESS: Ipv4Addr = Ipv4Addr::new(0, 0, 0, 0);
-const DEFAULT_TUNNEL_ADDRESS: Ipv4Addr = Ipv4Addr::new(192, 168, 0, 82);
-const DEFAULT_TUNNEL_NETMASK: Ipv4Addr = Ipv4Addr::new(255, 255, 255, 0);
-const DEFAULT_SVR_INDEX: u8 = 82;
+pub const DEFAULT_SHELL: &str = "sh";
+pub const DEFAULT_ARG: &str = "-c";
 
 pub struct Viridian<'a> {
     key: ByteBuffer<'a>,
@@ -152,7 +141,7 @@ impl<'a> Viridian<'a> {
                         println!("The command exited successfully!");
                         Ok(())
                     } else {
-                        Err(SimpleError::new("The command exited with error code: {status}"))
+                        Err(SimpleError::new(format!("The command exited with error code: {status}")))
                     }
                 },
                 Err(err) => Err(SimpleError::new(format!("VPN command execution error: {err}")))

@@ -16,6 +16,7 @@
 #define SEASIDE_PLUGIN_DESC "An obscure P2P network PPTP VPN distributed system"
 
 #define NM_SEASIDE_KEY_CERTIFICATE "certificate"
+#define NM_SEASIDE_KEY_PROTOCOL "protocol" 
 
 // PLUGIN:
 
@@ -109,25 +110,44 @@ static gboolean init_editor_plugin(SeasideEditor* self, NMConnection* connection
 	SeasideEditorPrivate* priv = seaside_editor_get_instance_private(self);
 	NMSettingVpn* s_vpn = nm_connection_get_setting_vpn(connection);
 
-	GtkWidget* widget = GTK_WIDGET(gtk_builder_get_object(priv->builder, "filechooser_certificate"));
-	if (!widget) return FALSE;
+	GtkWidget* filechooser = GTK_WIDGET(gtk_builder_get_object(priv->builder, "filechooser_certificate"));
+	if (!filechooser) return FALSE;
 
 	GtkFileFilter *filter_cert = gtk_file_filter_new();
 	gtk_file_filter_set_name(filter_cert, "Seaside Certificate Files (*.sea)");
 	gtk_file_filter_add_pattern(filter_cert, "*.sea");
-	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(widget), filter_cert);
+	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(filechooser), filter_cert);
 
 	GtkFileFilter *filter_all = gtk_file_filter_new();
 	gtk_file_filter_set_name(filter_all, "All Files");
 	gtk_file_filter_add_pattern(filter_all, "*");
-	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(widget), filter_all);
+	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(filechooser), filter_all);
+
+	GtkRadioButton* radio_typhoon = GTK_RADIO_BUTTON(gtk_builder_get_object(priv->builder, "radio_typhoon"));
+	GtkRadioButton* radio_port = GTK_RADIO_BUTTON(gtk_builder_get_object(priv->builder, "radio_port"));
+	if (!radio_typhoon || !radio_port) return FALSE;
 
 	if (s_vpn) {
-		const char* value = nm_setting_vpn_get_data_item(s_vpn, NM_SEASIDE_KEY_CERTIFICATE);
-		if (value) gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(widget), value);
+		const char* cert_value = nm_setting_vpn_get_data_item(s_vpn, NM_SEASIDE_KEY_CERTIFICATE);
+		if (cert_value) gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(filechooser), cert_value);
+
+		const char* proto_value = nm_setting_vpn_get_data_item(s_vpn, NM_SEASIDE_KEY_PROTOCOL);
+		if (proto_value) {
+			if (radio_typhoon && g_strcmp0(proto_value, "typhoon") == 0)
+				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(radio_typhoon), TRUE);
+			else if (radio_port && g_strcmp0(proto_value, "port") == 0)
+				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(radio_port), TRUE);
+			else
+				return FALSE;
+		} else {
+			if (radio_typhoon)
+				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(radio_typhoon), TRUE);
+		}
 	}
 
-	g_signal_connect(G_OBJECT(widget), "file-set", G_CALLBACK(stuff_changed_cb), self);
+	g_signal_connect(G_OBJECT(filechooser), "file-set", G_CALLBACK(stuff_changed_cb), self);
+	g_signal_connect(G_OBJECT(radio_typhoon), "toggled", G_CALLBACK(stuff_changed_cb), self);
+	g_signal_connect(G_OBJECT(radio_port), "toggled", G_CALLBACK(stuff_changed_cb), self);
 	return TRUE;
 }
 
@@ -147,13 +167,24 @@ static gboolean update_connection(NMVpnEditor* iface, NMConnection* connection, 
 	NMSettingVpn* s_vpn = NM_SETTING_VPN(nm_setting_vpn_new());
 	g_object_set(s_vpn, NM_SETTING_VPN_SERVICE_TYPE, SEASIDE_PLUGIN_SERVICE, NULL);
 
-	GtkWidget* widget = GTK_WIDGET(gtk_builder_get_object(priv->builder, "filechooser_certificate"));
-	const char* filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(widget));
+	GtkWidget* filechooser = GTK_WIDGET(gtk_builder_get_object(priv->builder, "filechooser_certificate"));
+	const char* filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(filechooser));
 	if (filename && strlen(filename)) nm_setting_vpn_add_data_item(s_vpn, NM_SEASIDE_KEY_CERTIFICATE, filename);
+
+	GtkRadioButton* radio_typhoon = GTK_RADIO_BUTTON(gtk_builder_get_object(priv->builder, "radio_typhoon"));
+	GtkRadioButton* radio_port = GTK_RADIO_BUTTON(gtk_builder_get_object(priv->builder, "radio_port"));
+
+	const char* protocol_value = "typhoon";
+	if (radio_typhoon && gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(radio_typhoon)))
+		protocol_value = "typhoon";
+	else if (radio_port && gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(radio_port)))
+		protocol_value = "port";
+	nm_setting_vpn_add_data_item(s_vpn, NM_SEASIDE_KEY_PROTOCOL, protocol_value);
 
 	nm_connection_add_setting(connection, NM_SETTING(s_vpn));
 	return TRUE;
 }
+
 
 static NMVpnEditor* nm_vpn_editor_interface_new(NMConnection* connection, GError** error) {
 	g_message("Constructing SeasideVPN editor interface...");
