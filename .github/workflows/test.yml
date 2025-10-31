@@ -151,7 +151,7 @@ jobs:
           override: true
 
       - name: Install Network Manager
-        run: sudo apt-get install network-manager
+        run: sudo apt-get install network-manager build-essential libglib2.0-dev libglib2.0-dev-bin libnm-dev pkg-config
 
       - name: Setup VPN Server 🖴
         id: setup-test-server
