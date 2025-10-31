@@ -150,8 +150,8 @@ jobs:
           rust-src-dir: viridian/reef
           override: true
 
-      - name: Install Network Manager
-        run: sudo apt-get install network-manager build-essential libglib2.0-dev libglib2.0-dev-bin libnm-dev pkg-config
+      - name: Install Network Manager and Dependencies
+        run: sudo apt-get install network-manager build-essential libnm-dev libglib2.0-dev libglib2.0-dev-bin libgtk-3-dev pkg-config
 
       - name: Setup VPN Server 🖴
         id: setup-test-server
