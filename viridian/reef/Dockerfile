@@ -36,26 +36,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends net-tools uml-u
 WORKDIR /seaside/viridian/reef
 
 
-FROM tester AS nm-tester
-
-RUN apt-get update && apt-get install -y network-manager dbus build-essential libnm-dev libglib2.0-dev libglib2.0-dev-bin libgtk-3-dev pkg-config && rm -rf /var/lib/apt/lists/*
-
-COPY viridian/barnacles/network-manager/ viridian/barnacles/network-manager/
-RUN make -C viridian/barnacles/network-manager/ install
-
-VOLUME /seaside/viridian/certificate.sea
-
-ENV PROTOCOL=
-ENV CERTIFICATE="/seaside/viridian/certificate.sea"
-
-ENV TEST_COMMAND=
-ENV CREATE_COMMAND="nmcli connection add type vpn con-name seaside-vpn-$PROTOCOL vpn-type seasidevpn vpn.data \"certificate=$CERTIFICATE,protocol=$PROTOCOL\""
-ENV START_COMMAND="nmcli connection up seaside-vpn-$PROTOCOL"
-ENV RUN_COMMAND="$CREATE_COMMAND && $START_COMMAND && $TEST_COMMAND"
-
-ENTRYPOINT [ "sh", "-c", "/etc/init.d/dbus start || dbus-daemon --system & NetworkManager --no-daemon & eval \"$RUN_COMMAND\"" ]
-
-
 FROM ubuntu:22.04 AS default
 
 WORKDIR /seaside/viridian
