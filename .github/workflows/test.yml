@@ -174,14 +174,14 @@ jobs:
       - name: Test Viridian Reef PORT (integration) 🧪
         working-directory: viridian/reef
         run: |
-          sudo nmcli --show-logs connection up seaside-vpn-port
+          sudo nmcli connection up seaside-vpn-port
           ${{ env.TEST_COMMAND }} --local-port 44444
           sudo nmcli connection down seaside-vpn-port
 
       - name: Test Viridian Reef TYPHOON (integration) 🧪
         working-directory: viridian/reef
         run: |
-          sudo nmcli --show-logs connection up seaside-vpn-typhoon
+          sudo nmcli connection up seaside-vpn-typhoon
           ${{ env.TEST_COMMAND }} --local-port 44445
           sudo nmcli connection down seaside-vpn-vpn-typhoon
 
