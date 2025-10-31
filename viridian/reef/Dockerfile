@@ -11,15 +11,15 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 
 COPY vessels vessels
 COPY viridian/reef/Cargo.toml viridian/reef/
-COPY viridian/reef/cli_executable/Cargo.toml viridian/reef/cli_executable/
-COPY viridian/reef/rust_library/Cargo.toml viridian/reef/rust_library/
+COPY viridian/reef/common_library/Cargo.toml viridian/reef/common_library/
 COPY viridian/reef/shared_library/Cargo.toml viridian/reef/shared_library/
+COPY viridian/reef/standalone_executable/Cargo.toml viridian/reef/standalone_executable/
 COPY viridian/reef/test_library/Cargo.toml viridian/reef/test_library/
 RUN cargo build --manifest-path viridian/reef/Cargo.toml --bin cli --lib || true
 
-COPY viridian/reef/cli_executable/ viridian/reef/cli_executable/
-COPY viridian/reef/rust_library/ viridian/reef/rust_library/
+COPY viridian/reef/common_library/ viridian/reef/common_library/
 COPY viridian/reef/shared_library/ viridian/reef/shared_library/
+COPY viridian/reef/standalone_executable/ viridian/reef/standalone_executable/
 COPY viridian/reef/test_library/ viridian/reef/test_library/
 
 

@@ -148,12 +148,12 @@ jobs:
         with:
           command: build
           use-cross: true
-          args: --release --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml --target ${{ env.TARGET }}
+          args: --release --bin seaside_standalone --manifest-path viridian/reef/Cargo.toml --target ${{ env.TARGET }}
 
       - name: Rename Executable 📛
         working-directory: viridian/reef
         env:
-          EXEC_SRC: ${{ matrix.os == 'linux' && 'cli' || 'cli.exe' }}
+          EXEC_SRC: ${{ matrix.os == 'linux' && 'seaside_standalone' || 'seaside_standalone.exe' }}
           EXEC_STEM: ${{ format('viridian_reef_executable_{0}_{1}', matrix.os, matrix.arch) }}
           EXEC_EXT: ${{ matrix.os == 'linux' && 'run' || 'exe' }}
         run: mv target/${{ env.TARGET }}/release/${{ env.EXEC_SRC }} target/${{ env.EXEC_STEM }}.${{ env.EXEC_EXT }}

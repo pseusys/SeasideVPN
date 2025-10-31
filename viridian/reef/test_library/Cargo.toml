@@ -1,8 +1,8 @@
 [package]
-name = "reeftest"
+name = "reef-test"
 version = "0.0.4"
 edition = "2021"
-description = "A production-ready SeasideVPN client for Linux and Windows"
+description = "A test set for SeasideVPN reef library"
 authors = [
     "Alexander Sergeev <alexander.sergeev@onmail.com>"
 ]
@@ -18,4 +18,3 @@ simple-error = "^0.3.1"
 [lib]
 name = "reeftest"
 path = "lib/mod.rs"
-crate-type = ["rlib"]

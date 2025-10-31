@@ -1,8 +1,8 @@
 [package]
-name = "seaside"
+name = "reefshared"
 version = "0.0.4"
 edition = "2021"
-description = "A production-ready SeasideVPN client for Linux and Windows"
+description = "A shared library for integration of Linux network-manager SeasideVPN plugin"
 authors = [
     "Alexander Sergeev <alexander.sergeev@onmail.com>"
 ]
@@ -10,7 +10,7 @@ authors = [
 
 
 [dependencies]
-reeflib = { path = "../rust_library" }
+reef-common = { path = "../common_library" }
 futures = "^0.3.31"
 ipnet = "^2.10.1"
 log = "^0.4.22"
@@ -23,7 +23,7 @@ tokio = { version = "^1.47.1", features = ["full"] }
 tun = { version = "^0.8.3", features = ["async"] }
 
 [build-dependencies]
-reeflib = { path = "../rust_library", features = ["test"] }
+reef-common = { path = "../common_library", features = ["test"] }
 cbindgen = "^0.29.2"
 
 

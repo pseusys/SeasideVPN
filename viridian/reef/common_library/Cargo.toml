@@ -1,8 +1,8 @@
 [package]
-name = "reeflib"
+name = "reef-common"
 version = "0.0.4"
 edition = "2021"
-description = "A production-ready SeasideVPN client for Linux and Windows"
+description = "A library for constructing SeasideVPN clients"
 authors = [
     "Alexander Sergeev <alexander.sergeev@onmail.com>"
 ]
@@ -48,7 +48,7 @@ reqwest = { version = "^0.12.23", features = ["blocking", "json"] }
 zip = "^4.5.0"
 
 [dev-dependencies]
-reeftest = { path = "../test_library" }
+reef-test = { path = "../test_library" }
 regex = "^1.11.1"
 
 
@@ -61,4 +61,3 @@ test = []
 [lib]
 name = "reeflib"
 path = "lib/mod.rs"
-crate-type = ["rlib"]

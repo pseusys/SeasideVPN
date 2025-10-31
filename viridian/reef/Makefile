@@ -69,15 +69,15 @@ endif
 build: dependencies
 	@ # Build standalone reef locally TODO: add feature strict, checking warnings, docs, removing debug info
 ifeq ($(BUILD_TYPE),release)
-	cargo build --release --bin cli
+	cargo build --release --bin seaside_standalone
 else
-	cargo build --bin cli
+	cargo build --bin seaside_standalone
 endif
 .PHONY: build
 
 run: build runtime
 	@ # Run standalone reef locally
-	cargo run --bin cli
+	cargo run --bin seaside_standalone
 .PHONY: run
 
 

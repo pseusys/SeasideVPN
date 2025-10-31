@@ -31,9 +31,9 @@ VERSIONED_FILES=(
     "viridian/algae/README.md" \
     "viridian/algae/sources/version.py" \
     "viridian/algae/setup/whirlpool.py" \
-    "viridian/reef/cli_executable/Cargo.toml" \
-    "viridian/reef/rust_library/Cargo.toml" \
+    "viridian/reef/common_library/Cargo.toml" \
     "viridian/reef/shared_library/Cargo.toml" \
+    "viridian/reef/standalone_executable/Cargo.toml" \
     "viridian/reef/test_library/Cargo.toml" \
     "viridian/reef/README.md" \
     "caerulean/whirlpool/README.md" \

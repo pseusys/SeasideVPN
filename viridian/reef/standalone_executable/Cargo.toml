@@ -1,5 +1,5 @@
 [package]
-name = "cli"
+name = "reef-standalone"
 version = "0.0.4"
 edition = "2021"
 description = "A production-ready SeasideVPN client for Linux and Windows"
@@ -10,7 +10,7 @@ authors = [
 
 
 [dependencies]
-reeflib = { path = "../rust_library" }
+reef-common = { path = "../common_library" }
 env_logger = "^0.11.5"
 futures = "^0.3.31"
 ipnet = "^2.10.1"
@@ -27,11 +27,11 @@ rtnetlink = "^0.18.0"
 tun = { version = "^0.8.3", features = ["async"] }
 
 [dev-dependencies]
-reeflib = { path = "../rust_library", features = ["test"] }
-reeftest = { path = "../test_library" }
+reef-common = { path = "../common_library", features = ["test"] }
+reef-test = { path = "../test_library" }
 
 
 
 [[bin]]
-name = "cli"
+name = "seaside_standalone"
 path = "src/mod.rs"

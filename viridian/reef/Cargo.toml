@@ -1,9 +1,9 @@
 [workspace]
 resolver = "2"
 members = [
-    "cli_executable",
-    "rust_library",
+    "common_library",
     "shared_library",
+    "standalone_executable",
     "test_library"
 ]
 
