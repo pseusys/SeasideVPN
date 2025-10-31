@@ -94,7 +94,7 @@ jobs:
       - name: Setup Rust 🦀
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: stable
+          toolchain: "1.89.0"
           rust-src-dir: viridian/reef
 
       - name: Lint Viridian Reef 🧪
