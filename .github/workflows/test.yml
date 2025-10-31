@@ -168,8 +168,11 @@ jobs:
 
       - name: Create VPN Connections
         run: |
-          sudo nmcli connection add type vpn con-name seaside-vpn-port ifname "*" vpn-type seasidevpn vpn.data "certificate=${{ steps.setup-test-server.outputs.connection-certificate }},protocol=port"
-          sudo nmcli connection add type vpn con-name seaside-vpn-typhoon ifname "*" vpn-type seasidevpn vpn.data "certificate=${{ steps.setup-test-server.outputs.connection-certificate }},protocol=typhoon"
+          sudo ip link add dummy0 type dummy
+          sudo ip addr add 10.200.0.5/32 dev dummy0
+          sudo ip link set dummy0 up
+          sudo nmcli connection add type vpn con-name seaside-vpn-port ifname dummy0 vpn-type seasidevpn vpn.data "certificate=${{ steps.setup-test-server.outputs.connection-certificate }},protocol=port"
+          sudo nmcli connection add type vpn con-name seaside-vpn-typhoon ifname dummy0 vpn-type seasidevpn vpn.data "certificate=${{ steps.setup-test-server.outputs.connection-certificate }},protocol=typhoon"
 
       - name: Test Viridian Reef PORT (integration) 🧪
         working-directory: viridian/reef
