@@ -107,7 +107,7 @@ jobs:
 
   viridian-reef-build:
     name: Build Viridian Reef Client Executable
-    runs-on: ${{ matrix.os == 'linux' && 'ubuntu' || 'windows' }}-24.04${{ matrix.arch == 'amd64' && '' || '-arm' }}
+    runs-on: ${{ matrix.os == 'linux' && 'ubuntu-24.04' || 'windows-latest' }}${{ matrix.arch == 'amd64' && '' || '-arm' }}
     env:
       TARGET: ${{ matrix.arch == 'amd64' && 'x86_64' || 'aarch64' }}-${{ matrix.os == 'linux' && 'unknown-linux-gnu' || 'pc-windows-msvc' }}
     strategy:
