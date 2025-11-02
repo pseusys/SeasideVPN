@@ -14,7 +14,7 @@ concurrency:
 jobs:
   viridian-algae-build:
     name: Build Viridian Algae Client Executable
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout 🛎️
@@ -56,7 +56,7 @@ jobs:
 
   caerulean-whirlpool-build:
     name: Build Caerulean Whirlpool Server Executable
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04${{ matrix.arch == 'amd64' && '' || '-arm' }}
     strategy:
       fail-fast: false
       matrix:
@@ -68,7 +68,7 @@ jobs:
 
       - name: Setup GCC 🐃
         working-directory: caerulean/whirlpool
-        run: sudo apt-get install -y gcc-aarch64-linux-gnu gcc-x86-64-linux-gnu
+        run: sudo apt-get install -y build-essential
 
       - name: Setup Go 1.23 🦫
         uses: actions/setup-go@v5
@@ -85,7 +85,6 @@ jobs:
         env:
           LINKING_FLAGS: -w -s
           GOARCH: ${{ matrix.arch }}
-          CC: ${{ matrix.arch == 'amd64' && 'x86_64-linux-gnu-gcc' || 'aarch64-linux-gnu-gcc' }}
           EXEC_NAME: ${{ format('caerulean_whirlpool_executable_{0}', matrix.arch) }}
         run: make build EXEC_NAME=${{ env.EXEC_NAME }}.run
 
@@ -108,7 +107,7 @@ jobs:
 
   viridian-reef-build:
     name: Build Viridian Reef Client Executable
-    runs-on: ${{ matrix.os == 'linux' && 'ubuntu-latest' || 'windows-latest' }}
+    runs-on: ${{ matrix.os == 'linux' && 'ubuntu' || 'windows' }}-24.04${{ matrix.arch == 'amd64' && '' || '-arm' }}
     env:
       TARGET: ${{ matrix.arch == 'amd64' && 'x86_64' || 'aarch64' }}-${{ matrix.os == 'linux' && 'unknown-linux-gnu' || 'pc-windows-msvc' }}
     strategy:
@@ -141,14 +140,10 @@ jobs:
         run: make dependencies
 
       - name: Build Viridian Reef 🏗️
-        uses: actions-rs/cargo@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WINDIVERT_PATH: ${{ github.workspace }}/viridian/reef/windivert-bin
-        with:
-          command: build
-          use-cross: true
-          args: --release --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml --target ${{ env.TARGET }}
+        run: cargo build --release --features cli-exec --bin cli --manifest-path viridian/reef/Cargo.toml
 
       - name: Rename Executable 📛
         working-directory: viridian/reef
