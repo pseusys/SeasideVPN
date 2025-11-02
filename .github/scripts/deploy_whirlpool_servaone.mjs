@@ -148,7 +148,7 @@ function parseArguments() {
 	else values["token"] = process.env.SERVAONE_API_TOKEN;
 	if (process.env.SERVAONE_SERVER_PASSWORD === undefined) throw new Error("Parameter 'password' is missing!");
 	else values["password"] = process.env.SERVAONE_SERVER_PASSWORD;
-	if (process.env.SERVAONE_SERVER_KEY === undefined) values["key"] = randomBytes(16).toString("hex");
+	if (process.env.SERVAONE_SERVER_KEY === undefined) values["key"] = randomBytes(32).toString("base64");
 	else values["key"] = process.env.SERVAONE_SERVER_KEY;
 	if (process.env.SERVAONE_SERVER_USER === undefined) values["user"] = DEFAULT_USER;
 	else values["user"] = process.env.SERVAONE_SERVER_USER;
@@ -268,7 +268,7 @@ async function runDeployCommand(sshConn, whirlpoolIP, serverKey, apiport) {
 	await sshConn.putDirectory(LOCAL_CERTS_PATH, "certificates", { recursive: true });
 	console.log("Running whirlpool installation script on ServaOne test server...");
 	const installArgs = `-s ${gitBranch} -a ${whirlpoolIP} -e ${whirlpoolIP} -k ${serverKey} -i ${apiport}`;
-	const installRes = await sshConn.execCommand(`python3 install.pyz -o -a back whirlpool ${installArgs} --certificates-path ${REMOTE_CERTS_PATH}`);
+	const installRes = await sshConn.execCommand(`python3 install.pyz -o -a daemon whirlpool ${installArgs} --certificates-path ${REMOTE_CERTS_PATH}`);
 	if (installRes.code != 0) throw new Error(`Installation script failed, error code: ${installRes.code}\n\nSTDOUT:\n${installRes.stdout}\nSTDERR:\n${installRes.stderr}`);
 	console.log("Closing connection to ServaOne test server...");
 	sshConn.dispose();
