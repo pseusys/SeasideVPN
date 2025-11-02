@@ -91,7 +91,6 @@ function printHelpMessage() {
 	console.log(`\t${GREEN}SERVAONE_SERVER_PASSWORD${RESET}: ServaOne server root user password.`);
 	console.log(`\t${GREEN}SERVAONE_SERVER_KEY${RESET}: Seaside whirlpool node owner API key.`);
 	console.log(`${BOLD}Optional environment variables${RESET}:`);
-	console.log(`\t${GREEN}WHIRLPOOL_PAYLOAD${RESET}: Seaside whirlpool node admin API keys (default: will be generated).`);
 	console.log(`\t${GREEN}WHIRLPOOL_APIPORT${RESET}: Whirlpool API port (default: ${DEFAULT_APIPORT}).`);
 	process.exit(0);
 }
@@ -149,12 +148,10 @@ function parseArguments() {
 	else values["token"] = process.env.SERVAONE_API_TOKEN;
 	if (process.env.SERVAONE_SERVER_PASSWORD === undefined) throw new Error("Parameter 'password' is missing!");
 	else values["password"] = process.env.SERVAONE_SERVER_PASSWORD;
-	if (process.env.SERVAONE_SERVER_KEY === undefined) throw new Error("Parameter 'key' is missing!");
+	if (process.env.SERVAONE_SERVER_KEY === undefined) values["key"] = randomBytes(16).toString("hex");
 	else values["key"] = process.env.SERVAONE_SERVER_KEY;
 	if (process.env.SERVAONE_SERVER_USER === undefined) values["user"] = DEFAULT_USER;
 	else values["user"] = process.env.SERVAONE_SERVER_USER;
-	if (process.env.WHIRLPOOL_PAYLOAD === undefined) values["payload"] = randomBytes(16).toString("hex");
-	else values["payload"] = process.env.WHIRLPOOL_PAYLOAD;
 	if (process.env.WHIRLPOOL_APIPORT === undefined) values["apiport"] = DEFAULT_APIPORT;
 	else values["apiport"] = parseInt(process.env.WHIRLPOOL_APIPORT);
 	return values;
@@ -252,11 +249,10 @@ async function waitForServer(id, ip, password, user, waitTimes, sleepTime, token
  * @param {NodeSSH} sshConn SSH connection to use
  * @param {string} certsPath local path to store generated self-signed CA certificates
  * @param {string} whirlpoolIP server IP address for external VPN connections
- * @param {string} ownerPayload deployment server owner payload
- * @param {string} viridianPayload deployment server viridian payload
+ * @param {string} serverKey deployment server owner key
  * @param {string} apiport whirlpool API port
  */
-async function runDeployCommand(sshConn, whirlpoolIP, ownerPayload, viridianPayload, apiport) {
+async function runDeployCommand(sshConn, whirlpoolIP, serverKey, apiport) {
 	console.log("Ensuring installation script exists...");
 	ensureInstallationScript();
 	console.log("Ensuring certificates exist...");
@@ -271,7 +267,7 @@ async function runDeployCommand(sshConn, whirlpoolIP, ownerPayload, viridianPayl
 	console.log("Copying whirlpool certificates to ServaOne test server...");
 	await sshConn.putDirectory(LOCAL_CERTS_PATH, "certificates", { recursive: true });
 	console.log("Running whirlpool installation script on ServaOne test server...");
-	const installArgs = `-s ${gitBranch} -a ${whirlpoolIP} -e ${whirlpoolIP} -o ${ownerPayload} -v ${viridianPayload} -i ${apiport}`;
+	const installArgs = `-s ${gitBranch} -a ${whirlpoolIP} -e ${whirlpoolIP} -k ${serverKey} -i ${apiport}`;
 	const installRes = await sshConn.execCommand(`python3 install.pyz -o -a back whirlpool ${installArgs} --certificates-path ${REMOTE_CERTS_PATH}`);
 	if (installRes.code != 0) throw new Error(`Installation script failed, error code: ${installRes.code}\n\nSTDOUT:\n${installRes.stdout}\nSTDERR:\n${installRes.stderr}`);
 	console.log("Closing connection to ServaOne test server...");
@@ -288,6 +284,6 @@ const osID = await getUbuntuOsID(UBUNTU_VERISON, token);
 await reinstallServer(serverID, args.password, serverDisk, osID, token);
 
 const conn = await waitForServer(serverID, serverAddress, args.password, args.user, WAIT_TIMES, SLEEP_TIME, token);
-await runDeployCommand(conn, serverAddress, args.key, args.payload, args.apiport);
+await runDeployCommand(conn, serverAddress, args.key, args.apiport);
 
 if (args.verbose) console.log(`Node is available at: ${YELLOW}${UNDER}${serverAddress}:${args.apiport}${RESET}`);

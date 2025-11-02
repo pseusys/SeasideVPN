@@ -104,5 +104,4 @@ jobs:
           SERVAONE_API_EMAIL: ${{ secrets.SERVAONE_API_EMAIL }}
           SERVAONE_API_TOKEN: ${{ secrets.SERVAONE_API_TOKEN }}
           SERVAONE_SERVER_PASSWORD: ${{ secrets.SERVAONE_SERVER_PASSWORD }}
-          SERVAONE_SERVER_KEY: ${{ secrets.SERVAONE_SERVER_KEY }}
         run: npm run deploy-whirlpool-servaone -- -v

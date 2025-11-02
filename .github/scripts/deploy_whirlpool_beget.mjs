@@ -137,12 +137,10 @@ function parseArguments() {
 	else values["login"] = process.env.BEGET_API_LOGIN;
 	if (process.env.BEGET_API_PASSWORD === undefined) throw new Error("Parameter 'password' is missing!");
 	else values["password"] = process.env.BEGET_API_PASSWORD;
-	if (process.env.BEGET_SERVER_KEY === undefined) throw new Error("Parameter 'key' is missing!");
+	if (process.env.BEGET_SERVER_KEY === undefined) values["key"] = randomBytes(16).toString("hex");
 	else values["key"] = process.env.BEGET_SERVER_KEY;
 	if (process.env.BEGET_SERVER_USER === undefined) values["user"] = DEFAULT_USER;
 	else values["user"] = process.env.BEGET_SERVER_USER;
-	if (process.env.WHIRLPOOL_PAYLOAD === undefined) values["payload"] = randomBytes(16).toString("hex");
-	else values["payload"] = process.env.WHIRLPOOL_PAYLOAD;
 	if (process.env.WHIRLPOOL_APIPORT === undefined) values["apiport"] = DEFAULT_APIPORT;
 	else values["apiport"] = parseInt(process.env.WHIRLPOOL_APIPORT);
 	return values;
@@ -251,11 +249,10 @@ async function waitForServer(ip, key, user, waitTimes, sleepTime) {
  * @param {NodeSSH} sshConn SSH connection to use
  * @param {string} certsPath local path to store generated self-signed CA certificates
  * @param {string} whirlpoolIP server IP address for external VPN connections
- * @param {string} ownerPayload deployment server owner payload
- * @param {string} viridianPayload deployment server viridian payload
+ * @param {string} serverKey deployment server owner key
  * @param {string} apiport whirlpool API port
  */
-async function runDeployCommand(sshConn, whirlpoolIP, ownerPayload, viridianPayload, apiport) {
+async function runDeployCommand(sshConn, whirlpoolIP, serverKey, apiport) {
 	console.log("Ensuring installation script exists...");
 	ensureInstallationScript();
 	console.log("Ensuring certificates exist...");
@@ -268,7 +265,7 @@ async function runDeployCommand(sshConn, whirlpoolIP, ownerPayload, viridianPayl
 	console.log("Copying whirlpool installation script to beget test server...");
 	await sshConn.putFile(INSTALL_SCRIPT, "install.pyz");
 	console.log("Running whirlpool installation script on beget test server...");
-	const installArgs = `-s ${gitBranch} -a ${whirlpoolIP} -e ${whirlpoolIP} -o ${ownerPayload} -v ${viridianPayload} -p ${apiport}`;
+	const installArgs = `-s ${gitBranch} -a ${whirlpoolIP} -e ${whirlpoolIP} -k ${serverKey} -p ${apiport}`;
 	const installRes = await sshConn.execCommand(`python3 install.pyz -o -g -a back whirlpool ${installArgs}`);
 	if (installRes.code != 0) throw new Error(`Installation script failed, error code: ${installRes.code}`);
 	console.log("Closing connection to beget test server...");
@@ -286,6 +283,6 @@ const ubuntuID = await getUbuntuAppID(UBUNTU_VERISON, token);
 
 const vps = await reinstallServer(serverID, ssh, args.key, ubuntuID, token);
 const conn = await waitForServer(vps.ip_address, args.key, args.user, WAIT_TIMES, SLEEP_TIME);
-await runDeployCommand(conn, vps.ip_address, args.key, args.payload, args.apiport);
+await runDeployCommand(conn, vps.ip_address, args.key, args.apiport);
 
 if (args.verbose) console.log(`Viridian connection link is: ${YELLOW}${UNDER}seaside+whirlpool://${vps.ip_address}:${args.apiport}${RESET}`);
