@@ -64,7 +64,7 @@ def main(args: Sequence[str] = argv[1:]) -> None:
         logger.error("No caerulean selected for installation!")
         exit(1)
 
-    installer: Installer = installer_class(namespace)
+    installer: Installer = installer_class(namespace, namespace["run_after_config"] == _RAC_DAEM)
     logger.info(f"Running using selected caerulean installer: {type(installer).__name__}")
 
     if not installer.verify():
