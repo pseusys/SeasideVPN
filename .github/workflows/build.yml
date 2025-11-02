@@ -156,7 +156,7 @@ jobs:
           EXEC_SRC: ${{ runner.os == 'Linux' && 'cli' || 'cli.exe' }}
           EXEC_STEM: ${{ format('viridian_reef_executable_{0}_{1}', runner.os, matrix.arch) }}
           EXEC_EXT: ${{ runner.os == 'Linux' && 'run' || 'exe' }}
-        run: mv target/${{ matrix.target }}/release/${{ env.EXEC_SRC }} target/${{ env.EXEC_STEM }}.${{ env.EXEC_EXT }}
+        run: mv target/release/${{ env.EXEC_SRC }} target/${{ env.EXEC_STEM }}.${{ env.EXEC_EXT }}
 
       - name: Create Artifact Name From Branch Name 🌱
         uses: mad9000/actions-find-and-replace-string@5
