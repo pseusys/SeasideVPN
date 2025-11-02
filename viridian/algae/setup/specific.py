@@ -14,6 +14,23 @@ _OS_RELEASE_FILE = Path("/etc/os-release")
 
 _SEMVER_REGEX = r"\d+\.\d+\.\d+"
 
+_SYSTEMD_SERVICE_DIR = Path("/etc/systemd/system")
+_SYSTEMD_FILE_CONTENTS = """
+[Unit]
+Description={description}
+After=network.target
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+User=root
+Restart=on-failure
+ExecStart={command}
+WorkingDirectory={working_directory}
+EnvironmentFile={env_file}
+"""
+
 
 def _get_distro() -> Optional[str]:
     """
@@ -150,3 +167,9 @@ def get_arch() -> str:
         return "arm"
     else:
         raise RuntimeError(f"Unknown processor architecture: {arch}!")
+
+
+def setup_systemd_configuration(name: str, description: str, command: Path, working_directory: Path, env_file: Path) -> None:
+    service_path = _SYSTEMD_SERVICE_DIR / f"{name}.service"
+    service_contents = _SYSTEMD_FILE_CONTENTS.format(description=description, command=str(command), working_directory=str(working_directory), env_file=str(env_file))
+    service_path.write_text(service_contents)

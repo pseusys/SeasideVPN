@@ -31,12 +31,18 @@ class Installer(ABC):
         """
         raise NotImplementedError
 
-    def __init__(self, arguments: Dict[str, Any]) -> None:
+    @property
+    @abstractmethod
+    def systemd_name(self) -> str:
+        raise NotImplementedError
+
+    def __init__(self, arguments: Dict[str, Any], use_systemd: bool) -> None:
         """
         Create cerulean installer with a logger and given arguments produced by parser.
         :param arguments: parsed arguments for the given installer.
         """
         self._logger = Logging.logger_for(type(self).__name__)
+        self._systemd = use_systemd
         self._args = arguments
 
     @abstractmethod

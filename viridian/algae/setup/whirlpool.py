@@ -11,11 +11,12 @@ from colorama import Fore, Style
 from semver import Version
 
 from .base import Installer
-from .certificates import GENERATE_CERTIFICATES_PATH, generate_certificates
+from .certificates import generate_certificates
 from .default import DEFAULT_GENERATED_VALUE, bytes_value, current_dns, local_ip, logging_level, port_number
-from .specific import check_install_packages, check_package, get_arch
+from .specific import check_install_packages, check_package, get_arch, setup_systemd_configuration
 from .utils import run_command
 
+_DESCRIPTION = "SeasideVPN Caerulean Whirlpool worker VPN node"
 _PARSER_NAME = "whirlpool"
 _VERSION = '"0.0.4"'
 
@@ -107,6 +108,10 @@ class WhirlpoolInstaller(Installer):
             return f"docker run --rm --name seaside-whirlpool --env-file=conf.env --sysctl net.ipv6.conf.all.disable_ipv6=1 --network host --privileged {_SEASIDE_IMAGE}:{self._args['docker_label']}"
         else:
             raise RuntimeError(f"Unknown distribution type: {self._args['distribution_type']}")
+
+    @property
+    def systemd_name(self) -> str:
+        return "seasidevpn-caerulean-whirlpool"
 
     def verify(self) -> bool:
         if self._args["distribution_type"] == _DT_DOCKER and not check_package("docker"):
@@ -262,6 +267,8 @@ class WhirlpoolInstaller(Installer):
             self._logger.info("Seaside Whirlpool release binary downloaded!")
         else:
             raise RuntimeError(f"Unknown distribution type: {self._args['distribution_type']}")
+        if self._systemd:
+            setup_systemd_configuration(self.systemd_name, _DESCRIPTION, Path("./whirlpool.run").absolute(), Path.cwd().absolute(), Path("./conf.env").absolute())
         self._logger.info("Configuring server...")
         self._configure_server()
         self._logger.info("Server configured!")

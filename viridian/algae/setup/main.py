@@ -8,12 +8,13 @@ from .base import Installer
 from .certificates import generate_certificates
 from .default import DEFAULT_GENERATED_VALUE, DefaultOptionalAction, local_ip, logging_level
 from .specific import is_64_bit, is_admin, is_linux
-from .utils import Logging
+from .utils import Logging, run_command
 from .whirlpool import WhirlpoolInstaller
 
 _RAC_NO = "no"
 _RAC_BACK = "back"
 _RAC_RUN = "run"
+_RAC_DAEM = "daemon"
 
 _DEFAULT_GENERATE_CERTS = False
 _DEFAULT_OVERRIDE_ENV = False
@@ -28,7 +29,7 @@ _logging_type = logging_level(_DEFAULT_LOG_LEVEL, True)
 parser = ArgumentParser()
 parser.add_argument("-g", "--certificates", action="store_true", default=_DEFAULT_GENERATE_CERTS, help=f"Generate self-signed certificates (if they don't exist yet, default: {_DEFAULT_GENERATE_CERTS})")
 parser.add_argument("-o", "--override-env-file", action="store_true", default=_DEFAULT_OVERRIDE_ENV, help=f"Override existing environment file (if it exists, default: {_DEFAULT_OVERRIDE_ENV})")
-parser.add_argument("-a", "--run-after-config", choices=(_RAC_NO, _RAC_BACK, _RAC_RUN), default=_DEFAULT_RUN_AFTER_CONFIG, help=f"Run caerulean after configuration is done ('{_RAC_NO}' for don't run, '{_RAC_BACK}' for running in the background, '{_RAC_RUN}' for running in foreground, default: {_DEFAULT_RUN_AFTER_CONFIG})")
+parser.add_argument("-a", "--run-after-config", choices=(_RAC_NO, _RAC_BACK, _RAC_RUN, _RAC_DAEM), default=_DEFAULT_RUN_AFTER_CONFIG, help=f"Run caerulean after configuration is done ('{_RAC_NO}' for don't run, '{_RAC_BACK}' for running in the background, '{_RAC_RUN}' for running in foreground, default: {_DEFAULT_RUN_AFTER_CONFIG})")
 parser.add_argument("-v", "--verbose", type=_logging_type, default=DEFAULT_GENERATED_VALUE, help=f"Logging level for installation process (default: {_DEFAULT_LOG_LEVEL})")
 parser.add_argument("--just-certs", type=local_ip(False), action=DefaultOptionalAction, help="Generate self-signed certificates for the given IP or host and exit (even if they already exist, default: not present)")
 subparsers = parser.add_subparsers(title="Caeruleans", description="Install and configure different caeruleans", help="Caerulean name to install")
@@ -87,7 +88,12 @@ def main(args: Sequence[str] = argv[1:]) -> None:
     installer.print_info()
     logger.info("Caerulean installed!")
 
-    if namespace["run_after_config"] != _RAC_NO:
+    if namespace["run_after_config"] == _RAC_DAEM:
+        logger.info("Reloading systemd configuration...")
+        run_command("systemctl", "daemon-reload")
+        logger.info("Running as a systemd daemon...")
+        run_command("systemctl", "start", installer.systemd_name)
+    elif namespace["run_after_config"] != _RAC_NO:
         logger.info(f"Running with {type(installer).__name__} installer...")
         installer.run(namespace["run_after_config"] == _RAC_RUN)
     else:
