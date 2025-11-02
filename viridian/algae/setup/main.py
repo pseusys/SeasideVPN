@@ -92,7 +92,7 @@ def main(args: Sequence[str] = argv[1:]) -> None:
         logger.info("Reloading systemd configuration...")
         run_command("systemctl daemon-reload")
         logger.info("Running as a systemd daemon...")
-        run_command(f"systemctl start {installer.systemd_name}")
+        run_command(f"sudo systemctl enable --now {installer.systemd_name}")
     elif namespace["run_after_config"] != _RAC_NO:
         logger.info(f"Running with {type(installer).__name__} installer...")
         installer.run(namespace["run_after_config"] == _RAC_RUN)

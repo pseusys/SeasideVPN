@@ -2,7 +2,7 @@ from argparse import ArgumentParser
 from asyncio import run
 from base64 import b64decode
 from ipaddress import IPv4Address
-from os import environ
+from os import getenv
 from pathlib import Path
 from socket import gethostname
 from sys import argv, stdout
@@ -54,13 +54,13 @@ supply_client_parser.add_argument("-o", "--output", type=Path, help="File path t
 
 
 def create_admin_certificate_from_env(address: Optional[IPv4Address] = None, port: Optional[int] = None, certificate_path: Optional[Path] = None, client_certificate: Optional[bytes] = None, client_key: Optional[bytes] = None, certificate_authority: Optional[bytes] = None, name: str = "test_admin", is_owner: bool = True, server_key: Optional[bytes] = None) -> SeasideWhirlpoolAdminCertificate:
-    server_key = b64decode(environ["SEASIDE_SERVER_KEY"]) if server_key is None else server_key
+    server_key = b64decode(getenv("SEASIDE_SERVER_KEY", bytes())) if server_key is None else server_key
     admin_token = Symmetric(server_key).encrypt(bytes(AdminToken(name, is_owner)))
 
-    address = str(IPv4Address(environ["SEASIDE_ADDRESS"]) if address is None else address)
-    port = int(environ["SEASIDE_API_PORT"] if port is None else port)
+    address = str(IPv4Address(getenv("SEASIDE_ADDRESS", "0.0.0.0")) if address is None else address)
+    port = int(getenv("SEASIDE_API_PORT", 0) if port is None else port)
 
-    certificate_path = Path(environ["SEASIDE_CERTIFICATE_PATH"]) if certificate_path is None else certificate_path
+    certificate_path = Path(getenv("SEASIDE_CERTIFICATE_PATH", ".")) if certificate_path is None else certificate_path
     client_certificate = (certificate_path / "APIcert.crt").read_bytes() if client_certificate is None else client_certificate
     client_key = (certificate_path / "APIcert.key").read_bytes() if client_key is None else client_key
     certificate_authority = (certificate_path / "APIserverCA.crt").read_bytes() if certificate_authority is None else certificate_authority
@@ -102,7 +102,7 @@ async def main(args: Sequence[str] = argv[1:]) -> None:
     if connection_file is not None:
         admin_certificate = SeasideWhirlpoolAdminCertificate.parse(connection_file.read_bytes())
     else:
-        admin_certificate = create_admin_certificate_from_env(name=arguments["owner_name"], server_key=arguments["server_key"])
+        admin_certificate = create_admin_certificate_from_env(arguments["address"], arguments["port"], client_certificate=arguments["client_certificate"], client_key=arguments["client_key"], certificate_authority=arguments["certificate_authority"], name=arguments["owner_name"], server_key=arguments["server_key"])
 
     admin_certificate.address = str(resolve_address(arguments.ext("address", admin_certificate.address)))
     admin_certificate.port = arguments.ext("port", admin_certificate.port)
