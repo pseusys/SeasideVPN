@@ -6,6 +6,7 @@ SHELL := /bin/bash
 .SHELLFLAGS := -c -e
 
 BUILD_TYPE := debug
+RUNNING_IN_DOCKER := false
 
 
 
@@ -86,15 +87,17 @@ install: build
 	sudo install -D -m 644 $(NM_CONFIGURATION_DIR)/service.conf $(INSTALL_CONF)
 	sudo install -D -m 644 $(NM_BUILD_DIR)/editor.so $(INSTALL_EDITOR)
 	sudo install -D -m 644 $(NM_BIN_DIR)/libseaside.so $(INSTALL_BIN)
+ifneq ($(RUNNING_IN_DOCKER),true)
 	sudo systemctl restart NetworkManager
+endif
 .PHONY: install
 
 run: install
 	cd $(SERVICE_DIR)
 ifeq ($(BUILD_TYPE),debug)
-	sudo -E G_MESSAGES_DEBUG=all nm-$(PLUGIN_NAME)-service
+	sudo -E G_MESSAGES_DEBUG=all ./nm-$(PLUGIN_NAME)-service
 else
-	sudo nm-$(PLUGIN_NAME)-service
+	sudo ./nm-$(PLUGIN_NAME)-service
 endif
 .PHONY: install
 
@@ -102,8 +105,8 @@ endif
 
 # Artifact cleaning:
 
-clean: rust-clean
+clean:
 	@ # Clean network manager plugin build artifacts
-	rm -f $(NM_BUILD_DIR)
+	rm -rf $(NM_BUILD_DIR)
 	sudo rm -f $(INSTALL_PLUGIN) $(INSTALL_NAME) $(INSTALL_CONF) $(INSTALL_EDITOR) $(INSTALL_BIN)
 .PHONY: clean

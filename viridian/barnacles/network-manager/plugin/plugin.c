@@ -74,39 +74,50 @@ seaside_load_library(NMSeasidePluginPrivate *priv, GError **error)
 static void
 seaside_set_ip4_from_vpnconfig(NMVpnServicePlugin *plugin, const VPNConfig *cfg)
 {
-    GVariantBuilder b;
-    g_variant_builder_init(&b, G_VARIANT_TYPE_VARDICT);
+    GVariantBuilder gen_builder;
+    g_variant_builder_init(&gen_builder, G_VARIANT_TYPE_VARDICT);
 
     if (cfg->tunnel_name && cfg->tunnel_name[0]) {
         GVariant *v = g_variant_new_string(cfg->tunnel_name);
-        g_variant_builder_add(&b, "{sv}", NM_VPN_PLUGIN_IP4_CONFIG_TUNDEV, v);
-    }
-
-    if (cfg->tunnel_address) {
-        GVariant *v = g_variant_new_uint32(cfg->tunnel_address);
-        g_variant_builder_add(&b, "{sv}", NM_VPN_PLUGIN_IP4_CONFIG_ADDRESS, v);
-    }
-
-    if (cfg->tunnel_prefix) {
-        GVariant *v = g_variant_new_uint32(cfg->tunnel_prefix);
-        g_variant_builder_add(&b, "{sv}", NM_VPN_PLUGIN_IP4_CONFIG_PREFIX, v);
+        g_variant_builder_add(&gen_builder, "{sv}", NM_VPN_PLUGIN_CONFIG_TUNDEV, v);
     }
 
     if (cfg->tunnel_mtu) {
         GVariant *v = g_variant_new_uint32(cfg->tunnel_mtu);
-        g_variant_builder_add(&b, "{sv}", NM_VPN_PLUGIN_IP4_CONFIG_MTU, v);
+        g_variant_builder_add(&gen_builder, "{sv}", NM_VPN_PLUGIN_CONFIG_MTU, v);
+    }
+
+    if (cfg->tunnel_address) {
+        GVariant *v = g_variant_new_uint32(g_htonl(cfg->tunnel_address));
+        g_variant_builder_add(&gen_builder, "{sv}", NM_VPN_PLUGIN_CONFIG_EXT_GATEWAY, v);
+    }
+
+    GVariant *gen_dict = g_variant_builder_end(&gen_builder);
+    nm_vpn_service_plugin_set_config(plugin, gen_dict);
+
+    GVariantBuilder ipv4_builder;
+    g_variant_builder_init(&ipv4_builder, G_VARIANT_TYPE_VARDICT);
+
+    if (cfg->tunnel_address) {
+        GVariant *v = g_variant_new_uint32(g_htonl(cfg->tunnel_address));
+        g_variant_builder_add(&ipv4_builder, "{sv}", NM_VPN_PLUGIN_IP4_CONFIG_ADDRESS, v);
+    }
+
+    if (cfg->tunnel_prefix) {
+        GVariant *v = g_variant_new_uint32(cfg->tunnel_prefix);
+        g_variant_builder_add(&ipv4_builder, "{sv}", NM_VPN_PLUGIN_IP4_CONFIG_PREFIX, v);
     }
 
     if (cfg->dns_address) {
         GVariantBuilder dns_builder;
         g_variant_builder_init(&dns_builder, G_VARIANT_TYPE("au"));
-        g_variant_builder_add(&dns_builder, "u", cfg->dns_address);
+        g_variant_builder_add(&dns_builder, "u", g_htonl(cfg->dns_address));
         GVariant *dns_variant = g_variant_builder_end(&dns_builder);
-        g_variant_builder_add(&b, "{sv}", NM_VPN_PLUGIN_IP4_CONFIG_DNS, dns_variant);
+        g_variant_builder_add(&ipv4_builder, "{sv}", NM_VPN_PLUGIN_IP4_CONFIG_DNS, dns_variant);
     }
 
-    GVariant *dict = g_variant_builder_end(&b);
-    nm_vpn_service_plugin_set_ip4_config(plugin, dict);
+    GVariant *ipv4_dict = g_variant_builder_end(&ipv4_builder);
+    nm_vpn_service_plugin_set_ip4_config(plugin, ipv4_dict);
 }
 
 /* real_connect: invoked by NM when starting a VPN session */
@@ -208,6 +219,16 @@ real_disconnect(NMVpnServicePlugin *plugin, GError **error)
     return TRUE;
 }
 
+static gboolean
+empty_need_secrets (NMVpnServicePlugin *plugin,
+                   NMConnection *connection,
+                   const char **setting_name,
+                   GError **error)
+{
+    g_debug("DBUS need secrets: Skipped!");
+    return FALSE;
+}
+
 /* GObject init/class functions */
 static void
 nm_seaside_plugin_init(NMSeasidePlugin *plugin)
@@ -226,6 +247,7 @@ nm_seaside_plugin_class_init(NMSeasidePluginClass *klass)
 {
     NMVpnServicePluginClass *parent = NM_VPN_SERVICE_PLUGIN_CLASS(klass);
     parent->connect = real_connect;
+    parent->need_secrets = empty_need_secrets;
     parent->disconnect = real_disconnect;
 }
 

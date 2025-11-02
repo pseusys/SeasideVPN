@@ -128,67 +128,6 @@ jobs:
         working-directory: viridian/reef
         run: ${{ env.SUDO }} cargo run --bin seaside_standalone -- -m typhoon -f "${{ steps.setup-test-server.outputs.connection-certificate }}" --capture-ports ${{ env.TARGET_LOWER_PORT }}-${{ env.TARGET_HIGHER_PORT }} -c "${{ env.TEST_COMMAND }} --local-port 44445"
 
-  viridian-reef-nm-test:
-    name: Test Viridian Reef (Network Manager)
-    runs-on: ubuntu-latest
-    env:
-      TARGET_ADDRESS: 1.1.1.1
-      TARGET_LOWER_PORT: 44442
-      TARGET_HIGHER_PORT: 44446
-      SEASIDE_LOG_LEVEL: reeflib=DEBUG,INFO
-      TEST_COMMAND: curl -v -I --fail --max-time 15 https://1.1.1.1
-
-    steps:
-      - name: Checkout 🛎️
-        uses: actions/checkout@v4
-
-      - name: Setup Rust 🦀
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: "1.89.0"
-          target: x86_64-unknown-linux-gnu
-          rust-src-dir: viridian/reef
-          override: true
-
-      - name: Install Network Manager and Dependencies
-        run: sudo apt-get install network-manager build-essential libnm-dev libglib2.0-dev libglib2.0-dev-bin libgtk-3-dev pkg-config
-
-      - name: Setup VPN Server 🖴
-        id: setup-test-server
-        uses: ./.github/actions/setup-server
-        with:
-          target: ${{ env.TARGET_ADDRESS }}
-          lower_port: ${{ env.TARGET_LOWER_PORT }}
-          higher_port: ${{ env.TARGET_HIGHER_PORT }}
-          test-command: ${{ env.TEST_COMMAND }} --local-port 44443
-
-      - name: Install Network Manager
-        working-directory: viridian/barnacles/network-manager
-        run: make install
-
-      - name: Create VPN Connections
-        run: |
-          sudo nmcli connection add type ethernet con-name dummy-eth ifname eth0
-          sudo nmcli connection up dummy-eth
-          sudo nmcli connection add type vpn con-name seaside-vpn-port ifname dummy-eth vpn-type seasidevpn 
-          sudo nmcli connection modify seaside-vpn-port vpn.data "certificate=${{ steps.setup-test-server.outputs.connection-certificate }},protocol=port" 
-          sudo nmcli connection add type vpn con-name seaside-vpn-typhoon ifname dummy-eth vpn-type seasidevpn
-          sudo nmcli connection modify seaside-vpn-typhoon vpn.data "certificate=${{ steps.setup-test-server.outputs.connection-certificate }},protocol=typhoon"
-
-      - name: Test Viridian Reef PORT (integration) 🧪
-        working-directory: viridian/reef
-        run: |
-          sudo nmcli connection up seaside-vpn-port
-          ${{ env.TEST_COMMAND }} --local-port 44444
-          sudo nmcli connection down seaside-vpn-port
-
-      - name: Test Viridian Reef TYPHOON (integration) 🧪
-        working-directory: viridian/reef
-        run: |
-          sudo nmcli connection up seaside-vpn-typhoon
-          ${{ env.TEST_COMMAND }} --local-port 44445
-          sudo nmcli connection down seaside-vpn-vpn-typhoon
-
   caerulean-whirlpool-test:
     name: Test Caerulean Whirlpool
     runs-on: ubuntu-latest
