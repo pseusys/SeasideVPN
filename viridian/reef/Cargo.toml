@@ -19,6 +19,7 @@ cached = "^0.56.0"
 chacha20poly1305 = "^0.10.1"
 env_logger = "^0.11.5"
 futures = "^0.3.31"
+generic-array = "=0.14.7"  # TODO: remove once https://github.com/RustCrypto/traits/issues/2036 is resolved!
 ipnet = "^2.10.1"
 lazy_static = "^1.5.0"
 log = "^0.4.22"
