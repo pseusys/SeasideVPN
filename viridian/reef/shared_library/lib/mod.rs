@@ -1,6 +1,6 @@
 use std::ffi::{c_char, c_void, CStr, CString};
 use std::fs::read;
-use std::ptr::null;
+use std::ptr::null_mut;
 use std::str::FromStr;
 
 use prost::Message;
@@ -24,7 +24,8 @@ struct RawPtr(*mut c_void);
 unsafe impl Send for RawPtr {}
 
 /// cbindgen:ignore
-struct Coordinator {
+struct Coordinator<'a> {
+    viridian: *mut Viridian<'a>,
     handle: JoinHandle<c_void>,
     terminator: Sender<()>
 }
@@ -55,7 +56,7 @@ macro_rules! return_error {
 }
 
 #[no_mangle]
-pub extern "C" fn vpn_init(certificate: *const c_char, protocol: *const c_char, config: *mut VPNConfig, viridian_ptr: *mut *mut c_void, error: *mut *mut c_char) -> bool {
+pub extern "C" fn vpn_start(certificate: *const c_char, protocol: *const c_char, config: *mut *mut VPNConfig, coordinator_ptr: *mut *mut c_void, plugin_ptr: *mut c_void, error_callback: extern "C" fn(*mut c_void, *mut c_char) -> c_void,  error: *mut *mut c_char) -> bool {
     let protocol = match unsafe { CStr::from_ptr(protocol) }.to_str() {
         Ok(proto_str) => match ProtocolType::from_str(proto_str) {
             Ok(res) => res,
@@ -106,29 +107,24 @@ pub extern "C" fn vpn_init(certificate: *const c_char, protocol: *const c_char, 
         }
     };
 
-    unsafe { *config = vpn_config }
-    unsafe { *viridian_ptr = Box::into_raw(Box::new(viridian)) as *mut c_void };
-    true
-}
-
-#[no_mangle]
-pub extern "C" fn vpn_start(viridian_ptr: *mut c_void, coordinator_ptr: *mut *mut c_void, plugin_ptr: *mut c_void, error_callback: extern "C" fn(*mut c_void, *const c_char) -> c_void, _: *mut *mut c_char) -> bool {
-    let plugin_raw = RawPtr(plugin_ptr);
-    let viridian_raw = RawPtr(viridian_ptr);
+    let viridian_ptr = Box::into_raw(Box::new(viridian));
     let (sender, mut receiver) = channel();
+
+    let plugin_raw = RawPtr(plugin_ptr);
+    let viridian_raw = RawPtr(viridian_ptr as *mut c_void);
 
     let handle = run_coroutine_in_thread!(async {
         let plugin_raw_copy = plugin_raw;
         let viridian_raw_copy = viridian_raw;
         let mut viridian = unsafe { Box::from_raw(viridian_raw_copy.0 as *mut Viridian) };
         match viridian.start(&mut receiver).await {
-            Ok(_) => error_callback(plugin_raw_copy.0, null()),
+            Ok(_) => error_callback(plugin_raw_copy.0, null_mut()),
             Err(err) => error_callback(plugin_raw_copy.0, error_to_string!(format!("Error in VPN loop: {err}"))),
         }
     });
 
-    let coordinator = Box::new(Coordinator { handle, terminator: sender });
-    unsafe { *coordinator_ptr = Box::into_raw(coordinator) as *mut c_void };
+    unsafe { *config = Box::into_raw(Box::new(vpn_config)) };
+    unsafe { *coordinator_ptr = Box::into_raw(Box::new(Coordinator { viridian: viridian_ptr, handle, terminator: sender })) as *mut c_void };
     true
 }
 
@@ -141,8 +137,11 @@ pub extern "C" fn vpn_stop(coordinator_ptr: *mut c_void, error: *mut *mut c_char
         return_error!("Error terminating VPN loop", error)
     }
 
-    match run_coroutine_sync!(async { handle.await }) {
+    let result = match run_coroutine_sync!(async { handle.await }) {
         Ok(_) => true,
         Err(err) => return_error!(format!("Error joining VPN loop termination: {err}"), error)
-    }
+    };
+
+    let _viridian = unsafe { Box::from_raw(coordinator.viridian as *mut Viridian) };
+    return result;
 }

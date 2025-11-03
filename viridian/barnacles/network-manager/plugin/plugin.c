@@ -19,21 +19,23 @@
 /* Shared library base names to try letting the loader find them */
 #define LIB_BASENAME "libseaside.so"
 
-typedef bool (*vpn_init_fn)(const char*, const char*, struct VPNConfig*, void**, char**);
-typedef bool (*vpn_start_fn)(void*, const void*, const void*, void (*)(void*, char*), char**);
+typedef bool (*vpn_start_fn)(const char*, const char*, struct VPNConfig**, void**, void*, void (*)(void*, char*), char**);
 typedef bool (*vpn_stop_fn)(void*, char**);
 
 /* Private plugin state */
 typedef struct {
     void *lib_handle;
     void *coordinator;
-    vpn_init_fn vpn_init;
     vpn_start_fn vpn_start;
     vpn_stop_fn vpn_stop;
-    gboolean running;
 } NMSeasidePluginPrivate;
 
 G_DEFINE_TYPE_WITH_PRIVATE(NMSeasidePlugin, nm_seaside_plugin, NM_TYPE_VPN_SERVICE_PLUGIN)
+
+typedef struct {
+    NMVpnServicePlugin* plugin;
+    VPNConfig* cfg;
+} IdleConfigData;
 
 typedef struct {
     NMVpnServicePlugin *plugin;
@@ -66,9 +68,9 @@ static void
 capture_error(void* plugin_ptr, char* error)
 {
     g_debug("DBUS runtime: Starting asynchronous error report...");
-    CaptureErrorData *d = g_new0(CaptureErrorData, 1);
+    CaptureErrorData *d = g_new(CaptureErrorData, 1);
     d->plugin = (NMVpnServicePlugin *) plugin_ptr;
-    d->message = error ? error : NULL;
+    d->message = error;
     g_idle_add(capture_error_idle, d);
     g_debug("DBUS runtime: Asynchronous report sent!");
 }
@@ -91,11 +93,10 @@ seaside_load_library(NMSeasidePluginPrivate *priv, GError **error)
     }
 
     /* Resolve symbols */
-    priv->vpn_init  = (vpn_init_fn) dlsym(priv->lib_handle, "vpn_init");
     priv->vpn_start = (vpn_start_fn) dlsym(priv->lib_handle, "vpn_start");
     priv->vpn_stop  = (vpn_stop_fn) dlsym(priv->lib_handle, "vpn_stop");
 
-    if (!priv->vpn_init || !priv->vpn_start || !priv->vpn_stop) {
+    if (!priv->vpn_start || !priv->vpn_stop) {
         g_set_error (error,
                      NM_VPN_PLUGIN_ERROR,
                      NM_VPN_PLUGIN_ERROR_LAUNCH_FAILED,
@@ -109,58 +110,77 @@ seaside_load_library(NMSeasidePluginPrivate *priv, GError **error)
 }
 
 /* Build and send NM IPv4 config from VPNConfig */
-static void
-seaside_set_ip4_from_vpnconfig(NMVpnServicePlugin *plugin, const VPNConfig *cfg)
+static gboolean
+seaside_set_vpnconfig(gpointer user_data)
 {
+    g_debug("DBUS config: Starting asynchronous configuration setting...");
+    IdleConfigData *data = (IdleConfigData *)user_data;
+
     GVariantBuilder gen_builder;
+    g_debug("DBUS config: Initializing general configuration...");
     g_variant_builder_init(&gen_builder, G_VARIANT_TYPE_VARDICT);
 
-    if (cfg->tunnel_name && cfg->tunnel_name[0]) {
-        GVariant *v = g_variant_new_string(cfg->tunnel_name);
+    if (data->cfg->tunnel_name && data->cfg->tunnel_name[0]) {
+        g_debug("DBUS config: Setting tunnel name to: %s", data->cfg->tunnel_name);
+        GVariant *v = g_variant_new_string(data->cfg->tunnel_name);
         g_variant_builder_add(&gen_builder, "{sv}", NM_VPN_PLUGIN_CONFIG_TUNDEV, v);
     }
 
-    if (cfg->tunnel_mtu) {
-        GVariant *v = g_variant_new_uint32(cfg->tunnel_mtu);
+    if (data->cfg->tunnel_mtu) {
+        g_debug("DBUS config: Setting tunnel MTU to: %d", data->cfg->tunnel_mtu);
+        GVariant *v = g_variant_new_uint32(data->cfg->tunnel_mtu);
         g_variant_builder_add(&gen_builder, "{sv}", NM_VPN_PLUGIN_CONFIG_MTU, v);
     }
 
-    if (cfg->remote_address) {
-        GVariant *v = g_variant_new_uint32(g_htonl(cfg->remote_address));
+    if (data->cfg->remote_address) {
+        g_debug("DBUS config: Setting tunnel remote gateway to: %d", data->cfg->remote_address);
+        GVariant *v = g_variant_new_uint32(g_htonl(data->cfg->remote_address));
         g_variant_builder_add(&gen_builder, "{sv}", NM_VPN_PLUGIN_CONFIG_EXT_GATEWAY, v);
     }
 
     GVariant *gen_dict = g_variant_builder_end(&gen_builder);
-    nm_vpn_service_plugin_set_config(plugin, gen_dict);
+    g_debug("DBUS config: Sending general configuration...");
+    nm_vpn_service_plugin_set_config(data->plugin, gen_dict);
 
     GVariantBuilder ipv4_builder;
+    g_debug("DBUS config: Initializing IPv4 configuration...");
     g_variant_builder_init(&ipv4_builder, G_VARIANT_TYPE_VARDICT);
 
-    if (cfg->tunnel_address) {
-        GVariant *v = g_variant_new_uint32(g_htonl(cfg->tunnel_address));
-        g_variant_builder_add(&ipv4_builder, "{sv}", NM_VPN_PLUGIN_IP4_CONFIG_ADDRESS, v);
-    }
-
-    if (cfg->tunnel_gateway) {
-        GVariant *v = g_variant_new_uint32(g_htonl(cfg->tunnel_gateway));
+    if (data->cfg->tunnel_gateway) {
+        g_debug("DBUS config: Setting tunnel internal gateway to: %d", data->cfg->tunnel_gateway);
+        GVariant *v = g_variant_new_uint32(g_htonl(data->cfg->tunnel_gateway));
         g_variant_builder_add(&ipv4_builder, "{sv}", NM_VPN_PLUGIN_IP4_CONFIG_INT_GATEWAY, v);
     }
 
-    if (cfg->tunnel_prefix) {
-        GVariant *v = g_variant_new_uint32(cfg->tunnel_prefix);
+    if (data->cfg->tunnel_address) {
+        g_debug("DBUS config: Setting tunnel address to: %d", data->cfg->tunnel_address);
+        GVariant *v = g_variant_new_uint32(g_htonl(data->cfg->tunnel_address));
+        g_variant_builder_add(&ipv4_builder, "{sv}", NM_VPN_PLUGIN_IP4_CONFIG_ADDRESS, v);
+    }
+
+    if (data->cfg->tunnel_prefix) {
+        g_debug("DBUS config: Setting tunnel prefix to: %d", data->cfg->tunnel_prefix);
+        GVariant *v = g_variant_new_uint32(data->cfg->tunnel_prefix);
         g_variant_builder_add(&ipv4_builder, "{sv}", NM_VPN_PLUGIN_IP4_CONFIG_PREFIX, v);
     }
 
-    if (cfg->dns_address) {
+    if (data->cfg->dns_address) {
+        g_debug("DBUS config: Setting tunnel DNS address to: %d", data->cfg->dns_address);
         GVariantBuilder dns_builder;
         g_variant_builder_init(&dns_builder, G_VARIANT_TYPE("au"));
-        g_variant_builder_add(&dns_builder, "u", g_htonl(cfg->dns_address));
+        g_variant_builder_add(&dns_builder, "u", g_htonl(data->cfg->dns_address));
         GVariant *v = g_variant_builder_end(&dns_builder);
         g_variant_builder_add(&ipv4_builder, "{sv}", NM_VPN_PLUGIN_IP4_CONFIG_DNS, v);
     }
 
     GVariant *ipv4_dict = g_variant_builder_end(&ipv4_builder);
-    nm_vpn_service_plugin_set_ip4_config(plugin, ipv4_dict);
+    g_debug("DBUS config: Sending IPv4 configuration...");
+    nm_vpn_service_plugin_set_ip4_config(data->plugin, ipv4_dict);
+
+    free(data->cfg);
+    g_free(data);
+    g_debug("DBUS config: Configuration sent!");
+    return G_SOURCE_REMOVE;
 }
 
 /* real_connect: invoked by NM when starting a VPN session */
@@ -198,40 +218,25 @@ real_connect(NMVpnServicePlugin *plugin, NMConnection *connection, GError **erro
 
     if (!seaside_load_library(priv, error)) {
         g_warning("DBUS connect: Error loading Seaside Reef DLL");
-        g_set_error(error, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_LAUNCH_FAILED,
-                    "Error loading Seaside Reef DLL");
         return FALSE;
     } else g_debug("DBUS connect: Seaside Reef DLL loaded!");
 
-    VPNConfig cfg;
-    memset(&cfg, 0, sizeof(cfg));
-
-    void *viridian;
+    VPNConfig *cfg;
     char *err_string;
-
-    /* Synchronous initialization: library fills VPNConfig */
-    g_debug("DBUS connect: Initializing viridian...");
-    if (!priv->vpn_init(certificate, protocol, &cfg, &viridian, &err_string)) {
-        g_warning("DBUS connect: Error initializing viridian: %s", err_string);
-        g_set_error(error, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_LAUNCH_FAILED, "Error initializing viridian: %s", err_string);
-        free(err_string);
-        return FALSE;
-    } else g_debug("DBUS connect: Viridian initialized!");
-
-    /* Tell NetworkManager about the IP config we want applied */
-    g_debug("DBUS connect: Setting IPv4 parameters...");
-    seaside_set_ip4_from_vpnconfig(plugin, &cfg);
-
-    /* Start engine in background; pass plugin pointer so callbacks are instance-specific */
     g_debug("DBUS connect: Starting viridian...");
-    if (!priv->vpn_start(viridian, &priv->coordinator, (void*) plugin, capture_error, &err_string)) {
+    if (!priv->vpn_start(certificate, protocol, &cfg, &priv->coordinator, (void*) plugin, capture_error, &err_string)) {
         g_warning("DBUS connect: Error starting viridian: %s", err_string);
         g_set_error(error, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_LAUNCH_FAILED, "Error starting viridian: %s", err_string);
         free(err_string);
         return FALSE;
     } else g_debug("DBUS connect: Viridian started!");
 
-    priv->running = TRUE;
+    IdleConfigData *data = g_new(IdleConfigData, 1);
+    data->plugin = plugin;
+    data->cfg = cfg;
+    g_debug("DBUS connect: Scheduling configuration setting...");
+    g_idle_add(seaside_set_vpnconfig, data);
+
     g_debug("DBUS connect: Success!");
     return TRUE;
 }
@@ -243,7 +248,7 @@ real_disconnect(NMVpnServicePlugin *plugin, GError **error)
     g_debug("DBUS disconnect: Starting...");
     NMSeasidePluginPrivate *priv = nm_seaside_plugin_get_instance_private(NM_SEASIDE_PLUGIN(plugin));
 
-    if (priv->coordinator && priv->running && priv->vpn_stop) {
+    if (priv->coordinator && priv->vpn_stop) {
         char *err_string;
 
         g_debug("DBUS disconnect: Stopping SeasideVPN interface...");
@@ -254,7 +259,6 @@ real_disconnect(NMVpnServicePlugin *plugin, GError **error)
         } else g_debug("DBUS disconnect: SeasideVPN interface stopped successfully!");
 
         priv->coordinator = NULL;
-        priv->running = FALSE;
     } else g_debug("DBUS disconnect: SeasideVPN interface was never run!");
 
     nm_vpn_service_plugin_disconnect(plugin, NULL);
@@ -279,10 +283,8 @@ nm_seaside_plugin_init(NMSeasidePlugin *plugin)
     NMSeasidePluginPrivate *priv = nm_seaside_plugin_get_instance_private(plugin);
     priv->lib_handle = NULL;
     priv->coordinator = NULL;
-    priv->vpn_init = NULL;
     priv->vpn_start = NULL;
     priv->vpn_stop = NULL;
-    priv->running = FALSE;
 }
 
 static void
