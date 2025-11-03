@@ -23,6 +23,7 @@ pub struct Viridian<'a> {
     address: Ipv4Addr,
     port: u16,
     pub tunnel: Tunnel,
+    pub tunnel_network: Ipv4Net,
     client_type: ProtocolType,
     local_address: Ipv4Addr,
     pub dns: Option<Ipv4Addr>,
@@ -54,7 +55,7 @@ impl<'a> Viridian<'a> {
         let tunnel = Tunnel::new(address, &tunnel_name, tunnel_network).await?;
 
         let default_ip = tunnel.default_ip();
-        Ok(Viridian { key: ByteBuffer::from(certificate.typhoon_public), token: ByteBuffer::from(certificate.token), address, port, tunnel, client_type: protocol, local_address: default_ip, dns })
+        Ok(Viridian { key: ByteBuffer::from(certificate.typhoon_public), token: ByteBuffer::from(certificate.token), address, port, tunnel, tunnel_network, client_type: protocol, local_address: default_ip, dns })
     }
 
     pub async fn start(&mut self, receiver: &mut Receiver<()>) -> DynResult<()> {
