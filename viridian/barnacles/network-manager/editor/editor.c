@@ -85,12 +85,14 @@ static gboolean check_validity(SeasideEditor* self, GError** error) {
 	char* filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(widget));
 
     if (!filename || !strlen(filename)) {
+		g_warning("Error reading filename!");
         g_set_error (error, SEASIDE_EDITOR_PLUGIN_ERROR, SEASIDE_EDITOR_PLUGIN_ERROR_INVALID_PROPERTY, "No certificate file selected");
         g_free(filename);
         return FALSE;
     }
 
     if (!g_file_test(filename, G_FILE_TEST_EXISTS)) {
+		g_warning("Error checking filename existence!");
         g_set_error(error, SEASIDE_EDITOR_PLUGIN_ERROR, SEASIDE_EDITOR_PLUGIN_ERROR_INVALID_PROPERTY, "Selected certificate file does not exist: %s", filename);
         g_free(filename);
         return FALSE;
@@ -192,20 +194,23 @@ static NMVpnEditor* nm_vpn_editor_interface_new(NMConnection* connection, GError
 
 	NMVpnEditor* object = g_object_new(SEASIDE_TYPE_EDITOR, NULL);
 	if (!object) {
-		g_set_error(error, SEASIDE_EDITOR_PLUGIN_ERROR, 0, "could not create seaside object");
+		g_warning("Error creating SeasideVPN editor interface!");
+		g_set_error(error, SEASIDE_EDITOR_PLUGIN_ERROR, 0, "Error creating SeasideVPN editor interface");
 		return NULL;
 	}
 
 	SeasideEditorPrivate* priv = seaside_editor_get_instance_private(SEASIDE_EDITOR(object));
-	priv->builder = gtk_builder_new();
 
-	if (!gtk_builder_add_from_resource(priv->builder, "/org/freedesktop/network-manager-seasidevpn/dialog.ui", error)) {
+	priv->builder = gtk_builder_new_from_resource("/org/freedesktop/network-manager-seasidevpn/dialog.ui");
+	if (!priv->builder) {
+		g_warning("Error loading SeasideVPN editor interface UI!");
 		g_object_unref(object);
 		return NULL;
 	}
 
 	priv->widget = GTK_WIDGET(gtk_builder_get_object(priv->builder, "root_box"));
 	if (!priv->widget) {
+		g_warning("Error building SeasideVPN editor interface UI!");
 		g_set_error(error, SEASIDE_EDITOR_PLUGIN_ERROR, 0, "could not load UI widget");
 		g_object_unref(object);
 		return NULL;
@@ -213,6 +218,7 @@ static NMVpnEditor* nm_vpn_editor_interface_new(NMConnection* connection, GError
 	g_object_ref_sink(priv->widget);
 
 	if (!init_editor_plugin(SEASIDE_EDITOR(object), connection, error)) {
+		g_warning("Error initializing SeasideVPN editor interface UI!");
 		g_object_unref(object);
 		return NULL;
 	}

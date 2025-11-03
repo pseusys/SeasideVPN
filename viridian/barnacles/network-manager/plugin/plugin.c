@@ -19,6 +19,8 @@
 /* Shared library base names to try letting the loader find them */
 #define LIB_BASENAME "libseaside.so"
 
+#define IP(x) ((char*)&x)[0], ((char*)&x)[1], ((char*)&x)[2], ((char*)&x)[3] 
+
 typedef bool (*vpn_start_fn)(const char*, const char*, struct VPNConfig**, void**, void*, void (*)(void*, char*), char**);
 typedef bool (*vpn_stop_fn)(void*, char**);
 
@@ -127,13 +129,13 @@ seaside_set_vpnconfig(gpointer user_data)
     }
 
     if (data->cfg->tunnel_mtu) {
-        g_debug("DBUS config: Setting tunnel MTU to: %d", data->cfg->tunnel_mtu);
+        g_debug("DBUS config: Setting tunnel MTU to: %u", data->cfg->tunnel_mtu);
         GVariant *v = g_variant_new_uint32(data->cfg->tunnel_mtu);
         g_variant_builder_add(&gen_builder, "{sv}", NM_VPN_PLUGIN_CONFIG_MTU, v);
     }
 
     if (data->cfg->remote_address) {
-        g_debug("DBUS config: Setting tunnel remote gateway to: %d", data->cfg->remote_address);
+        g_debug("DBUS config: Setting tunnel remote gateway to: %02x.%02x.%02x.%02x", IP(data->cfg->remote_address));
         GVariant *v = g_variant_new_uint32(g_htonl(data->cfg->remote_address));
         g_variant_builder_add(&gen_builder, "{sv}", NM_VPN_PLUGIN_CONFIG_EXT_GATEWAY, v);
     }
@@ -147,25 +149,25 @@ seaside_set_vpnconfig(gpointer user_data)
     g_variant_builder_init(&ipv4_builder, G_VARIANT_TYPE_VARDICT);
 
     if (data->cfg->tunnel_gateway) {
-        g_debug("DBUS config: Setting tunnel internal gateway to: %d", data->cfg->tunnel_gateway);
+        g_debug("DBUS config: Setting tunnel internal gateway to: %02x.%02x.%02x.%02x", IP(data->cfg->tunnel_gateway));
         GVariant *v = g_variant_new_uint32(g_htonl(data->cfg->tunnel_gateway));
         g_variant_builder_add(&ipv4_builder, "{sv}", NM_VPN_PLUGIN_IP4_CONFIG_INT_GATEWAY, v);
     }
 
     if (data->cfg->tunnel_address) {
-        g_debug("DBUS config: Setting tunnel address to: %d", data->cfg->tunnel_address);
+        g_debug("DBUS config: Setting tunnel address to: %02x.%02x.%02x.%02x", IP(data->cfg->tunnel_address));
         GVariant *v = g_variant_new_uint32(g_htonl(data->cfg->tunnel_address));
         g_variant_builder_add(&ipv4_builder, "{sv}", NM_VPN_PLUGIN_IP4_CONFIG_ADDRESS, v);
     }
 
     if (data->cfg->tunnel_prefix) {
-        g_debug("DBUS config: Setting tunnel prefix to: %d", data->cfg->tunnel_prefix);
+        g_debug("DBUS config: Setting tunnel prefix to: %u", data->cfg->tunnel_prefix);
         GVariant *v = g_variant_new_uint32(data->cfg->tunnel_prefix);
         g_variant_builder_add(&ipv4_builder, "{sv}", NM_VPN_PLUGIN_IP4_CONFIG_PREFIX, v);
     }
 
     if (data->cfg->dns_address) {
-        g_debug("DBUS config: Setting tunnel DNS address to: %d", data->cfg->dns_address);
+        g_debug("DBUS config: Setting tunnel DNS address to: %02x.%02x.%02x.%02x", IP(data->cfg->dns_address));
         GVariantBuilder dns_builder;
         g_variant_builder_init(&dns_builder, G_VARIANT_TYPE("au"));
         g_variant_builder_add(&dns_builder, "u", g_htonl(data->cfg->dns_address));
@@ -276,6 +278,16 @@ empty_need_secrets (NMVpnServicePlugin *plugin,
     return FALSE;
 }
 
+static gboolean
+empty_new_secrets (NMVpnServicePlugin *base_plugin,
+                  NMConnection *connection,
+                  GError **error)
+
+{
+    g_debug("DBUS new secrets: Skipped!");
+    return TRUE;
+}
+
 /* GObject init/class functions */
 static void
 nm_seaside_plugin_init(NMSeasidePlugin *plugin)
@@ -294,6 +306,7 @@ nm_seaside_plugin_class_init(NMSeasidePluginClass *klass)
     parent->connect = real_connect;
     parent->need_secrets = empty_need_secrets;
     parent->disconnect = real_disconnect;
+    parent->new_secrets = empty_new_secrets;
 }
 
 /* Factory to create a plugin instance and register D-Bus service name */
