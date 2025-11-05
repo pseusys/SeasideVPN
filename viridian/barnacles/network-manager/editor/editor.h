@@ -1,7 +1,18 @@
 #ifndef NM_SEASIDE_EDITOR_H
 #define NM_SEASIDE_EDITOR_H
 
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include <glib-object.h>
+
+
+#define SEASIDE_EDITOR_PLUGIN_ERROR NM_CONNECTION_ERROR
+#define SEASIDE_EDITOR_PLUGIN_ERROR_INVALID_PROPERTY NM_CONNECTION_ERROR_INVALID_PROPERTY
+
 
 #define SEASIDE_TYPE_EDITOR_PLUGIN (seaside_editor_plugin_get_type())
 #define SEASIDE_EDITOR_PLUGIN(obj) (G_TYPE_CHECK_INSTANCE_CAST((obj), SEASIDE_TYPE_EDITOR_PLUGIN, SeasideEditorPlugin))
@@ -43,5 +54,13 @@ struct _SeasideEditorClass {
 };
 
 GType seaside_editor_get_type(void);
+
+
+#define SEASIDE_PLUGIN_NAME "SeasideVPN"
+#define SEASIDE_PLUGIN_DESC "An obscure P2P network PPTP VPN distributed system"
+
+#define NM_SEASIDE_KEY_CERTIFICATE "certificate"
+#define NM_SEASIDE_KEY_PROTOCOL "protocol" 
+
 
 #endif	/* NM_SEASIDE_EDITOR_H */

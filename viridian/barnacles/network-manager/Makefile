@@ -18,8 +18,13 @@ help:
 
 
 # Building and setting up system:
+G_C_FLAGS := $(shell pkg-config --cflags --libs libnm)
+ifeq ($(BUILD_TYPE),debug)
+	G_C_FLAGS := $(G_C_FLAGS) -Og
+endif
 
-G_C_FLAGS := $(shell pkg-config --cflags --libs libnm gtk+-3.0)
+G_C_FLAGS_GTK_3 := $(G_C_FLAGS) $(shell pkg-config --cflags --libs gtk+-3.0)
+G_C_FLAGS_GTK_4 := $(G_C_FLAGS) $(shell pkg-config --cflags --libs gtk4)
 BUILD_ARCH := $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
 
 PLUGIN_NAME := seasidevpn
@@ -30,6 +35,7 @@ BIN_DIR := /usr/lib/$(BUILD_ARCH)
 PLUGIN_DIR := $(BIN_DIR)/NetworkManager
 SERVICE_DIR := /usr/libexec
 NM_DBUS_DIR := /usr/share/dbus-1/system.d
+PLUGIN_INTERFACE_BASE := $(PLUGIN_DIR)/libnm-vpn-editor-$(PLUGIN_NAME)
 
 REEF_DIR := ../../reef
 NM_CONFIGURATION_DIR := configuration
@@ -43,12 +49,10 @@ INSTALL_PLUGIN := $(SERVICE_DIR)/nm-$(PLUGIN_NAME)-service
 INSTALL_NAME := $(LIB_DIR)/nm-$(PLUGIN_NAME)-service.name
 INSTALL_CONF := $(NM_DBUS_DIR)/nm-$(PLUGIN_NAME)-service.conf
 INSTALL_EDITOR := $(PLUGIN_DIR)/libnm-vpn-plugin-$(PLUGIN_NAME).so
+INSTALL_INTERFACE_GTK3 := $(PLUGIN_INTERFACE_BASE)-gtk3.so
+INSTALL_INTERFACE_GTK4 := $(PLUGIN_INTERFACE_BASE)-gtk4.so
 
-
-G_C_FLAGS := $(G_C_FLAGS) -DSEASIDE_PLUGIN_SERVICE="\"$(SERVICE_NAME)\""
-ifeq ($(BUILD_TYPE),debug)
-	G_C_FLAGS := $(G_C_FLAGS) -Og
-endif
+EXTRA_FLAGS := -DSEASIDE_PLUGIN_SERVICE="\"$(SERVICE_NAME)\"" -DEDITOR_INTERFACE_PATH="\"$(PLUGIN_INTERFACE_BASE)\""
 
 
 dir-build:
@@ -59,7 +63,9 @@ dir-build:
 editor-build: dir-build
 	@ # Build network manager reef editor
 	glib-compile-resources $(NM_EDITOR_DIR)/gresource.xml --sourcedir=$(NM_EDITOR_DIR) --target=$(NM_BUILD_DIR)/resources.gen.c --generate-source
-	gcc -fPIC -shared $(NM_EDITOR_DIR)/editor.c $(NM_BUILD_DIR)/resources.gen.c $(NM_EDITOR_DIR)/editor.h -o $(NM_BUILD_DIR)/editor.so $(G_C_FLAGS)
+	gcc -fPIC -shared $(NM_EDITOR_DIR)/editor.c $(NM_EDITOR_DIR)/editor.h -o $(NM_BUILD_DIR)/editor.so $(G_C_FLAGS) $(EXTRA_FLAGS)
+	gcc -fPIC -shared $(NM_EDITOR_DIR)/*.h $(NM_EDITOR_DIR)/interface_gtk3.c $(NM_BUILD_DIR)/resources.gen.c -o $(NM_BUILD_DIR)/interface-gtk3.so $(EXTRA_FLAGS) $(G_C_FLAGS_GTK_3)
+	gcc -fPIC -shared $(NM_EDITOR_DIR)/*.h $(NM_EDITOR_DIR)/interface_gtk4.c $(NM_BUILD_DIR)/resources.gen.c -o $(NM_BUILD_DIR)/interface-gtk4.so $(EXTRA_FLAGS) $(G_C_FLAGS_GTK_4)
 .PHONY: editor-build
 
 plugin-build: dir-build
@@ -86,6 +92,8 @@ install: build
 	sudo install -D -m 644 $(NM_BUILD_DIR)/descriptor.ini.gen $(INSTALL_NAME)
 	sudo install -D -m 644 $(NM_CONFIGURATION_DIR)/service.conf $(INSTALL_CONF)
 	sudo install -D -m 644 $(NM_BUILD_DIR)/editor.so $(INSTALL_EDITOR)
+	sudo install -D -m 644 $(NM_BUILD_DIR)/interface-gtk3.so $(INSTALL_INTERFACE_GTK3)
+	sudo install -D -m 644 $(NM_BUILD_DIR)/interface-gtk4.so $(INSTALL_INTERFACE_GTK4)
 	sudo install -D -m 644 $(NM_BIN_DIR)/libseaside.so $(INSTALL_BIN)
 ifneq ($(RUNNING_IN_DOCKER),true)
 	sudo systemctl restart NetworkManager
@@ -108,5 +116,5 @@ endif
 clean:
 	@ # Clean network manager plugin build artifacts
 	rm -rf $(NM_BUILD_DIR)
-	sudo rm -f $(INSTALL_PLUGIN) $(INSTALL_NAME) $(INSTALL_CONF) $(INSTALL_EDITOR) $(INSTALL_BIN)
+	sudo rm -f $(INSTALL_PLUGIN) $(INSTALL_NAME) $(INSTALL_CONF) $(INSTALL_EDITOR) $(INSTALL_INTERFACE_GTK3) $(INSTALL_INTERFACE_GTK4) $(INSTALL_BIN)
 .PHONY: clean
