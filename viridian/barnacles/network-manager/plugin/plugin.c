@@ -19,7 +19,8 @@
 /* Shared library base names to try letting the loader find them */
 #define LIB_BASENAME "libseaside.so"
 
-#define IP(x) ((char*)&x)[0], ((char*)&x)[1], ((char*)&x)[2], ((char*)&x)[3] 
+#define IP_TEMPLATE "%u.%u.%u.%u"
+#define IP(x) ((uint8_t*) &x)[3], ((uint8_t*) &x)[2], ((uint8_t*) &x)[1], ((uint8_t*) &x)[0] 
 
 typedef bool (*vpn_start_fn)(const char*, const char*, struct VPNConfig**, void**, void*, void (*)(void*, char*), char**);
 typedef bool (*vpn_stop_fn)(void*, char**);
@@ -46,7 +47,7 @@ typedef struct {
 
 static gboolean capture_error_idle(gpointer data) {
     g_debug("DBUS runtime: Starting synchronous error report...");
-    CaptureErrorData *d = data;
+    CaptureErrorData *d = (CaptureErrorData *)data;
 
     if (d->message) {
         g_debug("DBUS runtime: Setting plugin failure...");
@@ -113,7 +114,7 @@ seaside_load_library(NMSeasidePluginPrivate *priv, GError **error)
 
 /* Build and send NM IPv4 config from VPNConfig */
 static gboolean
-seaside_set_vpnconfig(gpointer user_data)
+seaside_set_vpnconfig_idle(gpointer user_data)
 {
     g_debug("DBUS config: Starting asynchronous configuration setting...");
     IdleConfigData *data = (IdleConfigData *)user_data;
@@ -123,61 +124,55 @@ seaside_set_vpnconfig(gpointer user_data)
     g_variant_builder_init(&gen_builder, G_VARIANT_TYPE_VARDICT);
 
     if (data->cfg->tunnel_name && data->cfg->tunnel_name[0]) {
-        g_debug("DBUS config: Setting tunnel name to: %s", data->cfg->tunnel_name);
-        GVariant *v = g_variant_new_string(data->cfg->tunnel_name);
-        g_variant_builder_add(&gen_builder, "{sv}", NM_VPN_PLUGIN_CONFIG_TUNDEV, v);
+        g_debug("DBUS config: Setting tunnel name to: %s...", data->cfg->tunnel_name);
+        g_variant_builder_add(&gen_builder, "{sv}", NM_VPN_PLUGIN_CONFIG_TUNDEV, g_variant_new_string(data->cfg->tunnel_name));
     }
 
     if (data->cfg->tunnel_mtu) {
-        g_debug("DBUS config: Setting tunnel MTU to: %u", data->cfg->tunnel_mtu);
-        GVariant *v = g_variant_new_uint32(data->cfg->tunnel_mtu);
-        g_variant_builder_add(&gen_builder, "{sv}", NM_VPN_PLUGIN_CONFIG_MTU, v);
+        g_debug("DBUS config: Setting tunnel MTU to: %u...", data->cfg->tunnel_mtu);
+        g_variant_builder_add(&gen_builder, "{sv}", NM_VPN_PLUGIN_CONFIG_MTU, g_variant_new_uint32(data->cfg->tunnel_mtu));
     }
 
     if (data->cfg->remote_address) {
-        g_debug("DBUS config: Setting tunnel remote gateway to: %02x.%02x.%02x.%02x", IP(data->cfg->remote_address));
-        GVariant *v = g_variant_new_uint32(g_htonl(data->cfg->remote_address));
-        g_variant_builder_add(&gen_builder, "{sv}", NM_VPN_PLUGIN_CONFIG_EXT_GATEWAY, v);
+        g_debug("DBUS config: Setting tunnel remote gateway to: " IP_TEMPLATE "...", IP(data->cfg->remote_address));
+        g_variant_builder_add(&gen_builder, "{sv}", NM_VPN_PLUGIN_CONFIG_EXT_GATEWAY, g_variant_new_uint32(g_htonl(data->cfg->remote_address)));
     }
 
-    GVariant *gen_dict = g_variant_builder_end(&gen_builder);
+    g_debug("DBUS config: Setting IPv4 configuration to allowed...");
+	g_variant_builder_add(&gen_builder, "{sv}", NM_VPN_PLUGIN_CONFIG_HAS_IP4, g_variant_new_boolean(TRUE));
+
     g_debug("DBUS config: Sending general configuration...");
-    nm_vpn_service_plugin_set_config(data->plugin, gen_dict);
+    nm_vpn_service_plugin_set_config(data->plugin, g_variant_builder_end(&gen_builder));
 
     GVariantBuilder ipv4_builder;
     g_debug("DBUS config: Initializing IPv4 configuration...");
     g_variant_builder_init(&ipv4_builder, G_VARIANT_TYPE_VARDICT);
 
     if (data->cfg->tunnel_gateway) {
-        g_debug("DBUS config: Setting tunnel internal gateway to: %02x.%02x.%02x.%02x", IP(data->cfg->tunnel_gateway));
-        GVariant *v = g_variant_new_uint32(g_htonl(data->cfg->tunnel_gateway));
-        g_variant_builder_add(&ipv4_builder, "{sv}", NM_VPN_PLUGIN_IP4_CONFIG_INT_GATEWAY, v);
+        g_debug("DBUS config: Setting tunnel internal gateway to: " IP_TEMPLATE "...", IP(data->cfg->tunnel_gateway));
+        g_variant_builder_add(&ipv4_builder, "{sv}", NM_VPN_PLUGIN_IP4_CONFIG_INT_GATEWAY, g_variant_new_uint32(g_htonl(data->cfg->tunnel_gateway)));
     }
 
     if (data->cfg->tunnel_address) {
-        g_debug("DBUS config: Setting tunnel address to: %02x.%02x.%02x.%02x", IP(data->cfg->tunnel_address));
-        GVariant *v = g_variant_new_uint32(g_htonl(data->cfg->tunnel_address));
-        g_variant_builder_add(&ipv4_builder, "{sv}", NM_VPN_PLUGIN_IP4_CONFIG_ADDRESS, v);
+        g_debug("DBUS config: Setting tunnel address to: " IP_TEMPLATE "...", IP(data->cfg->tunnel_address));
+        g_variant_builder_add(&ipv4_builder, "{sv}", NM_VPN_PLUGIN_IP4_CONFIG_ADDRESS, g_variant_new_uint32(g_htonl(data->cfg->tunnel_address)));
     }
 
     if (data->cfg->tunnel_prefix) {
-        g_debug("DBUS config: Setting tunnel prefix to: %u", data->cfg->tunnel_prefix);
-        GVariant *v = g_variant_new_uint32(data->cfg->tunnel_prefix);
-        g_variant_builder_add(&ipv4_builder, "{sv}", NM_VPN_PLUGIN_IP4_CONFIG_PREFIX, v);
+        g_debug("DBUS config: Setting tunnel prefix to: %u...", data->cfg->tunnel_prefix);
+        g_variant_builder_add(&ipv4_builder, "{sv}", NM_VPN_PLUGIN_IP4_CONFIG_PREFIX, g_variant_new_uint32(data->cfg->tunnel_prefix));
     }
 
     if (data->cfg->dns_address) {
-        g_debug("DBUS config: Setting tunnel DNS address to: %02x.%02x.%02x.%02x", IP(data->cfg->dns_address));
+        g_debug("DBUS config: Setting tunnel DNS address to: " IP_TEMPLATE "...", IP(data->cfg->dns_address));
         GVariantBuilder dns_builder;
         g_variant_builder_init(&dns_builder, G_VARIANT_TYPE("au"));
         g_variant_builder_add(&dns_builder, "u", g_htonl(data->cfg->dns_address));
-        GVariant *v = g_variant_builder_end(&dns_builder);
-        g_variant_builder_add(&ipv4_builder, "{sv}", NM_VPN_PLUGIN_IP4_CONFIG_DNS, v);
+        g_variant_builder_add(&ipv4_builder, "{sv}", NM_VPN_PLUGIN_IP4_CONFIG_DNS, g_variant_builder_end(&dns_builder));
     }
 
-    GVariant *ipv4_dict = g_variant_builder_end(&ipv4_builder);
     g_debug("DBUS config: Sending IPv4 configuration...");
-    nm_vpn_service_plugin_set_ip4_config(data->plugin, ipv4_dict);
+    nm_vpn_service_plugin_set_ip4_config(data->plugin, g_variant_builder_end(&ipv4_builder));
 
     free(data->cfg);
     g_free(data);
@@ -237,7 +232,7 @@ real_connect(NMVpnServicePlugin *plugin, NMConnection *connection, GError **erro
     data->plugin = plugin;
     data->cfg = cfg;
     g_debug("DBUS connect: Scheduling configuration setting...");
-    g_idle_add(seaside_set_vpnconfig, data);
+    g_idle_add(seaside_set_vpnconfig_idle, data);
 
     g_debug("DBUS connect: Success!");
     return TRUE;

@@ -24,8 +24,7 @@ struct RawPtr(*mut c_void);
 unsafe impl Send for RawPtr {}
 
 /// cbindgen:ignore
-struct Coordinator<'a> {
-    viridian: *mut Viridian<'a>,
+struct Coordinator {
     handle: JoinHandle<c_void>,
     terminator: Sender<()>
 }
@@ -124,7 +123,7 @@ pub extern "C" fn vpn_start(certificate: *const c_char, protocol: *const c_char,
     });
 
     unsafe { *config = Box::into_raw(Box::new(vpn_config)) };
-    unsafe { *coordinator_ptr = Box::into_raw(Box::new(Coordinator { viridian: viridian_ptr, handle, terminator: sender })) as *mut c_void };
+    unsafe { *coordinator_ptr = Box::into_raw(Box::new(Coordinator { handle, terminator: sender })) as *mut c_void };
     true
 }
 
@@ -142,6 +141,5 @@ pub extern "C" fn vpn_stop(coordinator_ptr: *mut c_void, error: *mut *mut c_char
         Err(err) => return_error!(format!("Error joining VPN loop termination: {err}"), error)
     };
 
-    let _viridian = unsafe { Box::from_raw(coordinator.viridian as *mut Viridian) };
     return result;
 }
