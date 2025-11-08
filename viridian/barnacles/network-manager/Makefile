@@ -79,6 +79,9 @@ EDITOR_PLUGIN_INCLUDES := -I$(SHARED_LIBRARY) -I$(NM_INCLUDE_DIR)
 CLANG_CONFIGURATION_FILE := $(VIRIDIAN_DIR)/.clang-tidy
 CLANG_FORMATTING_FILE := $(VIRIDIAN_DIR)/.clang-format
 
+CLANG_STATIC_ANALYSIS_ARGS := --config-file=$(CLANG_CONFIGURATION_FILE) --quiet
+CLANG_FORMATTING_ARGS := --Werror --sort-includes --style=file:$(CLANG_FORMATTING_FILE) **/*.c **/*.h
+
 
 
 # Build accessories:
@@ -109,24 +112,27 @@ $(NM_BUILD_DIR)/resources.gen.o: $(NM_BUILD_DIR)/resources.gen.c | create-build-
 
 $(NM_BUILD_DIR)/auth_dialog.o: $(NM_EDITOR_DIR)/auth_dialog.c | create-build-directory
 	@
-	# clang-tidy --config-file=$(CLANG_CONFIGURATION_FILE) $< -- $(GCC_FLAGS_LIBSECRET)
+	clang-tidy $(CLANG_STATIC_ANALYSIS_ARGS) $< -- $(GCC_FLAGS_LIBSECRET)
 	gcc -fPIC -c $< -o $@ $(GCC_FLAGS_LIBSECRET)
 
 $(NM_BUILD_DIR)/editor.o: $(NM_EDITOR_DIR)/editor.c $(NM_EDITOR_DIR)/editor.h $(NM_INCLUDE_DIR)/common.h | create-build-directory
 	@
-	# clang-tidy --config-file=$(CLANG_CONFIGURATION_FILE) $< -- $(EDITOR_PLUGIN_INCLUDES) $(EXTRA_FLAGS) $(GCC_FLAGS_LIBNM)
+	clang-tidy $(CLANG_STATIC_ANALYSIS_ARGS) $< -- $(EDITOR_PLUGIN_INCLUDES) $(EXTRA_FLAGS) $(GCC_FLAGS_LIBNM)
 	gcc -fPIC $(EDITOR_PLUGIN_INCLUDES) -c $< -o $@ $(EXTRA_FLAGS) $(GCC_FLAGS_LIBNM)
 
 $(NM_BUILD_DIR)/interface_gtk3.o: $(NM_EDITOR_DIR)/interface_gtk3.c $(NM_EDITOR_DIR)/interface.h $(NM_EDITOR_DIR)/editor.h | create-build-directory
 	@
+	clang-tidy $(CLANG_STATIC_ANALYSIS_ARGS) $< -- $(EXTRA_FLAGS) $(GCC_FLAGS_GTK3)
 	gcc -fPIC -c $< -o $@ $(EXTRA_FLAGS) $(GCC_FLAGS_GTK3)
 
 $(NM_BUILD_DIR)/interface_gtk4.o: $(NM_EDITOR_DIR)/interface_gtk4.c $(NM_EDITOR_DIR)/interface.h $(NM_EDITOR_DIR)/editor.h | create-build-directory
 	@
+	clang-tidy $(CLANG_STATIC_ANALYSIS_ARGS) $< -- $(EXTRA_FLAGS) $(GCC_FLAGS_GTK4)
 	gcc -fPIC -c $< -o $@ $(EXTRA_FLAGS) $(GCC_FLAGS_GTK4)
 
 $(NM_BUILD_DIR)/plugin.o: $(NM_PLUGIN_DIR)/plugin.c $(NM_PLUGIN_DIR)/plugin.h $(SHARED_LIBRARY)/seaside.h $(NM_INCLUDE_DIR)/common.h | create-build-directory
 	@
+	clang-tidy $(CLANG_STATIC_ANALYSIS_ARGS) $< -- $(EDITOR_PLUGIN_INCLUDES) $(EXTRA_FLAGS) $(GCC_FLAGS_LIBNM)
 	gcc -fPIC $(EDITOR_PLUGIN_INCLUDES) -c $< -o $@ $(EXTRA_FLAGS) $(GCC_FLAGS_LIBNM)
 
 
@@ -213,12 +219,12 @@ endif
 
 lint:
 	@
-	clang-format --Werror --sort-includes --style=file:$(CLANG_FORMATTING_FILE) --dry-run **/*.c **/*.h
+	clang-format --dry-run $(CLANG_FORMATTING_ARGS)
 .PHONY: lint
 
 format:
 	@
-	clang-format --Werror --sort-includes --style=file:$(CLANG_FORMATTING_FILE) **/*.c **/*.h
+	clang-format $(CLANG_FORMATTING_ARGS)
 .PHONY: format
 
 

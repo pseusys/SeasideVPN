@@ -1,5 +1,3 @@
-#define _GNU_SOURCE
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,7 +19,7 @@
 #define LIB_BASENAME "libseaside.so"
 
 #define IP_TEMPLATE "%u.%u.%u.%u"
-#define IP(x) ((uint8_t*) &x)[3], ((uint8_t*) &x)[2], ((uint8_t*) &x)[1], ((uint8_t*) &x)[0]
+#define IP(x) ((uint8_t*) &(x))[3], ((uint8_t*) &(x))[2], ((uint8_t*) &(x))[1], ((uint8_t*) &(x))[0]
 
 /* Private plugin state */
 typedef struct {
@@ -45,22 +43,22 @@ typedef struct {
 
 static gboolean capture_error_idle(gpointer data) {
     g_debug("DBUS runtime: Starting synchronous error report...");
-    CaptureErrorData *d = (CaptureErrorData *)data;
+    CaptureErrorData *ce_data = (CaptureErrorData *)data;
 
-    if (d->message) {
+    if (ce_data->message) {
         g_debug("DBUS runtime: Setting plugin failure...");
-        nm_vpn_service_plugin_failure(d->plugin, NM_VPN_PLUGIN_FAILURE_CONNECT_FAILED);
+        nm_vpn_service_plugin_failure(ce_data->plugin, NM_VPN_PLUGIN_FAILURE_CONNECT_FAILED);
 
         g_debug("DBUS runtime: Requesting disconnect from NM...");
-        nm_vpn_service_plugin_disconnect(d->plugin, NULL);
+        nm_vpn_service_plugin_disconnect(ce_data->plugin, NULL);
 
-        g_error("DBUS runtime: Error running SeasideVPN interface: %s", d->message);
-        free(d->message);
+        g_error("DBUS runtime: Error running SeasideVPN interface: %s", ce_data->message);
+        free(ce_data->message);
 
     } else
         g_debug("DBUS runtime: SeasideVPN interface exited cleanly!");
 
-    g_free(d);
+    g_free(ce_data);
     g_debug("DBUS runtime: Error reported successfully!");
     return G_SOURCE_REMOVE;
 }
@@ -69,10 +67,10 @@ static void
 capture_error(void* plugin_ptr, char* error)
 {
     g_debug("DBUS runtime: Starting asynchronous error report...");
-    CaptureErrorData *d = g_new(CaptureErrorData, 1);
-    d->plugin = (NMVpnServicePlugin *) plugin_ptr;
-    d->message = error;
-    g_idle_add(capture_error_idle, d);
+    CaptureErrorData *ce_data = g_new(CaptureErrorData, 1);
+    ce_data->plugin = (NMVpnServicePlugin *) plugin_ptr;
+    ce_data->message = error;
+    g_idle_add(capture_error_idle, ce_data);
     g_debug("DBUS runtime: Asynchronous report sent!");
 }
 
@@ -208,13 +206,14 @@ real_connect(NMVpnServicePlugin *plugin, NMConnection *connection, GError **erro
         g_warning("DBUS connect: Error extracting 'certificate' parameter");
         g_set_error(error, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_BAD_ARGUMENTS, "Error extracting 'certificate' parameter");
         return FALSE;
-    } else g_debug("DBUS connect: Certificate parameter read: %s", certificate);
+    }
+    g_debug("DBUS connect: Certificate parameter read: %s", certificate);
 
     if (certifile) {
         g_debug("DBUS connect: Certificate parameter is a file name!");
         certificate_data = (char *)g_strdup(certificate);
     } else {
-        certificate_data = (char *)g_base64_decode((const char *)certificate, &certificate_length);
+        certificate_data = (char *)g_base64_decode(certificate, &certificate_length);
         g_debug("DBUS connect: Certificate parameter is embedded data (%ld bytes)!", certificate_length);
     }
 
@@ -222,12 +221,14 @@ real_connect(NMVpnServicePlugin *plugin, NMConnection *connection, GError **erro
         g_warning("DBUS connect: Error extracting 'protocol' parameter");
         g_set_error(error, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_BAD_ARGUMENTS, "Error extracting 'protocol' parameter");
         return FALSE;
-    } else g_debug("DBUS connect: Protocol parameter read: %s", protocol);
+    }
+    g_debug("DBUS connect: Protocol parameter read: %s", protocol);
 
     if (!seaside_load_library(priv, error)) {
         g_warning("DBUS connect: Error loading Seaside Reef DLL");
         return FALSE;
-    } else g_debug("DBUS connect: Seaside Reef DLL loaded!");
+    }
+    g_debug("DBUS connect: Seaside Reef DLL loaded!");
 
     VPNConfig *cfg;
     char *err_string;
@@ -237,7 +238,8 @@ real_connect(NMVpnServicePlugin *plugin, NMConnection *connection, GError **erro
         g_set_error(error, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_LAUNCH_FAILED, "Error starting viridian: %s", err_string);
         free(err_string);
         return FALSE;
-    } else g_debug("DBUS connect: Viridian started!");
+    }
+    g_debug("DBUS connect: Viridian started!");
 
     IdleConfigData *data = g_new(IdleConfigData, 1);
     data->plugin = plugin;

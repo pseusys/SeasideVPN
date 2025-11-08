@@ -9,29 +9,29 @@
 #include <NetworkManager.h>
 #include <nm-vpn-service-plugin.h>
 
+static const size_t QUIT_STRING_SIZE = 10;
+static const time_t QUIT_STRING_CHAR_DELAY = 10;
+static const time_t QUIT_STRING_CHAR_TIMEOUT = 20;
+
 
 static void
 wait_for_quit (void)
 {
-	GString *str;
-	char c;
-	ssize_t n;
-	time_t start;
-
-	str = g_string_sized_new (10);
-	start = time (NULL);
+	GString *str = g_string_sized_new(QUIT_STRING_SIZE);
+	time_t start = time (NULL);
 	do {
 		errno = 0;
-		n = read (0, &c, 1);
-		if (n == 0 || (n < 0 && errno == EAGAIN))
-			g_usleep (G_USEC_PER_SEC / 10);
-		else if (n == 1) {
-			g_string_append_c (str, c);
-			if (strstr (str->str, "QUIT") || (str->len > 10))
+		char character;
+		ssize_t available = read (0, &character, 1);
+		if (available == 0 || (available < 0 && errno == EAGAIN))
+			g_usleep (G_USEC_PER_SEC / QUIT_STRING_CHAR_DELAY);
+		else if (available == 1) {
+			g_string_append_c (str, character);
+			if (strstr (str->str, "QUIT") || (str->len > QUIT_STRING_SIZE))
 				break;
 		} else
 			break;
-	} while (time (NULL) < start + 20);
+	} while (time (NULL) < start + QUIT_STRING_CHAR_TIMEOUT);
 	g_string_free (str, TRUE);
 }
 
@@ -46,7 +46,7 @@ main (int argc, char *argv[])
 	GOptionEntry entries[] = {
 		{ "uuid", 'u', 0, G_OPTION_ARG_STRING, (void*) &vpn_uuid, "UUID of VPN connection", NULL },
 		{ "name", 'n', 0, G_OPTION_ARG_STRING, (void*) &vpn_name, "Name of VPN connection", NULL },
-		{ NULL }
+		{ 0 }
 	};
 
 	context = g_option_context_new ("- seaside auth dialog");
@@ -56,11 +56,11 @@ main (int argc, char *argv[])
 
 
 	if (!nm_vpn_service_plugin_read_vpn_details (0, &data, &secrets)) {
-		fprintf (stderr, "Failed to read '%s' (%s) data and secrets from stdin.\n", vpn_name, vpn_uuid);
+		fputs("Failed to read VPN data and secrets from stdin.\n", stderr);
 		return 1;
 	}
 
-	fprintf(stdout, "\n\n");
+	fputs("\n\n", stdout);
     fflush(stdout);
 	wait_for_quit();
 

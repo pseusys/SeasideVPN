@@ -119,7 +119,7 @@ static gboolean export (NMVpnEditorPlugin *iface __attribute__((unused)), const 
 	if (!decoded || length == 0)
 		return FALSE;
 
-	if (!g_file_set_contents(path, (gchar *)decoded, length, error))
+	if (!g_file_set_contents(path, (gchar *)decoded, (gssize)length, error))
 		return FALSE;
 
 	g_free(decoded);
@@ -133,10 +133,10 @@ static char *get_suggested_filename (NMVpnEditorPlugin *iface __attribute__((unu
 	NMSettingConnection *s_con = nm_connection_get_setting_connection (connection);
 	g_return_val_if_fail (s_con != NULL, NULL);
 
-	const char *id = nm_setting_connection_get_id (s_con);
-	g_return_val_if_fail (id != NULL, NULL);
+	const char *connection_id = nm_setting_connection_get_id (s_con);
+	g_return_val_if_fail (connection_id != NULL, NULL);
 
-	return g_strdup_printf ("%s.sea", id);
+	return g_strdup_printf ("%s.sea", connection_id);
 }
 
 

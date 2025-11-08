@@ -23,14 +23,14 @@
 #define SEASIDE_IS_EDITOR_PLUGIN_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE((klass), SEASIDE_TYPE_EDITOR_PLUGIN))
 #define SEASIDE_EDITOR_PLUGIN_GET_CLASS(obj) (G_TYPE_INSTANCE_GET_CLASS((obj), SEASIDE_TYPE_EDITOR_PLUGIN, SeasideEditorPluginClass))
 
-typedef struct _SeasideEditorPlugin SeasideEditorPlugin;
-typedef struct _SeasideEditorPluginClass SeasideEditorPluginClass;
+typedef struct SeasideEditorPluginActual SeasideEditorPlugin;
+typedef struct SeasideEditorPluginClassActual SeasideEditorPluginClass;
 
-struct _SeasideEditorPlugin {
+struct SeasideEditorPluginActual {
 	GObject parent;
 };
 
-struct _SeasideEditorPluginClass {
+struct SeasideEditorPluginClassActual {
 	GObjectClass parent;
 };
 
@@ -44,14 +44,14 @@ GType seaside_editor_plugin_get_type(void);
 #define SEASIDE_IS_EDITOR_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE((klass), SEASIDE_TYPE_EDITOR))
 #define SEASIDE_EDITOR_GET_CLASS(obj) (G_TYPE_INSTANCE_GET_CLASS((obj), SEASIDE_TYPE_EDITOR, SeasideEditorClass))
 
-typedef struct _SeasideEditor SeasideEditor;
-typedef struct _SeasideEditorClass SeasideEditorClass;
+typedef struct SeasideEditorActual SeasideEditor;
+typedef struct SeasideEditorClassActual SeasideEditorClass;
 
-struct _SeasideEditor {
+struct SeasideEditorActual {
 	GObject parent;
 };
 
-struct _SeasideEditorClass {
+struct SeasideEditorClassActual {
 	GObjectClass parent;
 };
 
@@ -67,9 +67,7 @@ GType seaside_editor_get_type(void);
 
 #define NM_SEASIDE_PROTOCOL_DEFAULT "typhoon"
 
-
-NMVpnEditor* nm_vpn_editor_factory_seaside(NMVpnEditorPlugin*, NMConnection*, GError**);
-NMVpnEditorPlugin* nm_vpn_editor_plugin_factory(GError**);
+NMVpnEditor* nm_vpn_editor_factory_seaside(NMVpnEditorPlugin* /* editor_plugin */, NMConnection* /* connection */, GError** /* error */);
 
 
 #endif	/* NM_SEASIDE_EDITOR_H */
