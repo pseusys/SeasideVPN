@@ -213,8 +213,8 @@ real_connect(NMVpnServicePlugin *plugin, NMConnection *connection, GError **erro
         g_debug("DBUS connect: Certificate parameter is a file name!");
         certificate_data = (char *)g_strdup(certificate);
     } else {
-        g_debug("DBUS connect: Certificate parameter is embedded data!");
         certificate_data = (char *)g_base64_decode((const guchar *)certificate, &certificate_length);
+        g_debug("DBUS connect: Certificate parameter is embedded data (%ld bytes)!", certificate_length);
     }
 
     if (!protocol) {
@@ -231,7 +231,7 @@ real_connect(NMVpnServicePlugin *plugin, NMConnection *connection, GError **erro
     VPNConfig *cfg;
     char *err_string;
     g_debug("DBUS connect: Starting viridian...");
-    if (!priv->vpn_start(certificate, certificate_length, protocol, &cfg, &priv->coordinator, (void*) plugin, capture_error, &err_string)) {
+    if (!priv->vpn_start(certificate_data, certificate_length, protocol, &cfg, &priv->coordinator, (void*) plugin, capture_error, &err_string)) {
         g_warning("DBUS connect: Error starting viridian: %s", err_string);
         g_set_error(error, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_LAUNCH_FAILED, "Error starting viridian: %s", err_string);
         free(err_string);

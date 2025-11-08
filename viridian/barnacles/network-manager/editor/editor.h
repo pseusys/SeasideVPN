@@ -59,6 +59,7 @@ GType seaside_editor_get_type(void);
 #define SEASIDE_PLUGIN_NAME "SeasideVPN"
 #define SEASIDE_PLUGIN_DESC "An obscure P2P network PPTP VPN distributed system"
 
+#define NM_SEASIDE_KEY_CERTIFILE   "certifile"
 #define NM_SEASIDE_KEY_CERTIFICATE "certificate"
 #define NM_SEASIDE_KEY_PROTOCOL "protocol"
 

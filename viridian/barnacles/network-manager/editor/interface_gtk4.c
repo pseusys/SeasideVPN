@@ -76,6 +76,7 @@ static void choose_certificate_cb(GtkWidget *button, gpointer user_data) {
 		return;
 	}
 
+	g_object_unref(data.file);
 	gsize length = 0;
 	gpointer raw_contents = g_bytes_unref_to_data(contents, &length);
 
@@ -89,10 +90,9 @@ static void choose_certificate_cb(GtkWidget *button, gpointer user_data) {
 
 	g_free(priv->certificate_filedata);
 	priv->certificate_filedata = encoded;
-    g_free(encoded);
-    g_free(raw_contents);
+	g_debug("Choosing certificate: New SeasideVPN certificate file embedded value (%ld bytes) is set to: %s", length, encoded);
 
-	g_object_unref(data.file);
+	g_free(raw_contents);
 	gtk_label_set_text(GTK_LABEL(priv->label_selected_certificate), "Certificate file updated!");
 	stuff_changed_cb(NULL, self);
 }
@@ -121,7 +121,7 @@ static void change_protocol_cb(GtkWidget *button, gpointer user_data) {
 static gboolean check_validity(SeasideEditor* self) {
     SeasideEditorPrivate *priv = seaside_editor_get_instance_private(self);
 	if (!priv->certificate_filedata) g_debug("Validating connection: Certificate file data is missing!");
-	if (!priv->protocol_name) g_debug("Validating connection: Certificate file data is missing!");
+	if (!priv->protocol_name) g_debug("Validating connection: Certificate protocol name is missing!");
     return priv->certificate_filedata != NULL && priv->protocol_name != NULL;
 }
 
@@ -180,9 +180,10 @@ static gboolean init_editor_plugin(SeasideEditor* self, NMConnection* connection
 				return FALSE;
 			}
 		} else {
-			priv->protocol_name = g_strdup(NM_SEASIDE_PROTOCOL_DEFAULT);
 			gtk_check_button_set_active(GTK_CHECK_BUTTON(priv->radio_typhoon), TRUE);
+			proto_value = NM_SEASIDE_PROTOCOL_DEFAULT;
 		}
+		priv->protocol_name = g_strdup(proto_value);
 	}
 
 	g_signal_connect(G_OBJECT(priv->filechooser_widget), "clicked", G_CALLBACK(choose_certificate_cb), self);
@@ -212,6 +213,7 @@ static gboolean update_connection(NMVpnEditor* iface, NMConnection* connection, 
 	NMSettingVpn* s_vpn = NM_SETTING_VPN(nm_setting_vpn_new());
 	g_object_set(s_vpn, NM_SETTING_VPN_SERVICE_TYPE, SEASIDE_PLUGIN_SERVICE, NULL);
 
+	nm_setting_vpn_add_data_item(s_vpn, NM_SEASIDE_KEY_CERTIFILE, NULL);
 	nm_setting_vpn_add_data_item(s_vpn, NM_SEASIDE_KEY_CERTIFICATE, priv->certificate_filedata);
 	nm_setting_vpn_add_data_item(s_vpn, NM_SEASIDE_KEY_PROTOCOL, priv->protocol_name);
 
