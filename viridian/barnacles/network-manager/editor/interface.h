@@ -22,10 +22,6 @@ typedef struct {
 	GtkWidget *filechooser_widget;
 } SeasideEditorPrivate;
 
-void stuff_changed_cb(GtkWidget* widget, gpointer user_data) {
-	g_signal_emit_by_name(SEASIDE_EDITOR(user_data), "changed");
-}
-
 NMVpnEditor *create_seaside_editor(NMConnection *connection, GError **error);
 
 #endif /* IFACE_COMMON_H */

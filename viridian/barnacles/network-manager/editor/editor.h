@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <NetworkManager.h>
+
 #include <glib-object.h>
 
 
@@ -64,6 +66,10 @@ GType seaside_editor_get_type(void);
 #define NM_SEASIDE_KEY_PROTOCOL "protocol"
 
 #define NM_SEASIDE_PROTOCOL_DEFAULT "typhoon"
+
+
+NMVpnEditor* nm_vpn_editor_factory_seaside(NMVpnEditorPlugin*, NMConnection*, GError**);
+NMVpnEditorPlugin* nm_vpn_editor_plugin_factory(GError**);
 
 
 #endif	/* NM_SEASIDE_EDITOR_H */

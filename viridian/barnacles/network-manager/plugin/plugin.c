@@ -13,17 +13,15 @@
 #include <glib-unix.h>
 #include <NetworkManager.h>
 
+#include "common.h"
 #include "plugin.h"
-#include "../../../reef/shared_library/include/seaside.h"
+#include "seaside.h"
 
 /* Shared library base names to try letting the loader find them */
 #define LIB_BASENAME "libseaside.so"
 
 #define IP_TEMPLATE "%u.%u.%u.%u"
-#define IP(x) ((uint8_t*) &x)[3], ((uint8_t*) &x)[2], ((uint8_t*) &x)[1], ((uint8_t*) &x)[0] 
-
-typedef bool (*vpn_start_fn)(const char*, uintptr_t, const char*, struct VPNConfig**, void**, void*, void (*)(void*, char*), char**);
-typedef bool (*vpn_stop_fn)(void*, char**);
+#define IP(x) ((uint8_t*) &x)[3], ((uint8_t*) &x)[2], ((uint8_t*) &x)[1], ((uint8_t*) &x)[0]
 
 /* Private plugin state */
 typedef struct {
@@ -85,7 +83,6 @@ seaside_load_library(NMSeasidePluginPrivate *priv, GError **error)
     if (priv->lib_handle)
         return TRUE;
 
-    /* Let the loader search soname */
     priv->lib_handle = dlopen(LIB_BASENAME, RTLD_NOW | RTLD_LOCAL);
     if (!priv->lib_handle) {
         g_set_error (error,
@@ -95,19 +92,23 @@ seaside_load_library(NMSeasidePluginPrivate *priv, GError **error)
         return FALSE;
     }
 
-    /* Resolve symbols */
-    priv->vpn_start = (vpn_start_fn) dlsym(priv->lib_handle, "vpn_start");
-    priv->vpn_stop  = (vpn_stop_fn) dlsym(priv->lib_handle, "vpn_stop");
-
-    if (!priv->vpn_start || !priv->vpn_stop) {
-        g_set_error (error,
-                     NM_VPN_PLUGIN_ERROR,
-                     NM_VPN_PLUGIN_ERROR_LAUNCH_FAILED,
-                     "Error reading libseaside symbols");
+    dll_function vpn_start_holder = { dlsym(priv->lib_handle, "vpn_start") };
+    if (!vpn_start_holder.pointer) {
+        g_set_error (error, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_LAUNCH_FAILED, "Error reading libseaside symbol: vpn_start");
         dlclose(priv->lib_handle);
         priv->lib_handle = NULL;
         return FALSE;
     }
+    priv->vpn_start = vpn_start_holder.vpn_start;
+
+    dll_function vpn_stop_holder = { dlsym(priv->lib_handle, "vpn_stop") };
+    if (!vpn_stop_holder.pointer) {
+        g_set_error (error, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_LAUNCH_FAILED, "Error reading libseaside symbol: vpn_stop");
+        dlclose(priv->lib_handle);
+        priv->lib_handle = NULL;
+        return FALSE;
+    }
+    priv->vpn_stop = vpn_stop_holder.vpn_stop;
 
     return TRUE;
 }
@@ -213,7 +214,7 @@ real_connect(NMVpnServicePlugin *plugin, NMConnection *connection, GError **erro
         g_debug("DBUS connect: Certificate parameter is a file name!");
         certificate_data = (char *)g_strdup(certificate);
     } else {
-        certificate_data = (char *)g_base64_decode((const guchar *)certificate, &certificate_length);
+        certificate_data = (char *)g_base64_decode((const char *)certificate, &certificate_length);
         g_debug("DBUS connect: Certificate parameter is embedded data (%ld bytes)!", certificate_length);
     }
 
@@ -275,19 +276,19 @@ real_disconnect(NMVpnServicePlugin *plugin, GError **error)
 }
 
 static gboolean
-empty_need_secrets (NMVpnServicePlugin *plugin,
-                   NMConnection *connection,
-                   const char **setting_name,
-                   GError **error)
+empty_need_secrets (NMVpnServicePlugin *plugin __attribute__((unused)),
+                   NMConnection *connection __attribute__((unused)),
+                   const char **setting_name __attribute__((unused)),
+                   GError **error __attribute__((unused)))
 {
     g_debug("DBUS need secrets: Skipped!");
     return FALSE;
 }
 
 static gboolean
-empty_new_secrets (NMVpnServicePlugin *base_plugin,
-                  NMConnection *connection,
-                  GError **error)
+empty_new_secrets (NMVpnServicePlugin *base_plugin __attribute__((unused)),
+                  NMConnection *connection __attribute__((unused)),
+                  GError **error __attribute__((unused)))
 
 {
     g_debug("DBUS new secrets: Skipped!");
@@ -339,8 +340,7 @@ signal_handler (gpointer user_data)
 }
 
 /* Minimal main: instantiate plugin and run main loop */
-int main(int argc, char *argv[])
-{
+int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused))) {
     g_debug("Starting SeasideVPN NM plugin...");
     NMSeasidePlugin *plugin = nm_seaside_plugin_new();
     if (!plugin) return EXIT_FAILURE;

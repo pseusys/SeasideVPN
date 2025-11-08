@@ -8,6 +8,10 @@ static void seaside_editor_interface_init(NMVpnEditorInterface* iface_class);
 
 G_DEFINE_TYPE_WITH_CODE(SeasideEditor, seaside_editor, G_TYPE_OBJECT, G_ADD_PRIVATE(SeasideEditor) G_IMPLEMENT_INTERFACE(NM_TYPE_VPN_EDITOR, seaside_editor_interface_init))
 
+static void stuff_changed_cb(gpointer user_data) {
+	g_signal_emit_by_name(SEASIDE_EDITOR(user_data), "changed");
+}
+
 typedef struct {
 	GMainLoop *loop;
 	GFile *file;
@@ -26,7 +30,7 @@ static void on_file_dialog_done(GObject *source_object, GAsyncResult *res, gpoin
 	g_main_loop_quit(data->loop);
 }
 
-static void choose_certificate_cb(GtkWidget *button, gpointer user_data) {
+static void choose_certificate_cb(GtkWidget *button __attribute__((unused)), gpointer user_data) {
 	SeasideEditor *self = SEASIDE_EDITOR(user_data);
 	SeasideEditorPrivate *priv = seaside_editor_get_instance_private(self);
 
@@ -94,10 +98,10 @@ static void choose_certificate_cb(GtkWidget *button, gpointer user_data) {
 
 	g_free(raw_contents);
 	gtk_label_set_text(GTK_LABEL(priv->label_selected_certificate), "Certificate file updated!");
-	stuff_changed_cb(NULL, self);
+	stuff_changed_cb(self);
 }
 
-static void change_protocol_cb(GtkWidget *button, gpointer user_data) {
+static void change_protocol_cb(GtkWidget *button __attribute__((unused)), gpointer user_data) {
 	SeasideEditor *self = SEASIDE_EDITOR(user_data);
 	SeasideEditorPrivate *priv = seaside_editor_get_instance_private(self);
 
@@ -115,7 +119,7 @@ static void change_protocol_cb(GtkWidget *button, gpointer user_data) {
 	else if (port_active)
 		priv->protocol_name = g_strdup("port");
 
-	stuff_changed_cb(NULL, self);
+	stuff_changed_cb(self);
 }
 
 static gboolean check_validity(SeasideEditor* self) {
@@ -257,7 +261,7 @@ static void seaside_editor_class_init (SeasideEditorClass* req_class) {
 	object_class->dispose = dispose;
 }
 
-static void seaside_editor_init(SeasideEditor* plugin) {}
+static void seaside_editor_init(SeasideEditor* plugin __attribute__((unused))) {}
 
 static void seaside_editor_interface_init(NMVpnEditorInterface* iface_class) {
 	iface_class->get_widget = get_widget;

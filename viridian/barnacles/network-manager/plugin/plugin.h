@@ -5,9 +5,9 @@
 #include <NetworkManager.h>
 #include <nm-vpn-service-plugin.h>
 
-#define NM_DBUS_SERVICE_SEASIDE    "org.freedesktop.NetworkManager.seasidevpn"
-#define NM_DBUS_INTERFACE_SEASIDE  "org.freedesktop.NetworkManager.seasidevpn"
-#define NM_DBUS_PATH_SEASIDE       "/org/freedesktop/NetworkManager/seasidevpn"
+#define NM_DBUS_SERVICE_SEASIDE SEASIDE_PLUGIN_SERVICE
+#define NM_DBUS_INTERFACE_SEASIDE SEASIDE_PLUGIN_SERVICE
+#define NM_DBUS_PATH_SEASIDE "/org/freedesktop/NetworkManager/seasidevpn"
 
 #define NM_SEASIDE_KEY_CERTIFILE   "certifile"
 #define NM_SEASIDE_KEY_CERTIFICATE "certificate"

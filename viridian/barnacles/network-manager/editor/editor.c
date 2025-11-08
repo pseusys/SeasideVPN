@@ -1,7 +1,6 @@
 #include <dlfcn.h>
 
-#include <NetworkManager.h>
-
+#include "common.h"
 #include "editor.h"
 
 // PLUGIN:
@@ -27,26 +26,27 @@ typedef enum {
 
 #define NM_SEASIDE_IMPORT_EXPORT_ERROR nm_seaside_import_export_error_quark()
 
+__attribute__((unused))
 static GQuark nm_seaside_import_export_error_quark(void) {
 	static GQuark quark = 0;
 	if (G_UNLIKELY(quark == 0)) quark = g_quark_from_static_string("nm-seaside-import-export-error-quark");
 	return quark;
 }
 
-static guint32 get_capabilities (NMVpnEditorPlugin* iface) {
+static guint32 get_capabilities (NMVpnEditorPlugin* iface __attribute__((unused))) {
     g_message("Checking SeasideVPN capabilities...");
 	return NM_VPN_EDITOR_PLUGIN_CAPABILITY_NONE;
 }
 
-static NMVpnEditor* get_editor(NMVpnEditorPlugin* iface, NMConnection* connection, GError** error) {
+static NMVpnEditor* get_editor(NMVpnEditorPlugin* iface __attribute__((unused)), NMConnection* connection, GError** error) {
 	g_message("Getting SeasideVPN editor...");
 
 	unsigned int gtk_major = 3;
 	void *handle = dlopen(NULL, RTLD_NOW);
 	if (handle) {
-		unsigned int (*get_major_version)(void) = (unsigned int (*)(void)) dlsym(handle, "gtk_get_major_version");
-		if (get_major_version) {
-			gtk_major = get_major_version();
+		dll_function get_major_version_holder = { dlsym(handle, "gtk_get_major_version") };
+		if (get_major_version_holder.pointer) {
+			gtk_major = get_major_version_holder.get_major_version();
 		}
 		dlclose(handle);
 	} else {
@@ -67,18 +67,18 @@ static NMVpnEditor* get_editor(NMVpnEditorPlugin* iface, NMConnection* connectio
 		return NULL;
 	}
 
-	NMVpnEditor *(*create_func)(NMConnection *, GError **) = (NMVpnEditor *(*)(NMConnection *, GError **)) dlsym(editor_handle, "create_seaside_editor");
-	if (!create_func) {
+	dll_function create_seaside_editor_holder = { dlsym(editor_handle, "create_seaside_editor") };
+	if (!create_seaside_editor_holder.pointer) {
         g_warning("Failed to resolve create_seaside_editor symbol: %s", dlerror());
 		g_set_error(error, SEASIDE_EDITOR_PLUGIN_ERROR, 0, "Failed to resolve create_seaside_editor symbol: %s", dlerror());
 		dlclose(editor_handle);
 		return NULL;
 	}
 
-	return create_func(connection, error);
+	return create_seaside_editor_holder.create_seaside_editor(connection, error);
 }
 
-static NMConnection* import(NMVpnEditorPlugin* iface, const char* path, GError** error) {
+static NMConnection* import(NMVpnEditorPlugin* iface __attribute__((unused)), const char* path, GError** error) {
 	g_message("Importing SeasideVPN connection...");
 	NMConnection* connection = nm_simple_connection_new();
 
@@ -106,7 +106,7 @@ static NMConnection* import(NMVpnEditorPlugin* iface, const char* path, GError**
 	return connection;
 }
 
-static gboolean export (NMVpnEditorPlugin *iface, const char *path, NMConnection *connection, GError **error) {
+static gboolean export (NMVpnEditorPlugin *iface __attribute__((unused)), const char *path, NMConnection *connection, GError **error) {
 	g_message("Exporting SeasideVPN connection...");
 	NMSettingVpn* s_vpn = nm_connection_get_setting_vpn(connection);
 
@@ -119,14 +119,14 @@ static gboolean export (NMVpnEditorPlugin *iface, const char *path, NMConnection
 	if (!decoded || length == 0)
 		return FALSE;
 
-	if (!g_file_set_contents(path, decoded, length, error))
+	if (!g_file_set_contents(path, (gchar *)decoded, length, error))
 		return FALSE;
 
 	g_free(decoded);
 	return FALSE;
 }
 
-static char *get_suggested_filename (NMVpnEditorPlugin *iface, NMConnection *connection) {
+static char *get_suggested_filename (NMVpnEditorPlugin *iface __attribute__((unused)), NMConnection *connection) {
 	g_message("Suggesting SeasideVPN connection file name...");
 	g_return_val_if_fail (connection != NULL, NULL);
 
@@ -170,7 +170,7 @@ static void seaside_editor_plugin_class_init(SeasideEditorPluginClass* req_class
 	g_object_class_override_property(object_class, PROP_SERVICE, NM_VPN_EDITOR_PLUGIN_SERVICE);
 }
 
-static void seaside_editor_plugin_init(SeasideEditorPlugin* plugin) {}
+static void seaside_editor_plugin_init(SeasideEditorPlugin* plugin __attribute__((unused))) {}
 
 static void seaside_editor_plugin_interface_init(NMVpnEditorPluginInterface* iface_class) {
 	g_message("Constructing SeasideVPN plugin interface interface...");

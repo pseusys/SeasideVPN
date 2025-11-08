@@ -44,12 +44,13 @@ main (int argc, char *argv[])
 
 	GOptionContext *context;
 	GOptionEntry entries[] = {
-		{ "uuid", 'u', 0, G_OPTION_ARG_STRING, &vpn_uuid, "UUID of VPN connection", NULL },
-		{ "name", 'n', 0, G_OPTION_ARG_STRING, &vpn_name, "Name of VPN connection", NULL },
+		{ "uuid", 'u', 0, G_OPTION_ARG_STRING, (void*) &vpn_uuid, "UUID of VPN connection", NULL },
+		{ "name", 'n', 0, G_OPTION_ARG_STRING, (void*) &vpn_name, "Name of VPN connection", NULL },
 		{ NULL }
 	};
 
 	context = g_option_context_new ("- seaside auth dialog");
+	g_option_context_add_main_entries (context, entries, NULL);
 	g_option_context_parse (context, &argc, &argv, NULL);
 	g_option_context_free (context);
 
