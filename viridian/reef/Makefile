@@ -8,8 +8,6 @@ SHELL := /bin/bash
 BUILD_TYPE := debug
 BINARY_PATH := target/$(BUILD_TYPE)
 
-
-
 help:
 	@ # Print available make target information
 	echo -e "help"
