@@ -96,6 +96,7 @@ jobs:
         with:
           toolchain: "1.89.0"
           rust-src-dir: viridian/reef
+          components: rustfmt
 
       - name: Lint Viridian Reef 🧪
         working-directory: viridian/reef
