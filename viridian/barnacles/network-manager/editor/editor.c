@@ -78,7 +78,71 @@ static NMVpnEditor* get_editor(NMVpnEditorPlugin* iface, NMConnection* connectio
 	return create_func(connection, error);
 }
 
+static NMConnection* import(NMVpnEditorPlugin* iface, const char* path, GError** error) {
+	g_message("Importing SeasideVPN connection...");
+	NMConnection* connection = nm_simple_connection_new();
+
+	NMSettingConnection* s_con = NM_SETTING_CONNECTION(nm_setting_connection_new());
+	nm_connection_add_setting(connection, NM_SETTING(s_con));
+
+	NMSettingVpn* s_vpn = NM_SETTING_VPN(nm_setting_vpn_new());
+	g_object_set(s_vpn, NM_SETTING_VPN_SERVICE_TYPE, SEASIDE_PLUGIN_SERVICE, NULL);
+	nm_connection_add_setting(connection, NM_SETTING(s_vpn));
+
+	NMSettingIP4Config* s_ip4 = NM_SETTING_IP4_CONFIG(nm_setting_ip4_config_new());
+	nm_connection_add_setting(connection, NM_SETTING(s_ip4));
+
+	gsize length = 0;
+    gchar *contents = NULL;
+    if (!g_file_get_contents(path, &contents, &length, error))
+		return NULL;
+
+    gchar *encoded = g_base64_encode((const guchar *)contents, length);
+    nm_setting_vpn_add_data_item(s_vpn, NM_SEASIDE_KEY_CERTIFICATE, encoded);
+    g_free(encoded);
+    g_free(contents);
+
+	nm_setting_vpn_add_data_item(s_vpn, NM_SEASIDE_KEY_PROTOCOL, NM_SEASIDE_PROTOCOL_DEFAULT);
+	return connection;
+}
+
+static gboolean export (NMVpnEditorPlugin *iface, const char *path, NMConnection *connection, GError **error) {
+	g_message("Exporting SeasideVPN connection...");
+	NMSettingVpn* s_vpn = nm_connection_get_setting_vpn(connection);
+
+	const char* cert_value = nm_setting_vpn_get_data_item(s_vpn, NM_SEASIDE_KEY_CERTIFICATE);
+	if (!cert_value)
+		return FALSE;
+
+	gsize length = 0;
+	guchar *decoded = g_base64_decode(cert_value, &length);
+	if (!decoded || length == 0)
+		return FALSE;
+
+	if (!g_file_set_contents(path, decoded, length, error))
+		return FALSE;
+
+	g_free(decoded);
+	return FALSE;
+}
+
+static char *get_suggested_filename (NMVpnEditorPlugin *iface, NMConnection *connection) {
+	g_message("Suggesting SeasideVPN connection file name...");
+	g_return_val_if_fail (connection != NULL, NULL);
+
+	NMSettingConnection *s_con = nm_connection_get_setting_connection (connection);
+	g_return_val_if_fail (s_con != NULL, NULL);
+
+	const char *id = nm_setting_connection_get_id (s_con);
+	g_return_val_if_fail (id != NULL, NULL);
+
+	return g_strdup_printf ("%s.sea", id);
+}
+
+
 static void get_property(GObject* object, guint prop_id, GValue* value, GParamSpec* pspec) {
+	g_message("Getting SeasideVPN connection property %d...", prop_id);
+
 	switch (prop_id) {
 		case PROP_NAME:
 			g_value_set_string(value, SEASIDE_PLUGIN_NAME);
@@ -113,6 +177,9 @@ static void seaside_editor_plugin_interface_init(NMVpnEditorPluginInterface* ifa
 
 	iface_class->get_editor = get_editor;
 	iface_class->get_capabilities = get_capabilities;
+	iface_class->import_from_file = import;
+	iface_class->export_to_file = export;
+	iface_class->get_suggested_filename = get_suggested_filename;
 }
 
 G_MODULE_EXPORT NMVpnEditor* nm_vpn_editor_factory_seaside(NMVpnEditorPlugin *editor_plugin, NMConnection* connection, GError** error) {

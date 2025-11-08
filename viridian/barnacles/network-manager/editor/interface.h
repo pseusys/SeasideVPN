@@ -10,20 +10,12 @@
 
 #include "editor.h"
 
-#define SEASIDE_EDITOR_PLUGIN_ERROR NM_CONNECTION_ERROR
-#define SEASIDE_EDITOR_PLUGIN_ERROR_INVALID_PROPERTY NM_CONNECTION_ERROR_INVALID_PROPERTY
-
-#define SEASIDE_PLUGIN_NAME "SeasideVPN"
-#define SEASIDE_PLUGIN_DESC "An obscure P2P network PPTP VPN distributed system"
-
-#define NM_SEASIDE_KEY_CERTIFICATE "certificate"
-#define NM_SEASIDE_KEY_PROTOCOL "protocol"
-
 typedef struct {
 	GtkWidget *widget;
 	GtkSizeGroup *group;
 	gboolean window_added;
-	char *certificate_filename;
+	char *certificate_filedata;
+	char *protocol_name;
 	GtkWidget *label_selected_certificate;
 	GtkWidget *radio_typhoon;
 	GtkWidget *radio_port;

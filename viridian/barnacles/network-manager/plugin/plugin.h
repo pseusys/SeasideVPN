@@ -9,6 +9,7 @@
 #define NM_DBUS_INTERFACE_SEASIDE  "org.freedesktop.NetworkManager.seasidevpn"
 #define NM_DBUS_PATH_SEASIDE       "/org/freedesktop/NetworkManager/seasidevpn"
 
+#define NM_SEASIDE_KEY_CERTIFILE   "certifile"
 #define NM_SEASIDE_KEY_CERTIFICATE "certificate"
 #define NM_SEASIDE_KEY_PROTOCOL    "protocol"
 

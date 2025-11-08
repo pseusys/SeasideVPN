@@ -22,7 +22,7 @@
 #define IP_TEMPLATE "%u.%u.%u.%u"
 #define IP(x) ((uint8_t*) &x)[3], ((uint8_t*) &x)[2], ((uint8_t*) &x)[1], ((uint8_t*) &x)[0] 
 
-typedef bool (*vpn_start_fn)(const char*, const char*, struct VPNConfig**, void**, void*, void (*)(void*, char*), char**);
+typedef bool (*vpn_start_fn)(const char*, uintptr_t, const char*, struct VPNConfig**, void**, void*, void (*)(void*, char*), char**);
 typedef bool (*vpn_stop_fn)(void*, char**);
 
 /* Private plugin state */
@@ -174,7 +174,7 @@ seaside_set_vpnconfig_idle(gpointer user_data)
     g_debug("DBUS config: Sending IPv4 configuration...");
     nm_vpn_service_plugin_set_ip4_config(data->plugin, g_variant_builder_end(&ipv4_builder));
 
-    free(data->cfg);
+    g_free(data->cfg);
     g_free(data);
     g_debug("DBUS config: Configuration sent!");
     return G_SOURCE_REMOVE;
@@ -196,20 +196,30 @@ real_connect(NMVpnServicePlugin *plugin, NMConnection *connection, GError **erro
     }
 
     g_debug("DBUS connect: Reading configuration data...");
+    const char *certifile = nm_setting_vpn_get_data_item(s_vpn, NM_SEASIDE_KEY_CERTIFILE);
     const char *certificate = nm_setting_vpn_get_data_item(s_vpn, NM_SEASIDE_KEY_CERTIFICATE);
     const char *protocol = nm_setting_vpn_get_data_item(s_vpn, NM_SEASIDE_KEY_PROTOCOL);
 
+    gsize certificate_length = 0;
+    char * certificate_data = NULL;
+
     if (!certificate) {
         g_warning("DBUS connect: Error extracting 'certificate' parameter");
-        g_set_error(error, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_BAD_ARGUMENTS,
-                    "Error extracting 'certificate' parameter");
+        g_set_error(error, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_BAD_ARGUMENTS, "Error extracting 'certificate' parameter");
         return FALSE;
     } else g_debug("DBUS connect: Certificate parameter read: %s", certificate);
 
+    if (certifile) {
+        g_debug("DBUS connect: Certificate parameter is a file name!");
+        certificate_data = (char *)g_strdup(certificate);
+    } else {
+        g_debug("DBUS connect: Certificate parameter is embedded data!");
+        certificate_data = (char *)g_base64_decode((const guchar *)certificate, &certificate_length);
+    }
+
     if (!protocol) {
         g_warning("DBUS connect: Error extracting 'protocol' parameter");
-        g_set_error(error, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_BAD_ARGUMENTS,
-                    "Error extracting 'protocol' parameter");
+        g_set_error(error, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_BAD_ARGUMENTS, "Error extracting 'protocol' parameter");
         return FALSE;
     } else g_debug("DBUS connect: Protocol parameter read: %s", protocol);
 
@@ -221,7 +231,7 @@ real_connect(NMVpnServicePlugin *plugin, NMConnection *connection, GError **erro
     VPNConfig *cfg;
     char *err_string;
     g_debug("DBUS connect: Starting viridian...");
-    if (!priv->vpn_start(certificate, protocol, &cfg, &priv->coordinator, (void*) plugin, capture_error, &err_string)) {
+    if (!priv->vpn_start(certificate, certificate_length, protocol, &cfg, &priv->coordinator, (void*) plugin, capture_error, &err_string)) {
         g_warning("DBUS connect: Error starting viridian: %s", err_string);
         g_set_error(error, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_LAUNCH_FAILED, "Error starting viridian: %s", err_string);
         free(err_string);
@@ -235,6 +245,7 @@ real_connect(NMVpnServicePlugin *plugin, NMConnection *connection, GError **erro
     g_idle_add(seaside_set_vpnconfig_idle, data);
 
     g_debug("DBUS connect: Success!");
+    g_free(certificate_data);
     return TRUE;
 }
 

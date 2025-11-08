@@ -1,6 +1,7 @@
 use std::ffi::{c_char, c_void, CStr, CString};
 use std::fs::read;
 use std::ptr::null_mut;
+use std::slice::from_raw_parts;
 use std::str::FromStr;
 
 use prost::Message;
@@ -55,7 +56,7 @@ macro_rules! return_error {
 }
 
 #[no_mangle]
-pub extern "C" fn vpn_start(certificate: *const c_char, protocol: *const c_char, config: *mut *mut VPNConfig, coordinator_ptr: *mut *mut c_void, plugin_ptr: *mut c_void, error_callback: extern "C" fn(*mut c_void, *mut c_char) -> c_void,  error: *mut *mut c_char) -> bool {
+pub extern "C" fn vpn_start(certificate: *const c_char, cert_data_length: usize, protocol: *const c_char, config: *mut *mut VPNConfig, coordinator_ptr: *mut *mut c_void, plugin_ptr: *mut c_void, error_callback: extern "C" fn(*mut c_void, *mut c_char) -> c_void,  error: *mut *mut c_char) -> bool {
     let protocol = match unsafe { CStr::from_ptr(protocol) }.to_str() {
         Ok(proto_str) => match ProtocolType::from_str(proto_str) {
             Ok(res) => res,
@@ -64,15 +65,21 @@ pub extern "C" fn vpn_start(certificate: *const c_char, protocol: *const c_char,
         Err(err) => return_error!(format!("Error resolving protocol string: {err}"), error)
     };
 
-    let certificate = match unsafe { CStr::from_ptr(certificate) }.to_str() {
-        Ok(cert_str) => match read(cert_str) {
-            Ok(cert_bytes) => match SeasideWhirlpoolClientCertificate::decode(&*cert_bytes) {
-                Ok(res) => res,
-                Err(err) => return_error!(format!("Error decoding certificate: {err}"), error)
+    let cert_data = if cert_data_length > 0 {
+        unsafe { from_raw_parts(certificate as *const u8, cert_data_length).to_vec() }
+    } else {
+        match unsafe { CStr::from_ptr(certificate) }.to_str() {
+            Ok(cert_str) => match read(cert_str) {
+                Ok(cert_bytes) => cert_bytes,
+                Err(err) => return_error!(format!("Error reading certificate file: {err}"), error)
             },
-            Err(err) => return_error!(format!("Error reading certificate file: {err}"), error)
-        },
-        Err(err) => return_error!(format!("Error resolving certificate string: {err}"), error)
+            Err(err) => return_error!(format!("Error resolving certificate string: {err}"), error)
+        }
+    };
+
+    let certificate = match SeasideWhirlpoolClientCertificate::decode(&*cert_data) {
+        Ok(res) => res,
+        Err(err) => return_error!(format!("Error decoding certificate: {err}"), error)
     };
 
     let remote_address = certificate.address.clone();
