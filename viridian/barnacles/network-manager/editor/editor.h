@@ -1,16 +1,15 @@
 #ifndef NM_SEASIDE_EDITOR_H
 #define NM_SEASIDE_EDITOR_H
 
-#include <netinet/in.h>
 #include <arpa/inet.h>
 #include <errno.h>
+#include <netinet/in.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include <NetworkManager.h>
 
 #include <glib-object.h>
-
 
 #define SEASIDE_EDITOR_PLUGIN_ERROR NM_CONNECTION_ERROR
 #define SEASIDE_EDITOR_PLUGIN_ERROR_INVALID_PROPERTY NM_CONNECTION_ERROR_INVALID_PROPERTY
@@ -61,13 +60,9 @@ GType seaside_editor_get_type(void);
 #define SEASIDE_PLUGIN_NAME "SeasideVPN"
 #define SEASIDE_PLUGIN_DESC "An obscure P2P network PPTP VPN distributed system"
 
-#define NM_SEASIDE_KEY_CERTIFILE   "certifile"
-#define NM_SEASIDE_KEY_CERTIFICATE "certificate"
-#define NM_SEASIDE_KEY_PROTOCOL "protocol"
-
 #define NM_SEASIDE_PROTOCOL_DEFAULT "typhoon"
 
 NMVpnEditor* nm_vpn_editor_factory_seaside(NMVpnEditorPlugin* /* editor_plugin */, NMConnection* /* connection */, GError** /* error */);
 
 
-#endif	/* NM_SEASIDE_EDITOR_H */
+#endif /* NM_SEASIDE_EDITOR_H */

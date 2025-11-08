@@ -1,5 +1,6 @@
 #include <gtk/gtk.h>
 
+#include "common.h"
 #include "interface.h"
 
 // UI WIDGET:
@@ -13,13 +14,13 @@ static void stuff_changed_cb(gpointer user_data) {
 }
 
 typedef struct {
-	GMainLoop *loop;
-	GFile *file;
+	GMainLoop* loop;
+	GFile* file;
 } DialogData;
 
-static void on_file_dialog_done(GObject *source_object, GAsyncResult *res, gpointer user_data) {
-	DialogData *data = (DialogData *)user_data;
-	GError *error = NULL;
+static void on_file_dialog_done(GObject* source_object, GAsyncResult* res, gpointer user_data) {
+	DialogData* data = (DialogData*) user_data;
+	GError* error = NULL;
 
 	data->file = gtk_file_dialog_open_finish(GTK_FILE_DIALOG(source_object), res, &error);
 	if (error) {
@@ -30,24 +31,24 @@ static void on_file_dialog_done(GObject *source_object, GAsyncResult *res, gpoin
 	g_main_loop_quit(data->loop);
 }
 
-static void choose_certificate_cb(GtkWidget *button __attribute__((unused)), gpointer user_data) {
-	SeasideEditor *self = SEASIDE_EDITOR(user_data);
-	SeasideEditorPrivate *priv = seaside_editor_get_instance_private(self);
+static void choose_certificate_cb(GtkWidget* button __attribute__((unused)), gpointer user_data) {
+	SeasideEditor* self = SEASIDE_EDITOR(user_data);
+	SeasideEditorPrivate* priv = seaside_editor_get_instance_private(self);
 
-	GtkFileDialog *dialog = gtk_file_dialog_new();
+	GtkFileDialog* dialog = gtk_file_dialog_new();
 	gtk_file_dialog_set_title(dialog, "Select Seaside Certificate");
 	gtk_file_dialog_set_modal(dialog, TRUE);
 	gtk_file_dialog_set_accept_label(dialog, "_Open");
 
-	GListStore *filters = g_list_store_new(GTK_TYPE_FILE_FILTER);
+	GListStore* filters = g_list_store_new(GTK_TYPE_FILE_FILTER);
 
-	GtkFileFilter *filter_cert = gtk_file_filter_new();
+	GtkFileFilter* filter_cert = gtk_file_filter_new();
 	gtk_file_filter_set_name(filter_cert, "Seaside Certificate Files (*.sea)");
 	gtk_file_filter_add_pattern(filter_cert, "*.sea");
 	g_list_store_append(filters, filter_cert);
 	g_object_unref(filter_cert);
 
-	GtkFileFilter *filter_all = gtk_file_filter_new();
+	GtkFileFilter* filter_all = gtk_file_filter_new();
 	gtk_file_filter_set_name(filter_all, "All Files");
 	gtk_file_filter_add_pattern(filter_all, "*");
 	g_list_store_append(filters, filter_all);
@@ -69,12 +70,12 @@ static void choose_certificate_cb(GtkWidget *button __attribute__((unused)), gpo
 		return;
 	}
 
-	char *filename = g_file_get_path(data.file);
+	char* filename = g_file_get_path(data.file);
 	g_debug("Choosing certificate: Updated SeasideVPN certificate to: %s", filename);
 	g_free(filename);
 
-    GBytes *contents = g_file_load_bytes(data.file, NULL, NULL, NULL);
-    if (!contents) {
+	GBytes* contents = g_file_load_bytes(data.file, NULL, NULL, NULL);
+	if (!contents) {
 		g_debug("Choosing certificate: Reading SeasideVPN certificate file contents failed!");
 		gtk_label_set_text(GTK_LABEL(priv->label_selected_certificate), "Certificate not changed: reading error!");
 		return;
@@ -84,11 +85,11 @@ static void choose_certificate_cb(GtkWidget *button __attribute__((unused)), gpo
 	gsize length = 0;
 	gpointer raw_contents = g_bytes_unref_to_data(contents, &length);
 
-	gchar *encoded = g_base64_encode((const guchar *)raw_contents, length);
+	gchar* encoded = g_base64_encode((const guchar*) raw_contents, length);
 	if (!encoded) {
 		g_debug("Choosing certificate: Error encoding contents of the SeasideVPN certificate file !");
 		gtk_label_set_text(GTK_LABEL(priv->label_selected_certificate), "Certificate not changed: embedding error!");
-    	g_free(raw_contents);
+		g_free(raw_contents);
 		return;
 	}
 
@@ -101,9 +102,9 @@ static void choose_certificate_cb(GtkWidget *button __attribute__((unused)), gpo
 	stuff_changed_cb(self);
 }
 
-static void change_protocol_cb(GtkWidget *button __attribute__((unused)), gpointer user_data) {
-	SeasideEditor *self = SEASIDE_EDITOR(user_data);
-	SeasideEditorPrivate *priv = seaside_editor_get_instance_private(self);
+static void change_protocol_cb(GtkWidget* button __attribute__((unused)), gpointer user_data) {
+	SeasideEditor* self = SEASIDE_EDITOR(user_data);
+	SeasideEditorPrivate* priv = seaside_editor_get_instance_private(self);
 
 	gboolean typhoon_active = gtk_check_button_get_active(GTK_CHECK_BUTTON(priv->radio_typhoon));
 	gboolean port_active = gtk_check_button_get_active(GTK_CHECK_BUTTON(priv->radio_port));
@@ -114,26 +115,24 @@ static void change_protocol_cb(GtkWidget *button __attribute__((unused)), gpoint
 	}
 
 	g_free(priv->protocol_name);
-	if (typhoon_active)
-		priv->protocol_name = g_strdup("typhoon");
-	else if (port_active)
-		priv->protocol_name = g_strdup("port");
+	if (typhoon_active) priv->protocol_name = g_strdup("typhoon");
+	else if (port_active) priv->protocol_name = g_strdup("port");
 
 	stuff_changed_cb(self);
 }
 
 static gboolean check_validity(SeasideEditor* self) {
-    SeasideEditorPrivate *priv = seaside_editor_get_instance_private(self);
+	SeasideEditorPrivate* priv = seaside_editor_get_instance_private(self);
 	if (!priv->certificate_filedata) g_debug("Validating connection: Certificate file data is missing!");
 	if (!priv->protocol_name) g_debug("Validating connection: Certificate protocol name is missing!");
-    return priv->certificate_filedata != NULL && priv->protocol_name != NULL;
+	return priv->certificate_filedata != NULL && priv->protocol_name != NULL;
 }
 
 static gboolean init_editor_plugin(SeasideEditor* self, NMConnection* connection, GError** error) {
 	SeasideEditorPrivate* priv = seaside_editor_get_instance_private(self);
 	NMSettingVpn* s_vpn = nm_connection_get_setting_vpn(connection);
 
-	GtkBuilder *builder = gtk_builder_new_from_resource("/org/freedesktop/network-manager-seasidevpn/dialog_gtk4.ui");
+	GtkBuilder* builder = gtk_builder_new_from_resource("/org/freedesktop/network-manager-seasidevpn/dialog_gtk4.ui");
 	if (!builder) {
 		g_warning("Initialising plugin: Error loading SeasideVPN editor interface UI!");
 		g_set_error(error, SEASIDE_EDITOR_PLUGIN_ERROR, 0, "Error loading SeasideVPN editor interface UI!");
@@ -165,17 +164,13 @@ static gboolean init_editor_plugin(SeasideEditor* self, NMConnection* connection
 	if (s_vpn) {
 		const char* cert_value = nm_setting_vpn_get_data_item(s_vpn, NM_SEASIDE_KEY_CERTIFICATE);
 		priv->certificate_filedata = g_strdup(cert_value);
-		if (cert_value)
-			gtk_label_set_text(GTK_LABEL(priv->label_selected_certificate), "Certificate file embedded!");
-		else
-			gtk_label_set_text(GTK_LABEL(priv->label_selected_certificate), "Certificate file not selected!");
+		if (cert_value) gtk_label_set_text(GTK_LABEL(priv->label_selected_certificate), "Certificate file embedded!");
+		else gtk_label_set_text(GTK_LABEL(priv->label_selected_certificate), "Certificate file not selected!");
 
 		const char* proto_value = nm_setting_vpn_get_data_item(s_vpn, NM_SEASIDE_KEY_PROTOCOL);
 		if (proto_value) {
-			if (g_strcmp0(proto_value, "typhoon") == 0)
-				gtk_check_button_set_active(GTK_CHECK_BUTTON(priv->radio_typhoon), TRUE);
-			else if (g_strcmp0(proto_value, "port") == 0)
-				gtk_check_button_set_active(GTK_CHECK_BUTTON(priv->radio_port), TRUE);
+			if (g_strcmp0(proto_value, "typhoon") == 0) gtk_check_button_set_active(GTK_CHECK_BUTTON(priv->radio_typhoon), TRUE);
+			else if (g_strcmp0(proto_value, "port") == 0) gtk_check_button_set_active(GTK_CHECK_BUTTON(priv->radio_port), TRUE);
 			else {
 				g_warning("Initialising plugin: Error checking 'protocol' value of SeasideVPN connection settings: %s!", proto_value);
 				g_set_error(error, SEASIDE_EDITOR_PLUGIN_ERROR, 0, "Error checking 'protocol' value of SeasideVPN connection settings!");
@@ -205,8 +200,8 @@ static GObject* get_widget(NMVpnEditor* iface) {
 }
 
 static gboolean update_connection(NMVpnEditor* iface, NMConnection* connection, GError** error) {
-    SeasideEditor* self = SEASIDE_EDITOR(iface);
-    SeasideEditorPrivate* priv = seaside_editor_get_instance_private(self);
+	SeasideEditor* self = SEASIDE_EDITOR(iface);
+	SeasideEditorPrivate* priv = seaside_editor_get_instance_private(self);
 
 	if (!check_validity(self)) {
 		g_debug("Updating connection: Aborting because validation failed!");
@@ -256,18 +251,18 @@ static void dispose(GObject* object) {
 	G_OBJECT_CLASS(seaside_editor_parent_class)->dispose(object);
 }
 
-static void seaside_editor_class_init (SeasideEditorClass* req_class) {
+static void seaside_editor_class_init(SeasideEditorClass* req_class) {
 	GObjectClass* object_class = G_OBJECT_CLASS(req_class);
 	object_class->dispose = dispose;
 }
 
-static void seaside_editor_init(SeasideEditor* plugin __attribute__((unused))) {}
+static void seaside_editor_init(SeasideEditor* plugin __attribute__((unused))) { }
 
 static void seaside_editor_interface_init(NMVpnEditorInterface* iface_class) {
 	iface_class->get_widget = get_widget;
 	iface_class->update_connection = update_connection;
 }
 
-G_MODULE_EXPORT NMVpnEditor *create_seaside_editor(NMConnection *connection, GError **error) {
+G_MODULE_EXPORT NMVpnEditor* create_seaside_editor(NMConnection* connection, GError** error) {
 	return nm_vpn_editor_interface_new(connection, error);
 }

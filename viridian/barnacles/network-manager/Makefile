@@ -122,13 +122,13 @@ $(NM_BUILD_DIR)/editor.o: $(NM_EDITOR_DIR)/editor.c $(NM_EDITOR_DIR)/editor.h $(
 
 $(NM_BUILD_DIR)/interface_gtk3.o: $(NM_EDITOR_DIR)/interface_gtk3.c $(NM_EDITOR_DIR)/interface.h $(NM_EDITOR_DIR)/editor.h | create-build-directory
 	@
-	clang-tidy $(CLANG_STATIC_ANALYSIS_ARGS) $< -- $(EXTRA_FLAGS) $(GCC_FLAGS_GTK3)
-	gcc -fPIC -c $< -o $@ $(EXTRA_FLAGS) $(GCC_FLAGS_GTK3)
+	clang-tidy $(CLANG_STATIC_ANALYSIS_ARGS) $< -- $(EDITOR_PLUGIN_INCLUDES) $(EXTRA_FLAGS) $(GCC_FLAGS_GTK3)
+	gcc -fPIC $(EDITOR_PLUGIN_INCLUDES) -c $< -o $@ $(EXTRA_FLAGS) $(GCC_FLAGS_GTK3)
 
 $(NM_BUILD_DIR)/interface_gtk4.o: $(NM_EDITOR_DIR)/interface_gtk4.c $(NM_EDITOR_DIR)/interface.h $(NM_EDITOR_DIR)/editor.h | create-build-directory
 	@
-	clang-tidy $(CLANG_STATIC_ANALYSIS_ARGS) $< -- $(EXTRA_FLAGS) $(GCC_FLAGS_GTK4)
-	gcc -fPIC -c $< -o $@ $(EXTRA_FLAGS) $(GCC_FLAGS_GTK4)
+	clang-tidy $(CLANG_STATIC_ANALYSIS_ARGS) $< -- $(EDITOR_PLUGIN_INCLUDES) $(EXTRA_FLAGS) $(GCC_FLAGS_GTK4)
+	gcc -fPIC $(EDITOR_PLUGIN_INCLUDES) -c $< -o $@ $(EXTRA_FLAGS) $(GCC_FLAGS_GTK4)
 
 $(NM_BUILD_DIR)/plugin.o: $(NM_PLUGIN_DIR)/plugin.c $(NM_PLUGIN_DIR)/plugin.h $(SHARED_LIBRARY)/seaside.h $(NM_INCLUDE_DIR)/common.h | create-build-directory
 	@
@@ -224,7 +224,7 @@ lint:
 
 format:
 	@
-	clang-format $(CLANG_FORMATTING_ARGS)
+	clang-format -i $(CLANG_FORMATTING_ARGS)
 .PHONY: format
 
 

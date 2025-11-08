@@ -1,0 +1,13 @@
+BasedOnStyle: WebKit
+
+UseTab: Always
+IndentWidth: 4
+TabWidth: 4
+
+ColumnLimit: 1024
+MaxEmptyLinesToKeep: 2
+SpaceAfterCStyleCast: true
+
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: AllIfsAndElse
+BreakBeforeBraces: Attach
